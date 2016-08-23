@@ -1,9 +1,0 @@
-#gcc -c -std=c++0x -libstd=libc++ -fPIC -O3 findpores.cpp -o findpores.o
-gcc -c -std=c++0x  -fPIC -O3 findpores.cpp -o findpores.o
-#gcc  -shared -o libfindpores.so findpores.o 
-gcc -shared -fPIC -Wl,-soname,libfindpores.so -o libfindpores.so findpores.o
-#gcc -c -std=c++0x -libstd=libc++  findpores.cpp -o findpores.o
-#gcc -dynamiclib -single_module -undefined dynamic_lookup findpores.o  -o  libfindpores.so
-
-
-
