@@ -39,7 +39,8 @@ def fit_hex(shag_a,shag_c,npoint_a,npoint_c,it,ise,verlist,calc,gb_volume = Fals
 
 
 
-
+    if not os.path.exists('a_c_convergence'):
+        os.makedirs('a_c_convergence')
 
     f0 = open('a_c_convergence/fit_hex.out', 'w')
   

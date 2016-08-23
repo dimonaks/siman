@@ -1,7 +1,8 @@
 
 from header import *
 import header
-from classes import CalculationVasp, InputSet, Structure
+from classes import CalculationVasp, Structure
+from set_functions import InputSet
 from functions import image_distance, xred2xcart, xcart2xred, write_xyz, replic, return_atoms_to_cell, element_name_inv
 import ctypes
 #from ctypes import *
@@ -238,7 +239,7 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
 
 def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r_pore = 0.5,
     it_to = '', ise_to = '', verlist_to = [], copy_geo_from = "", find_close_to = (),add_to_version = 0,
-    write_geo = True, only_version = None, fine = 4, put_exactly_to = None, check_pore_vol = 0):
+    write_geo = True, only_version = None, fine = 4, put_exactly_to = None, check_pore_vol = 0, replace_atom = None, override = False):
 
     """
     Add impurities in pores.
@@ -285,10 +286,15 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
 
     check_pore_vol - allows to estimate volume of pores; has problems for big cells
 
+    replace_atom - if not None, than the specified atom is substituted
+
 
     Side effects: creates new geometry folder with input structures; 
 
     """
+
+    struct_des = header.struct_des
+
     def test_adding_of_impurities(added, init, v):
         """
         Can be used only inside add_impurity()
@@ -335,103 +341,122 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
         "if put_exactly_to is True, then atom just added and nothing are searched"
 
 
-        if write_geo and os.path.exists(new.path["input_geo"]):
+        if write_geo and os.path.exists(new.path["input_geo"]) and not override:
             print_and_log("add: File '"+new.path["input_geo"]+"' already exists; continue\n");
             return new
 
         #new.init = return_atoms_to_cell(new.init)
+        if replace_atom:
+            #atom substitution
+            if znucl not in new.init.znucl:
+                new.init.znucl.append(znucl)
+                new.init.ntypat+=1
+                new.init.typat[replace_atom] = new.init.ntypat
+            else:
+                ind = new.init.znucl.index(znucl)
+                new.init.typat[replace_atom] = ind + 1
+            new.init.nznucl = []
+            for typ in range(1, new.init.ntypat+1):
+                new.init.nznucl.append(new.init.typat.count(typ) )
 
-        new_before = copy.deepcopy(new)
-        
-        # new.init.xcart[-2][0]-=0.9 #was made once manually for c1gCOi10.1
-        # new.init.xcart[-2][2]+=0.2
-        # new.init.xred = xcart2xred(new.init.xcart, new.init.rprimd)
-        write_xyz(new.init)
-        #step = 0.042
-        step = 0.06
-        #r_pore = 0.56
-        #fine = 0.3 # for visualisation of pores
-        #fine = 4   #controls small steps; the steps are smaller for larger numbers
-        #r_pore = 0.54
-        prec = 0.004 # precision of center Angs
-        if new.hex_a == None:
-            r_mat = 1.48 -step
+
+
         else:
-            r_mat = new.hex_a / 2 - step
+            new_before = copy.deepcopy(new)
+            
+            # new.init.xcart[-2][0]-=0.9 #was made once manually for c1gCOi10.1
+            # new.init.xcart[-2][2]+=0.2
+            # new.init.xred = xcart2xred(new.init.xcart, new.init.rprimd)
+            write_xyz(new.init)
+            #step = 0.042
+            step = 0.06
+            #r_pore = 0.56
+            #fine = 0.3 # for visualisation of pores
+            #fine = 4   #controls small steps; the steps are smaller for larger numbers
+            #r_pore = 0.54
+            prec = 0.004 # precision of center Angs
+            if new.hex_a == None:
+                r_mat = 1.48 -step
+            else:
+                r_mat = new.hex_a / 2 - step
 
-        if put_exactly_to:
-            pores_xred = [np.array(put_exactly_to),]
-            print 'Inmpurity just put in ', pores_xred
-        else:
-            pores = find_pores(new.init, r_mat, r_pore, step, fine, prec,  addtype, new.gbpos, find_close_to, check_pore_vol) #octahedral
-            pores_xred = pores.xred
-        
-
-
-        npores = len(pores_xred)
-        
-        st = new.init
-
-        #delete last oxygen; was made once manually for c1gCOi10.1
-        # st.natom-=1
-        # del st.xred[-1]
-        # del st.typat[-1]
-
-
-
-
-        st.natom += npores
-        st.xred.extend( pores_xred )
-
-        if znucl in st.znucl:
-            print "znucl of added impurity is already in cell"
-            ind = st.znucl.index(znucl)
-            typat = ind+1
-            st.nznucl[ind]+=npores
-        else:
-            st.ntypat +=1
-            typat = st.ntypat
-            st.znucl.append( znucl )
-            st.nznucl.append( npores )
+            if put_exactly_to:
+                pores_xred = [np.array(put_exactly_to),]
+                print 'Inmpurity just put in ', pores_xred
+            else:
+                pores = find_pores(new.init, r_mat, r_pore, step, fine, prec,  addtype, new.gbpos, find_close_to, check_pore_vol) #octahedral
+                pores_xred = pores.xred
+            
 
 
+            npores = len(pores_xred)
+            
+            st = new.init
 
-        for i in range( npores  ):
-            st.typat.append( typat )
+            #delete last oxygen; was made once manually for c1gCOi10.1
+            # st.natom-=1
+            # del st.xred[-1]
+            # del st.typat[-1]
 
 
 
-        st.xcart = xred2xcart(st.xred, st.rprimd)
 
-        new.init = st
+            st.natom += npores
+            st.xred.extend( pores_xred )
 
-        #print "Add impurity: len(xred ", len(new.init.xred)
-        #print "natom", new.init.natom
+            if znucl in st.znucl:
+                print "znucl of added impurity is already in cell"
+                ind = st.znucl.index(znucl)
+                typat = ind+1
+                st.nznucl[ind]+=npores
+            else:
+                st.ntypat +=1
+                typat = st.ntypat
+                st.znucl.append( znucl )
+                st.nznucl.append( npores )
 
 
-        #For automatisation of fit
-        try: 
-            #new.build
-            if new.build.nadded == None:      new.build.nadded=npores
-            else: new.build.nadded+=npores
-            if new.build.listadded == [None]: new.build.listadded = range(new.natom - npores, new.natom) #list of atoms which were added
-            else: new.build.listadded.extend( range(new.natom - npores, new.natom) )
-            #print "Warning!!! Information about added impurities rewritten"
-        except AttributeError: 
-            pass
 
-        #new.init.znucl = new.znucl
-        #new.init.typat = new.typat
-        
-        #write_xyz(replic(new.init, (2,1,2))  , xyzpath)
+            for i in range( npores  ):
+                st.typat.append( typat )
 
-        #test_adding_of_impurities(new, new_before, v)
 
-        print_and_log("Impurity with Z="+str(znucl)+" has been added to the found pore in "+new.name+"\n\n")
-        
+
+            st.xcart = xred2xcart(st.xred, st.rprimd)
+
+            new.init = st
+
+            #print "Add impurity: len(xred ", len(new.init.xred)
+            #print "natom", new.init.natom
+
+
+            #For automatisation of fit
+            try: 
+                #new.build
+                if new.build.nadded == None:      new.build.nadded=npores
+                else: new.build.nadded+=npores
+                if new.build.listadded == [None]: new.build.listadded = range(new.natom - npores, new.natom) #list of atoms which were added
+                else: new.build.listadded.extend( range(new.natom - npores, new.natom) )
+                #print "Warning!!! Information about added impurities rewritten"
+            except AttributeError: 
+                pass
+
+            #new.init.znucl = new.znucl
+            #new.init.typat = new.typat
+            
+            #write_xyz(replic(new.init, (2,1,2))  , xyzpath)
+
+            #test_adding_of_impurities(new, new_before, v)
+
+            print_and_log("Impurity with Z="+str(znucl)+" has been added to the found pore in "+new.name+"\n\n")
+            
+
+
+
+
         if write_geo:
             write_xyz(new.init , xyzpath)
-            new.write_geometry("init",new.des)
+            new.write_geometry("init",new.des, override = override)
 
         print "\n"
 

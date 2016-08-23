@@ -1,0 +1,16 @@
+--- classes.py	2016-02-18 17:19:35.578198806 +0300
++++ classes_new.py	2016-02-18 17:19:38.478198700 +0300
+@@ -1079,6 +1079,13 @@
+         """Copy from server """
+         if load == 1:
+ 
++
++            command_reduce = """ssh {0:s} nbands=\`grep \\"NBANDS=\\" \{1:s} \| awk \\'{{print \$9-1}}\\'\`\; sed -i -e \\"/band No./,+\${{nbands}}d\\" \{1:s} """.format(
++                cluster_address, project_path_cluster+path_to_outcar )
++            # print command_reduce
++
++            runBash(command_reduce)
++
+             # print "rsync -zave ssh "+cluster_address+":"+project_path_cluster+path_to_outcar+" "+self.dir
+             log.write( runBash("rsync -zave ssh "+cluster_address+":"+project_path_cluster+path_to_outcar+" "+self.dir)+'\n' ) #OUTCAR
+             log.write( runBash("rsync -zave ssh "+cluster_address+":"+project_path_cluster+path_to_contcar+" "+self.dir)+'\n' ) #CONTCAR

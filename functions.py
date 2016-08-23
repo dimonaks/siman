@@ -118,7 +118,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
         st.typat = new_typat
         st.xcart = new_xcart
         print 'After removing, cell has ', len(st.xred)
-        print st.xred
+        # print st.xred
         # st.xcart = xred2xcart(st.xred, st.rprimd)
         st.xred = xcart2xred(st.xcart, st.rprimd)
 
@@ -232,27 +232,26 @@ def salary_inflation():
 # salary_inflation()
 
 def element_name_inv(el):
+    el_dict = {'octa':200, 'n':0, 'H':1, 'He':2, 'Li':3, 'Be':4, 'B':5, 'C':6, 'N':7, 'O':8, 'F':9, 'Ne':10, 'Na':11, 'Mg':12, 'Al':13, 'Si':14, 'P':15, 'S':16, 'Cl':17, 'Ar':18, 'K':19, 'Ca':20, 'Sc':21, 'Ti':22, 'V':23, 'Cr':24, 'Mn':25, 'Fe':26, 'Co':27, 'Ni':28, 'Cu':29, 'Zn':30, 'Ga':31, 'Ge':32, 'As':33, 'Se':34, 'Br':35, 'Kr':36, 'Rb':37, 'Sr':38, 'Y':39, 'Zr':40, 'Nb':41, 'Mo':42, 'Tc':43, 'Ru':44, 'Rh':45, 'Pd':46, 'Ag':47, 'Cd':48, 'In':49, 'Sn':50, 'Sb':51, 'Te':52, 'I':53, 'Xe':54, 'Cs':55, 'Ba':56, 'La':57, 'Ce':58, 'Pr':59, 'Nd':60, 'Pm':61, 'Sm':62, 'Eu':63, 'Gd':64, 'Tb':65, 'Dy':66, 'Ho':67, 'Er':68, 'Tm':69, 'Yb':70, 'Lu':71, 'Hf':72, 'Ta':73, 'W':74, 'Re':75, 'Os':76, 'Ir':77, 'Pt':78, 'Au':79, 'Hg':80, 'Tl':81, 'Pb':82, 'Bi':83, 'Po':84, 'At':85, 'Rn':86, 'Fr':87, 'Ra':88, 'Ac':89, 'Th':90, 'Pa':91, 'U':92, 'Np':93, 'Pu':94, 'Am':95, 'Cm':96, 'Bk':97, 'Cf':98, 'Es':99, 'Fm':100, 'Md':101, 'No':102, 'Lr':103, 'Rf':104, 'Db':105, 'Sg':106, 'Bh':107, 'Hs':108, 'Mt':109, 'Ds':110, 'Rg':111, 'Cn':112, 'Uuq':114, 'Uuh':116, }
+    nu_dict = { 200:'octa', 0:'n', 1:'H', 2:'He', 3:'Li', 4:'Be', 5:'B', 6:'C', 7:'N', 8:'O', 9:'F', 10:'Ne', 11:'Na', 12:'Mg', 13:'Al', 14:'Si', 15:'P', 16:'S', 17:'Cl', 18:'Ar', 19:'K', 20:'Ca', 21:'Sc', 22:'Ti', 23:'V', 24:'Cr', 25:'Mn', 26:'Fe', 27:'Co', 28:'Ni', 29:'Cu', 30:'Zn', 31:'Ga', 32:'Ge', 33:'As', 34:'Se', 35:'Br', 36:'Kr', 37:'Rb', 38:'Sr', 39:'Y', 40:'Zr', 41:'Nb', 42:'Mo', 43:'Tc', 44:'Ru', 45:'Rh', 46:'Pd', 47:'Ag', 48:'Cd', 49:'In', 50:'Sn', 51:'Sb', 52:'Te', 53:'I', 54:'Xe', 55:'Cs', 56:'Ba', 57:'La', 58:'Ce', 59:'Pr', 60:'Nd', 61:'Pm', 62:'Sm', 63:'Eu', 64:'Gd', 65:'Tb', 66:'Dy', 67:'Ho', 68:'Er', 69:'Tm', 70:'Yb', 71:'Lu', 72:'Hf', 73:'Ta', 74:'W', 75:'Re', 76:'Os', 77:'Ir', 78:'Pt', 79:'Au', 80:'Hg', 81:'Tl', 82:'Pb', 83:'Bi', 84:'Po', 85:'At', 86:'Rn', 87:'Fr', 88:'Ra', 89:'Ac', 90:'Th', 91:'Pa', 92:'U', 93:'Np', 94:'Pu', 95:'Am', 96:'Cm', 97:'Bk', 98:'Cf', 99:'Es', 100:'Fm', 101:'Md', 102:'No', 103:'Lr', 104:'Rf', 105:'Db', 106:'Sg', 107:'Bh', 108:'Hs', 109:'Mt', 110:'Ds', 111:'Rg', 112:'Cn', 114:'Uuq', 116:'Uuh', }
+  
     if type(el) == str:
-        if el == "C": elinv = 6 
-        elif el == "O": elinv = 8 
-        elif el == "Ti": elinv = 22 
-        elif el == "B": elinv = 5 
-        elif el == "H": elinv = 1 
-        elif el == "octa": elinv = 200 
-        else:
-            print_and_log("Unknown element\n")
+        try: 
+            elinv = el_dict[el]
+        except:
+            print_and_log("Error! Unknown element: " +str(el))
             raise RuntimeError
     else:
         el = int(el)
-        if el == 6: elinv = 'C'
-        elif el == 5: elinv = 'B'
-        elif el == 8: elinv = 'O'
-        elif el == 22: elinv = 'Ti'
-        elif el == 1: elinv = 'H'
-        else:
-            print_and_log("Unknown element\n")
+        try:
+            elinv = nu_dict[el]
+        except:
+            print_and_log("Error! Unknown element: "+str(el))
             raise RuntimeError
+
     return elinv # inversed notion of element
+
+
 
 
 def xcart2xred(xcart, rprimd):
@@ -428,7 +427,16 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 
 
         if label:
-            f.write('select Be*\ncpk 200\nset labeloffset 0 0\nset labelfront\ncolor label black\nlabel %i\n font label 24 bold \n')
+            j = 1
+            name_old = ''
+            for i, el in enumerate(label):
+                name  = el[0]+el[1]
+                if name != name_old: j = 1
+                label = str(j)+el[1]
+                print "label",label
+                f.write('select '+el[0]+str(i+1)+'\ncpk 200\nset labeloffset 0 0\nset labelfront\ncolor label black\nlabel '+label+'\n font label 24 bold \n')
+                j+=1
+                name_old = name
 
 
         if rotate:
@@ -438,7 +446,8 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
             f.write(specialcommand)
 
         
-        f.write('write image 2800 2800 png "'+pngfile+'"')
+        # f.write('write image 2800 2800 png "'+pngfile+'"')
+        f.write('write image 1800 1800 png "'+pngfile+'"')
     print runBash(header.path_to_jmol+' -ions '+scriptfile)
     # print runBash('convert '+pngfile+' -shave 0x5% -trim '+pngfile) #cut by 5% from up and down (shave) and that trim left background
     print pngfile
@@ -451,16 +460,18 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 1 , 
     imp_positions = [], specialcommand = None, analysis = None, replications = None, nnumber = 6, topview = True,
     file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
-    include_boundary = 2, rotate = None,
+    include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None
     ):
-    """Writes st structure in xyz format in the folder xyz/pat
+    """Writes st structure in xyz format in the folder xyz/path
 
     if repeat == 2: produces jmol script
     shift - in rprimd[1][1] - shift of the second view
     gbpos2 - position of grain boundary in A
     gbwidth - atoms aroung gbpos2 will be colored differently
 
-    imp_positions - type and xcart coordinates additionally to be added to structure; to visulaze all impurity positions 
+    imp_positions - type and xcart coordinates additionally to be added to structure; to visulaze all impurity positions: for jmol
+    imp_sub_positions - list of atom numbers; the typat of these atoms is changed: not used now
+
     specialcommand - any command at the end of script
 
     analysis - additional processing, allows to show only specifice atoms, 'imp_surrounding' - shows Ti atoms only around impurity
@@ -468,6 +479,8 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
     nnumber - number of neighbours to show
 
     full_cell - returns atoms to cell and replicate boundary atoms
+
+    jmol - 1,0 - allow to use jmol
     """
     if replications:
         st = replic(st, mul = replications, inv = 1 )
@@ -543,18 +556,42 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
 
         rprimd, xcart, xred, typat, znucl, natom = update_var()
         
+    # asdegf
 
-    """Writing section"""
-
+    """Writing section"""   
     print_and_log("Writing xyz "+xyzfile+" \n")
+
+    #analize imp_positions
+    if imp_sub_positions == None:
+        imp_sub_positions = []
+    nsub = 0
+    for pos in imp_positions:
+        if 's' not in pos[4]: continue # skip interstitial positions
+        xs = np.asarray([pos[0],pos[1],pos[2]])
+        nsub+=1
+        # print xs
+        for i, x in enumerate(xcart):
+            # print np.linalg.norm( x-xs)
+            if np.linalg.norm( x-xs) < 1:
+                imp_sub_positions.append(i)
+
+    print imp_sub_positions, ': numbers of found atoms to be changed '
+
+
+    # for i in sorted(indices, reverse=True):
+    #     del somelist[i]
+
+
+
 
     with open(xyzfile,'w') as f:
         for i in range(repeat):
-            f.write(str(natom + len(imp_positions ))+"\n")
+            f.write(str(natom + len(imp_positions)-nsub)+"\n")
             f.write(name+"\n")
 
             if imp_positions: 
                 for i, el in enumerate(imp_positions):
+                    # if len(el) != 4: continue
                     f.write( "%s %.5f %.5f %.5f \n"%( el[3], el[0], el[1], el[2] ) )
                     # print 'composite -pointsize 60 label:{0:d} -geometry +{1:d}+{2:d} 1.png 2.png'.format(i, el[0], el[1])
 
@@ -563,13 +600,15 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
                 typ = typat[i] - 1
                 
                 z = int ( znucl[ typ ] )
-                #print "typ", znucl
-                #print "z", z
-                if   z == 22:  f.write( "Ti " )
-                elif z ==  6:  f.write( "C " )
-                elif z ==  8:  f.write( "O " )
-                elif z ==  1:  f.write( "H " )
-                else:          f.write( "Pu " )
+
+                if i in imp_sub_positions: 
+                    # f.write( "Be " )
+                    continue
+                else:
+                    el = element_name_inv(z)
+                    f.write( el+" " )
+
+
                 f.write( "%.5f %.5f %.5f \n"%( xcart[i][0], xcart[i][1], xcart[i][2] ) )
 
 
@@ -579,29 +618,39 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
 
 
 
-    if repeat == 2:
+    if jmol:
         """
         script mode for jmol. Create script file as well for elobarate visualization
         """
         
-
-
-
         """Choose gb atoms to change their color"""
         print 'position of boundary 2', gbpos2
         atomselection = ''
+
+        #create consistent xcart_new list like it will be in Jmol
+        xcart_new = []
+        for i, x in enumerate(xcart):
+            if i in imp_sub_positions: continue
+            xcart_new.append(x)    
+
+
+
         if gbpos2:
             
             gbpos1 = gbpos2 - rprimd[0][0]/2.
             gbatoms = []
             
-            for i, x in enumerate(xcart):
+            for i, x in enumerate(xcart_new):
                 # print i
-                if x[0] > gbpos1 - gbwidth/2. and x[0] < gbpos1 + gbwidth/2.:
+                # if x[0] > gbpos1 - gbwidth/2. and x[0] < gbpos1 + gbwidth/2.:
+                if abs(x[0] - gbpos1) < gbwidth/2.:
                     gbatoms.append(i)
-                if x[0] > gbpos2 - gbwidth/2. and x[0] < gbpos2 + gbwidth/2.:
+                    # print i, x[0], abs(x[0] - gbpos1)
+                if abs(x[0] - gbpos2) < gbwidth/2.:
+                # if x[0] > gbpos2 - gbwidth/2. and x[0] < gbpos2 + gbwidth/2.:
+                    # print i, x[0], abs(x[0] - gbpos2)
                     gbatoms.append(i)
-            
+            print 'Atoms at GB:', gbatoms
             atomselection = ''
             for i in gbatoms:
                 atomselection +='Ti'+str(i+1+len(imp_positions))+','
@@ -621,7 +670,8 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
         scriptfile = basepath+name+".jmol"
         pngfile = os.getcwd()+'/'+basepath+name+".png"
         
-        write_jmol(xyzfile, pngfile, scriptfile, atomselection, topview = topview, rprimd =rprimd, shift = shift, label = True, 
+        print 'imp_positions = ',imp_positions
+        write_jmol(xyzfile, pngfile, scriptfile, atomselection, topview = topview, rprimd =rprimd, shift = shift, label = [(pos[3], pos[4]) for pos in imp_positions], 
             specialcommand = specialcommand, orientation = orientation, boundbox =boundbox, rotate = rotate)
 
 
@@ -900,4 +950,227 @@ def log_history(hstring):
     except:
         header.history.append( hstring  )    
     return
+
+
+
+
+
+def latex_table(table, caption, label, header = None, fullpage = '', filename = None, writetype = 'w', header0 = None, size = None ):
+    """
+    If header is not provided, table[0] is used as a header
+
+    header0 - additional header0 befor main header for complex tables
+    
+    path_to_paper should be provided
+
+    """
+    def myprint(string):
+        if filename:
+            f.write(string+"\n")
+            print string
+        else:
+            print string
+
+
+    if filename:
+        path = path_to_paper+'/tab/'
+        f = open(path+filename, writetype)
+        print_and_log("Saving table to "+path+filename+'\n')
+
+
+    n = len(table[0].split('&'))-2
+    print 'Number of columns = ', n + 2
+    
+    myprint('\\begin{table'+fullpage+'}')
+    myprint('\\center')
+    if size: myprint('\\'+size)
+        
+
+
+    myprint('\\caption{'+caption+'}')
+    myprint('\\label{'+label+'}')
+
+    myprint('\\begin{tabular}{l'+ n*'c'+'r}')
+    myprint('\\hline')
+
+    if header0:
+        myprint(header0+'\\\\')
+        myprint('\\hline')
+
+    if header:
+        myprint(header+'\\\\')
+        tabbeg = 0
+    else:
+        myprint(table[0]+'\\\\')
+        tabbeg = 1
+
+
+
+    myprint('\\hline')
+    for r in table[tabbeg:] :
+        if '&-' in r:
+            r = r.replace('-','--')
+        else:
+            r = r.replace(' -','--') #to save beautiful columns 
+
+        if 'hline' in r: 
+            myprint(r)
+        else:
+            myprint(r + '\\\\')
+
+    myprint('\\hline')
+    myprint('\\end{tabular}')
+    myprint('\\end{table'+fullpage+'}')
+
+    if filename:
+        f.close()
+    return
+
+
+
+
+
+
+
+
+def gb_energy_volume(gb,bulk):
+    if (gb.end.rprimd[1] != bulk.end.rprimd[1]).any() or (gb.end.rprimd[2] != bulk.end.rprimd[2]).any():
+        print_and_log("Warning! You are trying to calculate gb_energy from cells with different lateral sizes:"+str(gb.end.rprimd)+" "+str(bulk.end.rprimd)+"\n")
+    #print bulk.vol
+    V_1at = bulk.vol / bulk.natom #* to_ang**3
+
+    E_1at = bulk.energy_sigma0 / bulk.natom 
+    A = np.linalg.norm( np.cross(gb.end.rprimd[1], gb.end.rprimd[2])  ) #surface area of gb
+    #print A
+    gb.v_gb =      ( gb.vol              - V_1at * gb.natom) / A / 2. * 1000
+    gb.e_gb =      ( gb.energy_sigma0    - E_1at * gb.natom) / A / 2. * eV_A_to_J_m * 1000
+    gb.e_gb_init = ( gb.list_e_sigma0[0] - E_1at * gb.natom) / A / 2. * eV_A_to_J_m * 1000
+    gb.bulk_extpress = bulk.extpress     
+    #print "Calc %s; e_gb_init = %.3f J/m^2; e_gb = %.3f J/m; v_gb = %.3f angstrom "%(gb.name, gb.e_gb_init, gb.e_gb, gb.v_gb )
+    outst = "%15s&%7.0f&%7.0f"%(gb.name, gb.e_gb, gb.v_gb)
+    return outst
+
+
+
+
+def headers():
+    j = (7,12,14,7,8,9,9,5,5,20,5,20,8,12,20,8,5,8,8)
+    d="&"
+    header_for_bands= "Set".ljust(j[0])+d+"Etot".center(j[1])+d+"a1,a2".center(j[2])+d+"c".center(j[3])\
+                +d+"time, m".center(j[4])+d+"ittime, s".center(j[5])+d+"Nmd,Avr.".rjust(j[6])+d\
+                +"Warn!"+d+"nband"+d+"Added, \%"+"\\\\"
+
+    header_for_ecut= "Set".ljust(j[0])+d+"Etot".center(j[1])+d+"a1,a2".center(j[2])+d+"c".center(j[3])\
+                +d+"time, m".center(j[4])+d+"ittime, s".center(j[5])+d+"Nmd,Avr.".rjust(j[6])+d\
+                +"Warn!"+d+"Ecut,eV"+"\\\\"
+
+    header_for_npar= "Set".ljust(j[0])+d+"Etot".center(j[1])+d+"a1,a2".center(j[2])+d+"c".center(j[3])\
+                +d+"time, m".center(j[4])+d+"ittime, s".center(j[5])+d+"Nmd,Avr.".rjust(j[6])+d\
+                +"Warn!"+d+"NPAR".center(j[16])+d+"LPLANE".center(j[17])+"\\\\"
+
+    header_for_kpoints= "Set".ljust(j[0])+d+"Etot".center(j[1])+d+"a1,a2".center(j[2])+d+"c".center(j[3])\
+                +d+"time, m".center(j[4])+d+"ittime, s".center(j[5])+d+"Nmd,Avr.".rjust(j[6])+d\
+                +"Warn!"+d+"k-mesh".center(j[8])+d+"k-spacings".center(j[9])+d+"nkpt".center(j[10])+"\\\\"
+    header_for_tsmear= "Set".ljust(j[0])+d+"Etot".center(j[1])+d+"a1,a2".center(j[2])+d+"c".center(j[3])\
+                +d+"time, m".center(j[4])+d+"ittime, s".center(j[5])+d+"Nmd,Avr.".rjust(j[6])+d\
+                +"Warn!"+d+"k-mesh".center(j[8])+d+"tsmear, meV".center(j[13])+d+"Smearing error, meV/atom".center(j[14])+"\\\\"
+
+    header_for_stress= "Set".ljust(j[0])+d+"Etot".center(j[1])+d+"a1,a2".center(j[2])+d+"c".center(j[3])\
+                +d+"time, m".center(j[4])+d+"ittime, s".center(j[5])+d+"Nmd,Avr.".rjust(j[6])+d\
+                +"Warn!"+d+"Stress, intr u.*1000".center(j[11])+d+"Pressure, MPa".center(j[12])
+    #print "\\hline"
+    return header_for_kpoints
+
+
+
+
+
+def read_vectors(token, number_of_vectors, list_of_words):
+    """Returns the list of numpy vectors for the last match"""
+
+    number_of_matches = list_of_words.count( token )
+    if number_of_matches == 0: 
+        #print_and_log("Warning token '"+token+"' was not found! return empty\n")
+        return [None]
+
+    if number_of_matches > 1:
+        print_and_log("Warning token '"+token+"' was found more than one times\n")
+        raise RuntimeError
+
+
+    index = list_of_words.index(token, number_of_matches - 1 )     #Return the index of the last match
+    #print list_of_words[index]
+    list_of_vectors = []
+    vector = np.zeros((3))
+    for i in range(number_of_vectors):
+        vector[0] = float(list_of_words[index + 1])
+        vector[1] = float(list_of_words[index + 2])
+        vector[2] = float(list_of_words[index + 3])
+        index+=3
+        list_of_vectors.append(vector.copy())
+    return list_of_vectors
+
+
+def read_list(token, number_of_elements, ttype, list_of_words):
+    """Input is token to find, number of elements to read, type of elements and list of words, 
+    where to search
+    Returns the list of elements for the last match"""
+    
+
+    number_of_matches = list_of_words.count( token )
+
+
+    
+    #if number_of_elements == 0:        raise RuntimeError
+    
+    if number_of_matches > 1:
+        print_and_log("Warning token '"+token+"' was found more than one times\n")
+        raise RuntimeError
+
+    if number_of_matches == 0 or number_of_elements == 0: 
+        #print_and_log("Warning token '"+token+"' was not found or asked number of elements is zero! set to [None]\n")
+        #if ttype == str:
+        #    return ['']*number_of_elements
+        #else:
+        #    return [0]*number_of_elements
+        return [None]
+
+    try:
+        index = list_of_words.index(token, number_of_matches - 1 )     #Return the index of the last match
+
+    except ValueError: 
+        print_and_log("Warning!, token "+token+" was not found. I return [None]!\n")
+        return [None]
+    
+    index+=1 #the position of token value
+    list_of_elements = []
+    
+    #define function dependig on type:
+
+    if   ttype == int  : 
+        def convert(a): return int(a)
+    elif ttype == float: 
+        def convert(a): return float(a)
+    elif ttype == str  : 
+        def convert(a): return str(a)
+    
+    #print list_of_words[index], type(list_of_words[index])
+    if list_of_words[index] == "None"  : 
+        def convert(a): return [None]
+    
+    #Make convertion
+    for i in range(number_of_elements):
+        
+        list_of_elements.append(    convert(  list_of_words[index]   )     )
+        index+=1
+
+
+    return list_of_elements
+
+
+def words(fileobj):
+    """Generator of words. However does not allow to use methods of list for returned"""
+    for line in fileobj:
+        for word in line.split():
+            yield word
 
