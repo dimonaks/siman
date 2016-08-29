@@ -2,6 +2,18 @@
 import header
 from header import *
 
+
+def makedir(path):
+    """
+    Make directory at path if it not exist
+    """
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+        print_and_log("Directory "+os.path.dirname(path)+" was created\n")
+    return
+
+
+
 def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = None, include_boundary = (1,1) ):
     """
     Replicate structure() according to: mul[i]*rprimd[i]

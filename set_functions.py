@@ -1,8 +1,5 @@
-"""
-The most important header. Should be always first
-"""
-from header import *
-import header
+from header import log, print_and_log;
+import copy
 
 
 #Vasp keys
@@ -67,8 +64,53 @@ vasp_other_keys = [
 'LDAUJ',
 'LDAUPRINT',
 'LASPH',
+'LMAXMIX',
 ]
 
+siman_keys = [
+'u_ramping_region',
+
+]
+
+def update_vasp_sets(varset, user_vasp_sets, override = False):
+    """
+    Read user sets and add them to project database
+    Now for VASP
+    ###INPUT:
+        - varset (dict) - database dict with all sets of a project
+        - user_vasp_sets (list) - list of user sets that describes creation of new sets based on inheritance 
+        - override - allows to recreate all sets; can be usefull than you want to add some new property to all your sets - very dangerous to do!
+
+    ###RETURN:
+        - user_vasp_sets (list)
+
+    """
+    # print varset
+    for l in user_vasp_sets:
+        if 'over' in l[-1]: override = True
+        if override or l[0] not in varset:
+            # print override, 'override'
+            s = inherit_iset(l[0], l[1], varset, override = override) 
+            param = l[2]
+            # print param
+            for key in param:
+                # print key
+                # print param[key]
+                if key in siman_keys:
+                    s.set_attrp(key, param[key] )
+                elif key == 'set_potential':
+                    # print param[key]
+
+                    for key2 in param[key]:
+                        # print key2, 'key2'
+                        s.set_potential(key2, param[key][key2])
+                else:
+                    s.set_vaspp(key, param[key])
+            # print s.potdir
+            # print varset[l[0]].potdir
+
+
+    return varset
 
 
 
@@ -78,13 +120,16 @@ class InputSet():
     def __init__(self,ise):
         #super(InputSet, self).__init__()
         self.ise = ise
+        self.des   = "" # description
         self.potdir = {}
-        self.units = "abinit"
+        self.units = "vasp"
         self.vasp_params = {}
         self.mul_enaug = 1
         self.history = "Here is my uneasy history( :\n"    
         self.tsmear = None 
         self.tolmxf = None
+        self.ngkpt  = None
+        self.blockfolder = ''
         # self.kpoints_file = False
         # self.use_ngkpt = False
         #Code scpecific parameters, now only for Vasp
@@ -99,6 +144,8 @@ class InputSet():
         for key in self.vasp_params:
             if self.vasp_params[key] == None: continue
             print "{:30s} = {:s} ".format("s.vasp_params['"+key+"']", str(self.vasp_params[key]) )
+
+        print self.potdir
 
     def update(self):
         #deprecated, now
@@ -193,10 +240,11 @@ class InputSet():
         if znucl in self.potdir:
             if arg == self.potdir[znucl]:
                 print_and_log( "Warning! You already have the same potential for "+str(znucl)+" element\n" )
-                return    
         # print type(self.potdir)
         self.potdir[znucl] = arg
         self.history += "Potential for "+str(znucl)+" was changed to "+arg+"\n"
+        print_and_log( "Potential for "+str(znucl)+" was changed to "+arg+"\n" )
+
         # self.update()
         return
 
@@ -282,10 +330,31 @@ class InputSet():
             print_and_log("Warning! You did not change  "+token+"  in "+self.ise+" set\n")
         else:
             self.history += " "+token+"  was changed from "+str(old)+" to "+str(arg) + "\n"
-            log.write(token+"  was changed from "+str(old)+" to "+str(arg) +" - "+ des+" in set "+self.ise+" \n")
+            print_and_log(token+"  was changed from "+str(old)+" to "+str(arg) +" - "+ des+" in set "+self.ise+" \n")
         
         self.update()                
+
+        return
+
+    def set_attrp(self, token, arg, des = "see manual"):
+        """
+        set any attribute.
+
+        """
+        # print token
+        if hasattr(self, token):
+            old = getattr(self, token)
+            if old == arg:
+                print_and_log("Warning! You did not change  "+token+"  in "+self.ise+" set\n")
+            else:
+                self.history += " "+token+"  was changed from "+str(old)+" to "+str(arg) + "\n"
+                print_and_log(token+"  was changed from "+str(old)+" to "+str(arg) +" - "+ des+" in set "+self.ise+" \n")
         
+        else:
+            setattr(self, token, arg)
+            print_and_log("New attribute  "+token+"  added to "+self.ise+" set\n")
+            self.history += " "+token+"  was added as a new attr with "+str(arg) + " value \n"
+
         return
 
 
@@ -302,6 +371,9 @@ class InputSet():
 
 def inherit_iset(ise_new,ise_from,varset,override = False, newblockfolder = ""):
     """ Create new set copying from existing and update some fields. If ise_from does not exist create new"""
+
+    ise_new = ise_new.strip()
+    ise_from = ise_from.strip()
 
     if ise_from not in varset:
         log.write( "\nError! Set "+ise_from+" does not exist. I return new empty set\n")

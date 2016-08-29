@@ -1,8 +1,19 @@
 from header import *
 import header
-from classes import CalculationVasp
+from classes import CalculationVasp, Description
 from functions import gb_energy_volume
+# from ext_databases import get_structure_from_matproj
 
+from functions import makedir
+
+from pymatgen.matproj.rest import MPRester
+from pymatgen.io.vasp.inputs import Poscar
+
+from operator import itemgetter
+
+
+
+pmgkey = header.project_conf.pmgkey
 
 
 
@@ -56,60 +67,167 @@ def complete_run(close_run = True):
 
 
 
+
+
+
+
+
+def create_additional(struct_des):
+    """
+    Automatically make objects in struct_des
+    with .f and .fvac index
+
+
+    """
+    for key in copy.deepcopy(struct_des):
+        if 'auto-created' in struct_des[key].des: continue
+        new = copy.deepcopy(struct_des[key])
+        new.des+=' fitted; des auto-created;'
+        struct_des[key+'.f'] = new
+
+        new = copy.deepcopy(struct_des[key])
+        new.des+=' fitted and relaxed; des auto-created;'
+        struct_des[key+'.fr'] = new
+
+
+        new = copy.deepcopy(struct_des[key])
+        new.des+=' with vacancy; des auto-created;'
+        struct_des[key+'.fvac'] = new
+
+
+        new = copy.deepcopy(struct_des[key])
+        new.des+=' with vacancy; des auto-created;'
+        struct_des[key+'.r'] = new
+
+
+    return struct_des
+
+def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided description for me :( ', override = False):
+    """
+    Function adds description to struct_des dictionary;
+
+
+    ###INPUT:
+        - struct_des (dict)         - dict from project database
+        * it (str)        - name of calculation
+        * it_folder (str) - path and name of folder used for calculation in current project both on local and remote machines
+        * des (str)       - description of calculation
+        * override (bool) - allows to override existing field
+
+
+    ###RETURN:
+        None
+    """
+
+    if it in struct_des and not override:
+        print_and_log("Error! "+it+'already exist in struct_des; use override = True')
+        raise RuntimeError
+    else:
+        struct_des[it] = Description(it_folder, des)
+        # hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
+        hstring = 'add_des(struct_des, {:s}, {:s}, {:s})    #on {:})'.format(it, it_folder, des, datetime.date.today())
+
+        try:
+            if hstring != header.history[-1]: header.history.append( hstring  )
+        except:
+            header.history.append( hstring  )
+        print_and_log("New structure name "+it+ " added to struct_des dict"+"\n")
+
+
+
+
+
+
+    return
+
+
+
+
+def update_des(struct_des, des_list):
+    """
+    Manuall adding of information to struct_des dictionary
+    
+
+    ###INPUT:
+        - struct_des (dict)         - dict from project database
+        - des_list (list of tuples) - list of new calculations to be added to database
+
+
+    ###RETURN:
+        - struct_des (dict) 
+    """
+
+
+
+    for des in des_list:
+        if des[0] not in struct_des:
+            add_des(struct_des, *des)
+
+    return create_additional(struct_des)
+
+
+
+
+
+
+
+
+
 def add_loop(it, ise, verlist, calc = None, conv = None, varset = None, 
     up = 'test', typconv="", from_geoise = '', inherit_option = None, 
     coord = 'direct', savefile = "ocdx", show = [], comment = None, 
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, ppn = None,
-    calc_method = None, u_ramping_region = None ):
+    calc_method = None, u_ramping_region = None, it_folder = None ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
 
     Input:
+        - it, ise - structure name and set name of new calculation
+        - verlist - list of versions of new calculations
+        - calc, conv, varset - database dictionaries; could be provided; if not then are taken from header
 
-
-        it, ise - structure name and set name of new calculation
-        verlist - list of versions of new calculations
-        calc, conv, varset - database dictionaries; could be provided; if not then are taken from header
-
-        input_geo_format - format of files in input geo folder 
+        - input_geo_format - format of files in input geo folder 
             'abinit' - the version is determined from the value inside the file
             'vasp', 'cif' -   the version is determined from the name of file; the names should be like POSCAR-1 for vasp files and 1.name.cif for cif
+            'mat_proj' - take structure from materialsproject.org; use it_folder, len(verlist) = 1
 
 
-        up - string, possible values are: 'up1', 'up2', 'no_base'; if empty then test run is performed without saving and sending 
+        - up - string, possible values are: 'up1', 'up2', 'no_base'; if empty then test run is performed without saving and sending 
             'up1' - needed for normal creation of calculation and copy to server all files
             'no_base': only relevant for typconv
             is the same as "up1", but the base set is ommited
             'up2' - update only unfinished calculations
 
-        coord - type of cooridnates written in POSCAR:
+        - coord - type of cooridnates written in POSCAR:
             'direct'
             'cart'
 
-        savefile - controls which files are saved during VASP run on server; check
+        - savefile - controls which files are saved during VASP run on server; check
             'ocdawx' - outcar, chgcar, dos, AECCAR,WAVECAR, xml
 
-        ifolder - explicit path to geo file.
+        - ifolder - explicit path to folder where to search for geo file.
 
-        input_geo_file - explicit file name of input file
+        - input_geo_file - explicit file name of input file
 
-        show - allows to choose type of formatting. See read_results ?.
+        - it_folder - section folder (sfolder) used in struct_des; here needed with input_geo_format = mat_proj
 
-        comment - arbitrary comment for history.
+        - show - allows to choose type of formatting. See read_results ?.
 
-        inherit_option - ? to be described.
+        - comment - arbitrary comment for history.
 
-        typconv - ? to be described.
+        - inherit_option - ? to be described.
+
+        - typconv - ? to be described.
         
-        'from_geoise' - part of folder name with geometry input files. allows to use geometry files from different sets.
+        - 'from_geoise' - part of folder name with geometry input files. allows to use geometry files from different sets.
         please find how it was used
 
-        ppn - number of cores used for calculation; overwrites header.corenum
+        - ppn - number of cores used for calculation; overwrites header.corenum
 
-        calc_method - provides additional functionality:
+        - calc_method - provides additional functionality:
             'u_ramping' - realizes U ramping approach #Phys Rev B 82, 195128
 
-        u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
+        - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
 
 
     Comments:
@@ -117,6 +235,10 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
 
     """
+    it = it.strip()
+    ise = ise.strip()
+    it_folder = it_folder.strip()
+
     schedule_system = header.project_conf.SCHEDULE_SYSTEM
 
     if ppn:
@@ -142,11 +264,14 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
     except:
         header.history.append( hstring  )
 
-    #clean_run()
     if ifolder:
         if it not in ifolder:
             print_and_log('Check ifolder !!! it not in ifolder')
             raise RuntimeError
+
+
+
+
 
     nc = it+'.'+ise+typconv
 
@@ -164,15 +289,41 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
     
 
 
+
+
+
+
+    mat_proj_st_id = None
+    if input_geo_format == 'mat_proj':
+        print_and_log("Taking structure from materialsproject.org ...\n")
+        if it_folder == None:
+            raise RuntimeError
+
+
+
+        mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, fv)
+        input_geo_format = 'vasp'
+
+
+
+
+
+
+
+
+
+
     for inputset in setlist:
 
-        if not ifolder:
+        if ifolder:
+            input_folder = ifolder
 
+        else:
             if from_geoise:
                 from_geoise = from_geoise[0]+inputset[1:] #it is supposed that the difference can be only in first digit
-                ifolder = geo_folder+it+"/" + it+"."+from_geoise #+ "/" + "grainA_s" #geo used for fitted
+                input_folder = geo_folder+it+"/" + it+"."+from_geoise #+ "/" + "grainA_s" #geo used for fitted
             else: 
-                ifolder = geo_folder+struct_des[it].sfolder+"/"+it
+                input_folder = geo_folder+struct_des[it].sfolder+"/"+it
 
 
         prevcalcver = None #version of previous calculation in verlist
@@ -187,7 +338,11 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
             
             cfolder = struct_des[it].sfolder+"/"+blockfolder #calculation folder
             
-            add_calculation(it,inputset,v, fv, lv, ifolder, cfolder, calc, varset, up, inherit_option, prevcalcver, coord, savefile, input_geo_format, input_geo_file, schedule_system = schedule_system, calc_method = calc_method, u_ramping_region = u_ramping_region)
+            add_calculation(it,inputset,v, fv, lv, input_folder, cfolder, calc, varset, up, 
+                inherit_option, prevcalcver, coord, savefile, input_geo_format, input_geo_file, 
+                schedule_system = schedule_system, 
+                calc_method = calc_method, u_ramping_region = u_ramping_region,
+                mat_proj_st_id = mat_proj_st_id)
             
             prevcalcver = v
 
@@ -211,10 +366,10 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
 
 
-def add_calculation(structure_name,inputset,version,first_version,last_version,input_folder,blockdir,calc,varset,update = "no"
-    ,inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
-
-    input_geo_file = None, schedule_system = None, calc_method = None, u_ramping_region = None):
+def add_calculation(structure_name, inputset, version, first_version, last_version, input_folder, blockdir, calc, varset, update = "no",
+    inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
+    input_geo_file = None, schedule_system = None, calc_method = None, u_ramping_region = None,
+    mat_proj_st_id = None):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
@@ -223,6 +378,10 @@ def add_calculation(structure_name,inputset,version,first_version,last_version,i
 
     """
     struct_des = header.struct_des
+
+
+
+
 
     id = (structure_name,inputset,version)
     try:
@@ -254,8 +413,23 @@ def add_calculation(structure_name,inputset,version,first_version,last_version,i
         # all additional properties:
         calc[id].calc_method = calc_method
         calc[id].u_ramping_region = u_ramping_region
+        if hasattr(calc[id].set, 'u_ramping_region'):
+            print_and_log("Attention! U ramping method is detected from set\n")
+            calc[id].calc_method = 'u_ramping'
+            calc[id].u_ramping_region =calc[id].set.u_ramping_region
+
+
+
+
         calc[id].cluster_address = cluster_address
         calc[id].project_path_cluster = project_path_cluster
+        if mat_proj_st_id:
+            calc[id].mat_proj_st_id = mat_proj_st_id
+
+
+
+
+
 
 
         if update in ['up1', 'up2']:
@@ -276,16 +450,20 @@ def add_calculation(structure_name,inputset,version,first_version,last_version,i
                 searchinputtemplate = input_folder+'/*.geo*'
             
             elif input_geo_format == 'vasp': 
-                searchinputtemplate = input_folder+'/POSCAR*'
+                searchinputtemplate = input_folder+'/*POSCAR*'
+
+
 
             elif input_geo_format == 'cif': 
                 searchinputtemplate = input_folder+'/*.cif'
 
+            print 'searchinputtemplate = ', searchinputtemplate
+
             # print  input_geo_format
             geofilelist = glob.glob(searchinputtemplate) #Find input_geofile
             # print geofilelist
-
-        geofilelist = [file for file in geofilelist if file[0] != '.'   ]  #skip hidden files
+        # print os.path.basename(file[0])
+        geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
 
 
         #additional search in target folder if no files in root # !!!Add for Vasp also 
@@ -688,37 +866,44 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
 def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_type = 'no', b_id = (), 
-    typconv='', up = 0 , imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = [], 
+    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = [], 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
-     calc_method = None, u_ramping_region = None, input_geo_file = None ):
+    calc_method = None, u_ramping_region = None, input_geo_file = None,
+    it_folder = None):
     """Read results
     INPUT:
-    'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
-        bulk material,
-        'e_imp' ('e_imp_kp', 'e_imp_ecut') - calculate impurity energy - just difference between cells with impurity and without.
-        'fit_ac' - fit a and c lattice constants using 2-dimensianal spline
-        'clusters' - allows to calculate formation energies of clusters
-        'diff' - difference of energies in meV, and volumes A^3; E(id) - E(b_id)
-        'matrix_diff' - difference normalized by matrix atoms
-        )
-    voronoi - True of False - allows to calculate voronoi volume of impurities and provide them in output. only if lammps is installed
-    b_id - key of base calculation (for example bulk cell), used in several regimes; 
-    r_id - key of reference calculation; defines additional calculation (for example atom in vacuum or graphite to calculate formation energies); can contain directly the energy per one atom
+        'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
+            bulk material,
+            'e_imp' ('e_imp_kp', 'e_imp_ecut') - calculate impurity energy - just difference between cells with impurity and without.
+            'fit_ac' - fit a and c lattice constants using 2-dimensianal spline
+            'clusters' - allows to calculate formation energies of clusters
+            'diff' - difference of energies in meV, and volumes A^3; E(id) - E(b_id)
+            'matrix_diff' - difference normalized by matrix atoms
 
-    up - controls if to download files from server
-    readfiles - define if files to be readed at all or only additional analysis is required
+            'redox_pot' - calculate redox potential relative to b_id() (deintercalated cathode) and energy_ref ( energy per one ion atom Li, Na in metallic state or in graphite)
 
-    The next three used for 'clusters' regime:    
-    imp1 - key of bulk cell with one imp1
-    imp2 - key of bulk cell with one imp2
-    matr - key of bulk cell with pure matrix.
+            )
+        voronoi - True of False - allows to calculate voronoi volume of impurities and provide them in output. only if lammps is installed
+        b_id - key of base calculation (for example bulk cell), used in several regimes; 
+        r_id - key of reference calculation; defines additional calculation (for example atom in vacuum or graphite to calculate formation energies); can contain directly the energy per one atom
+
+        up - controls if to download files from server; can be 'xo'
+        
+        readfiles - define if files to be read at all or only additional analysis is required; 
 
 
-    show - list, allows to show additional information (force)
 
-    energy_ref - energy in eV; substracted from energy diffs
-    
-    bulk_mul - allows to scale energy and volume of bulk cell during calculation of segregation energies
+        The next three used for 'clusters' regime:    
+        imp1 - key of bulk cell with one imp1
+        imp2 - key of bulk cell with one imp2
+        matr - key of bulk cell with pure matrix.
+
+
+        show - list, allows to show additional information (force)
+
+        energy_ref - energy in eV; substracted from energy diffs
+        
+        bulk_mul - allows to scale energy and volume of bulk cell during calculation of segregation energies
 
     RETURN:
         result_list - list of results
@@ -784,7 +969,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     if len(b_id) == 3: # for all cases besides e_seg and coseg for wich b_id is determined every iteration
         # print "Start to read ", b_id
         if '4' not in calc[b_id].state:
-            calc[b_id].read_results(1)
+            calc[b_id].read_results('o')
         e_b = calc[b_id].energy_sigma0
         v_b = calc[b_id].end.vol
 
@@ -795,7 +980,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     elif type(r_id) == tuple:
         if '4' not in calc[r_id].state:
             print "start to read reference:"
-            print calc[r_id].read_results(1)
+            print calc[r_id].read_results('o')
             # print calc[r_id].read_results()
         e_r = calc[r_id].energy_sigma0 #reference calc
         nat_r = calc[r_id].end.natom # reference calc
@@ -825,22 +1010,33 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-            path_to_contcar = cl.dir+str(v)+".CONTCAR"
-            path_to_outcar = cl.dir+str(v)+".OUTCAR"
-            path_to_xml   = cl.dir+str(v)+".vasprun.xml"
+            path_to_outcar = cl.path["output"]
+            # path_to_contcar = cl.dir+str(v)+".CONTCAR"
+            # path_to_xml   = cl.dir+str(v)+".vasprun.xml"
             # print path_to_contcar, path_to_outcar
             # print os.path.exists(path_to_contcar)
             # print os.path.exists(cl.path["output"])
 
             outst = ' File was not read '
+            
             if readfiles:
-                if  (os.path.exists(path_to_outcar) and os.path.exists(path_to_xml) ) or not up:
+                load = up
+                # print path_to_outcar
+                flag1 = 1#os.path.exists(path_to_outcar)
+                flag3 = 1; #ot load
+                flag2 = 1
+                # if 'x' in load:
+                #     flag2 = os.path.exists(path_to_xml)
+                # else:
+                #     flag2 = True
+                # print flag1
+                if flag1 and flag2 and flag3:
                 
-                    outst = calc[id].read_results(up, analys_type, voronoi, show)
+                    outst = calc[id].read_results(load, analys_type, voronoi, show)
                 
                 else:
                     print "Trying to download OUTCAR and CONTCAR from server\n\n"
-                    outst = calc[id].read_results(1, analys_type, voronoi, show)
+                    outst = calc[id].read_results('o', analys_type, voronoi, show)
 
 
 
@@ -976,9 +1172,14 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         """Aditional analysis, plotting"""
         if '4' not in calc[id].state:
-            print "Calculation ",id, 'is unfinished;return'
+            print "Calculation ",id, 'is unfinished; return'
             return
         final_list = () #if some part fill this list it will be returned instead of final_outstring
+        
+
+        cl = calc[id]
+        if b_id: bcl = calc[b_id]
+
         if analys_type == 'gbe':
             print("\nGrain boundary energy and excess volume fit:")
             plot_conv( conv[n], calc, "fit_gb_volume")
@@ -1213,6 +1414,62 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             plot_conv( [id], calc,  "dimer")
 
+
+        elif analys_type == 'redox_pot':
+            
+            #normalize numbers of atoms by some element except Li and Na 
+            iLi = None; jLi = None
+            # print cl.end.znucl
+            for i, z in enumerate(cl.end.znucl):
+                # print i, z
+                if z in [3, 11]: 
+                    iLi = i
+                    # print 'iLi is found'
+                    continue
+                # print i, z
+
+                for j, zb in enumerate(bcl.end.znucl):
+                    if zb in [3, 11]: 
+                        jLi = j
+                        continue
+
+                    if z == zb:
+                        # print "I use ", z, " to normalize"
+                        i_n = i
+                        j_n = j
+
+
+            # print "i, j",i, j
+            # print 'nznucl cl',  cl.end.nznucl
+            # print 'znucl cl',  cl.end.znucl
+            n  = cl.end.nznucl[i_n]
+            bn = bcl.end.nznucl[j_n]
+            if iLi != None:
+                nLi  = cl.end.nznucl[iLi]
+            else:
+                raise RuntimeError
+
+            if jLi != None:
+                bnLi  = bcl.end.nznucl[jLi]
+            else:
+                bnLi  = 0
+
+            # print n, bn, nLi
+
+            # print nLi/n
+
+            mul = 1. / (float(nLi) / n)             
+
+            # print mul
+
+
+            redox = ( cl.energy_sigma0 / n - bcl.energy_sigma0 / bn ) * mul  -  energy_ref
+
+
+
+            final_outstring = ("{:} & {:.1f} eV \n".format(id[0]+'.'+id[1], redox  ))
+            print final_outstring
+
     if final_list:
         return final_list, result_list
     else:
@@ -1395,3 +1652,59 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
     return T_range, fit_func
+
+
+
+
+
+
+
+"""Take structures from Mat. projects"""
+
+
+def get_structure_from_matproj(struct_des, it, it_folder, ver):
+    """
+    Find material with 'it' stoichiometry (lowest energy) from materialsproject.org, 
+    download and create field in struct_des and input POSCAR file
+    ###INPUT:
+        - struct_des-  
+        - it        - materials name, such as 'LiCoO2', ...
+        - it_folder - section folder in which the Poscar will be placed
+        - ver       - version of structure defined by user
+    
+    ###RETURN:
+        - ?
+        - ?
+
+
+    """
+    with MPRester(pmgkey) as m:
+        # print m.get_materials_id_references('mp-24850')
+        # print m.get_structures('mp-24850')
+        # mp_entries = m.get_entries_in_chemsys(["Co", "O"])
+        # for e in mp_entries:
+        #     if not 'is_hubbard = True' in e: continue
+        # energy_per_atom
+        # print mp_entries
+        # print m.supported_task_properties
+        # print it, 'it'
+        # print type(it)
+        # it = "LiFePO4"
+        # print m.get_data(it, data_type='vasp', prop='e_above_hull')
+        prop_dic_list =  m.get_data(it, data_type='vasp', prop='e_above_hull')
+
+        newlist = sorted(prop_dic_list, key=itemgetter('e_above_hull')) 
+
+        groundstate_st_id = newlist[0]['material_id']
+        # print groundstate_st_id
+        # print m.get_data(groundstate_st_id, data_type='vasp', prop='hubbards')
+        st_pmg =  m.get_structure_by_material_id(groundstate_st_id, final=True)
+
+
+    add_des(struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id, override = 1)
+    path2poscar = it_folder+'/'+it+'/'+groundstate_st_id+".POSCAR-"+str(ver)
+    makedir(path2poscar)
+    Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True, )
+    print_and_log("File "+path2poscar+" was written\n")
+    
+    return groundstate_st_id, path2poscar

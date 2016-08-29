@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+"""
+Siman - management of VASP calculations
+Author: Aksyonov D.A.
+TODO:
+1. Use our makedir() function
+
+
+"""
+
+
 import os, subprocess
 import math
 import numpy as np
@@ -33,7 +43,6 @@ mpl.rcParams.update({'font.size': size})
 
 """
 TODO
-1. Move log = open('log','a') to project_configuration; probably not needed
 
 """
 #paths to libraries needed by siman
@@ -74,7 +83,7 @@ kB = 8.617e-5 # eV/K
 def print_and_log(mystring):
     if 'Error' in mystring or 'Warning' in mystring:
         mystring+='\n\n\n'
-    print '--'+mystring,
+    # print '--'+mystring,
 
     log.write(mystring)
 
