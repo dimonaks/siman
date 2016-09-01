@@ -9,10 +9,7 @@ from functions import write_xyz, replic
 # from functions import image_distance, local_surrounding
 # from chargeden.functions import chg_at_point, cal_chg_diff
 # from dos.functions import plot_dos
-import matplotlib.pyplot as plt
-plt.rcParams['mathtext.fontset'] = "stix"
-import matplotlib.gridspec as gridspec
-import scipy
+
 # from ase.utils.eos import EquationOfState
 
 

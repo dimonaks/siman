@@ -175,7 +175,7 @@ def update_des(struct_des, des_list):
 
 def add_loop(it, ise, verlist, calc = None, conv = None, varset = None, 
     up = 'test', typconv="", from_geoise = '', inherit_option = None, 
-    coord = 'direct', savefile = "ocdx", show = [], comment = None, 
+    coord = 'direct', savefile = None, show = [], comment = None, 
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, ppn = None,
     calc_method = None, u_ramping_region = None, it_folder = None ):
     """
@@ -237,7 +237,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
     """
     it = it.strip()
     ise = ise.strip()
-    it_folder = it_folder.strip()
+    if it_folder: it_folder = it_folder.strip()
 
     schedule_system = header.project_conf.SCHEDULE_SYSTEM
 
@@ -258,11 +258,24 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
         verlist = [verlist]; #transform to list
 
 
+
+
     hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
+    args = hstring.split('(')[1].split(',')
+    # arg1 = args[0], arg2 = args[1]
+    # print args[0], it
+    hstring = hstring.replace(args[0], "'"+it+"'")
+    hstring = hstring.replace(args[1], "'"+ise+"'")
+    # print hstring
     try:
         if hstring != header.history[-1]: header.history.append( hstring  )
     except:
         header.history.append( hstring  )
+
+
+
+
+
 
     if ifolder:
         if it not in ifolder:
@@ -295,7 +308,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
     mat_proj_st_id = None
     if input_geo_format == 'mat_proj':
-        print_and_log("Taking structure from materialsproject.org ...\n")
+        print_and_log("Taking structure "+it+" from materialsproject.org ...\n")
         if it_folder == None:
             raise RuntimeError
 
@@ -347,7 +360,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
             prevcalcver = v
 
     if up not in ('up1','up2'): 
-        print_and_log("You are in the test mode, please change up to up1; "); 
+        print_and_log("Warning! You are in the test mode, please change up to up1; "); 
         raise RuntimeError
     return
 
@@ -403,8 +416,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         print_and_log( "There is no calculation with id "+ str(id)+". I create new with set "+str(inputset)+"\n" )        
     if "up" in update:
         if status in ["exist","compl"]: print_and_log("You asked to update existing calculation with id "+ str(id)+" Warning! I update creating new class \n" )         
-
+        # print 'State', calc[id].state
         calc[id] = CalculationVasp( varset[id[1]] )
+        # print 'State', calc[id].state
+
         calc[id].id = id 
         calc[id].name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
         calc[id].dir = blockdir+"/"+ str(id[0]) +'.'+ str(id[1])+'/'
@@ -412,11 +427,22 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         # all additional properties:
         calc[id].calc_method = calc_method
+        
+
+
+
         calc[id].u_ramping_region = u_ramping_region
         if hasattr(calc[id].set, 'u_ramping_region'):
-            print_and_log("Attention! U ramping method is detected from set\n")
+            print_and_log("Attention! U ramping method is detected from set\n\n")
             calc[id].calc_method = 'u_ramping'
             calc[id].u_ramping_region =calc[id].set.u_ramping_region
+
+
+        # print dir(calc[id].set)
+
+        if hasattr(calc[id].set, 'afm_ordering'):
+            print_and_log("Attention! afm_ordering method is detected from set\n\n")
+            calc[id].calc_method = 'afm_ordering'
 
 
 
@@ -569,7 +595,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 calc[id].make_run(schedule_system = schedule_system)
 
 
-        if status == "compl": calc[id].state = complete_state #Even if completed state was updated, the state does not change
+        # if status == "compl": calc[id].state = complete_state #Even if completed state was updated, the state does not change
+        if status == "compl": calc[id].state = '3. Can be completed but was reinitialized' #new behavior 30.08.2016
 
 
         print_and_log("\nCalculation "+str(id)+" added or updated\n\n")
@@ -1463,12 +1490,15 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             # print mul
 
 
-            redox = ( cl.energy_sigma0 / n - bcl.energy_sigma0 / bn ) * mul  -  energy_ref
+            redox = -(  ( cl.energy_sigma0 / n - bcl.energy_sigma0 / bn ) * mul  -  energy_ref  )
 
 
 
-            final_outstring = ("{:} & {:.1f} eV \n".format(id[0]+'.'+id[1], redox  ))
+            final_outstring = ("{:} & {:.2f} eV \n".format(id[0]+'.'+id[1], redox  ))
+            
             print final_outstring
+
+            final_list = [id[0], redox, id, b_id, ]
 
     if final_list:
         return final_list, result_list
@@ -1701,10 +1731,25 @@ def get_structure_from_matproj(struct_des, it, it_folder, ver):
         st_pmg =  m.get_structure_by_material_id(groundstate_st_id, final=True)
 
 
-    add_des(struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id, override = 1)
+    add_des(struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
     path2poscar = it_folder+'/'+it+'/'+groundstate_st_id+".POSCAR-"+str(ver)
     makedir(path2poscar)
     Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True, )
     print_and_log("File "+path2poscar+" was written\n")
     
     return groundstate_st_id, path2poscar
+
+
+# with MPRester(pmgkey) as m:
+#     print dir(m)
+#     print m.supported_properties
+#     print m.get_data('mp-540111', data_type='vasp', prop='total_magnetization')
+#     # 'total_magnetization'
+
+
+def manually_remove_from_struct_des(struct_des, key):
+    """
+    
+    """
+    del struct_des[key]
+    print_and_log('Attention! Entry '+key+' was removed from struct_des dict/\n')

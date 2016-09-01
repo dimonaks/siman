@@ -23,13 +23,24 @@ from math import exp
 import optparse
 import re
 import colorsys
-
+import pandas as pd
+import matplotlib.pyplot as plt
 
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import scipy
+
+plt.rcParams['mathtext.fontset'] = "stix"
+
+
+"""Global matplotlib control"""
+
 # size = 22 #for one coloumn figures
 size = 16 #for DOS
 # size = 16 #for two coloumn figures
-mpl.rc('font',family='Times New Roman')
+# mpl.rc('font',family='Times New Roman')
+mpl.rc('font',family='Serif')
 # mpl.rc('xtick', labelsize= size) 
 # mpl.rc('ytick', labelsize= size) 
 # mpl.rc('axes', labelsize = size) 
@@ -37,7 +48,8 @@ mpl.rc('font',family='Times New Roman')
 # mpl.rc('Axes.annotate', fontsize= size) #does not work
 mpl.rcParams.update({'font.size': size})
 # mpl.use('agg') #switch matplotlib on or off; for running script using ssh
-# os._exit(1)
+
+
 
 
 
@@ -80,10 +92,13 @@ kB_to_GPa = 0.1
 eV_A_to_J_m = 16.021765
 kB = 8.617e-5 # eV/K
 
+warnings = True
+
 def print_and_log(mystring):
     if 'Error' in mystring or 'Warning' in mystring:
         mystring+='\n\n\n'
-    # print '--'+mystring,
+    if warnings:
+        print '--'+mystring,
 
     log.write(mystring)
 

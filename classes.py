@@ -527,8 +527,8 @@ class CalculationVasp(Calculation):
             N = N_from_kspacing
 
 
-        print_and_log("\nKpoint   mesh is: "+str(N) )
-        print_and_log("The actual k-spacings are "+str(self.calc_kspacings(N) ) )
+        print_and_log("Kpoint   mesh is: "+str(N)+'\n' )
+        print_and_log("The actual k-spacings are "+str(self.calc_kspacings(N) )+'\n' )
         return N_from_kspacing
 
 
@@ -693,8 +693,8 @@ class CalculationVasp(Calculation):
         if 'LDAU' in vp and vp['LDAU']:        
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
                 if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
-                    print_and_log('\n\n\nError! The '+str(key)+' doesnt not contain values for your elements!\n\n\n')
-                    raise RuntimeError
+                    print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
+                    # raise RuntimeError
 
                 new = []
                 for el in el_list:
@@ -710,6 +710,96 @@ class CalculationVasp(Calculation):
                 vp[key] = new
 
 
+        """Process magnetic moments"""
+        # print dir(self.set)
+        # print self.set.vasp_params
+
+        if 'MAGMOM' in self.set.vasp_params and self.set.vasp_params['MAGMOM']: #just add * to magmom tag if it is provided without it
+            if "*" not in self.set.vasp_params['MAGMOM']:
+                self.set.vasp_params['MAGMOM'] = str(natom) +"*"+ self.set.vasp_params['MAGMOM']
+        
+        else:
+            if hasattr(self.set, 'magnetic_moments'):
+                print_and_log('Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set\n')
+                mag_mom_other = 0.6 # magnetic moment for all other elements
+                magmom = []
+                for iat in range(self.init.natom):
+                    typ = self.init.typat[iat]
+                    el  = el_list[typ-1]
+                    if el in self.set.magnetic_moments:
+                        magmom.append(self.set.magnetic_moments[el])
+                    else:
+                        magmom.append(mag_mom_other)
+                
+                print el_list
+                print self.init.typat
+                print magmom
+                    
+                self.set.vasp_params['MAGMOM'] = magmom
+
+                #check possible antiferromagnetic configurations:
+                spec_mom_is = []
+                for i, m in enumerate(magmom):
+                    if m != mag_mom_other: #detected some specific moment
+                        spec_mom_is.append(i)
+
+                if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
+                    print 'Number of elements is even! trying to find all antiferromagnetic orderings:'
+                    ns = len(spec_mom_is); 
+                    number_of_ord = math.factorial(ns) / math.factorial(0.5 * ns)**2
+                    if number_of_ord > 100:
+                        print 'Attention! Number of orderings is more than 100 - no sense to check them; May be to check several random?\n'
+                    else:
+
+                        ls = [0]*len(spec_mom_is)
+                        # print ls
+                        orderings = []
+                        
+                        def spin(ls, i):
+                            """
+                            Find recursivly all possible orderings
+                            """
+                            for s in 1,-1:
+                                ls[i] = s
+                                if i < len(ls)-1:
+                                    spin(ls, i+1)
+                                else:
+                                    if sum(ls) == 0:
+                                        orderings.append(copy.deepcopy(ls) )            
+                            return
+
+                        spin(ls, 0)
+
+                        mag_orderings = []
+                        mag_orderings.append(magmom)
+                        for j, order in enumerate(orderings):
+                            # print order
+
+                            new_magmom = copy.deepcopy(magmom)
+                            for i, s in zip(spec_mom_is, order):
+                                # print i
+                                new_magmom[i] = s * magmom[i]
+                            print j, new_magmom
+                            mag_orderings.append(new_magmom)
+
+                        # print orderings
+                        print 'Total number of orderings is ', len(orderings),
+                        
+                        if self.calc_method == 'afm_ordering':
+                            self.magnetic_orderings = mag_orderings
+
+                        
+
+
+
+
+        
+
+
+
+
+        return
+
     def make_incar_and_copy_all(self, update):
         """Makes Incar file for current calculation and copy all
         TO DO: there is no need to send all POSCAR files; It is enothg to send only one. However for rsync its not that crucial
@@ -721,14 +811,6 @@ class CalculationVasp(Calculation):
         vp = self.set.vasp_params
         natom = self.init.natom
         #please make consistent
-
-        if 'MAGMOM' in self.set.vasp_params:
-            if self.set.vasp_params['MAGMOM']:
-                if "*" not in self.set.vasp_params['MAGMOM']:
-                    self.set.vasp_params['MAGMOM'] = str(natom) +"*"+ self.set.vasp_params['MAGMOM']
-        
-
-        
 
 
 
@@ -743,30 +825,27 @@ class CalculationVasp(Calculation):
             for key in sorted(self.set.vasp_params):
                 if self.set.vasp_params[key] == None:
                     continue
-                #print type(self.set.vasp_params[key])
                 if type(self.set.vasp_params[key]) == list:
-                    # f.write(key+" = "+str(self.set.vasp_params[key][0])+" "+str(self.set.vasp_params[key][1])+"\n")
                     lis = self.set.vasp_params[key]
                     f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
-                
-
-
+               
                 else:
                     f.write(key+" = "+str( self.set.vasp_params[key] ) +"\n")
            
 
 
-
-
-
-
             try:
+                #magmom is provided in input file with geometry
                 if self.set.vasp_params['ISPIN'] == 2 and self.init.magmom[0]: #write magnetic moments of atoms
+                    if 'MAGMOM' in self.set.vasp_params:
+                        print_and_log('Error! MAGMOM is provided in input file and set. Please leave one or update behaviour of siman\n')
+                        raise RuntimeError
+
                     f.write("MAGMOM = ")
                     for m in self.init.magmom:    
                         f.write(str(m)+' ')
                     f.write("\n")
-            except KeyError:
+            except:
                 pass
 
 
@@ -944,15 +1023,19 @@ class CalculationVasp(Calculation):
 
             v = str(version)
             
-            def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod = ''):
+            def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod_prev = ''):
                 """1. Input files preparation"""  
 
-                precont = str(prevcalcver)+name_mod+'.CONTCAR'
+                precont = str(prevcalcver)+name_mod_prev+'.CONTCAR' #previous contcar
                 if option == 'inherit_xred' and prevcalcver:
                     f.write('grep -A '+str(self.init.natom)+ ' "Direct" '+precont+' >> '+input_geofile+ ' \n')
 
                 f.write("cp "+input_geofile+" POSCAR\n")
             
+
+
+
+
             def update_incar(parameter = None, value = None):    
                 """1.5 Update INCAR"""
 
@@ -973,6 +1056,10 @@ class CalculationVasp(Calculation):
                     new_LDAUU = 'LDAUU = '+' '.join(['{:}']*len(new_LDAUU_list)).format(*new_LDAUU_list)
                     f.write("sed -i.bak '/LDAUU/c\\" + new_LDAUU + "' INCAR\n")
 
+                elif parameter == 'MAGMOM':
+
+                    new_incar_string = parameter + ' = ' + ' '.join(['{:}']*len(value)).format(*value)
+                    f.write("sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n")
 
 
 
@@ -998,6 +1085,7 @@ class CalculationVasp(Calculation):
 
                     f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
                     f.write("mv CONTCAR "         + v + name_mod +  ".CONTCAR\n")
+                    f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
                 
                 if "c" in savefile:
                     f.write("mv CHG "         + v + name_mod + ".CHG\n")
@@ -1023,48 +1111,73 @@ class CalculationVasp(Calculation):
                 #now only for u-ramping
                 f.write("touch ENERGIES\n")                
 
-                for outcar in self.accosiated_outcars:
-                    f.write("grep 'free  energy' "+outcar+" | awk '{print $5}' >> ENERGIES\n")
+                for outcar in self.associated_outcars:
+                    f.write("grep 'energy  without entropy' "+outcar+" | awk '{print $7}' >> ENERGIES\n")
 
 
 
+            self.associated_outcars = []
 
 
             with open(run_name,'a') as f: #append information about run
                 
                 if self.calc_method == 'u_ramping':
                     U_last = np.arange(*self.u_ramping_region)[-1]
-                    name_mod_2 = '.U'+str(U_last).replace('.', '_')
+                    name_mod_last = '.U'+str(U_last).replace('.', '-')
 
 
                     f.write("rm CHGCAR\n")                
 
-                    self.accosiated_outcars = []
 
 
                     for U in np.arange(*self.u_ramping_region):
 
-                        name_mod   = '.U'+str(U).replace('.', '_')
+                        name_mod   = '.U'+str(U).replace('.', '-')
 
                         update_incar(parameter = 'LDAUU', value = U)
 
-                        prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile, name_mod = name_mod_2)
+                        prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile, name_mod_prev = name_mod_last)
+                        
+                        run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command)
+
+                        mv_files_according_versions('o', v, name_mod = name_mod)
+                    
+                        self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
+
+                    mv_files_according_versions(savefile = 'cd', v=v, name_mod = name_mod) #save more files for last U
+                    analysis_script()
+                    # print self.associated
+
+
+                elif self.calc_method == 'afm_ordering':
+
+                    #Comment - inherit_xred option is not available here
+                    f.write("rm CHGCAR\n")                
+                    if not savefile: savefile = 'o'
+
+                    for i, magmom in enumerate(self.magnetic_orderings):
+
+                        name_mod   = '.AFM'+str(i)
+
+                        update_incar(parameter = 'MAGMOM', value = magmom)
+
+                        prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile)
                         
                         run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command)
 
                         mv_files_according_versions(savefile, v, name_mod = name_mod)
                     
-                        self.accosiated_outcars.append( v + name_mod +  ".OUTCAR"  )
+                        self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
-                    mv_files_according_versions(savefile = 'cd', v=v, name_mod = name_mod) #save more files for last U
                     analysis_script()
-                    # print self.accosiated_outcars
-
+                    
 
 
 
                 else:
                     
+                    if not savefile: savefile = 'cdox'
+
                     prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile)
 
                     run_command(option = option, name = self.name, parrallel_run_command = parrallel_run_command)
@@ -1180,17 +1293,20 @@ class CalculationVasp(Calculation):
 
         # print self.version
 
-        if self.calc_method == 'u_ramping':
-            lor = self.accosiated_outcars[-1]
+        if self.calc_method in ('u_ramping', 'afm_ordering'):
+            lor = self.associated_outcars[-1]
             path_to_outcar  = self.dir + lor
             path_to_contcar = self.dir + lor.replace('OUT', 'CONT')
             path_to_xml     = self.dir + lor.replace('OUTCAR', 'vasprun.xml')         
             # print 'sdf', path_to_outcar, path_to_contcar, path_to_xml
             energies_str = runBash("ssh "+self.cluster_address+" cat "+self.dir+"ENERGIES")
             # print "ssh "+self.cluster_address+" cat "+self.dir+"ENERGIES"
-            self.u_ramping_energies = [float(e) for e in energies_str.split()]
-            self.u_ramping_u_values = np.arange(*self.u_ramping_region)
-            # print 'u_ramping energies', self.u_ramping_energies
+            self.associated_energies = [float(e) for e in energies_str.split()]
+            # self.u_ramping_u_values = np.arange(*self.u_ramping_region)
+            # print 'associated_energies:', self.associated_energies
+        
+
+
 
 
         if not os.path.exists(path_to_outcar):

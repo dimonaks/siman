@@ -69,7 +69,8 @@ vasp_other_keys = [
 
 siman_keys = [
 'u_ramping_region',
-
+'magnetic_moments',
+'afm_ordering',
 ]
 
 def update_vasp_sets(varset, user_vasp_sets, override = False):
@@ -86,6 +87,7 @@ def update_vasp_sets(varset, user_vasp_sets, override = False):
 
     """
     # print varset
+    vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
     for l in user_vasp_sets:
         if 'over' in l[-1]: override = True
         if override or l[0] not in varset:
@@ -94,20 +96,27 @@ def update_vasp_sets(varset, user_vasp_sets, override = False):
             param = l[2]
             # print param
             for key in param:
-                # print key
-                # print param[key]
-                if key in siman_keys:
-                    s.set_attrp(key, param[key] )
-                elif key == 'set_potential':
-                    # print param[key]
+                
+                if key in vasp_keys:
+                    s.set_vaspp(key, param[key])
 
+                elif key == 'set_potential':
                     for key2 in param[key]:
                         # print key2, 'key2'
                         s.set_potential(key2, param[key][key2])
+
+                elif key == 'add_nbands':
+                    print param[key]
+
+                    s.set_add_nbands(param[key])
+                elif key in siman_keys:
+                    s.set_attrp(key, param[key] )
+                
                 else:
-                    s.set_vaspp(key, param[key])
-            # print s.potdir
-            # print varset[l[0]].potdir
+                    print_and_log('Error! Uknown key: '+key)
+                    raise RuntimeError
+
+
 
 
     return varset
@@ -281,7 +290,7 @@ class InputSet():
 
     def set_add_nbands(self,arg):
         name = "add_nbands"  
-        if type(arg) not in [float, ]:
+        if type(arg) not in [float, int ]:
             raise TypeError
         try: self.add_nbands
         except AttributeError: self.add_nbands = 1.
