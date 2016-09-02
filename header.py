@@ -94,10 +94,33 @@ kB = 8.617e-5 # eV/K
 
 warnings = True
 
-def print_and_log(mystring):
+def print_and_log(*logstrings, **debug_level):
+    """
+    '' - silent
+    e - errors and warnings
+    a - attentions
+    m - minimalistic output of scientific procedures - only obligatory mess are shown
+    M - maximalistic output of scientific procedures  
+    """
+    try:
+        debug_level  = debug_level.values()[0]
+    except:
+        debug_level  = 'Mea'
+
+    print debug_level
+    mystring = ''
+    for m in logstrings:
+        mystring+=m
+
+    if '\n' not in mystring[-2:-1]:
+        mystring+='\n'
+
     if 'Error' in mystring or 'Warning' in mystring:
         mystring+='\n\n\n'
+    
+
     if warnings:
+    
         print '--'+mystring,
 
     log.write(mystring)

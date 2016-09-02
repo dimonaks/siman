@@ -157,7 +157,7 @@ class InputSet():
         print self.potdir
 
     def update(self):
-        #deprecated, now
+        #deprecated, but still can be usefull
         print_and_log('Updating set ...\n')
         c1 = 1; c2 = 1
         if self.units == "abinit":

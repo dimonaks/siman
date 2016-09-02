@@ -37,6 +37,47 @@ class Structure():
         self.xcart = []
         self.xred = []
 
+    def xcart2xred(self,):
+        self.xred = xcart2xred(self.xcart, self.rprimd)
+
+    def xred2xcart(self,):
+        self.xcart = xred2xcart(self.xred, self.rprimd)
+
+
+    def add_atoms(self, atoms_xcart, element = 'Pu'):
+        """
+        appends at the end. Takes care of ntypat, typat, znucl, nznucl, xred and natom
+        Returns Structure()
+        """
+        st = copy.deepcopy(self)
+
+        st.xcart.extend(atoms_xcart)
+        st.xcart2xred()
+        natom_to_add = len(atoms_xcart)
+        st.natom+=natom_to_add
+        el_z_to_add = element_name_inv(element)
+
+
+        if el_z_to_add not in st.znucl:
+            
+            st.znucl.append( el_z_to_add )
+            
+            st.nznucl.append(natom_to_add)            
+
+            st.ntypat+=1
+            typ = max(st.typat)+1
+        
+        else:
+            i = st.znucl.index(el_z_to_add)
+            st.nznucl[i]+=natom_to_add
+            typ = st.typat[i]
+
+        st.typat.extend( [typ]*natom_to_add )
+
+        return st
+
+
+
 
 class Calculation():
     """Main class of siman. Objects of this class contain all information about first-principles calculation"""
@@ -145,6 +186,7 @@ class Calculation():
                 raise RuntimeError
 
             self.nznucl = []
+
             for typ in range(1,self.ntypat+1):
                 self.nznucl.append(  self.typat.count(typ) )
 
@@ -1629,6 +1671,9 @@ class CalculationVasp(Calculation):
                 for j in range(nz):
                     self.end.typat.append(i+1)
             #correction of bug
+
+
+
 
             #print contcar_exist
             if contcar_exist:

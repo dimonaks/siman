@@ -265,7 +265,6 @@ def element_name_inv(el):
 
 
 
-
 def xcart2xred(xcart, rprimd):
     """Convert from cartesian coordinates xcart to
         dimensionless reduced coordinates 

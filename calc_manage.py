@@ -120,7 +120,7 @@ def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided descr
     """
 
     if it in struct_des and not override:
-        print_and_log("Error! "+it+'already exist in struct_des; use override = True')
+        print_and_log("Error! "+it+' already exist in struct_des; use override = True')
         raise RuntimeError
     else:
         struct_des[it] = Description(it_folder, des)
@@ -236,7 +236,6 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
     """
     it = it.strip()
-    ise = ise.strip()
     if it_folder: it_folder = it_folder.strip()
 
     schedule_system = header.project_conf.SCHEDULE_SYSTEM
@@ -265,7 +264,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
     # arg1 = args[0], arg2 = args[1]
     # print args[0], it
     hstring = hstring.replace(args[0], "'"+it+"'")
-    hstring = hstring.replace(args[1], "'"+ise+"'")
+    hstring = hstring.replace(args[1], "'"+str(ise)+"'")
     # print hstring
     try:
         if hstring != header.history[-1]: header.history.append( hstring  )
@@ -286,16 +285,17 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
 
 
-    nc = it+'.'+ise+typconv
 
     fv = verlist[0]; lv = verlist[-1];
     
 
-    if typconv == "": setlist = (ise,)#
+    if typconv == "": setlist = list(ise)#
     elif up == "no_base": setlist = varset[ise].conv[typconv][1:]; up = "up1"
     else: setlist = varset[ise].conv[typconv] #
-    
-    
+    setlist = [s.strip() for s in setlist]
+    # print setlist
+
+    nc = it+'.'+ise[0]+typconv
     try: conv[nc]; 
     except KeyError: 
         if typconv: conv[nc] = []    

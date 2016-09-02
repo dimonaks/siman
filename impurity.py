@@ -231,6 +231,9 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
 
 
     st_result.xcart = xred2xcart(st_result.xred, rprimd)
+    st_result.typat = [1 for x in st_result.xred]
+    st_result.natom = len(st_result.typat)
+
 
     return st_result
 
@@ -500,18 +503,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
             new = copy.deepcopy(calc[id])
 
             new.init = new.end #replace init structure by the end structure
-            #new.xred = new.init.xred
-            #new.xcart = new.init.xcart
-            #new.rprimd = new.init.rprimd
-            #del new.init.xred[-1]
-            #del new.init.xcart[-1]
-            #del new.init.typat[-1]
-            #new.init.natom -=1
-            #print new.init.xred
 
-            #print new.end.xred
-            #print new.xred
-            #rint new.init.xred
             new.version = v+add_to_version
             new.name = it_new#+'.'+id[1]+'.'+str(id[2])
             new.des = 'Obtained from '+str(id)+' by adding '+impurity_type+' impurity '
