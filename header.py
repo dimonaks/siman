@@ -107,7 +107,7 @@ def print_and_log(*logstrings, **debug_level):
     except:
         debug_level  = 'Mea'
 
-    print debug_level
+    # print debug_level
     mystring = ''
     for m in logstrings:
         mystring+=m

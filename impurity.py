@@ -25,7 +25,8 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
     find_close_to = (), check_pore_vol = 0):
     """
     st_in - input Structure() object
-    r_impurity - all pores smaller than this radius will be found
+    r_impurity (A)- all pores smaller than this radius will be found
+    r_matrix (A) - radius of matrix atoms disregarding to their type
     step_dec - scanning step of the cell in Angstroms
     fine - allows to change density of local points; local_step = step_dec/fine
     prec - precicion of pore center determination

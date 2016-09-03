@@ -95,7 +95,7 @@ void findpores( int check_pore_vol, \
     int nsteps3 = ceil( sqrt(r20*r20 + r21*r21 +r22*r22) / step_dec);
     db scans1f = 1. / nsteps1 / fine; db scans2f = 1. / nsteps2 / fine; db scans3f = 1. / nsteps3 / fine; //scanning fine step
    //cout <<"scansif "<<scansif<<endl;
-    cout <<  "Number of main points "<< nsteps1*nsteps2*nsteps3 <<endl;
+    cout <<  "Number of main points = "<< nsteps1*nsteps2*nsteps3 <<endl;
 	steps1 = linspace(0, 1, nsteps1); 
 	steps2 = linspace(0, 1, nsteps2);
 	steps3 = linspace(0, 1, nsteps3);

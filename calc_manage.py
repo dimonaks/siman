@@ -120,7 +120,7 @@ def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided descr
     """
 
     if it in struct_des and not override:
-        print_and_log("Error! "+it+' already exist in struct_des; use override = True')
+        print_and_log("Error! "+it+' already exist in struct_des; use override = True if you really need it; or first remove using manually_remove_from_struct_des()')
         raise RuntimeError
     else:
         struct_des[it] = Description(it_folder, des)
@@ -289,9 +289,15 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
     fv = verlist[0]; lv = verlist[-1];
     
 
-    if typconv == "": setlist = list(ise)#
-    elif up == "no_base": setlist = varset[ise].conv[typconv][1:]; up = "up1"
-    else: setlist = varset[ise].conv[typconv] #
+    if typconv == "": 
+        if type(ise) == str:
+            setlist = [ise,]
+    else: 
+        setlist = varset[ise].conv[typconv] #
+
+    if up == "no_base": setlist = varset[ise].conv[typconv][1:]; up = "up1"
+    
+    print 'Setlist:', setlist
     setlist = [s.strip() for s in setlist]
     # print setlist
 
@@ -349,9 +355,9 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
             try: blockfolder = varset[inputset].blockfolder
             except AttributeError: blockfolder = varset[ise].blockfolder
             
-            cfolder = struct_des[it].sfolder+"/"+blockfolder #calculation folder
+            blockdir = struct_des[it].sfolder+"/"+blockfolder #calculation folder
             
-            add_calculation(it,inputset,v, fv, lv, input_folder, cfolder, calc, varset, up, 
+            add_calculation(it,inputset,v, fv, lv, input_folder, blockdir, calc, varset, up, 
                 inherit_option, prevcalcver, coord, savefile, input_geo_format, input_geo_file, 
                 schedule_system = schedule_system, 
                 calc_method = calc_method, u_ramping_region = u_ramping_region,
@@ -427,14 +433,17 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         # all additional properties:
         calc[id].calc_method = calc_method
-        
+        if calc_method == None:
+            calc[id].calc_method = []
 
+        
+        # print calc[id].calc_method 
 
 
         calc[id].u_ramping_region = u_ramping_region
         if hasattr(calc[id].set, 'u_ramping_region'):
             print_and_log("Attention! U ramping method is detected from set\n\n")
-            calc[id].calc_method = 'u_ramping'
+            calc[id].calc_method.append('u_ramping')
             calc[id].u_ramping_region =calc[id].set.u_ramping_region
 
 
@@ -442,7 +451,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         if hasattr(calc[id].set, 'afm_ordering'):
             print_and_log("Attention! afm_ordering method is detected from set\n\n")
-            calc[id].calc_method = 'afm_ordering'
+            calc[id].calc_method.append('afm_ordering')
 
 
 
@@ -582,7 +591,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if update in ['up1', 'up2']:
             calc[id].write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
             calc[id].write_sge_script(str(version)+".POSCAR", version, inherit_option, prevcalcver, savefile, schedule_system = schedule_system)
-            #if calc[id].path["output"] == None:
+            if id[2] == last_version:        
+                calc[id].write_sge_script('footer', schedule_system = schedule_system)
+
+
+
             calc[id].path["output"] = calc[id].dir+str(version)+".OUTCAR" #set path to output
 
             if id[2] == first_version:
@@ -783,6 +796,12 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     elif inherit_type == "make_vacancy":
         """Remove  atom 'atom_to_remove' from final state of id_base"""
+
+
+        print_and_log('Warning! Please check inherit_type == "make_vacancy", typat can be wrong  if more than one element present in the system\n ',
+            'Use del_atoms() method ')
+        raise RuntimeError
+
         des = 'Atom '+str(atom_to_remove)+' removed from  '+cl_base.name
         new.des = des + struct_des[it_new].des
 

@@ -469,7 +469,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 
 
 def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 1 , 
-    imp_positions = [], specialcommand = None, analysis = None, replications = None, nnumber = 6, topview = True,
+    imp_positions = [], specialcommand = None, analysis = None, show_around = None, replications = None, nnumber = 6, topview = True,
     file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
     include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None
     ):
@@ -488,6 +488,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
     analysis - additional processing, allows to show only specifice atoms, 'imp_surrounding' - shows Ti atoms only around impurity
     replications - list of replications, (2,2,2) 
     nnumber - number of neighbours to show
+    show_around - choose atom number around which to show
 
     full_cell - returns atoms to cell and replicate boundary atoms
 
@@ -539,18 +540,34 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
     if analysis == 'imp_surrounding':
         lxcart = []
         ltypat = []
+        i=0
         for t, x in zip(typat, xcart):
-            if t > 1: 
+            
+            condition = False
+            # print show_around, 'show'
+            if show_around:
+                # print i, condition
+                condition = (i + 1 == show_around)
+                # print i, condition
+
+            else:
+                condition = (t > 1) # compat with prev behav
+            
+            # print 'se', condition
+
+            if condition: 
                 # lxcart.append(x)
                 # ltypat.append(t)
-                # print x
+                # print x, ' x'
                 x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True)
                 # print x_t[1]
                 lxcart+=x_t[0]
                 ltypat+=x_t[1]
+            i+=1
         xcart = lxcart
         typat = ltypat
         natom = len(typat)
+        # print natom, 'nat'
 
 
 
@@ -572,7 +589,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
     """Writing section"""   
     print_and_log("Writing xyz "+xyzfile+" \n")
 
-    #analize imp_positions
+    #analyze imp_positions
     if imp_sub_positions == None:
         imp_sub_positions = []
     nsub = 0
@@ -586,7 +603,8 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
             if np.linalg.norm( x-xs) < 1:
                 imp_sub_positions.append(i)
 
-    print imp_sub_positions, ': numbers of found atoms to be changed '
+    if imp_sub_positions : 
+        print imp_sub_positions, ': numbers of found atoms to be changed '
 
 
     # for i in sorted(indices, reverse=True):

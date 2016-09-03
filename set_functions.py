@@ -11,7 +11,7 @@ vasp_electronic_keys = [
 'ENAUG',
 'ISMEAR',
 'SIGMA',
-'EDIFF ',
+'EDIFF',
 'NELM',
 'NELMIN',
 'NELMDL',

@@ -49,11 +49,18 @@ class Structure():
         appends at the end. Takes care of ntypat, typat, znucl, nznucl, xred and natom
         Returns Structure()
         """
+
+        print_and_log('Warning! Method add_atoms() was not carefully tested ')
+
         st = copy.deepcopy(self)
+
+        # print type(atoms_xcart)
 
         st.xcart.extend(atoms_xcart)
         st.xcart2xred()
         natom_to_add = len(atoms_xcart)
+        # print natom_to_add
+
         st.natom+=natom_to_add
         el_z_to_add = element_name_inv(element)
 
@@ -76,7 +83,57 @@ class Structure():
 
         return st
 
+    def del_atoms(self, iat):
+        """
+        Now can delete only one atom with number iat (int), starting from 1. Takes care of ntypat, typat, znucl, nznucl, xred and natom
+        Returns Structure()
+        """
 
+
+        print_and_log('Warning! Method del_atoms() was not carefully tested ')
+        st = copy.deepcopy(self)
+
+
+        i = iat - 1
+
+        typ = st.typat[i]
+
+        del st.typat[i]
+        del st.xred[i]
+        del st.xcart[i]
+
+        st.natom-=1
+
+        if typ in st.typat:
+            st.nznucl[typ-1]-=1
+        else:
+            del st.nznucl[typ-1]
+            del st.znucl[typ-1]
+            st.ntypat-=1
+
+            # for i, n in enumerate(st.nznucl):
+            #     typ = i+1
+            #     st.typat = [typ, ]
+
+            for i, t in enumerate(st.typat):
+                if t > typ:
+                    st.typat[i]-=1
+
+
+
+        return st
+
+
+
+
+
+
+
+
+
+
+
+        # print type(atoms_xcart)
 
 
 class Calculation():
@@ -258,7 +315,7 @@ class Calculation():
 
 
     def write_geometry(self, geotype = "init", description = "", override = False):
-        """Writes geometrical data to self.path["input_geo"]"""
+        """Writes geometrical data in custom siman format bases on abinit format to self.path["input_geo"]"""
         geo_dic = {}
         geofile = self.path["input_geo"]
         geo_exists = os.path.exists(geofile)
@@ -359,8 +416,11 @@ class Calculation():
         return True
 
 
-
-
+    def write_siman_geo(self, *args, **kwargs):
+        """
+        Please rename write_geometry() to write_abinit_geo() everywhere and transfer the code here
+        """
+        return self.write_geometry(*args, **kwargs)
 
 
 
@@ -827,7 +887,7 @@ class CalculationVasp(Calculation):
                         # print orderings
                         print 'Total number of orderings is ', len(orderings),
                         
-                        if self.calc_method == 'afm_ordering':
+                        if self.calc_method and 'afm_ordering' in self.calc_method:
                             self.magnetic_orderings = mag_orderings
 
                         
@@ -864,15 +924,26 @@ class CalculationVasp(Calculation):
         with open(self.dir+"INCAR",'w') as f:
             f.write( 'SYSTEM = %s\n\n'%(self.des) )
             #f.write( 'Other parameters for this Run:\n' )
+            
             for key in sorted(self.set.vasp_params):
+                
+
                 if self.set.vasp_params[key] == None:
                     continue
+                
+
+
                 if type(self.set.vasp_params[key]) == list:
                     lis = self.set.vasp_params[key]
                     f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
                
                 else:
-                    f.write(key+" = "+str( self.set.vasp_params[key] ) +"\n")
+                    if key == 'IMAGES':
+                        if 'neb' in self.calc_method:
+                            f.write(key+" = 0\n") # the parameter will be added on server after initial and final configurations optimization
+
+                    else:
+                        f.write(key+" = "+str( self.set.vasp_params[key] ) +"\n")
            
 
 
@@ -980,7 +1051,109 @@ class CalculationVasp(Calculation):
 
         """
 
+
+
+
+        def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod_prev = ''):
+            """1. Input files preparation"""  
+
+            precont = str(prevcalcver)+name_mod_prev+'.CONTCAR' #previous contcar
+            if option == 'inherit_xred' and prevcalcver:
+                f.write('grep -A '+str(self.init.natom)+ ' "Direct" '+precont+' >> '+input_geofile+ ' \n')
+
+            f.write("cp "+input_geofile+" POSCAR\n")
         
+
+
+
+
+        def update_incar(parameter = None, value = None):    
+            """1.5 Update INCAR"""
+
+
+            if parameter == 'LDAUU':
+                #Update only non-zero elements of LDAUU with value
+
+                set_LDAUU_list = self.set.vasp_params['LDAUU']
+                new_LDAUU_list = copy.deepcopy(set_LDAUU_list)
+                
+                # print set_LDAUU_list
+
+                for i, u in enumerate(set_LDAUU_list):
+                    if u == 0: continue
+                    new_LDAUU_list[i] = value
+
+
+                new_LDAUU = 'LDAUU = '+' '.join(['{:}']*len(new_LDAUU_list)).format(*new_LDAUU_list)
+                f.write("sed -i.bak '/LDAUU/c\\" + new_LDAUU + "' INCAR\n")
+
+            elif parameter == 'MAGMOM':
+
+                new_incar_string = parameter + ' = ' + ' '.join(['{:}']*len(value)).format(*value)
+                f.write("sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n")
+
+            elif parameter == 'IMAGES':
+
+                new_incar_string = parameter + ' = ' + str(value)
+                f.write("sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n")
+
+
+
+            return
+
+        def run_command(option, name, parrallel_run_command,):
+            """2. Running""" 
+
+            if option == 'master':
+                f.write("vasp >"+name+".log\n")
+            else:
+                f.write(parrallel_run_command +" >"+name+".log\n")
+            
+            f.write("sleep 20\n")
+            return
+
+
+        def mv_files_according_versions(savefile, v, name_mod = ''):    
+            """3. Out files saving block"""   
+            if "o" in savefile:
+
+                f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
+                f.write("mv CONTCAR "         + v + name_mod +  ".CONTCAR\n")
+                f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
+            
+            if "c" in savefile:
+                f.write("mv CHG "         + v + name_mod + ".CHG\n")
+                f.write("mv CHGCAR "      + v + name_mod + ".CHGCAR\n")
+            
+            if "d" in savefile:
+                f.write("mv DOSCAR "      + v + name_mod + ".DOSCAR\n")
+            
+            if "a" in savefile:
+                f.write("mv AECCAR0 "     + v + name_mod + ".AECCAR0\n")
+                f.write("mv AECCAR2 "     + v + name_mod + ".AECCAR2\n")
+            
+            if 'x' in savefile:
+                f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+           
+            if 'w' in savefile:
+                f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
+
+            return
+
+
+        def analysis_script():
+            #now only for u-ramping
+            f.write("touch ENERGIES\n")                
+
+            for outcar in self.associated_outcars:
+                f.write("grep 'energy  without entropy' "+outcar+" | awk '{print $7}' >> ENERGIES\n")
+
+
+
+
+
+
+
         if schedule_system == 'SGE':
             parrallel_run_command = "mpirun -x PATH vasp"
         elif schedule_system == 'PBS':
@@ -994,6 +1167,8 @@ class CalculationVasp(Calculation):
 
         run_name = self.dir+self.id[0]+"."+self.id[1]+'.run'        
         job_name = self.id[0]+"."+self.id[1]
+       
+
         if input_geofile == "header":
             with open(run_name,'w') as f:
                 if schedule_system == 'SGE':
@@ -1061,101 +1236,10 @@ class CalculationVasp(Calculation):
 
 
 
-        else: #control part of script
+        elif input_geofile != "footer": #control part of script
 
+            
             v = str(version)
-            
-            def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod_prev = ''):
-                """1. Input files preparation"""  
-
-                precont = str(prevcalcver)+name_mod_prev+'.CONTCAR' #previous contcar
-                if option == 'inherit_xred' and prevcalcver:
-                    f.write('grep -A '+str(self.init.natom)+ ' "Direct" '+precont+' >> '+input_geofile+ ' \n')
-
-                f.write("cp "+input_geofile+" POSCAR\n")
-            
-
-
-
-
-            def update_incar(parameter = None, value = None):    
-                """1.5 Update INCAR"""
-
-
-                if parameter == 'LDAUU':
-                    #Update only non-zero elements of LDAUU with value
-
-                    set_LDAUU_list = self.set.vasp_params['LDAUU']
-                    new_LDAUU_list = copy.deepcopy(set_LDAUU_list)
-                    
-                    # print set_LDAUU_list
-
-                    for i, u in enumerate(set_LDAUU_list):
-                        if u == 0: continue
-                        new_LDAUU_list[i] = value
-
-
-                    new_LDAUU = 'LDAUU = '+' '.join(['{:}']*len(new_LDAUU_list)).format(*new_LDAUU_list)
-                    f.write("sed -i.bak '/LDAUU/c\\" + new_LDAUU + "' INCAR\n")
-
-                elif parameter == 'MAGMOM':
-
-                    new_incar_string = parameter + ' = ' + ' '.join(['{:}']*len(value)).format(*value)
-                    f.write("sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n")
-
-
-
-
-
-                return
-
-            def run_command(option, name, parrallel_run_command,):
-                """2. Running""" 
-
-                if option == 'master':
-                    f.write("vasp >"+name+".log\n")
-                else:
-                    f.write(parrallel_run_command +" >"+name+".log\n")
-                
-                f.write("sleep 20\n")
-                return
-
-
-            def mv_files_according_versions(savefile, v, name_mod = ''):    
-                """3. Out files saving block"""   
-                if "o" in savefile:
-
-                    f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
-                    f.write("mv CONTCAR "         + v + name_mod +  ".CONTCAR\n")
-                    f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
-                
-                if "c" in savefile:
-                    f.write("mv CHG "         + v + name_mod + ".CHG\n")
-                    f.write("mv CHGCAR "      + v + name_mod + ".CHGCAR\n")
-                
-                if "d" in savefile:
-                    f.write("mv DOSCAR "      + v + name_mod + ".DOSCAR\n")
-                
-                if "a" in savefile:
-                    f.write("mv AECCAR0 "     + v + name_mod + ".AECCAR0\n")
-                    f.write("mv AECCAR2 "     + v + name_mod + ".AECCAR2\n")
-                
-                if 'x' in savefile:
-                    f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
-               
-                if 'w' in savefile:
-                    f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
-
-                return
-
-
-            def analysis_script():
-                #now only for u-ramping
-                f.write("touch ENERGIES\n")                
-
-                for outcar in self.associated_outcars:
-                    f.write("grep 'energy  without entropy' "+outcar+" | awk '{print $7}' >> ENERGIES\n")
-
 
 
             self.associated_outcars = []
@@ -1163,14 +1247,13 @@ class CalculationVasp(Calculation):
 
             with open(run_name,'a') as f: #append information about run
                 
-                if self.calc_method == 'u_ramping':
+
+                if 'u_ramping' in self.calc_method:
                     U_last = np.arange(*self.u_ramping_region)[-1]
                     name_mod_last = '.U'+str(U_last).replace('.', '-')
 
 
                     f.write("rm CHGCAR\n")                
-
-
 
                     for U in np.arange(*self.u_ramping_region):
 
@@ -1191,7 +1274,7 @@ class CalculationVasp(Calculation):
                     # print self.associated
 
 
-                elif self.calc_method == 'afm_ordering':
+                elif 'afm_ordering' in self.calc_method:
 
                     #Comment - inherit_xred option is not available here
                     f.write("rm CHGCAR\n")                
@@ -1212,7 +1295,7 @@ class CalculationVasp(Calculation):
                         self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
                     analysis_script()
-                    
+                
 
 
 
@@ -1232,7 +1315,37 @@ class CalculationVasp(Calculation):
                 f.write("rm WAVECAR\n")
                 f.write("\n")
 
-            f.close()
+
+        else: #footer
+            with open(run_name,'a') as f: #append information about run
+
+                if 'neb' in self.calc_method:
+                    print_and_log('Writing scripts for NEB method', important = 'n')
+                    nim = self.set.vasp_params['IMAGES']
+                    nim_str = str(nim)
+
+                    f.write("#Starting NEB script \n")
+                    # f.write('mkdir 00\n')
+
+                    # f.write('mkdir '+str(self.set.vasp_params['IMAGES'])+'\n')
+                    f.write('~/tools/nebmake.pl 1.CONTCAR 2.CONTCAR '+nim_str +' \n')
+                    
+                    f.write('mv 1.OUTCAR 00/\n')
+                    
+                    if nim+1 < 10: 
+                        nim_plus_one_str = '0'+str(nim+1)
+
+
+                    f.write('mv 2.OUTCAR ' + nim_plus_one_str + '/\n' )
+
+                    update_incar(parameter = 'IMAGES', value = nim)
+
+                    run_command(option = option, name = self.name, parrallel_run_command = parrallel_run_command)
+
+
+
+
+
             runBash('chmod +x '+run_name)
 
             return
@@ -1335,7 +1448,8 @@ class CalculationVasp(Calculation):
 
         # print self.version
 
-        if self.calc_method in ('u_ramping', 'afm_ordering'):
+        if self.calc_method  and not set(self.calc_method  ).isdisjoint(  ['u_ramping', 'afm_ordering']):
+            
             lor = self.associated_outcars[-1]
             path_to_outcar  = self.dir + lor
             path_to_contcar = self.dir + lor.replace('OUT', 'CONT')
