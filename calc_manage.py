@@ -1016,8 +1016,14 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         # print "Start to read ", b_id
         if '4' not in calc[b_id].state:
             calc[b_id].read_results('o')
-        e_b = calc[b_id].energy_sigma0
-        v_b = calc[b_id].end.vol
+        
+        e_b = 1e10; v_b = 1e10
+        if '4' in calc[b_id].state:
+            e_b = calc[b_id].energy_sigma0
+            v_b = calc[b_id].end.vol
+        else:
+            print_and_log('Warning! Calculation ',b_id, 'was not finished; please check, now skipping ...', important = 'y')
+
 
     #define reference values
     e1_r = 0
@@ -1124,72 +1130,75 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             if   b_id :
 
                 if "4" not in calc[b_id].state:    
-                    calc[b_id].read_results(1)
-
-                if calc[id].set.ngkpt != calc[b_id].set.ngkpt:
-                    print_and_log("Warning! you are trying to compare calcs with "+str(calc[id].set.ngkpt)+" and "+str(calc[b_id].set.ngkpt)+"\n")
-                    pass
-
-                if calc[id].NKPTS != calc[b_id].NKPTS:
-                    print_and_log("Warning! you are trying to compare calcs with "+str(calc[id].NKPTS)+" and "+str(calc[b_id].NKPTS)+" kpoints \n")
-
-                if 'gbe' in analys_type:      
-                    outst2 = gb_energy_volume(calc[id], calc[b_id])
-            
-                elif 'e_imp' in analys_type:
-                    calc[id].e_imp = e - e_b
-                    calc[id].v_imp = v - v_b
-
-                    #calc[id].v_imp = e - e_b
-                    outst2 += ("%.3f & %.2f  & %.2f &"% (e - e_b, v - v_b, (v - v_b)/v_b*100 ) )
-                    conv['e_imp'].append(id)
-                    a    = calc[id].hex_a;                     a_b  = calc[b_id].hex_a
-                    c    = calc[id].hex_c;                     c_b  = calc[b_id].hex_c
-                    ca = c/a;                                   ca_b = c_b/a_b
-                    outst_end = " & {0:.1f} & {1:.1f} & {2:.1f} & {3:.3f}".format((a - a_b)/a_b*100,  (c - c_b)/c_b*100, (ca - ca_b)/ca_b*100, (e - e_b - e1_r) )
-
-                elif analys_type == 'e_2imp': #"""For calculation of energies of two impurities in big cell"""
-                    calc[id].e_imp = e - e_b            
-                    outst2 += ("%.0f "% ( (e - e_b)*1000 ) )  
-                    conv[it].append(id)
+                    calc[b_id].read_results('o')
 
 
-                elif analys_type in ('e_seg', 'coseg'): #"""For calculation of segregation and cosegregation energies"""
-                    e_b = calc[b_id].energy_sigma0 * bulk_mul
-                    n_m_b = calc[b_id].end.nznucl[0]
-                    v_b = calc[b_id].end.vol * bulk_mul
-                    # diffE = e - e_b/n_m_b*n_m
-                    diffE = e - e_b
+                if "4" in calc[b_id].state:    
 
-                    # outst2 += ("%.0f & %.2f "% ( (e - e_b)*1000, v - v_b ) )
-                    
-                    outst2 += " {:.3f} & {:.2f} ".format( (diffE - energy_ref), (v - v_b) ).center(6)
-                    outst2 +='&'
-                    # write_xyz(calc[id].end)
-                    # write_xyz(calc[b_id].end)
-                    result_list = [diffE - energy_ref, v - v_b]
+                    if calc[id].set.ngkpt != calc[b_id].set.ngkpt:
+                        print_and_log("Warning! you are trying to compare calcs with "+str(calc[id].set.ngkpt)+" and "+str(calc[b_id].set.ngkpt)+"\n")
+                        pass
+
+                    if calc[id].NKPTS != calc[b_id].NKPTS:
+                        print_and_log("Warning! you are trying to compare calcs with "+str(calc[id].NKPTS)+" and "+str(calc[b_id].NKPTS)+" kpoints \n")
+
+                    if 'gbe' in analys_type:      
+                        outst2 = gb_energy_volume(calc[id], calc[b_id])
+                
+                    elif 'e_imp' in analys_type:
+                        calc[id].e_imp = e - e_b
+                        calc[id].v_imp = v - v_b
+
+                        #calc[id].v_imp = e - e_b
+                        outst2 += ("%.3f & %.2f  & %.2f &"% (e - e_b, v - v_b, (v - v_b)/v_b*100 ) )
+                        conv['e_imp'].append(id)
+                        a    = calc[id].hex_a;                     a_b  = calc[b_id].hex_a
+                        c    = calc[id].hex_c;                     c_b  = calc[b_id].hex_c
+                        ca = c/a;                                   ca_b = c_b/a_b
+                        outst_end = " & {0:.1f} & {1:.1f} & {2:.1f} & {3:.3f}".format((a - a_b)/a_b*100,  (c - c_b)/c_b*100, (ca - ca_b)/ca_b*100, (e - e_b - e1_r) )
+
+                    elif analys_type == 'e_2imp': #"""For calculation of energies of two impurities in big cell"""
+                        calc[id].e_imp = e - e_b            
+                        outst2 += ("%.0f "% ( (e - e_b)*1000 ) )  
+                        conv[it].append(id)
 
 
-                elif analys_type == 'matrix_diff': #
-                    print 'Calculating matrix_diff...'
-                    
-                    e_b = calc[b_id].energy_sigma0
-                    n_m_b = calc[b_id].end.nznucl[0]
-                    v_b = calc[b_id].end.vol
-                    diffE = e - e_b/n_m_b*n_m
-                    
-                    outst2 += " {:.3f} & {:.2f} &".format( (diffE - energy_ref), (v - v_b) ).center(6)
-                    result_list = [diffE - energy_ref, v - v_b]
+                    elif analys_type in ('e_seg', 'coseg'): #"""For calculation of segregation and cosegregation energies"""
+                        e_b = calc[b_id].energy_sigma0 * bulk_mul
+                        n_m_b = calc[b_id].end.nznucl[0]
+                        v_b = calc[b_id].end.vol * bulk_mul
+                        # diffE = e - e_b/n_m_b*n_m
+                        diffE = e - e_b
+
+                        # outst2 += ("%.0f & %.2f "% ( (e - e_b)*1000, v - v_b ) )
+                        
+                        outst2 += " {:.3f} & {:.2f} ".format( (diffE - energy_ref), (v - v_b) ).center(6)
+                        outst2 +='&'
+                        # write_xyz(calc[id].end)
+                        # write_xyz(calc[b_id].end)
+                        result_list = [diffE - energy_ref, v - v_b]
 
 
-                elif analys_type == 'diff': #
-                    print 'Calculating diff...'
-                    e_b = calc[b_id].energy_sigma0
-                    v_b = calc[b_id].end.vol
-                    diffE = e - e_b
-                    
-                    outst2 += " {:.3f} & {:.2f} &".format( (diffE - energy_ref), (v - v_b) ).center(6)
-                    result_list = [diffE - energy_ref, v - v_b]
+                    elif analys_type == 'matrix_diff': #
+                        print 'Calculating matrix_diff...'
+                        
+                        e_b = calc[b_id].energy_sigma0
+                        n_m_b = calc[b_id].end.nznucl[0]
+                        v_b = calc[b_id].end.vol
+                        diffE = e - e_b/n_m_b*n_m
+                        
+                        outst2 += " {:.3f} & {:.2f} &".format( (diffE - energy_ref), (v - v_b) ).center(6)
+                        result_list = [diffE - energy_ref, v - v_b]
+
+
+                    elif analys_type == 'diff': #
+                        print 'Calculating diff...'
+                        e_b = calc[b_id].energy_sigma0
+                        v_b = calc[b_id].end.vol
+                        diffE = e - e_b
+                        
+                        outst2 += " {:.3f} & {:.2f} &".format( (diffE - energy_ref), (v - v_b) ).center(6)
+                        result_list = [diffE - energy_ref, v - v_b]
 
 
             if analys_type == 'clusters':
@@ -1463,6 +1472,11 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         elif analys_type == 'redox_pot':
             
+            if '4' not in bcl.state:
+                print_and_log("Calculation ",bcl.id, 'is unfinished; return')
+                return [[], []]
+
+
             #normalize numbers of atoms by some element except Li and Na 
             iLi = None; jLi = None
             # print cl.end.znucl
@@ -1517,7 +1531,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             
             print final_outstring
 
-            final_list = [id[0], redox, id, b_id, ]
+            final_list = {'is':id[0], 'redox_pot':redox, 'id_is':id, 'id_ds':b_id, 
+            'kspacing':cl.set.vasp_params['KSPACING'], 'time':cl.time/3600.,
+            'mdstep':cl.mdstep, 'ecut':cl.set.vasp_params['ENCUT'], 'niter':cl.iterat/cl.mdstep,
+            'set_is':id[1] }
 
     if final_list:
         return final_list, result_list

@@ -51,6 +51,7 @@ class Structure():
         """
 
         print_and_log('Warning! Method add_atoms() was not carefully tested ')
+        print_and_log('Adding atom ', element)
 
         st = copy.deepcopy(self)
 
@@ -63,7 +64,7 @@ class Structure():
 
         st.natom+=natom_to_add
         el_z_to_add = element_name_inv(element)
-
+        print 'el_z_to_add', el_z_to_add
 
         if el_z_to_add not in st.znucl:
             
@@ -76,10 +77,20 @@ class Structure():
         
         else:
             i = st.znucl.index(el_z_to_add)
+            print i
             st.nznucl[i]+=natom_to_add
-            typ = st.typat[i]
+            typ = i+1
+            print typ
+            print st.znucl
+            print st.nznucl
+
+        # sys.exit()
+
+
 
         st.typat.extend( [typ]*natom_to_add )
+
+
 
         return st
 
@@ -833,6 +844,24 @@ class CalculationVasp(Calculation):
                     else:
                         magmom.append(mag_mom_other)
                 
+
+                #convert magmom to vasp ordering
+
+                zmagmom = [[] for x in xrange(0,self.init.ntypat)]
+
+                print zmagmom
+
+                for t, m in zip(self.init.typat, magmom):
+                    # print "t, m = ", t, m
+                    zmagmom[t-1].append(m)
+                    # print t-1, zmagmom[3]
+
+                # print 'sdfsdf', zmagmom[3], 
+                magmom = [m for mag in zmagmom for m in mag  ]
+                # sys.exit()
+
+
+
                 print el_list
                 print self.init.typat
                 print magmom
@@ -1328,19 +1357,23 @@ class CalculationVasp(Calculation):
                     # f.write('mkdir 00\n')
 
                     # f.write('mkdir '+str(self.set.vasp_params['IMAGES'])+'\n')
-                    f.write('~/tools/nebmake.pl 1.CONTCAR 2.CONTCAR '+nim_str +' \n')
+                    f.write('~/tools/vts/nebmake.pl 1.CONTCAR 2.CONTCAR '+nim_str +' \n')
                     
-                    f.write('mv 1.OUTCAR 00/\n')
+                    f.write('cp 1.OUTCAR 00/OUTCAR\n')
                     
                     if nim+1 < 10: 
                         nim_plus_one_str = '0'+str(nim+1)
 
 
-                    f.write('mv 2.OUTCAR ' + nim_plus_one_str + '/\n' )
+                    f.write('cp 2.OUTCAR ' + nim_plus_one_str + '/OUTCAR\n' )
 
                     update_incar(parameter = 'IMAGES', value = nim)
 
-                    run_command(option = option, name = self.name, parrallel_run_command = parrallel_run_command)
+                    run_command(option = option, name = (self.name+'.images'+nim_str), parrallel_run_command = parrallel_run_command)
+
+
+                    f.write('export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ \n')
+                    f.write('~/tools/vts/nebresults.pl  \n')
 
 
 
@@ -1483,7 +1516,7 @@ class CalculationVasp(Calculation):
             log.write( runBash("rsync -zave ssh "+ self.cluster_address+":"+self.project_path_cluster+path_to_contcar+" "+self.dir)+'\n' ) #CONTCAR
 
         if 'x' in load:
-            log.write( runBash("rsync -zave ssh "+cluster_address+":"+project_path_cluster+path_to_xml+" "+self.dir)+'\n' ) #CONTCAR
+            log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_xml+" "+self.dir)+'\n' ) #CONTCAR
 
             
             # if not os.path.exists(path_to_outcar): 
@@ -1752,7 +1785,7 @@ class CalculationVasp(Calculation):
                     if mdstep_old != self.mdstep:
                         #print "Stress:", self.stress 
                         nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
-                    niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iteration
+                    niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
                     mdstep_old = self.mdstep
 
 
@@ -1855,6 +1888,7 @@ class CalculationVasp(Calculation):
             time = ("%.2f" % (self.time/3600.)    ).center(j[4])
             itertm = ("%.1f" % (self.time/1./iterat)    ).center(j[5])
             Nmd = ("%1i,%2i,%3i" % (self.mdstep, iterat/self.mdstep, iterat)    ).center(j[6])
+            self.iterat = iterat
             War = ("%i" % (warnings)    ).center(j[7])
             #nbands = ("%i" % (self.set.vasp_params["NBANDS"])    ).center(j[8])
             #added = ("%.0f" % ( (self.set.add_nbands - 1) * 100 )    ).center(j[15])
@@ -1922,7 +1956,7 @@ class CalculationVasp(Calculation):
             return outst
 
         else:
-            print_and_log("Still no OUTCAR for mystery reason\n\n")
+            print_and_log("Still no OUTCAR for mystery reason for", self.id)
             # raise RuntimeError
 
     def get_chg_file(self, filetype = 'CHGCAR'):

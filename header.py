@@ -110,7 +110,7 @@ def print_and_log(*logstrings, **debug_level):
     # print debug_level
     mystring = ''
     for m in logstrings:
-        mystring+=m
+        mystring+=' '+str(m)
 
     if '\n' not in mystring[-2:-1]:
         mystring+='\n'
