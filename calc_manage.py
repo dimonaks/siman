@@ -4,7 +4,7 @@ from classes import CalculationVasp, Description
 from functions import gb_energy_volume
 # from ext_databases import get_structure_from_matproj
 
-from functions import makedir
+from functions import makedir, get_from_server
 
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.inputs import Poscar
@@ -1535,6 +1535,25 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             'kspacing':cl.set.vasp_params['KSPACING'], 'time':cl.time/3600.,
             'mdstep':cl.mdstep, 'ecut':cl.set.vasp_params['ENCUT'], 'niter':cl.iterat/cl.mdstep,
             'set_is':id[1] }
+
+
+
+
+
+        if cl.calc_method and 'neb' in cl.calc_method:
+            path2mep_s = cl.dir+'/mep.eps'
+            path2mep_l = cl.dir+'/mep.'+cl.name+'.eps'
+            get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
+            print path2mep_l
+            runBash('evince '+path2mep_l)
+
+
+
+
+
+
+
+
 
     if final_list:
         return final_list, result_list

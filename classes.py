@@ -7,7 +7,9 @@ TODO:
 """
 from header import *
 import header
-from functions import (read_vectors, read_list, words, local_surrounding, xred2xcart, xcart2xred, element_name_inv, calculate_voronoi)
+from functions import (read_vectors, read_list, words, local_surrounding, 
+    xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
+    get_from_server, push_to_server)
 
 
 
@@ -96,7 +98,7 @@ class Structure():
 
     def del_atoms(self, iat):
         """
-        Now can delete only one atom with number iat (int), starting from 1. Takes care of ntypat, typat, znucl, nznucl, xred and natom
+        Now can delete only one atom with number iat (int), starting from 0. Takes care of ntypat, typat, znucl, nznucl, xred and natom
         Returns Structure()
         """
 
@@ -105,7 +107,7 @@ class Structure():
         st = copy.deepcopy(self)
 
 
-        i = iat - 1
+        i = iat
 
         typ = st.typat[i]
 
@@ -136,8 +138,31 @@ class Structure():
 
 
 
+    def leave_only(self, atom_type = None):
+        #Remove all atoms except *atom_type*(str, mendeleev element name)
+        
+        st = copy.deepcopy(self)
+        
+        z = element_name_inv(atom_type)
 
+        new_xred = []
+        for t, xr in zip(st.typat, st.xred):
+            if st.znucl[t-1] == z:
+                new_xred.append(xr)
 
+        st.natom = len(new_xred)
+
+        st.ntypat = 1
+
+        st.typat = [1]*st.natom
+
+        st.znucl = [z,]
+
+        st.nznucl = [st.natom,]
+
+        st.xcart = xred2xcart(st.xred, st.rprimd)
+
+        return st
 
 
 
@@ -827,6 +852,7 @@ class CalculationVasp(Calculation):
         # print dir(self.set)
         # print self.set.vasp_params
 
+        print self.set.vasp_params['MAGMOM']
         if 'MAGMOM' in self.set.vasp_params and self.set.vasp_params['MAGMOM']: #just add * to magmom tag if it is provided without it
             if "*" not in self.set.vasp_params['MAGMOM']:
                 self.set.vasp_params['MAGMOM'] = str(natom) +"*"+ self.set.vasp_params['MAGMOM']
@@ -1374,7 +1400,7 @@ class CalculationVasp(Calculation):
 
                     f.write('export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ \n')
                     f.write('~/tools/vts/nebresults.pl  \n')
-
+                    f.write('find . -name WAVECAR -delete\n')
 
 
 
@@ -1494,6 +1520,8 @@ class CalculationVasp(Calculation):
             # self.u_ramping_u_values = np.arange(*self.u_ramping_region)
             # print 'associated_energies:', self.associated_energies
         
+
+
 
 
 

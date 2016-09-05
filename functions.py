@@ -3,6 +3,16 @@ import header
 from header import *
 
 
+
+
+def push_to_server(file = None, to = None,  addr = None):
+    print runBash('rsync -uaz  '+file+ ' '+cluster_address+':'+to)
+
+def get_from_server(file = None, to = None,  addr = None):
+    print runBash('rsync -uaz  '+cluster_address+':'+file+ ' '+to)
+
+
+
 def makedir(path):
     """
     Make directory at path if it not exist
