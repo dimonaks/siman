@@ -65,15 +65,17 @@ vasp_other_keys = [
 'LDAUPRINT',
 'LASPH',
 'LMAXMIX',
+'NFREE',
 ]
 
 siman_keys = [
-'u_ramping_region',
+'u_ramping_region', #deprecated
+'u_ramping_nstep', #number of u ramping steps
 'magnetic_moments',
 'afm_ordering',
 ]
 
-def update_vasp_sets(varset, user_vasp_sets, override = False):
+def read_vasp_sets(varset, user_vasp_sets, override = False):
     """
     Read user sets and add them to project database
     Now for VASP
@@ -86,14 +88,23 @@ def update_vasp_sets(varset, user_vasp_sets, override = False):
         - user_vasp_sets (list)
 
     """
-    # print varset
+    # print varset.keys()
+    # varset['9'].printme()
+    # print varset['9ml'].history
+    # print varset['9'].history
     vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
+    bfolder = '' #by default no blockfolder
     for l in user_vasp_sets:
         if 'over' in l[-1]: override = True
         if override or l[0] not in varset:
             # print override, 'override'
-            s = inherit_iset(l[0], l[1], varset, override = override) 
             param = l[2]
+
+            if 'bfolder' in param:
+                bfolder = param['bfolder']
+
+
+            s = inherit_iset(l[0], l[1], varset, override = override, newblockfolder = bfolder) 
             # print param
             for key in param:
                 
@@ -106,9 +117,16 @@ def update_vasp_sets(varset, user_vasp_sets, override = False):
                         s.set_potential(key2, param[key][key2])
 
                 elif key == 'add_nbands':
-                    print param[key]
+                    # print param[key]
 
                     s.set_add_nbands(param[key])
+
+
+                elif key == 'bfolder':
+                    print 'New blockfolder', param[key]
+
+
+
                 elif key in siman_keys:
                     s.set_attrp(key, param[key] )
                 
@@ -158,7 +176,7 @@ class InputSet():
 
     def update(self):
         #deprecated, but still can be usefull
-        print_and_log('Updating set ...\n')
+        # print_and_log('Updating set ...\n')
         c1 = 1; c2 = 1
         if self.units == "abinit":
             c1 = to_eV

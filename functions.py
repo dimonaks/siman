@@ -5,11 +5,24 @@ from header import *
 
 
 
-def push_to_server(file = None, to = None,  addr = None):
-    print runBash('rsync -uaz  '+file+ ' '+cluster_address+':'+to)
+def push_to_server(files = None, to = None,  addr = None):
+    
+    if not hasattr(files, '__iter__'):
+        files = [files]    
+    
+    files_str = ' '.join(np.array(files ))
+    
 
-def get_from_server(file = None, to = None,  addr = None):
-    print runBash('rsync -uaz  '+cluster_address+':'+file+ ' '+to)
+    return runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
+
+def get_from_server(files = None, to = None,  addr = None):
+
+    if not hasattr(files, '__iter__'):
+        files = [files]
+    
+    files_str = ' :'.join(np.array(files ))
+    # print 'rsync -uaz  '+addr+':'+files_str+ ' '+to
+    return runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
 
 
 

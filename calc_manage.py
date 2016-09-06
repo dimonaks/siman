@@ -440,11 +440,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         # print calc[id].calc_method 
 
 
-        calc[id].u_ramping_region = u_ramping_region
-        if hasattr(calc[id].set, 'u_ramping_region'):
+        # calc[id].u_ramping_region = u_ramping_region
+        # if hasattr(calc[id].set, 'u_ramping_region'):
+        if hasattr(calc[id].set, 'u_ramping_nstep'):
             print_and_log("Attention! U ramping method is detected from set\n\n")
             calc[id].calc_method.append('u_ramping')
-            calc[id].u_ramping_region =calc[id].set.u_ramping_region
+            # calc[id].u_ramping_region =calc[id].set.u_ramping_region
 
 
         # print dir(calc[id].set)
@@ -457,6 +458,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         calc[id].cluster_address = cluster_address
+        calc[id].corenum = corenum
         calc[id].project_path_cluster = project_path_cluster
         if mat_proj_st_id:
             calc[id].mat_proj_st_id = mat_proj_st_id
@@ -1082,14 +1084,14 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 # else:
                 #     flag2 = True
                 # print flag1
-                if flag1 and flag2 and flag3:
+                if '2' in load: #up2 for example
+                    # print "Trying to download OUTCAR and CONTCAR from server\n\n"
+                    outst = calc[id].read_results('o', analys_type, voronoi, show)
                 
-                    outst = calc[id].read_results(load, analys_type, voronoi, show)
                 
                 else:
-                    print "Trying to download OUTCAR and CONTCAR from server\n\n"
-                    outst = calc[id].read_results('o', analys_type, voronoi, show)
 
+                    outst = calc[id].read_results('', analys_type, voronoi, show)
 
 
 
@@ -1543,11 +1545,34 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         if cl.calc_method and 'neb' in cl.calc_method:
             path2mep_s = cl.dir+'/mep.eps'
             path2mep_l = cl.dir+'/mep.'+cl.name+'.eps'
-            get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
-            print path2mep_l
-            runBash('evince '+path2mep_l)
+            get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
+            get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
+            # print path2mep_l
+            if os.path.exists(path2mep_l) and 'mep' in show:
+                # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
 
+                runBash('evince '+path2mep_l)
 
+            # trying to get one image closest to the saddle point
+            if cl.version == 2:
+                im = cl.set.vasp_params['IMAGES']
+                if im % 2 > 0: #odd
+                    i = im//2 + 1
+                else:
+                    i = im/2
+                # i = 2
+                cl_i = copy.deepcopy(cl)
+                cl_i.version+=i
+                cl_i.id = (cl.id[0], cl.id[1], cl_i.version)
+                cl_i.name = str(cl_i.id[0])+'.'+str(cl_i.id[1])+'.'+str(cl_i.id[2])
+                # print cl_i.name
+                cl_i.path["output"] = cl_i.dir+'0'+str(i)+"/OUTCAR"
+
+                # if not os.path.exists(cl_i.path["output"]):
+                #     load = 'o'
+                outst2 = ("%s"%cl_i.name).ljust(22)
+
+                print outst2+'&'+cl_i.read_results('o', show = show)
 
 
 
