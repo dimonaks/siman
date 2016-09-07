@@ -297,7 +297,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
     if up == "no_base": setlist = varset[ise].conv[typconv][1:]; up = "up1"
     
-    print 'Setlist:', setlist
+    # print 'Setlist:', setlist
     setlist = [s.strip() for s in setlist]
     # print setlist
 
@@ -356,7 +356,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
             except AttributeError: blockfolder = varset[ise].blockfolder
             
             blockdir = struct_des[it].sfolder+"/"+blockfolder #calculation folder
-            
+
             add_calculation(it,inputset,v, fv, lv, input_folder, blockdir, calc, varset, up, 
                 inherit_option, prevcalcver, coord, savefile, input_geo_format, input_geo_file, 
                 schedule_system = schedule_system, 
@@ -494,7 +494,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             elif input_geo_format == 'cif': 
                 searchinputtemplate = input_folder+'/*.cif'
 
-            print 'searchinputtemplate = ', searchinputtemplate
+            # print 'searchinputtemplate = ', searchinputtemplate
 
             # print  input_geo_format
             geofilelist = glob.glob(searchinputtemplate) #Find input_geofile
@@ -589,16 +589,27 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-
         if update in ['up1', 'up2']:
             calc[id].write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
-            calc[id].write_sge_script(str(version)+".POSCAR", version, inherit_option, prevcalcver, savefile, schedule_system = schedule_system)
+            out_name = calc[id].write_sge_script(str(version)+".POSCAR", version, inherit_option, prevcalcver, savefile, schedule_system = schedule_system)
+            
             if id[2] == last_version:        
                 calc[id].write_sge_script('footer', schedule_system = schedule_system)
 
 
+            # if 'neb' in calc[id].calc_method:
+            #     name_mod = '.U'+str(u).replace('.','')
+            # else:
+            
+            if out_name:
+                calc[id].path["output"] = calc[id].dir+out_name
+            else:
+                name_mod = ''
+                calc[id].path["output"] = calc[id].dir+str(version)+name_mod+".OUTCAR" #set path to output
+            
+            print 'add_calculation(): outcar = ', calc[id].path["output"]
 
-            calc[id].path["output"] = calc[id].dir+str(version)+".OUTCAR" #set path to output
+
 
             if id[2] == first_version:
                 calc[id].add_potcar()
@@ -736,7 +747,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     new.path["input_geo"] = geo_folder + struct_des[it_new].sfolder + '/' + \
         it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
-    print new.path["input_geo"]
+    print 'new.path', new.path["input_geo"]
     new.version = ver_new
 
     if inherit_type == "r2r3":
@@ -1033,7 +1044,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         e1_r = r_id
     elif type(r_id) == tuple:
         if '4' not in calc[r_id].state:
-            print "start to read reference:"
+            print "Start to read reference:"
             print calc[r_id].read_results('o')
             # print calc[r_id].read_results()
         e_r = calc[r_id].energy_sigma0 #reference calc
@@ -1542,7 +1553,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-        if cl.calc_method and 'neb' in cl.calc_method:
+        if cl.calc_method and ('neb' in cl.calc_method or 'only_neb' in cl.calc_method):
             path2mep_s = cl.dir+'/mep.eps'
             path2mep_l = cl.dir+'/mep.'+cl.name+'.eps'
             get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
@@ -1567,7 +1578,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 cl_i.name = str(cl_i.id[0])+'.'+str(cl_i.id[1])+'.'+str(cl_i.id[2])
                 # print cl_i.name
                 cl_i.path["output"] = cl_i.dir+'0'+str(i)+"/OUTCAR"
-
+                # print cl_i.path["output"] 
+                cl_i.state = '2. Ready to read outcar'
                 # if not os.path.exists(cl_i.path["output"]):
                 #     load = 'o'
                 outst2 = ("%s"%cl_i.name).ljust(22)

@@ -120,7 +120,7 @@ def print_and_log(*logstrings, **debug_level):
     
 
     if warnings:
-    
+        ''
         print '--'+mystring,
 
     log.write(mystring)

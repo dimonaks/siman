@@ -180,6 +180,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     periodic - if True, then cell is additionaly replicated; needed for small cells
 
     """
+    st_original = copy.deepcopy(st)
     if periodic:
         st = replic(st, mul = (2,2,2), inv = 1 ) # to be sure that impurity is surrounded by atoms
         st = replic(st, mul = (2,2,2), inv = -1 )
@@ -234,7 +235,24 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         numbers     = temp2[3][:n_neighbours+1]
         # print temp2[0][:n_neighbours]
         # print xcart_local[:n_neighbours]
+        
+        #check if atoms in output are from neighboring cells
+        xred_local = xcart2xred(xcart_local, st_original.rprimd)
+        # print 'xred_local', xred_local
+        for x_l in xred_local:
+            for i, x in enumerate(x_l):
+                if x > 1: 
+                    x_l[i]-=1
+                    # print 'returning to prim cell', x,x_l[i]
+                if x < 0: 
+                    x_l[i]+=1
+                    # print 'returning to prim cell', x,x_l[i]
+        xcart_local = xred2xcart(xred_local, st_original.rprimd)
+
+        print 'Warning! local_surrounding() can return several atoms in one position due to incomplete PBC implementation; Improve please\n'
+
         output =  (xcart_local, typat_local, numbers, dlist )
+
     return output
 
 def salary_inflation():
@@ -537,7 +555,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
         print "Error! write_xyz: check your arrays.\n\n"    
     # print st.natom, len(st.xred), len(st.xcart), len(st.typat), len(st.znucl), max(st.typat)
     
-    print "Name is", name
+    print_and_log("write_xyz(): Name is", name, important = 'n')
     if name == '': name = 'noname'
 
 
@@ -597,11 +615,11 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
     """Include atoms on the edge of cell"""
     if full_cell:
         # print xred
-        print natom
+        # print natom
         # st = return_atoms_to_cell(st)
         # print xred
         st = replic(st, mul = (1,1,2), inv = 0, cut_one_cell = 1, include_boundary = include_boundary)
-        print natom, st.natom
+        # print natom, st.natom
 
         # print st.xred
 

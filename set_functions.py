@@ -102,6 +102,8 @@ def read_vasp_sets(varset, user_vasp_sets, override = False):
 
             if 'bfolder' in param:
                 bfolder = param['bfolder']
+            else:
+                bfolder = None
 
 
             s = inherit_iset(l[0], l[1], varset, override = override, newblockfolder = bfolder) 
@@ -396,7 +398,7 @@ class InputSet():
 
 
 
-def inherit_iset(ise_new,ise_from,varset,override = False, newblockfolder = ""):
+def inherit_iset(ise_new,ise_from,varset,override = False, newblockfolder = None):
     """ Create new set copying from existing and update some fields. If ise_from does not exist create new"""
 
     ise_new = ise_new.strip()
@@ -425,9 +427,14 @@ def inherit_iset(ise_new,ise_from,varset,override = False, newblockfolder = ""):
     new.compare_with = ise_from+" "
     new.des = "no description for these set, see history"
     new.conv = {}
-    new.blockfolder = newblockfolder
+
     print_and_log( "New set "+ise_new+" was inherited from set "+ise_from+"\n")
     new.history = old.history + "\nSet "+ise_new+" was inherited from: "+ ise_from +"\n"
+
+    if newblockfolder:
+        new.history += 'blockfolder changed from '+new.blockfolder+' to '+newblockfolder+'\n'
+        new.blockfolder = newblockfolder
+    
     varset[ise_new] = new
     
 
