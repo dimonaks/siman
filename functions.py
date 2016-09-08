@@ -16,13 +16,26 @@ def push_to_server(files = None, to = None,  addr = None):
     return runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
 
 def get_from_server(files = None, to = None,  addr = None):
-
+    """
+    The zip is checked only for the first file 
+    """
     if not hasattr(files, '__iter__'):
         files = [files]
     
     files_str = ' :'.join(np.array(files ))
-    # print 'rsync -uaz  '+addr+':'+files_str+ ' '+to
-    return runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
+    print_and_log('Trying to download', files_str, 'from server')
+
+    out = runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
+    # print 'out === ',out
+    if out:#not os.path.exists(files[0]):
+        print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
+        files[0]+='.gz'
+        # print files[0]
+        out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+';gunzip '+to+'/'+os.path.basename(files[0]))
+
+
+
+    return out
 
 
 
@@ -164,21 +177,21 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
 
 
 
-def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = False):
+def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = False, only_elements = None):
     """
     Return list of distances to n closest atoms around central atom. (By defauld sum of distances)
     
     Input:
-    x_central - cartesian coordinates of central atom; vector
-    st - structure with xcart list of coordinates of all atoms in system
-    n_neighbours - number of needed closest neighbours
+    - x_central - cartesian coordinates of central atom; vector
+    - st - structure with xcart list of coordinates of all atoms in system
+    - n_neighbours - number of needed closest neighbours
 
-    control - type of output; sum - sum of distances, av - av distance, list - list of distances; 
+    - control - type of output; sum - sum of distances, av - av distance, list - list of distances; 
               av_dev - average deviation, maximum deviation from average distance in mA.
               atoms  - coordinates of neighbours
 
-    periodic - if True, then cell is additionaly replicated; needed for small cells
-
+    - periodic - if True, then cell is additionaly replicated; needed for small cells
+    - *only_elements* - list of z of elements to which only the distances are needed
     """
     st_original = copy.deepcopy(st)
     if periodic:
@@ -191,8 +204,13 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     # print x_central
 
     #print len(xcart)
+    zlist = [int(st.znucl[t-1]) for t in st.typat]
+    
+    # if only_elements:
+    #     dlist = [np.linalg.norm(x_central - x) for x, z in zip(xcart, zlist) if z in only_elements]
+    # else:
+    dlist = [np.linalg.norm(x_central - x) for x in xcart ]# if all (x != x_central)] # list of all distances
 
-    dlist = [np.linalg.norm(x_central - x) for x in xcart]# if all (x != x_central)] # list of all distances
     dlist_unsort = copy.deepcopy(dlist)
     dlist.sort()
     # write_xyz(st  )
@@ -225,7 +243,10 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
             numbers = st.init_numbers
         else:
             numbers = range(natom)
-        temp = zip(dlist_unsort, xcart, typat, numbers)
+        temp = zip(dlist_unsort, xcart, typat, numbers, zlist)
+        if only_elements:
+            # print temp[4]
+            temp = [t for t in temp if t[4] in only_elements]
         # print temp
         temp.sort(key = itemgetter(0))
         temp2 = zip(*temp)
@@ -236,6 +257,12 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         # print temp2[0][:n_neighbours]
         # print xcart_local[:n_neighbours]
         
+
+
+
+
+
+
         #check if atoms in output are from neighboring cells
         xred_local = xcart2xred(xcart_local, st_original.rprimd)
         # print 'xred_local', xred_local
@@ -249,7 +276,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
                     # print 'returning to prim cell', x,x_l[i]
         xcart_local = xred2xcart(xred_local, st_original.rprimd)
 
-        print 'Warning! local_surrounding() can return several atoms in one position due to incomplete PBC implementation; Improve please\n'
+        # print 'Warning! local_surrounding() can return several atoms in one position due to incomplete PBC implementation; Improve please\n'
 
         output =  (xcart_local, typat_local, numbers, dlist )
 

@@ -75,7 +75,7 @@ siman_keys = [
 'afm_ordering',
 ]
 
-def read_vasp_sets(varset, user_vasp_sets, override = False):
+def read_vasp_sets(varset, user_vasp_sets, override_global = False):
     """
     Read user sets and add them to project database
     Now for VASP
@@ -95,7 +95,11 @@ def read_vasp_sets(varset, user_vasp_sets, override = False):
     vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
     bfolder = '' #by default no blockfolder
     for l in user_vasp_sets:
-        if 'over' in l[-1]: override = True
+        if override_global or 'over' in l[-1]: 
+            override = True
+        else:
+            override = False
+        
         if override or l[0] not in varset:
             # print override, 'override'
             param = l[2]
@@ -376,6 +380,8 @@ class InputSet():
             if old == arg:
                 print_and_log("Warning! You did not change  "+token+"  in "+self.ise+" set\n")
             else:
+                setattr(self, token, arg)
+                
                 self.history += " "+token+"  was changed from "+str(old)+" to "+str(arg) + "\n"
                 print_and_log(token+"  was changed from "+str(old)+" to "+str(arg) +" - "+ des+" in set "+self.ise+" \n")
         

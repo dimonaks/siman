@@ -175,7 +175,7 @@ def update_des(struct_des, des_list):
 
 def add_loop(it, ise, verlist, calc = None, conv = None, varset = None, 
     up = 'test', typconv="", from_geoise = '', inherit_option = None, 
-    coord = 'direct', savefile = None, show = [], comment = None, 
+    coord = 'direct', savefile = None, show = None, comment = None, 
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, ppn = None,
     calc_method = None, u_ramping_region = None, it_folder = None ):
     """
@@ -211,7 +211,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
         - it_folder - section folder (sfolder) used in struct_des; here needed with input_geo_format = mat_proj
 
-        - show - allows to choose type of formatting. See read_results ?.
+        - show - only for read_results() ?.
 
         - comment - arbitrary comment for history.
 
@@ -425,6 +425,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         # print 'State', calc[id].state
         calc[id] = CalculationVasp( varset[id[1]] )
         # print 'State', calc[id].state
+        # print id[1], varset[id[1]].history
+        # print varset[id[1]].u_ramping_nstep
+        # sys.exit()
 
         calc[id].id = id 
         calc[id].name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
@@ -432,9 +435,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         
 
         # all additional properties:
+        if not hasattr(calc_method, '__iter__'):
+            calc_method = [calc_method]
         calc[id].calc_method = calc_method
-        if calc_method == None:
-            calc[id].calc_method = []
+        # if calc_method == None:
+        #     calc[id].calc_method = []
 
         
         # print calc[id].calc_method 
@@ -442,11 +447,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         # calc[id].u_ramping_region = u_ramping_region
         # if hasattr(calc[id].set, 'u_ramping_region'):
-        if hasattr(calc[id].set, 'u_ramping_nstep'):
+        # print calc[id].set.u_ramping_nstep
+        if hasattr(calc[id].set, 'u_ramping_nstep') and calc[id].set.u_ramping_nstep:
             print_and_log("Attention! U ramping method is detected from set\n\n")
+            # print calc[id].calc_method
             calc[id].calc_method.append('u_ramping')
             # calc[id].u_ramping_region =calc[id].set.u_ramping_region
-
+            # sys.exit()
 
         # print dir(calc[id].set)
 
@@ -594,7 +601,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             out_name = calc[id].write_sge_script(str(version)+".POSCAR", version, inherit_option, prevcalcver, savefile, schedule_system = schedule_system)
             
             if id[2] == last_version:        
-                calc[id].write_sge_script('footer', schedule_system = schedule_system)
+                calc[id].write_sge_script('footer', schedule_system = schedule_system, option = inherit_option)
 
 
             # if 'neb' in calc[id].calc_method:
@@ -925,10 +932,10 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
 def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_type = 'no', b_id = (), 
-    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = [], 
+    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None,
-    it_folder = None):
+    it_folder = None, choose_outcar = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -958,11 +965,14 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         matr - key of bulk cell with pure matrix.
 
 
-        show - list, allows to show additional information (force)
+        show - (str), allows to show additional information (force)
 
         energy_ref - energy in eV; substracted from energy diffs
         
         bulk_mul - allows to scale energy and volume of bulk cell during calculation of segregation energies
+
+        choose_outcar (int, starting from 1)- if calculation have associated outcars, you can check them as well, by default
+        the last one is used during creation of calculation in write_sge_script()
 
     RETURN:
         result_list - list of results
@@ -970,22 +980,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     """
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    if type(show) == str:
-        show = [show]
+    """Setup"""
+    # if type(show) == str:
+    #     show = [show]
     if type(verlist) == int: #not in [tuple, list]:
         #print "verlist"
         verlist = [verlist]; 
@@ -1000,18 +997,16 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         b_ver_shift = 0
 
 
-    """Copying files from server"""
-    #to make
-    # for inputset in setlist:
-    #     for v in verlist:
-    #         cl = calc[(it,inputset,v)]
-    #         if not exists: 
+
+    # if choose_outcar:
 
 
 
 
 
-    #print verlist
+
+
+
     if typconv == '': pass
     else: setlist = varset[setlist[0]].conv[typconv] #
 
@@ -1028,7 +1023,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     if len(b_id) == 3: # for all cases besides e_seg and coseg for wich b_id is determined every iteration
         # print "Start to read ", b_id
         if '4' not in calc[b_id].state:
-            calc[b_id].read_results('o')
+            calc[b_id].read_results('o', choose_outcar = choose_outcar)
         
         e_b = 1e10; v_b = 1e10
         if '4' in calc[b_id].state:
@@ -1045,8 +1040,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     elif type(r_id) == tuple:
         if '4' not in calc[r_id].state:
             print "Start to read reference:"
-            print calc[r_id].read_results('o')
-            # print calc[r_id].read_results()
+            print calc[r_id].read_results('o', choose_outcar = choose_outcar)
         e_r = calc[r_id].energy_sigma0 #reference calc
         nat_r = calc[r_id].end.natom # reference calc
         e1_r = e_r/nat_r # energy per one atom
@@ -1067,42 +1061,21 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             cl = calc[id]
 
-            # cl.set.update()
-            
 
             if not hasattr(cl,'version'):
                 calc[id].version = v
 
 
-
-            path_to_outcar = cl.path["output"]
-            # path_to_contcar = cl.dir+str(v)+".CONTCAR"
-            # path_to_xml   = cl.dir+str(v)+".vasprun.xml"
-            # print path_to_contcar, path_to_outcar
-            # print os.path.exists(path_to_contcar)
-            # print os.path.exists(cl.path["output"])
-
             outst = ' File was not read '
             
             if readfiles:
                 load = up
-                # print path_to_outcar
-                flag1 = 1#os.path.exists(path_to_outcar)
-                flag3 = 1; #ot load
-                flag2 = 1
-                # if 'x' in load:
-                #     flag2 = os.path.exists(path_to_xml)
-                # else:
-                #     flag2 = True
-                # print flag1
-                if '2' in load: #up2 for example
-                    # print "Trying to download OUTCAR and CONTCAR from server\n\n"
-                    outst = calc[id].read_results('o', analys_type, voronoi, show)
-                
-                
-                else:
 
-                    outst = calc[id].read_results('', analys_type, voronoi, show)
+                if '2' in load: #up2 for example; force download file in order to update it
+
+                    outst = calc[id].read_results('o', analys_type, voronoi, show, choose_outcar = choose_outcar)
+                else:
+                    outst = calc[id].read_results('', analys_type, voronoi, show, choose_outcar = choose_outcar)
 
 
 
@@ -1143,7 +1116,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             if   b_id :
 
                 if "4" not in calc[b_id].state:    
-                    calc[b_id].read_results('o')
+                    calc[b_id].read_results('o', choose_outcar = choose_outcar)
 
 
                 if "4" in calc[b_id].state:    
@@ -1381,14 +1354,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
         elif analys_type == 'fit_ac':
-            #for x in calc[id_min].end.xred:
-            #    print x[0], x[1], x[2]
-            #print ( outst2 + " min_e & "+calc[id_min].read_results(v,) )
-            #print ("name %s_template          acell  %.4f  %.4f  %.4f # fit parameters are &%.4f &%.4f &%i &%i"  % (fit_hex(0.0002,0.0003,400,600, it, inputset, verlist, calc) )  )    
+
             print ("name %s_template          acell  %.5f  %.5f  %.5f # fit parameters are &%.5f &%.5f &%i &%i"  % (fit_hex(0.00002,0.00003,4000,6000, it, inputset, verlist, calc) )  )    
-            #name, e_min, a_min, c_min,a,b,c,d = fit_hex(0.0002,0.0003,400,600, it, inputset, verlist, calc)
-            #calc[(name,'93',1)].energy_sigma0 = e_min
-            #calc[(name,'93',1)].state = "4"
 
         elif analys_type == 'fit_a':
             """Fit equation of state for bulk systems.
@@ -1556,8 +1523,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         if cl.calc_method and ('neb' in cl.calc_method or 'only_neb' in cl.calc_method):
             path2mep_s = cl.dir+'/mep.eps'
             path2mep_l = cl.dir+'/mep.'+cl.name+'.eps'
-            get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
-            get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
+            if not os.path.exists(path2mep_l):
+                get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
+                get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
             # print path2mep_l
             if os.path.exists(path2mep_l) and 'mep' in show:
                 # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
@@ -1571,20 +1539,24 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                     i = im//2 + 1
                 else:
                     i = im/2
-                # i = 2
+                i = 3 #chose image
                 cl_i = copy.deepcopy(cl)
                 cl_i.version+=i
                 cl_i.id = (cl.id[0], cl.id[1], cl_i.version)
                 cl_i.name = str(cl_i.id[0])+'.'+str(cl_i.id[1])+'.'+str(cl_i.id[2])
                 # print cl_i.name
                 cl_i.path["output"] = cl_i.dir+'0'+str(i)+"/OUTCAR"
+                # for i in range():
+
+                cl_i.associated_outcars = [ aso[2:] for aso in cl_i.associated_outcars  ]
+
                 # print cl_i.path["output"] 
                 cl_i.state = '2. Ready to read outcar'
                 # if not os.path.exists(cl_i.path["output"]):
                 #     load = 'o'
                 outst2 = ("%s"%cl_i.name).ljust(22)
 
-                print outst2+'&'+cl_i.read_results('o', show = show)
+                print outst2+'&'+cl_i.read_results('', show = show, choose_outcar = choose_outcar)
 
 
 
