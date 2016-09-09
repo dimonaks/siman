@@ -14,13 +14,18 @@ if test -f prev1.outcar
     cp name prev2+name
 чтобы она находила prev3 с максимальным числом, и к этому числу прибавляла единицу для нового файла
 
+NEW:
+Calculation Structure():
+    *self.magmom* (list) - magnetic moments for each ion in structure; has higher preference than self.set.magnetic_moments which
+    include only moments for atom types
+
 
 """
 from header import *
 import header
 from functions import (read_vectors, read_list, words, local_surrounding, 
     xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server)
+    get_from_server, push_to_server, list2string)
 
 
 
@@ -220,6 +225,8 @@ class Calculation():
         "input_geo":None,
         "potential":None,
         "output":None}
+        self.calc_method = None #
+
 
 
     def read_geometry(self,filename = None):
@@ -272,6 +279,7 @@ class Calculation():
 
 
 
+            self.init = Structure()
 
             #sys.exit()
             self.useable = 0
@@ -344,7 +352,7 @@ class Calculation():
 
 
 
-            self.init = Structure()
+
             self.init.name = self.name+'.init'
             self.init.xcart = self.xcart 
             self.init.xred = self.xred
@@ -365,6 +373,7 @@ class Calculation():
 
             #read magnetic states; name of vasp variable
             self.init.magmom = read_list("magmom", self.natom, float, gen_words)
+            # self.init.mag_moments 
 
 
 
@@ -429,6 +438,16 @@ class Calculation():
                 self.gbpos = None
             f.write("gbpos "+str(self.gbpos)+"\n")
             f.write("version "+str(self.version)+"\n")
+            
+            try: st.magmom
+            except AttributeError:
+                st.magmom = None
+            print st.magmom 
+            # sys.exit()
+            f.write("magmom "+' '.join(np.array(st.magmom).astype(str)) +"\n")
+
+
+
             f.write("acell 1 1 1\n")
 
             f.write("natom  " +str(st.natom) +"\n")
@@ -889,103 +908,107 @@ class CalculationVasp(Calculation):
         # print self.set.vasp_params
 
         # print self.set.vasp_params['MAGMOM']
-        if 'MAGMOM' in self.set.vasp_params and self.set.vasp_params['MAGMOM']: #just add * to magmom tag if it is provided without it
+        if hasattr(self.init, 'magmom') and self.init.magmom:
+            print_and_log('Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
+
+        elif hasattr(self.set, 'magnetic_moments') and self.set.magnetic_moments:
+            print_and_log('Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set\n')
+            mag_mom_other = 0.6 # magnetic moment for all other elements
+            magmom = []
+            for iat in range(self.init.natom):
+                typ = self.init.typat[iat]
+                el  = el_list[typ-1]
+                if el in self.set.magnetic_moments:
+                    magmom.append(self.set.magnetic_moments[el])
+                else:
+                    magmom.append(mag_mom_other)
+            
+
+            #convert magmom to vasp ordering
+
+            zmagmom = [[] for x in xrange(0,self.init.ntypat)]
+
+            # print zmagmom
+
+            for t, m in zip(self.init.typat, magmom):
+                # print "t, m = ", t, m
+                zmagmom[t-1].append(m)
+                # print t-1, zmagmom[3]
+
+            # print 'sdfsdf', zmagmom[3], 
+            magmom = [m for mag in zmagmom for m in mag  ]
+            # sys.exit()
+
+
+
+            # print el_list
+            # print self.init.typat
+            # print magmom
+                
+            self.set.vasp_params['MAGMOM'] = magmom
+
+            #check possible antiferromagnetic configurations:
+            spec_mom_is = []
+            for i, m in enumerate(magmom):
+                if m != mag_mom_other: #detected some specific moment
+                    spec_mom_is.append(i)
+
+            if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
+                print_and_log('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
+                ns = len(spec_mom_is); 
+                number_of_ord = math.factorial(ns) / math.factorial(0.5 * ns)**2
+                if number_of_ord > 100:
+                    print_and_log('Attention! Number of orderings is more than 100 - no sense to check them; May be to check several random?', imp = 'y')
+                else:
+
+                    ls = [0]*len(spec_mom_is)
+                    # print ls
+                    orderings = []
+                    
+                    def spin(ls, i):
+                        """
+                        Find recursivly all possible orderings
+                        """
+                        for s in 1,-1:
+                            ls[i] = s
+                            if i < len(ls)-1:
+                                spin(ls, i+1)
+                            else:
+                                if sum(ls) == 0:
+                                    orderings.append(copy.deepcopy(ls) )            
+                        return
+
+                    spin(ls, 0)
+
+                    mag_orderings = []
+                    mag_orderings.append(magmom)
+                    for j, order in enumerate(orderings):
+                        # print order
+
+                        new_magmom = copy.deepcopy(magmom)
+                        for i, s in zip(spec_mom_is, order):
+                            # print i
+                            new_magmom[i] = s * magmom[i]
+                        print j, new_magmom
+                        mag_orderings.append(new_magmom)
+
+                    # print orderings
+                    print_and_log('Total number of orderings is ', len(orderings),imp = 'y')
+                    
+                    if self.calc_method and 'afm_ordering' in self.calc_method:
+                        self.magnetic_orderings = mag_orderings
+
+                    
+
+
+            self.init.magmom = magmom
+
+        
+        elif 'MAGMOM' in self.set.vasp_params and self.set.vasp_params['MAGMOM']: #just add * to magmom tag if it is provided without it
+            print_and_log('Magnetic moments from vasp_params["MAGMOM"] are used\n')
+            
             if "*" not in self.set.vasp_params['MAGMOM']:
                 self.set.vasp_params['MAGMOM'] = str(natom) +"*"+ self.set.vasp_params['MAGMOM']
-        
-        else:
-            if hasattr(self.set, 'magnetic_moments'):
-                print_and_log('Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set\n')
-                mag_mom_other = 0.6 # magnetic moment for all other elements
-                magmom = []
-                for iat in range(self.init.natom):
-                    typ = self.init.typat[iat]
-                    el  = el_list[typ-1]
-                    if el in self.set.magnetic_moments:
-                        magmom.append(self.set.magnetic_moments[el])
-                    else:
-                        magmom.append(mag_mom_other)
-                
-
-                #convert magmom to vasp ordering
-
-                zmagmom = [[] for x in xrange(0,self.init.ntypat)]
-
-                # print zmagmom
-
-                for t, m in zip(self.init.typat, magmom):
-                    # print "t, m = ", t, m
-                    zmagmom[t-1].append(m)
-                    # print t-1, zmagmom[3]
-
-                # print 'sdfsdf', zmagmom[3], 
-                magmom = [m for mag in zmagmom for m in mag  ]
-                # sys.exit()
-
-
-
-                # print el_list
-                # print self.init.typat
-                # print magmom
-                    
-                self.set.vasp_params['MAGMOM'] = magmom
-
-                #check possible antiferromagnetic configurations:
-                spec_mom_is = []
-                for i, m in enumerate(magmom):
-                    if m != mag_mom_other: #detected some specific moment
-                        spec_mom_is.append(i)
-
-                if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
-                    print 'Number of elements is even! trying to find all antiferromagnetic orderings:'
-                    ns = len(spec_mom_is); 
-                    number_of_ord = math.factorial(ns) / math.factorial(0.5 * ns)**2
-                    if number_of_ord > 100:
-                        print 'Attention! Number of orderings is more than 100 - no sense to check them; May be to check several random?\n'
-                    else:
-
-                        ls = [0]*len(spec_mom_is)
-                        # print ls
-                        orderings = []
-                        
-                        def spin(ls, i):
-                            """
-                            Find recursivly all possible orderings
-                            """
-                            for s in 1,-1:
-                                ls[i] = s
-                                if i < len(ls)-1:
-                                    spin(ls, i+1)
-                                else:
-                                    if sum(ls) == 0:
-                                        orderings.append(copy.deepcopy(ls) )            
-                            return
-
-                        spin(ls, 0)
-
-                        mag_orderings = []
-                        mag_orderings.append(magmom)
-                        for j, order in enumerate(orderings):
-                            # print order
-
-                            new_magmom = copy.deepcopy(magmom)
-                            for i, s in zip(spec_mom_is, order):
-                                # print i
-                                new_magmom[i] = s * magmom[i]
-                            print j, new_magmom
-                            mag_orderings.append(new_magmom)
-
-                        # print orderings
-                        print 'Total number of orderings is ', len(orderings),
-                        
-                        if self.calc_method and 'afm_ordering' in self.calc_method:
-                            self.magnetic_orderings = mag_orderings
-
-                        
-
-
-
-
         
 
 
@@ -1004,24 +1027,19 @@ class CalculationVasp(Calculation):
         vp = self.set.vasp_params
         natom = self.init.natom
         #please make consistent
-
-
-
-
-
-
-
+        # print vp
 
         with open(self.dir+"INCAR",'w') as f:
             f.write( 'SYSTEM = %s\n\n'%(self.des) )
-            #f.write( 'Other parameters for this Run:\n' )
-            
             for key in sorted(self.set.vasp_params):
-                
 
-                if self.set.vasp_params[key] == None:
+                if key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom: #
+                    f.write('MAGMOM = '+list2string(self.init.magmom)+"\n") #magmom from geo file has higher preference
+                    # sys.exit()
                     continue
                 
+                if self.set.vasp_params[key] == None:
+                    continue
 
 
                 if type(self.set.vasp_params[key]) == list:
@@ -1029,37 +1047,11 @@ class CalculationVasp(Calculation):
                     f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
                
                 else:
-                    # if key == 'IMAGES':
-                    #     if 'neb' in self.calc_method or 'only_neb' in self.calc_method:
-                    #         f.write(key+" = 0\n") # the parameter will be added on server after initial and final configurations optimization
-
-                    # else:
                     f.write(key+" = "+str( self.set.vasp_params[key] ) +"\n")
            
 
-
-            try:
-                #magmom is provided in input file with geometry
-                if self.set.vasp_params['ISPIN'] == 2 and self.init.magmom[0]: #write magnetic moments of atoms
-                    if 'MAGMOM' in self.set.vasp_params:
-                        print_and_log('Error! MAGMOM is provided in input file and set. Please leave one or update behaviour of siman\n')
-                        raise RuntimeError
-
-                    f.write("MAGMOM = ")
-                    for m in self.init.magmom:    
-                        f.write(str(m)+' ')
-                    f.write("\n")
-            except:
-                pass
-
-
             f.write("\n")
-            #f.write( 'Electronic Relaxation 1:\n' )
 
-            #f.write("\n")
-            #f.write( 'Ionic Relaxation:\n' )
-       
-            #f.write("\n")
         print_and_log( "INCAR was generated\n")
 
         #Generate KPOINTS
@@ -1404,32 +1396,45 @@ class CalculationVasp(Calculation):
 
             with open(run_name,'a') as f: #append information about run
 
-                #experimental preliminary non-magnetic run
-                if self.set.vasp_params['ISPIN'] == 2:
-                    print_and_log('Magnetic calculation detected; For better convergence',
-                     'I add first non-magnetic run', imp = 'Y')
-                    write = True
-                    name_mod_last = '.'+'NM'
-                    name_mod = '.NM'
-
-                    if write: 
-                        f.write("#Preliminary non-magnetic run:\n")  
-                    prepare_input(prevcalcver = prevcalcver, option = option,
-                     input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write, curver = version)
-
-                    update_incar(parameter = 'ISPIN', value = 1, write = write) #
-                    
-                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
-
-                    mv_files_according_versions('co', v, name_mod = name_mod, write = write, rm_chg_wav = False)
-
-                    update_incar(parameter = 'ISPIN', value = 2, write = write) #
-
-
                 if 'only_neb' in self.calc_method:
                     write = False
+                    write_poscar = False
                 else:
-                    write = True                
+                    write = True
+                    write_poscar = True                
+
+                #neb
+                if 'neb' in self.calc_method: 
+                    if write: 
+                        f.write("#NEB run, start and final configurations, then IMAGES:\n") 
+                    update_incar(parameter = 'IMAGES', value = 0, write = write) # start and final runs
+
+                #experimental preliminary non-magnetic run
+                if 0:
+                    if self.set.vasp_params['ISPIN'] == 2:
+                        print_and_log('Magnetic calculation detected; For better convergence',
+                         'I add first non-magnetic run', imp = 'Y')
+                        write = True
+                        name_mod_last = '.'+'NM'
+                        name_mod = '.NM'
+
+                        if write: 
+                            f.write("#Preliminary non-magnetic run:\n")  
+                        prepare_input(prevcalcver = prevcalcver, option = option,
+                         input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write, curver = version)
+
+                        update_incar(parameter = 'ISPIN', value = 1, write = write) #
+                        
+                        run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+
+                        if write:
+                            f.write("cp CONTCAR POSCAR  #prepare for basic run\n")
+                            write_poscar = False  
+
+                        mv_files_according_versions('co', v, name_mod = name_mod, write = write, rm_chg_wav = False)
+
+                        update_incar(parameter = 'ISPIN', value = 2, write = write) #
+
 
 
 
@@ -1438,7 +1443,6 @@ class CalculationVasp(Calculation):
                     if write: 
                         f.write("#U-ramping run:\n")  
 
-                    update_incar(parameter = 'IMAGES', value = 0, write = write) # start and final runs
 
 
                     # name_mod_last = '.'+name_mod_U_last()
@@ -1451,7 +1455,7 @@ class CalculationVasp(Calculation):
                         f.write("rm CHGCAR\n")                
 
                     prepare_input(prevcalcver = prevcalcver, option = option,
-                     input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write, curver = version)
+                     input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write_poscar, curver = version)
 
                     for i_u in range(self.set.u_ramping_nstep):
 
@@ -1467,10 +1471,11 @@ class CalculationVasp(Calculation):
                         run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
 
 
-                        if write: f.write("cp CONTCAR POSCAR\n")                
+                        if write: 
+                            f.write("cp CONTCAR POSCAR\n")                
 
 
-                        mv_files_according_versions('o', v, name_mod = name_mod, write = write)
+                        mv_files_according_versions('o', v, name_mod = name_mod, write = write, rm_chg_wav = False)
                     
                         self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
@@ -1514,7 +1519,8 @@ class CalculationVasp(Calculation):
                     if write: 
                             f.write("#Basic run:\n")  
 
-                    prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile, write = write, curver =version)
+                    prepare_input(prevcalcver = prevcalcver, option = option, 
+                        input_geofile = input_geofile, write = write_poscar, curver =version)
 
                     run_command(option = option, name = self.name, parrallel_run_command = parrallel_run_command, write = write)
 
@@ -1883,6 +1889,7 @@ class CalculationVasp(Calculation):
             nsgroup = 1
             magnitudes = []
             tot_mag_by_atoms = [] #magnetic moments by atoms on each step
+            tot_mag_by_mag_atoms = []
             #which atoms to use
             magnetic_elements = [26, 27, 28]
             #Where magnetic elements?
@@ -2109,7 +2116,8 @@ class CalculationVasp(Calculation):
                     for j in range(self.init.natom):
                         mags.append( float(outcarlines[i_line+j+4].split()[4]) )
                     
-                    tot_mag_by_atoms.append(np.array(mags)[ifmaglist])
+                    tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
+                    tot_mag_by_mag_atoms.append(np.array(mags)[ifmaglist])
                     # print tot_mag_by_atoms
                     # magnetic_elements
                     # ifmaglist
@@ -2290,14 +2298,26 @@ class CalculationVasp(Calculation):
 
             if 'mag' in show:
                 # print_and_log
-                print 'Final mag moments for atoms:'
-                print np.arange(self.end.natom)[ifmaglist]+1
-                print np.array(tot_mag_by_atoms)
+                # print 'Final mag moments for atoms:'
+                # print np.arange(self.end.natom)[ifmaglist]+1
+                # print np.array(tot_mag_by_atoms)
                 print 'Dist from 1st atom to Fe atoms:, please make me more general'
                 sur   = local_surrounding(self.end.xcart[0], self.end, n_neighbours = 4, control = 'atoms', 
                 periodic  = True, only_elements = [26,])
 
+                dist = np.array(sur[3]).round(2)
+                numb = np.array(sur[2])
+                for mag in tot_mag_by_atoms:
+                    print mag[numb]
+
                 print np.array(sur[3]).round(2), np.array(sur[2])+1
+
+                self.tot_mag_by_atoms = tot_mag_by_atoms
+                plt.plot(np.array(tot_mag_by_mag_atoms))
+                plt.show()
+
+
+
 
             log.write("Reading of results completed\n\n")
             

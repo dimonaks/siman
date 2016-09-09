@@ -66,6 +66,10 @@ vasp_other_keys = [
 'LASPH',
 'LMAXMIX',
 'NFREE',
+'AMIX',
+'BMIX',
+'AMIX_MAG',
+'BMIX_MAG',
 ]
 
 siman_keys = [
@@ -381,7 +385,7 @@ class InputSet():
                 print_and_log("Warning! You did not change  "+token+"  in "+self.ise+" set\n")
             else:
                 setattr(self, token, arg)
-                
+
                 self.history += " "+token+"  was changed from "+str(old)+" to "+str(arg) + "\n"
                 print_and_log(token+"  was changed from "+str(old)+" to "+str(arg) +" - "+ des+" in set "+self.ise+" \n")
         

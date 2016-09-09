@@ -31,8 +31,9 @@ def clean_run(schedule_system = None):
         elif schedule_system in ('PBS', 'SLURM'):
             f.write("#!/bin/bash\n")
         else:
-            print_and_log('Please provide schedule_system!')
-            raise RuntimeError
+            ''
+            # print_and_log('Please provide schedule_system!')
+            # raise RuntimeError
 
     # f.close()
     return
@@ -57,7 +58,7 @@ def complete_run(close_run = True):
 
         log.write( runBash("rsync -zave ssh run "+cluster_address+":"+project_path_cluster) +"\n" )
         print 'run sent'
-        clean_run(header.project_conf.SCHEDULE_SYSTEM)
+        # clean_run(header.project_conf.SCHEDULE_SYSTEM)
     
     return
 
@@ -935,7 +936,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None,
-    it_folder = None, choose_outcar = None):
+    it_folder = None, choose_outcar = None, choose_image = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -974,8 +975,14 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         choose_outcar (int, starting from 1)- if calculation have associated outcars, you can check them as well, by default
         the last one is used during creation of calculation in write_sge_script()
 
+        choose_image (int) - relative to NEB, allows to choose specific image for analysis, by default the middle image is used
+
     RETURN:
         result_list - list of results
+
+    TODO:
+        Make possible update of b_id and r_id with up = 'up2' flag; now only id words correctly
+
 
     """
 
@@ -996,7 +1003,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     except:
         b_ver_shift = 0
 
-
+    if '2' in up:
+        loadflag = 'o'
+    else:
+        loadflag = ''
 
     # if choose_outcar:
 
@@ -1022,8 +1032,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     emin = 0
     if len(b_id) == 3: # for all cases besides e_seg and coseg for wich b_id is determined every iteration
         # print "Start to read ", b_id
-        if '4' not in calc[b_id].state:
-            calc[b_id].read_results('o', choose_outcar = choose_outcar)
+        # if '4' not in calc[b_id].state:
+        if readfiles:
+            calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
         
         e_b = 1e10; v_b = 1e10
         if '4' in calc[b_id].state:
@@ -1038,9 +1049,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     if type(r_id) in (float, int):
         e1_r = r_id
     elif type(r_id) == tuple:
-        if '4' not in calc[r_id].state:
-            print "Start to read reference:"
-            print calc[r_id].read_results('o', choose_outcar = choose_outcar)
+        # if '4' not in calc[r_id].state:
+        #     print "Start to read reference:"
+        if readfiles:
+            print calc[r_id].read_results(loadflag, choose_outcar = choose_outcar)
         e_r = calc[r_id].energy_sigma0 #reference calc
         nat_r = calc[r_id].end.natom # reference calc
         e1_r = e_r/nat_r # energy per one atom
@@ -1069,13 +1081,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             outst = ' File was not read '
             
             if readfiles:
-                load = up
 
-                if '2' in load: #up2 for example; force download file in order to update it
-
-                    outst = calc[id].read_results('o', analys_type, voronoi, show, choose_outcar = choose_outcar)
-                else:
-                    outst = calc[id].read_results('', analys_type, voronoi, show, choose_outcar = choose_outcar)
+                    outst = calc[id].read_results(loadflag, analys_type, voronoi, show, choose_outcar = choose_outcar)
 
 
 
@@ -1115,8 +1122,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             
             if   b_id :
 
-                if "4" not in calc[b_id].state:    
-                    calc[b_id].read_results('o', choose_outcar = choose_outcar)
+                # if "4" not in calc[b_id].state:
+                if readfiles:    
+                    calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
 
 
                 if "4" in calc[b_id].state:    
@@ -1523,9 +1531,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         if cl.calc_method and ('neb' in cl.calc_method or 'only_neb' in cl.calc_method):
             path2mep_s = cl.dir+'/mep.eps'
             path2mep_l = cl.dir+'/mep.'+cl.name+'.eps'
-            if not os.path.exists(path2mep_l):
-                get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
-                get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
+            # if not os.path.exists(path2mep_l):
+            get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
+            get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
             # print path2mep_l
             if os.path.exists(path2mep_l) and 'mep' in show:
                 # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
@@ -1539,7 +1547,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                     i = im//2 + 1
                 else:
                     i = im/2
-                i = 3 #chose image
+                # i = 2 #chose image
+                if choose_image:
+                    i = choose_image
                 cl_i = copy.deepcopy(cl)
                 cl_i.version+=i
                 cl_i.id = (cl.id[0], cl.id[1], cl_i.version)
@@ -1556,9 +1566,22 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 #     load = 'o'
                 outst2 = ("%s"%cl_i.name).ljust(22)
 
-                print outst2+'&'+cl_i.read_results('', show = show, choose_outcar = choose_outcar)
+                print outst2+'&'+cl_i.read_results(loadflag, show = show, choose_outcar = choose_outcar)
 
 
+                if 0: #copy files according to chosen outcar to run nebresults locally 
+                    wd = cl_i.dir
+                    out_i = cl_i.associated_outcars[choose_outcar-1]
+                    out_1 = calc[cl.id[0],cl.id[1], 1].associated_outcars[choose_outcar-1]
+                    out_2 = calc[cl.id[0],cl.id[1], 2].associated_outcars[choose_outcar-1]
+                    # print out_1
+                    # print out_2 
+                    shutil.copyfile(wd+out_1, wd+'00/OUTCAR')
+                    shutil.copyfile(wd+out_2, wd+'04/OUTCAR')
+                    for d in ['01/','02/','03/' ]:
+                        shutil.copyfile(wd+d+out_i, wd+d+'OUTCAR')
+
+                        # print wd+d+out_i
 
 
 

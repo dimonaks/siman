@@ -8,6 +8,7 @@ TODO:
 
 """
 
+from __future__ import division, unicode_literals, absolute_import 
 
 import os, subprocess
 import math
@@ -25,11 +26,10 @@ import re
 import colorsys
 import pandas as pd
 import matplotlib.pyplot as plt
-
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import scipy
+
 
 plt.rcParams['mathtext.fontset'] = "stix"
 
@@ -66,7 +66,7 @@ try:
     from project_conf import *
     import project_conf
 except:
-    print 'Some module is used separatly'
+    print_and_log('Some module is used separatly')
     siman_run = False
 
 # print 'header, geo_folder = ', geo_folder
@@ -121,7 +121,7 @@ def print_and_log(*logstrings, **debug_level):
 
     if warnings:
         ''
-        print '--'+mystring,
+        print ('--'+mystring,)
 
     log.write(mystring)
 

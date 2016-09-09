@@ -3,6 +3,9 @@ import header
 from header import *
 
 
+def list2string(ilist):
+    #' '.join(['{:}']*len(lis)).format(*lis)
+    return ' '.join(np.array(ilist).astype(str))
 
 
 def push_to_server(files = None, to = None,  addr = None):
@@ -17,7 +20,7 @@ def push_to_server(files = None, to = None,  addr = None):
 
 def get_from_server(files = None, to = None,  addr = None):
     """
-    The zip is checked only for the first file 
+    The zip file is checked only for the first file in list *files*
     """
     if not hasattr(files, '__iter__'):
         files = [files]
@@ -27,11 +30,12 @@ def get_from_server(files = None, to = None,  addr = None):
 
     out = runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
     # print 'out === ',out
-    if out:#not os.path.exists(files[0]):
+    to_new = to+'/'+os.path.basename(files[0])
+    if out and not os.path.exists(to_new):
         print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
         files[0]+='.gz'
         # print files[0]
-        out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+';gunzip '+to+'/'+os.path.basename(files[0]))
+        out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+';gunzip '+to_new)
 
 
 
@@ -76,7 +80,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
     st = copy.deepcopy(structure)
     # print 'Structure has before replication', st.natom,'atoms' 
 
-    if hasattr(st, 'init_numbers'):
+    if hasattr(st, 'init_numbers') and st.init_numbers:
         numbers = st.init_numbers
     else:
         numbers = range(st.natom)
@@ -194,6 +198,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     - *only_elements* - list of z of elements to which only the distances are needed
     """
     st_original = copy.deepcopy(st)
+    st.init_numbers = None
     if periodic:
         st = replic(st, mul = (2,2,2), inv = 1 ) # to be sure that impurity is surrounded by atoms
         st = replic(st, mul = (2,2,2), inv = -1 )
@@ -239,7 +244,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
     elif control == 'atoms':
         # print dlist_unsort
-        if hasattr(st, 'init_numbers'):
+        if hasattr(st, 'init_numbers') and st.init_numbers:
             numbers = st.init_numbers
         else:
             numbers = range(natom)
@@ -264,17 +269,18 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
 
         #check if atoms in output are from neighboring cells
-        xred_local = xcart2xred(xcart_local, st_original.rprimd)
-        # print 'xred_local', xred_local
-        for x_l in xred_local:
-            for i, x in enumerate(x_l):
-                if x > 1: 
-                    x_l[i]-=1
-                    # print 'returning to prim cell', x,x_l[i]
-                if x < 0: 
-                    x_l[i]+=1
-                    # print 'returning to prim cell', x,x_l[i]
-        xcart_local = xred2xcart(xred_local, st_original.rprimd)
+        if 0:
+            xred_local = xcart2xred(xcart_local, st_original.rprimd)
+            # print 'xred_local', xred_local
+            for x_l in xred_local:
+                for i, x in enumerate(x_l):
+                    if x > 1: 
+                        x_l[i]-=1
+                        # print 'returning to prim cell', x,x_l[i]
+                    if x < 0: 
+                        x_l[i]+=1
+                        # print 'returning to prim cell', x,x_l[i]
+            xcart_local = xred2xcart(xred_local, st_original.rprimd)
 
         # print 'Warning! local_surrounding() can return several atoms in one position due to incomplete PBC implementation; Improve please\n'
 
