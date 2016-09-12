@@ -31,7 +31,7 @@ def get_from_server(files = None, to = None,  addr = None):
     out = runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
     # print 'out === ',out
     to_new = to+'/'+os.path.basename(files[0])
-    if out and not os.path.exists(to_new):
+    if out:# and not os.path.exists(to_new):
         print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
         files[0]+='.gz'
         # print files[0]

@@ -1765,7 +1765,7 @@ class CalculationVasp(Calculation):
         else:
             path_to_outcar  = self.path["output"]
         
-        print 'classes: path to outcar', path_to_outcar
+        # print 'classes: path to outcar', path_to_outcar
         path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
         path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
 
@@ -2211,9 +2211,9 @@ class CalculationVasp(Calculation):
             if self.a == None or self.a == [None]:
                 self.a  = 0; self.c = 0
 
-            j = (15,12,7,7,8,9,9,5,5,20,5,20,8,12,20,8,5,8,8,25,8,4,3)
+            j = (35,12,7,7,8,9,14,5,5,20,5,20,8,12,20,8,5,8,8,25,8,4,3)
 
-            d = "&"
+            d = "|"
             name = ("%s.%s.%s" % (self.id[0],self.id[1], str(self.id[2]) )).ljust(j[0])
             etot = ("%.4f" % ( self.energy_sigma0 )).center(j[1])
             # print self.a
@@ -2265,7 +2265,8 @@ class CalculationVasp(Calculation):
             outst_coseg=voro+etot+d+                                strs+d+eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" #for co-segregation; 
             outst_gbe = voro+etot+               d+vol+d+kspacing+d+strs+d+eprs+d+nat+d+time+d+Nmd+d+War+d+nsg+"\\\\" # For comparing gb energies and volume
             outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
-                        
+            
+            outst_cathode = etot+d+lens+d+strs+d+nat+d+time+d+Nmd+d+War+d+nsg
             # print self.end.xred[-1]
             #print outstring_kp_ec
             # print show
@@ -2328,7 +2329,7 @@ class CalculationVasp(Calculation):
             elif 'ecut' in out_type : outst = outst_ecut
             elif 'kp' in out_type   : outst = outst_kp
             elif 'ts' in out_type   : outst = outst_ts
-            else: outst = outst_all
+            else: outst = outst_cathode
             #else: print_and_log("Uknown type of outstring\n")
 
 

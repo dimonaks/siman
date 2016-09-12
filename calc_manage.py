@@ -178,7 +178,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
     up = 'test', typconv="", from_geoise = '', inherit_option = None, 
     coord = 'direct', savefile = None, show = None, comment = None, 
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, ppn = None,
-    calc_method = None, u_ramping_region = None, it_folder = None ):
+    calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
 
@@ -321,7 +321,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
 
 
-        mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, fv)
+        mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, fv, mat_proj_id)
         input_geo_format = 'vasp'
 
 
@@ -936,7 +936,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None,
-    it_folder = None, choose_outcar = None, choose_image = None):
+    it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -1011,7 +1011,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     # if choose_outcar:
 
 
-
+    name_field_length = 30
 
 
 
@@ -1115,7 +1115,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             conv[base].append(b_id)
 
 
-            outst2 = ("%s"%calc[id].name).ljust(22)
+            outst2 = ("%s"%calc[id].name).ljust(name_field_length)
             outst2+='&'
             # print outst2+'&'            
             outst_end = '' 
@@ -1531,9 +1531,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         if cl.calc_method and ('neb' in cl.calc_method or 'only_neb' in cl.calc_method):
             path2mep_s = cl.dir+'/mep.eps'
             path2mep_l = cl.dir+'/mep.'+cl.name+'.eps'
-            # if not os.path.exists(path2mep_l):
-            get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
-            get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
+            if not os.path.exists(path2mep_l) or '2' in up:
+                get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
+                get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
+            
             # print path2mep_l
             if os.path.exists(path2mep_l) and 'mep' in show:
                 # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
@@ -1564,7 +1565,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 cl_i.state = '2. Ready to read outcar'
                 # if not os.path.exists(cl_i.path["output"]):
                 #     load = 'o'
-                outst2 = ("%s"%cl_i.name).ljust(22)
+                outst2 = ("%s"%cl_i.name).ljust(name_field_length)
 
                 print outst2+'&'+cl_i.read_results(loadflag, show = show, choose_outcar = choose_outcar)
 
@@ -1779,15 +1780,16 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 """Take structures from Mat. projects"""
 
 
-def get_structure_from_matproj(struct_des, it, it_folder, ver):
+def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_id = None):
     """
     Find material with 'it' stoichiometry (lowest energy) from materialsproject.org, 
     download and create field in struct_des and input POSCAR file
     ###INPUT:
         - struct_des-  
-        - it        - materials name, such as 'LiCoO2', ...
+        - it        - materials name, such as 'LiCoO2', .... By default the structure with minimum *e_above_hull* is taken
         - it_folder - section folder in which the Poscar will be placed
         - ver       - version of structure defined by user
+        - mat_proj_id (str) - the id can be provided explicitly
     
     ###RETURN:
         - ?
@@ -1808,13 +1810,21 @@ def get_structure_from_matproj(struct_des, it, it_folder, ver):
         # print type(it)
         # it = "LiFePO4"
         # print m.get_data(it, data_type='vasp', prop='e_above_hull')
-        prop_dic_list =  m.get_data(it, data_type='vasp', prop='e_above_hull')
 
-        newlist = sorted(prop_dic_list, key=itemgetter('e_above_hull')) 
+        if mat_proj_id:
+            groundstate_st_id = mat_proj_id
+        else: 
+            prop_dic_list =  m.get_data(it, data_type='vasp', prop='e_above_hull')
 
-        groundstate_st_id = newlist[0]['material_id']
-        # print groundstate_st_id
-        # print m.get_data(groundstate_st_id, data_type='vasp', prop='hubbards')
+
+
+
+            newlist = sorted(prop_dic_list, key=itemgetter('e_above_hull')) 
+
+            groundstate_st_id = newlist[0]['material_id']
+            # print groundstate_st_id
+            # print m.get_data(groundstate_st_id, data_type='vasp', prop='hubbards')
+        
         st_pmg =  m.get_structure_by_material_id(groundstate_st_id, final=True)
 
 
