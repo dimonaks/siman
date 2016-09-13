@@ -1251,11 +1251,14 @@ def read_list(token, number_of_elements, ttype, list_of_words):
     #define function dependig on type:
 
     if   ttype == int  : 
-        def convert(a): return int(a)
+        def convert(a): 
+            return int(a)
     elif ttype == float: 
-        def convert(a): return float(a)
+        def convert(a): 
+            return float(a)
     elif ttype == str  : 
-        def convert(a): return str(a)
+        def convert(a): 
+            return str(a)
     
     #print list_of_words[index], type(list_of_words[index])
     if list_of_words[index] == "None"  : 
@@ -1264,7 +1267,12 @@ def read_list(token, number_of_elements, ttype, list_of_words):
     #Make convertion
     for i in range(number_of_elements):
         
-        list_of_elements.append(    convert(  list_of_words[index]   )     )
+        if 'None' in list_of_words[index]:
+            list_of_elements.append(None)
+        else:
+            list_of_elements.append(    convert(  list_of_words[index]   )     )
+        
+
         index+=1
 
 

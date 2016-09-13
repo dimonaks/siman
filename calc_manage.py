@@ -174,16 +174,17 @@ def update_des(struct_des, des_list):
 
 
 
-def add_loop(it, ise, verlist, calc = None, conv = None, varset = None, 
-    up = 'test', typconv="", from_geoise = '', inherit_option = None, 
-    coord = 'direct', savefile = None, show = None, comment = None, 
+def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
+    up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
+    coord = 'direct', savefile = 'oc', show = None, comment = None, 
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, ppn = None,
-    calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None):
+    calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
 
     Input:
-        - it, ise - structure name and set name of new calculation
+        - it - arbitary name for your crystal structure 
+        - setlist (list of str or str) - names of sets with vasp parameters from *varset* dictionary
         - verlist - list of versions of new calculations
         - calc, conv, varset - database dictionaries; could be provided; if not then are taken from header
 
@@ -216,7 +217,14 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
         - comment - arbitrary comment for history.
 
-        - inherit_option - ? to be described.
+        - inherit_option (str):
+            - 'continue'     - copy last contcar to poscar, outcar to prev.outcar and run again; on the next launch prev.outcar
+                will be rewritten, please improve the code to save all previous outcars 
+            - 'inherit_xred' - if verlist is provided, xred are copied from previous version to the next
+            - all options available for inherit_icalc() subroutine (now only 'full' is tested)
+
+        - ise_new (str) - name of new set for inherited calculation  
+
 
         - typconv - ? to be described.
         
@@ -232,12 +240,12 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
 
     Comments:
-        To create folders and add calculations add_flag should have value 'add' 
+        !Check To create folders and add calculations add_flag should have value 'add' 
 
 
     """
-    it = it.strip()
-    if it_folder: it_folder = it_folder.strip()
+
+    header.close_run = True
 
     schedule_system = header.project_conf.SCHEDULE_SYSTEM
 
@@ -251,11 +259,22 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
         conv = header.conv
         varset = header.varset
 
-    header.close_run = True
 
-    if type(verlist) == int: #not in [tuple, list]:
-        #print "verlist"
-        verlist = [verlist]; #transform to list
+
+    it = it.strip()
+    
+    if it_folder: 
+        it_folder = it_folder.strip()
+
+    if not hasattr(verlist, '__iter__'):
+        verlist = [verlist]
+
+    if not hasattr(setlist, '__iter__'):
+        setlist = [setlist]
+
+    setlist = [s.strip() for s in setlist]
+
+
 
 
 
@@ -265,7 +284,7 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
     # arg1 = args[0], arg2 = args[1]
     # print args[0], it
     hstring = hstring.replace(args[0], "'"+it+"'")
-    hstring = hstring.replace(args[1], "'"+str(ise)+"'")
+    hstring = hstring.replace(args[1], "'"+str(setlist)+"'")
     # print hstring
     try:
         if hstring != header.history[-1]: header.history.append( hstring  )
@@ -287,26 +306,21 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
 
 
-    fv = verlist[0]; lv = verlist[-1];
+    fv = verlist[0]; lv = verlist[-1]; #first version, last version
     
 
-    if typconv == "": 
-        if type(ise) == str:
-            setlist = [ise,]
-    else: 
+    if typconv: 
         setlist = varset[ise].conv[typconv] #
-
-    if up == "no_base": setlist = varset[ise].conv[typconv][1:]; up = "up1"
+        nc = it+'.'+ise[0]+typconv
+        if nc not in conv: 
+            conv[nc] = []    
     
-    # print 'Setlist:', setlist
-    setlist = [s.strip() for s in setlist]
-    # print setlist
 
-    nc = it+'.'+ise[0]+typconv
-    try: conv[nc]; 
-    except KeyError: 
-        if typconv: conv[nc] = []    
+    if up == "no_base": 
+        setlist = varset[ise].conv[typconv][1:]; 
+        up = "up1"
     
+
 
 
 
@@ -327,8 +341,25 @@ def add_loop(it, ise, verlist, calc = None, conv = None, varset = None,
 
 
 
+    #inherit option
+    if inherit_option in ['full', 'full_nomag', 'r2r3', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
+        if inherit_option == 'full':
+            it_new = it+'.if'
+        if inherit_option == 'full_nomag':
+            it_new = it+'.ifn'
+        
 
+        if it_new not in struct_des:
+            add_des(struct_des, it_new, struct_des[it].sfolder, 'Inherited '+inherit_option+' from '+it+'.'+str(setlist)+'.'+str(verlist)   )
 
+        for inputset in setlist:
+            for v in verlist:
+                id = (it,inputset,v)
+                # print (calc[id].end.magmom)
+                # sys.exit()
+                inherit_icalc(inherit_option, it_new, v, id, calc)
+        setlist = [ise_new,]
+        it = it_new
 
 
 
@@ -662,13 +693,13 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
         
         inherit_type = '':
-            full       - full inheritance of final state
-            r2r3       - use r2 and r3 from id_from
-            r1r2r3     - use r1, r2 and r3 from id_from
-            remove_imp - removes all atoms with typat > 1
+            full          - full inheritance of final state
+            'full_nomag'  - full except magmom which are set to None
+            r2r3          - use r2 and r3 from id_from
+            r1r2r3        - use r1, r2 and r3 from id_from
+            remove_imp    - removes all atoms with typat > 1
             replace_atoms - atoms of type 'atom_to_replace' in 'id_base' will be replaced by 'atom_new' type.
-
-            make_vacancy - produce vacancy by removing 'atom_to_remove' starting from 0
+            make_vacancy  - produce vacancy by removing 'atom_to_remove' starting from 0
 
         used_cell - use init or end structure of id_base calculation. Now realized only for 'replace_atoms' regime of inheritance
 
@@ -713,6 +744,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         cl_base.end = cl_base.init
 
     else:
+        if id_base not in calc:
+            ''
+            id_base = (bytes(id_base[0]),bytes(id_base[1]),id_base[2])
         cl_base = calc[id_base]
 
 
@@ -749,7 +783,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
     new = copy.deepcopy(  cl_base  )
-
+    # print new.end.magmom
+    # sys.exit()
     new.len_units = 'Angstrom' #! Because from VASP
 
 
@@ -780,6 +815,15 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         des = 'Fully inherited from the final state of '+cl_base.name
         new.des = des + struct_des[it_new].des
         new.write_geometry("end",des)
+
+    elif inherit_type == "full_nomag":
+        # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
+        des = 'Fully inherited from the final state of '+cl_base.name+'; "magmom" set to None'
+        new.des = des + struct_des[it_new].des
+        new.end.magmom = None
+        new.write_geometry("end",des)
+
+
 
     elif inherit_type == "atom_shift":
         des = 'obtainded from final state of '+cl_base.name+' by shifting atom '+ str(atom_to_shift) +' by '+ str(shift_vector)
@@ -934,9 +978,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_type = 'no', b_id = (), 
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
-    comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
+    comment = None, input_geo_format = None, savefile = 'co', energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None,
-    it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None):
+    it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -977,6 +1021,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         choose_image (int) - relative to NEB, allows to choose specific image for analysis, by default the middle image is used
 
+
+
+        ise_new - dummy
     RETURN:
         result_list - list of results
 
@@ -988,13 +1035,14 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
     """Setup"""
-    # if type(show) == str:
-    #     show = [show]
-    if type(verlist) == int: #not in [tuple, list]:
-        #print "verlist"
-        verlist = [verlist]; 
-    if type(setlist) == str: #not in [tuple, list,]:
+
+    if not hasattr(verlist, '__iter__'):
+        verlist = [verlist]
+
+    if not hasattr(setlist, '__iter__'):
         setlist = [setlist]
+
+
     if not calc:
         calc = header.calc
 
@@ -1068,8 +1116,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             id = (it,inputset,v)
 
             if id not in calc:
-                print "Calculation does not exist!!!" 
-                continue #pass non existing calculations
+                id = (bytes(it), bytes(inputset), v) #try non-unicode for compatability with python2
+                if id not in calc:
+                    print_and_log('Key', id,  'not found!', imp = 'Y')
+                    continue #pass non existing calculations
 
             cl = calc[id]
 
@@ -1569,6 +1619,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
                 print outst2+'&'+cl_i.read_results(loadflag, show = show, choose_outcar = choose_outcar)
 
+                calc[cl_i.id] = cl_i
 
                 if 0: #copy files according to chosen outcar to run nebresults locally 
                     wd = cl_i.dir

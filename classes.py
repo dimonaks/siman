@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*- 
+from __future__ import print_function
+# from __future__ import division, unicode_literals, absolute_import 
+
+
 
 """
 Classes used in siman
@@ -82,7 +86,7 @@ class Structure():
 
         st.natom+=natom_to_add
         el_z_to_add = element_name_inv(element)
-        print 'el_z_to_add', el_z_to_add
+        # print 'el_z_to_add', el_z_to_add
 
         if el_z_to_add not in st.znucl:
             
@@ -95,12 +99,12 @@ class Structure():
         
         else:
             i = st.znucl.index(el_z_to_add)
-            print i
+            # print i
             st.nznucl[i]+=natom_to_add
             typ = i+1
-            print typ
-            print st.znucl
-            print st.nznucl
+            # print typ
+            # print st.znucl
+            # print st.nznucl
 
         # sys.exit()
 
@@ -249,7 +253,7 @@ class Calculation():
                 
                 self.build = empty_struct()                
                 if 'BEGIN BUILD INFORMATION' in line:
-                    print "\nFile contain build information! Start to read"
+                    print_and_log("File contain build information! Start to read", imp = 'n')
                     # self.build = Structure()
                     # # self.build.rprimd = None
                     # # self.build.xred = None
@@ -274,7 +278,7 @@ class Calculation():
                     self.build.nadded = read_list("nadded", 1, int, gen_words)[0] #total number of added atoms after building structure
                     self.build.listadded = read_list("listadded", self.build.nadded, int, gen_words) #list of added atoms corresponding to xred 
 
-                    print "Build information has been read\n"
+                    print_and_log("Build information has been read")
 
 
 
@@ -293,8 +297,8 @@ class Calculation():
             if s1=='':
                 self.natom = 0
                 print_and_log( """Warning! In filename """+filename+""" not found natom! set to zero.
-                It is very likly that other parameters was not 
-                found too, Calculation completly not useable!!!""")
+                It is very likely that other parameters was not 
+                found too, Calculation completely unusable!!!""")
                 raise RuntimeError
             else:
                 self.natom=int(s1.split()[1]) 
@@ -335,11 +339,11 @@ class Calculation():
             #print self.xred
             
             if self.xred == [None]:
-                print "Convert xcart to xred"
+                print_and_log("Convert xcart to xred")
                 self.xred = xcart2xred(self.xcart, self.rprimd)
             
             if self.xcart == [None]:
-                print "Convert xred to xcart"
+                print_and_log("Convert xred to xcart")
                 self.xcart = xred2xcart(self.xred, self.rprimd)
 
             self.hex_a = read_list("hex_a", 1, float, gen_words)[0]
@@ -400,7 +404,7 @@ class Calculation():
         geo_dic = {}
         geofile = self.path["input_geo"]
         geo_exists = os.path.exists(geofile)
-
+        # print (os.path.exists(geofile))
         if geo_exists:
             if override:
                 print_and_log("Warning! File "+geofile+" was replaced\n"); 
@@ -417,17 +421,18 @@ class Calculation():
             st = self.init
         elif geotype == "end":
             st = self.end
-            if not hasattr(st, 'natom'):  st.natom = self.init.natom
-            if not hasattr(st, 'ntypat'): st.ntypat = self.init.ntypat
-            if not hasattr(st, 'typat'): st.typat = self.init.typat
-            if not hasattr(st, 'znucl'): st.znucl = self.init.znucl 
+            # if not hasattr(st, 'natom'):  st.natom = self.init.natom
+            # if not hasattr(st, 'ntypat'): st.ntypat = self.init.ntypat
+            # if not hasattr(st, 'typat'): st.typat = self.init.typat
+            # if not hasattr(st, 'znucl'): st.znucl = self.init.znucl 
         else: print_and_log("Error! Unknown geotype \n"); raise RuntimeError                                  
 
         if st.natom != len(st.xred) != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
-            print "Error! write_geometry: check your arrays.\n\n" 
+            print_and_log("Error! write_geometry: check your arrays.", imp = 'Y')
+            raise RuntimeError
 
-
-
+        # print (st.magmom)
+        # sys.exit()
         with open(self.path["input_geo"],"w") as f:
             f.write("des "+description+"\n")
             f.write("len_units "+self.len_units+"\n")
@@ -442,9 +447,10 @@ class Calculation():
             try: st.magmom
             except AttributeError:
                 st.magmom = None
-            print st.magmom 
+            # print st.magmom 
             # sys.exit()
-            f.write("magmom "+' '.join(np.array(st.magmom).astype(str)) +"\n")
+            if st.magmom:
+                f.write("magmom "+' '.join(np.array(st.magmom).astype(str)) +"\n")
 
 
 
@@ -795,7 +801,7 @@ class CalculationVasp(Calculation):
             f.write('\n')
 
             if "car" in type_of_coordinates:
-                print "Warning! may be obsolete!!! and incorrect"
+                print_and_log("Warning! may be obsolete!!! and incorrect", imp = 'Y')
                 f.write("Cartesian\n")
                 for xcart in zxcart:
                     for x in xcart:
@@ -804,7 +810,7 @@ class CalculationVasp(Calculation):
 
                 
                 if hasattr(self.init, 'vel'):
-                    print "I write to POSCAR velocity as well"
+                    print_and_log("I write to POSCAR velocity as well")
                     f.write("Cartesian\n")
                     for v in self.init.vel:
                         f.write( '  {:18.16f}  {:18.16f}  {:18.16f}\n'.format(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )
@@ -908,7 +914,8 @@ class CalculationVasp(Calculation):
         # print self.set.vasp_params
 
         # print self.set.vasp_params['MAGMOM']
-        if hasattr(self.init, 'magmom') and self.init.magmom:
+        if hasattr(self.init, 'magmom') and self.init.magmom and self.init.magmom[0]:
+
             print_and_log('Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
         elif hasattr(self.set, 'magnetic_moments') and self.set.magnetic_moments:
@@ -989,7 +996,7 @@ class CalculationVasp(Calculation):
                         for i, s in zip(spec_mom_is, order):
                             # print i
                             new_magmom[i] = s * magmom[i]
-                        print j, new_magmom
+                        print_and_log(j, new_magmom, imp = 'y')
                         mag_orderings.append(new_magmom)
 
                     # print orderings
@@ -1232,7 +1239,7 @@ class CalculationVasp(Calculation):
             return
 
 
-        def mv_files_according_versions(savefile, v, name_mod = '', write = True, rm_chg_wav = True):    
+        def mv_files_according_versions(savefile, v, name_mod = '', write = True, rm_chg_wav = 'cw'):    
             """3. Out files saving block
                 
                 rm_chg_wav - if True than CHGCAR and WAVECAR are removed
@@ -1276,9 +1283,11 @@ class CalculationVasp(Calculation):
                 #     f.write("rm WAVECAR\n")
 
 
-                if rm_chg_wav:
+                if 'c' in rm_chg_wav:
                     f.write("rm CHGCAR \n") #file is important for continuation
-                    f.write("rm WAVECAR\n")
+                if 'w' in rm_chg_wav:
+                    ''
+                    f.write("rm WAVECAR\n") #
 
 
             return
@@ -1431,7 +1440,7 @@ class CalculationVasp(Calculation):
                             f.write("cp CONTCAR POSCAR  #prepare for basic run\n")
                             write_poscar = False  
 
-                        mv_files_according_versions('co', v, name_mod = name_mod, write = write, rm_chg_wav = False)
+                        mv_files_according_versions('co', v, name_mod = name_mod, write = write, rm_chg_wav = '')
 
                         update_incar(parameter = 'ISPIN', value = 2, write = write) #
 
@@ -1475,11 +1484,11 @@ class CalculationVasp(Calculation):
                             f.write("cp CONTCAR POSCAR\n")                
 
 
-                        mv_files_according_versions('o', v, name_mod = name_mod, write = write, rm_chg_wav = False)
+                        mv_files_according_versions('o', v, name_mod = name_mod, write = write, rm_chg_wav = '')
                     
                         self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
-                        print 'write_sge(): as_outcars=', self.associated_outcars
+                        # print 'write_sge(): as_outcars=', self.associated_outcars
 
 
                     mv_files_according_versions(savefile = 'c', v=v, name_mod = name_mod) #save more files for last U
@@ -1524,7 +1533,7 @@ class CalculationVasp(Calculation):
 
                     run_command(option = option, name = self.name, parrallel_run_command = parrallel_run_command, write = write)
 
-                    mv_files_according_versions(savefile, v, write = write)
+                    mv_files_according_versions(savefile, v, write = write, rm_chg_wav = '')
 
 
 
@@ -1653,7 +1662,7 @@ class CalculationVasp(Calculation):
             out = self.associated_outcars[-1]
         else:
             out = None
-        print 'write_sge() out=', out
+        # print 'write_sge() out=', out
         
         return  out#return OUTCAR name
     
@@ -1949,8 +1958,8 @@ class CalculationVasp(Calculation):
 
                     if any(v > 1e-3 for v in low+high):
                         print_and_log("W(q)/X(q) are too high, check output!\n")
-                        print 'Low + high = ', low+high
-                        print [v > 1e-3 for v in low+high]
+                        print_and_log('Low + high = ', low+high, imp = 'Y' )
+                        print_and_log([v > 1e-3 for v in low+high], imp = 'Y' )
                 if "direct lattice vectors" in line:
                     for v in 0,1,2:
                         self.end.rprimd[v] = np.asarray( [float(ri) for ri in outcarlines[i_line+1+v].split()[0:3]   ] )
@@ -2144,6 +2153,9 @@ class CalculationVasp(Calculation):
                 pass
             #else: maxdrift = 
             # print magn
+            
+            self.end.magmom = tot_mag_by_atoms[-1]
+
             """Try to read xred from CONCAR and calculate xcart"""
 
             #correction of bug; Take into account that VASP changes typat by sorting impurities of the same type.
@@ -2276,7 +2288,7 @@ class CalculationVasp(Calculation):
 
             if 'fo' in show:
                 # print "Maxforce by md steps (meV/A) = %s;"%(str(maxforce)  )
-                print "\nMax. F. (meV/A) = \n%s;"%(np.array([m[1] for m in maxforce ])[-50:]  )
+                print_and_log("\n\nMax. F. (meV/A) = \n{:};".format(np.array([m[1] for m in maxforce ])[-50:]  ), imp = 'Y'  )
                 # print "\nAve. F. (meV/A) = \n%s;"%(  np.array(average)  )
                 # import inspect
                 # print inspect.getargspec(plt.plot).args
@@ -2302,20 +2314,24 @@ class CalculationVasp(Calculation):
                 # print 'Final mag moments for atoms:'
                 # print np.arange(self.end.natom)[ifmaglist]+1
                 # print np.array(tot_mag_by_atoms)
-                print 'Dist from 1st atom to Fe atoms:, please make me more general'
+                print ('Dist from 1st atom to Fe atoms:, please make me more general')
                 sur   = local_surrounding(self.end.xcart[0], self.end, n_neighbours = 4, control = 'atoms', 
                 periodic  = True, only_elements = [26,])
-
                 dist = np.array(sur[3]).round(2)
                 numb = np.array(sur[2])
                 for mag in tot_mag_by_atoms:
-                    print mag[numb]
+                    print (mag[numb].round(3))
 
-                print np.array(sur[3]).round(2), np.array(sur[2])+1
+                    # sys.exit()
+
+                print ( [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(np.array(sur[3]).round(2), np.array(sur[2])+1) ] )
 
                 self.tot_mag_by_atoms = tot_mag_by_atoms
-                plt.plot(np.array(tot_mag_by_mag_atoms))
-                plt.show()
+                plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
+                # plt.plot(np.array(sur[3]).round(2), tot_mag_by_atoms[-1][numb]) mag vs dist for last step
+                
+                print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
+                # plt.show()
 
 
 
@@ -2353,9 +2369,9 @@ class CalculationVasp(Calculation):
         #cl - object of CalculationVasp class
         path_to_chg = self.dir+str(self.version)+"."+filetype
         if not os.path.exists(path_to_chg): 
-            print 'Charge file is downloading'
+            print_and_log( 'Charge file is downloading')
             log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
-            print path_to_chg, 'was downloaded'
+            print_and_log( path_to_chg, 'was downloaded')
             
         return path_to_chg
 
@@ -2365,7 +2381,7 @@ class CalculationVasp(Calculation):
         path_to_file = self.dir+str(self.version)+"."+filename
         if not os.path.exists(path_to_file): 
             log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_file+" "+self.dir)+'\n' ) #CHG
-            print path_to_file, 'was downloaded'
+            print_and_log( path_to_file, 'was downloaded')
             
         return path_to_file
 
@@ -2388,11 +2404,11 @@ class CalculationVasp(Calculation):
         # print "ssh "+cluster_address+" '"+command1+"'"
         
         if runBash("ssh "+self.cluster_address+" '[ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ;' """): #true if file not exists
-            print  CHGCAR_sum, "not exist. try to calculate it "
+            print_and_log(  CHGCAR_sum, "not exist. try to calculate it ", imp = 'Y')
             log.write( runBash("ssh "+self.cluster_address+" '"+command1+"'")+'\n' ) 
         
         if runBash("ssh "+self.cluster_address+" '[ -e "+   baderlog       +""" ] || echo "NO"     ;' """): #true if file not exists
-            print  baderlog, "not exist. try to calculate Bader "
+            print_and_log(  baderlog, "not exist. try to calculate Bader ", imp = 'Y')
             log.write( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n' ) 
         ACF = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
         # print ACF
@@ -2414,10 +2430,10 @@ class CalculationVasp(Calculation):
         imp_partial_chg = imp_valence_chg - float(ACF[numbers[0]].split()[4])
 
         mat_partial_chg = [mat_valence_chg - float(ACF[i].split()[4]) for i in numbers[1:] ]
-        print "Partial charge of impurity ", imp_partial_chg
-        print "Partial charges of neibouring Ti atoms", " ".join("{:.2f}".format(m) for m in mat_partial_chg)
-        print "Partial charge of matrix", sum(mat_partial_chg)
+        print_and_log( "Partial charge of impurity ", imp_partial_chg, imp = 'Y' )
+        print_and_log( "Partial charges of neibouring Ti atoms", " ".join("{:.2f}".format(m) for m in mat_partial_chg), imp = 'Y' )
+        print_and_log( "Partial charge of matrix", sum(mat_partial_chg), imp = 'Y' )
         
-        print "Sum of mat and imp charges:", sum(mat_partial_chg)+imp_partial_chg
+        print_and_log( "Sum of mat and imp charges:", sum(mat_partial_chg)+imp_partial_chg, imp = 'Y' )
 
         return path_to_chg
