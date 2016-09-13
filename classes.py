@@ -1788,10 +1788,12 @@ class CalculationVasp(Calculation):
             # print 'sdf', path_to_outcar, path_to_contcar, path_to_xml
             energies_str = runBash("ssh "+self.cluster_address+" cat "+self.dir+"ENERGIES")
             # print "ssh "+self.cluster_address+" cat "+self.dir+"ENERGIES"
-            self.associated_energies = [float(e) for e in energies_str.split()]
+            # print (  energies_str )
+            if not 'cat' in energies_str:
+                self.associated_energies = [float(e) for e in energies_str.split()]
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
-        
+
         outcar_exist   = False
 
         contcar_exist   = False
