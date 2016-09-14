@@ -230,7 +230,7 @@ class Calculation():
         "potential":None,
         "output":None}
         self.calc_method = None #
-
+        self.prev = [] # list of previous calculations
 
 
     def read_geometry(self,filename = None):
@@ -449,7 +449,7 @@ class Calculation():
                 st.magmom = None
             # print st.magmom 
             # sys.exit()
-            if st.magmom:
+            if any(st.magmom):
                 f.write("magmom "+' '.join(np.array(st.magmom).astype(str)) +"\n")
 
 
@@ -914,7 +914,7 @@ class CalculationVasp(Calculation):
         # print self.set.vasp_params
 
         # print self.set.vasp_params['MAGMOM']
-        if hasattr(self.init, 'magmom') and self.init.magmom and self.init.magmom[0]:
+        if hasattr(self.init, 'magmom') and any(self.init.magmom) and self.init.magmom[0]:
 
             print_and_log('Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
@@ -1163,7 +1163,7 @@ class CalculationVasp(Calculation):
                     preout  = str(curver)+name_mod_prev+'.OUTCAR ' #previous outcar
                     f.write("cp "+precont+" POSCAR  # inherit_option = continue\n")
                     f.write("cp "+preout+'prev.'+preout+" # inherit_option = continue\n")
-
+                    f.write('mv CHGCAR prev.CHGCAR   # inherit_option = continue\n')
                 else:
 
                     f.write("cp "+input_geofile+" POSCAR\n")
@@ -1418,8 +1418,8 @@ class CalculationVasp(Calculation):
                         f.write("#NEB run, start and final configurations, then IMAGES:\n") 
                     update_incar(parameter = 'IMAGES', value = 0, write = write) # start and final runs
 
-                #experimental preliminary non-magnetic run
-                if 0:
+                
+                if 0: #experimental preliminary non-magnetic run
                     if self.set.vasp_params['ISPIN'] == 2:
                         print_and_log('Magnetic calculation detected; For better convergence',
                          'I add first non-magnetic run', imp = 'Y')
@@ -1571,6 +1571,8 @@ class CalculationVasp(Calculation):
                     start = '1'+name_mod+'.OUTCAR '
                     final = '2'+name_mod+'.OUTCAR '
 
+
+
                     f.write("\n\n#Starting NEB script \n")
 
                     if option and 'continue' in option:
@@ -1578,10 +1580,12 @@ class CalculationVasp(Calculation):
 
                         for n_st in subfolders:
                             f.write('cp '+n_st+'/'+prevout+n_st+'/'+'prev.'+prevout+'  # inherit_option = continue\n' )
+                            f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR  # inherit_option = continue\n')
+                            f.write('mv '+n_st+'/CHGCAR '+n_st+'/prev.CHGCAR   # inherit_option = continue\n')
 
+                    else:
+                        f.write('~/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
 
-
-                    f.write('~/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
                     
                     f.write('cp '+start+ '00/OUTCAR\n')
                     
@@ -1595,17 +1599,8 @@ class CalculationVasp(Calculation):
 
 
 
-
-
-
-
-
-
                     if 'u_ramping' in self.calc_method:
 
-
-
-                        
                         for i_u in range(self.set.u_ramping_nstep):
 
 
@@ -1625,21 +1620,11 @@ class CalculationVasp(Calculation):
 
                         
                             # self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
-                    
-
-
-
 
                     else:
 
                         run_command(option = option, name = (self.name+'.images'+nim_str), 
                         parrallel_run_command = parrallel_run_command, write = True)
-
-
-
-
-
-
 
 
 
@@ -1919,7 +1904,7 @@ class CalculationVasp(Calculation):
             # print ifmaglist
 
             # sys.exit()
-
+            ldauu = None
 
 
             # print self.set.vasp_params
@@ -2133,7 +2118,8 @@ class CalculationVasp(Calculation):
                     # magnetic_elements
                     # ifmaglist
 
-
+                if 'LDAUU' in line:
+                    ldauu = line
 
 
 
@@ -2215,6 +2201,17 @@ class CalculationVasp(Calculation):
                 calculate_voronoi(self, state = 'init')
 
 
+            #deal with ldauu
+            if ldauu: 
+                ldauu = np.array(ldauu.split()[7:]).astype(float)
+                # print (ldauu)
+                #find first non-zero
+                self.ldauu = ldauu
+                u_hubbard = ( next((u for u in ldauu if u), 0) )
+                # print ( np.unique(ldauu)  )
+
+
+
             #  Construct beatifull table
             #self.a1 = float(v[0])/2 ; self.a2 = float(v[1])/2/math.sqrt(0.75); self.c = float(v[2])  # o1b
             
@@ -2260,7 +2257,7 @@ class CalculationVasp(Calculation):
             nat = ("%i" % ( self.natom ) ).center(j[21])
             totd = ("%.0f" % (   max_tdrift/max_magnitude * 100      ) ).center(j[22])
             nsg = ("%s" % (     nsgroup     ) ).center(j[22])
-
+            Uhu   = " {:3.1f} ".format(u_hubbard)
             """Warning! concentrations are calculated correctly only for cells with one impurity atom"""
             #gbcon = ("%.3f" % (     1./self.end.yzarea      ) ).center(j[23]) # surface concentation at GB A-2
             #bcon = ("%.1f" % (     1./self.natom * 100      ) ).center(j[24]) # volume atomic concentration, %
@@ -2280,7 +2277,7 @@ class CalculationVasp(Calculation):
             outst_gbe = voro+etot+               d+vol+d+kspacing+d+strs+d+eprs+d+nat+d+time+d+Nmd+d+War+d+nsg+"\\\\" # For comparing gb energies and volume
             outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
             
-            outst_cathode = etot+d+lens+d+strs+d+nat+d+time+d+Nmd+d+War+d+nsg
+            outst_cathode = etot+d+lens+d+strs+d+nat+d+time+d+Nmd+d+War+d+nsg+d+Uhu
             # print self.end.xred[-1]
             #print outstring_kp_ec
             # print show
@@ -2290,7 +2287,7 @@ class CalculationVasp(Calculation):
 
             if 'fo' in show:
                 # print "Maxforce by md steps (meV/A) = %s;"%(str(maxforce)  )
-                print_and_log("\n\nMax. F. (meV/A) = \n{:};".format(np.array([m[1] for m in maxforce ])[-50:]  ), imp = 'Y'  )
+                print_and_log("\n\nMax. F. (meV/A) = \n{:};".format(np.array([m[1] for m in maxforce ])[:]  ), imp = 'Y'  )
                 # print "\nAve. F. (meV/A) = \n%s;"%(  np.array(average)  )
                 # import inspect
                 # print inspect.getargspec(plt.plot).args

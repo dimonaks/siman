@@ -284,7 +284,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     # arg1 = args[0], arg2 = args[1]
     # print args[0], it
     hstring = hstring.replace(args[0], "'"+it+"'")
-    hstring = hstring.replace(args[1], "'"+str(setlist)+"'")
+    hstring = hstring.replace(args[1], str(setlist))
     # print hstring
     try:
         if hstring != header.history[-1]: header.history.append( hstring  )
@@ -427,6 +427,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
     prevcalcver - version of previous calculation in verlist
 
+
+    if inherit_option == 'continue' the previous completed calculation is saved in cl.prev list
+
     """
     struct_des = header.struct_des
 
@@ -435,31 +438,42 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
     id = (structure_name,inputset,version)
+    cl_prev = None
+
+
     try:
         calc[id]
         status = "exist"
         print_and_log(str(calc[id].name)+" has been already created and has state: "+str(calc[id].state)+"\n\n")
+
         if "4" in calc[id].state: 
             complete_state = calc[id].state
             status = "compl"
+
             if update == 'up2': 
                 print 'Calculation', calc[id].name, 'is finished, continue'
+
                 return
-            pass
-            if update != "up1": return #completed calculations updated only for "up1"
+
+            if update != "up1": 
+                return #completed calculations updated only for "up1"
 
     except KeyError:
         #update = "up"
         status = "new"
         print_and_log( "There is no calculation with id "+ str(id)+". I create new with set "+str(inputset)+"\n" )        
+
     if "up" in update:
-        if status in ["exist","compl"]: print_and_log("You asked to update existing calculation with id "+ str(id)+" Warning! I update creating new class \n" )         
-        # print 'State', calc[id].state
+
+        if status in ["exist","compl"]: 
+            print_and_log("You asked to update existing calculation with id "+ str(id)+" Warning! I update creating new class \n" )         
+
+        if status == 'compl' and inherit_option == 'continue':
+            print_and_log(id, 'is completed, I will make its copy in self.prev[]', imp = 'Y' )         
+
+            cl_prev = copy.deepcopy(calc[id])
+
         calc[id] = CalculationVasp( varset[id[1]] )
-        # print 'State', calc[id].state
-        # print id[1], varset[id[1]].history
-        # print varset[id[1]].u_ramping_nstep
-        # sys.exit()
 
         calc[id].id = id 
         calc[id].name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
@@ -502,6 +516,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if mat_proj_st_id:
             calc[id].mat_proj_st_id = mat_proj_st_id
 
+        if inherit_option == 'continue' and cl_prev:
+            if hasattr(cl_prev, 'prev') and cl_prev.prev:
+                calc[id].prev.extend(cl_prev.prev) #if 'continue' flag is used several times, we do not need cl.prev.prev.prev.... but cl.prev = [cl1, cl2 ..]
+            else:
+                calc[id].prev.append(cl_prev)
 
 
 
@@ -978,9 +997,10 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_type = 'no', b_id = (), 
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
-    comment = None, input_geo_format = None, savefile = 'co', energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
+    comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None,
-    it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None):
+    it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
+    description_for_archive = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -1000,7 +1020,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         up - controls if to download files from server; can be 'xo'
         
-        readfiles - define if files to be read at all or only additional analysis is required; 
+        readfiles (bool) - True - read from outcar, False - read from database; 
 
 
 
@@ -1021,14 +1041,21 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         choose_image (int) - relative to NEB, allows to choose specific image for analysis, by default the middle image is used
 
+        - push2archive (bool) - if True produced images are copied to header.project_conf.path_to_images
+        - description_for_archive - caption for images
 
 
-        ise_new - dummy
+
+        - ise_new - dummy
+        - inherit_option - dummy
+        - savefile - dummy
+
+
     RETURN:
         result_list - list of results
 
     TODO:
-        Make possible update of b_id and r_id with up = 'up2' flag; now only id words correctly
+        Make possible update of b_id and r_id with up = 'up2' flag; now only id works correctly
 
 
     """
@@ -1580,16 +1607,38 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         if cl.calc_method and ('neb' in cl.calc_method or 'only_neb' in cl.calc_method):
             path2mep_s = cl.dir+'/mep.eps'
-            path2mep_l = cl.dir+'/mep.'+cl.name+'.eps'
+            itise = cl.id[0]+'.'+cl.id[1]
+            name_without_ext = 'mep.'+itise
+            path2mep_l = cl.dir+name_without_ext+'.eps'
             if not os.path.exists(path2mep_l) or '2' in up:
                 get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
                 get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
             
+            if push2archive:
+                shutil.copy(path2mep_l, header.project_conf.path_to_images)
+                print_and_log('push2archive:', path2mep_l, 'copied to', header.project_conf.path_to_images, imp = 'y')
+                
+                figfile = '{{'+name_without_ext+'}}'
+                figlabel = itise
+                print(
+                "\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n" 
+                "\caption{{\label{{fig:{:s}}} {:s} }}\n"
+                "\end{{figure}}\n".format(figfile, figlabel, description_for_archive+' for '+figlabel )
+                    )
+
+
+
             # print path2mep_l
             if os.path.exists(path2mep_l) and 'mep' in show:
                 # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
 
                 runBash('evince '+path2mep_l)
+            else:
+                a =  glob.glob(cl.dir+'*mep*')
+                if a:
+                    runBash('evince '+a[0])
+
+                # print (a)
 
             # trying to get one image closest to the saddle point
             if cl.version == 2:
@@ -1619,7 +1668,17 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
                 print outst2+'&'+cl_i.read_results(loadflag, show = show, choose_outcar = choose_outcar)
 
-                calc[cl_i.id] = cl_i
+                if cl_i.id in calc:
+                    print_and_log('Please test code below this message to save prev calcs')
+                    # if cl_i != calc[cl_i.id]
+                    #     if hasattr(calc[cl_i.id], 'prev') and calc[cl_i.id].prev:
+                    #         prevlist = calc[cl_i.id].prev
+                    #     else:
+                    #         prevlist = [calc[cl_i.id]]
+                    #     cl_i.prev = prevlist
+                    #     calc[cl_i.id] = cl_i
+                else:
+                    calc[cl_i.id] = cl_i
 
                 if 0: #copy files according to chosen outcar to run nebresults locally 
                     wd = cl_i.dir

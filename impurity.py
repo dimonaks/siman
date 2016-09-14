@@ -234,7 +234,8 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
     st_result.xcart = xred2xcart(st_result.xred, rprimd)
     st_result.typat = [1 for x in st_result.xred]
     st_result.natom = len(st_result.typat)
-
+    st_result.znucl = [200]
+    st_ntypat = 1
 
     return st_result
 
