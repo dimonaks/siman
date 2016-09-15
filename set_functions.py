@@ -1,3 +1,5 @@
+from __future__ import division, unicode_literals, absolute_import 
+
 from header import log, print_and_log;
 import copy
 

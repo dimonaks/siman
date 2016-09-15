@@ -1,19 +1,24 @@
-from header import *
-import header
-from classes import CalculationVasp, Description
-from functions import gb_energy_volume
-# from ext_databases import get_structure_from_matproj
+# from header import *
+from __future__ import division, unicode_literals, absolute_import 
 
-from functions import makedir, get_from_server
+import copy, traceback, datetime, sys, os, glob, shutil
+import header
+from header import print_and_log, runBash
+from classes import CalculationVasp, Description
+from functions import gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly
+
 
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.inputs import Poscar
 
 from operator import itemgetter
 
-
-
-pmgkey = header.project_conf.pmgkey
+log             = header.log
+geo_folder      = header.geo_folder
+cluster_address = header.cluster_address
+corenum         = header.corenum
+project_path_cluster = header.project_path_cluster
+pmgkey          = header.project_conf.pmgkey
 
 
 
@@ -207,7 +212,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         - savefile - controls which files are saved during VASP run on server; check
             'ocdawx' - outcar, chgcar, dos, AECCAR,WAVECAR, xml
 
-        - ifolder - explicit path to folder where to search for geo file.
+        - ifolder - explicit path to folder where to search for input geo file.
 
         - input_geo_file - explicit file name of input file
 
@@ -234,7 +239,14 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         - ppn - number of cores used for calculation; overwrites header.corenum
 
         - calc_method - provides additional functionality:
-            'u_ramping' - realizes U ramping approach #Phys Rev B 82, 195128
+            - 'u_ramping'    - realizes U ramping approach #Phys Rev B 82, 195128
+            - 'afm_ordering' - 
+            - 'uniform_scale' - creates uniformly scaled copies of the provided calculations
+            using *scale_region* and *n_scale_images* (see *scale_cell_uniformly()*)
+            The copies are available as versions from 1 to *n_scale_images* and
+            suffix .su appended to *it* name
+            Copies to cluster *fit* utility that finds volume corresp. to energy minimum, creates 100.POSCAR and continues run 
+
 
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
 
@@ -253,6 +265,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         header.corenum = ppn
 
     struct_des = header.struct_des
+
+    # print type('NaFePO4.pnma')
+    # print struct_des['NaFePO4.pnma']
 
     if not calc:
         calc = header.calc
@@ -296,18 +311,19 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-    if ifolder:
-        if it not in ifolder:
-            print_and_log('Check ifolder !!! it not in ifolder')
+    if ifolder: 
+        if it not in ifolder: # just to be consistent with names
+            print_and_log('Check ifolder !!! it is not in ifolder')
             raise RuntimeError
 
 
 
 
-
-
-    fv = verlist[0]; lv = verlist[-1]; #first version, last version
     
+
+
+
+
 
     if typconv: 
         setlist = varset[ise].conv[typconv] #
@@ -341,6 +357,64 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
+
+    if 'uniform_scale' in calc_method:
+        print_and_log('Starting   uniform_scale  calculation ... ')
+
+        if len(verlist) > 1:
+            print_and_log('Error! Currently   uniform_scale  is allowed only for one version')
+            raise RuntimeError
+        
+
+        it_new = it+'.su'
+        v = verlist[0]
+
+
+        if it_new not in struct_des:
+            add_des(struct_des, it_new, struct_des[it].sfolder, 'uniform_scale: scaled "images" for '+it+'.'+str(setlist)+'.'+str(v)   )
+
+        cl_temp = CalculationVasp()
+        cl_temp.len_units = ''
+        verlist_new = []
+        for inputset in setlist:
+            iid = (it,inputset,v)
+            sts = scale_cell_uniformly(calc[iid].end, parent_calc_name = str(iid))
+            for i, s in enumerate(sts):
+                ver_new = i+1
+                cl_temp.init = s
+                cl_temp.version = ver_new
+                cl_temp.path["input_geo"] = geo_folder + struct_des[it_new].sfolder + '/' + \
+                                            it_new+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'
+
+                cl_temp.write_siman_geo(geotype = "init", 
+                    description = s.des, override = True)
+    
+                verlist_new.append(ver_new)
+            cl_temp.version = 100
+            cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
+            # cl_temp.init = None
+            
+
+        print_and_log(len(sts), 'uniform images have been created.')
+        
+
+
+        iid = ()
+
+
+
+        it      = it_new
+        verlist = verlist_new
+        # sys.exit()
+
+
+
+
+
+
+
+
+
     #inherit option
     if inherit_option in ['full', 'full_nomag', 'r2r3', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
         if inherit_option == 'full':
@@ -358,10 +432,23 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 # print (calc[id].end.magmom)
                 # sys.exit()
                 inherit_icalc(inherit_option, it_new, v, id, calc)
-        setlist = [ise_new,]
+        
+        if ise_new:
+            print_and_log('Inherited calculation uses set', ise_new)
+            setlist = [ise_new,]
+
+        else:
+            print_and_log('Inherited calculation uses the same sets', setlist)
+
         it = it_new
 
 
+
+    """Main Loop by setlist and verlist"""
+    fv = verlist[0]; #first version
+    lv = verlist[-1];#last version
+
+    output_files_names = []
 
 
     for inputset in setlist:
@@ -393,9 +480,19 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 inherit_option, prevcalcver, coord, savefile, input_geo_format, input_geo_file, 
                 schedule_system = schedule_system, 
                 calc_method = calc_method, u_ramping_region = u_ramping_region,
-                mat_proj_st_id = mat_proj_st_id)
+                mat_proj_st_id = mat_proj_st_id,
+                output_files_names = output_files_names
+                )
             
             prevcalcver = v
+
+
+
+        #write batch footer in some cases
+
+
+
+
 
     if up not in ('up1','up2'): 
         print_and_log("Warning! You are in the test mode, please change up to up1; "); 
@@ -417,16 +514,18 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-def add_calculation(structure_name, inputset, version, first_version, last_version, input_folder, blockdir, calc, varset, update = "no",
+def add_calculation(structure_name, inputset, version, first_version, last_version, input_folder, blockdir, 
+    calc, varset, update = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, schedule_system = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None):
+    mat_proj_st_id = None, output_files_names = None):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
 
     prevcalcver - version of previous calculation in verlist
 
+    output_files_names - the list is updated on every call
 
     if inherit_option == 'continue' the previous completed calculation is saved in cl.prev list
 
@@ -484,12 +583,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if not hasattr(calc_method, '__iter__'):
             calc_method = [calc_method]
         calc[id].calc_method = calc_method
-        # if calc_method == None:
-        #     calc[id].calc_method = []
 
-        
         # print calc[id].calc_method 
-
+        # sys.exit()
 
         # calc[id].u_ramping_region = u_ramping_region
         # if hasattr(calc[id].set, 'u_ramping_region'):
@@ -648,24 +744,30 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         if update in ['up1', 'up2']:
+            
+
             calc[id].write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
+            
             out_name = calc[id].write_sge_script(str(version)+".POSCAR", version, inherit_option, prevcalcver, savefile, schedule_system = schedule_system)
             
-            if id[2] == last_version:        
-                calc[id].write_sge_script('footer', schedule_system = schedule_system, option = inherit_option)
-
-
-            # if 'neb' in calc[id].calc_method:
-            #     name_mod = '.U'+str(u).replace('.','')
-            # else:
-            
+                        
             if out_name:
                 calc[id].path["output"] = calc[id].dir+out_name
             else:
                 name_mod = ''
                 calc[id].path["output"] = calc[id].dir+str(version)+name_mod+".OUTCAR" #set path to output
             
-            print 'add_calculation(): outcar = ', calc[id].path["output"]
+
+            output_files_names.append( calc[id].path["output"] )
+
+
+
+            if id[2] == last_version:  #write footer      
+                calc[id].write_sge_script('footer', schedule_system = schedule_system, option = inherit_option, 
+                    output_files_names = output_files_names)
+
+
+            
 
 
 
@@ -679,8 +781,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 calc[id].make_run(schedule_system = schedule_system)
 
 
+
+
+
+
         # if status == "compl": calc[id].state = complete_state #Even if completed state was updated, the state does not change
-        if status == "compl": calc[id].state = '3. Can be completed but was reinitialized' #new behavior 30.08.2016
+        if status == "compl": 
+            calc[id].state = '3. Can be completed but was reinitialized' #new behavior 30.08.2016
 
 
         print_and_log("\nCalculation "+str(id)+" added or updated\n\n")
@@ -701,8 +808,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     id_from = None,
-    atom_new = None, atom_to_replace = None,  used_cell = 'end', atom_to_remove = None, id_from_used_cell = 'end',
-    atom_to_shift = None, shift_vector = None):
+    atom_new = None, atom_to_replace = None,  id_base_st_type = 'end', atom_to_remove = None, id_from_st_type = 'end',
+    atom_to_shift = None, shift_vector = None,
+    it_folder = None
+    ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
     Input args: 
@@ -720,11 +829,14 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             replace_atoms - atoms of type 'atom_to_replace' in 'id_base' will be replaced by 'atom_new' type.
             make_vacancy  - produce vacancy by removing 'atom_to_remove' starting from 0
 
-        used_cell - use init or end structure of id_base calculation. Now realized only for 'replace_atoms' regime of inheritance
-
+        id_base_st_type - use init or end structure of id_base calculation.
+        id_from_st_type  - init or end for id_from
 
         atom_to_shift - number of atom to be shifted; starting from 1.
         shift_vector - vector in decart cooridinates (Angstrom!!) by which the atom will be shifted
+
+        - it_folder - section folder
+
 
 
     Result: 
@@ -741,7 +853,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     Comments: 
         changes len_units of new to Angstrom!!!
         !nznucl is not calculated, since only geo is created here!
-
+        take care of magmom, not implemented
+        make use of new methods for atom manipulation
+        add to des which type of st is used: 'end', 'init'
 
     """
 
@@ -780,9 +894,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             calc_from = calc[id_from]
             calc_from_name = calc_from.name
 
-        if id_from_used_cell == 'end':
+        if id_from_st_type == 'end':
             st_from = calc_from.end
-        elif id_from_used_cell == 'init':
+        elif id_from_st_type == 'init':
             st_from = calc_from.init
 
 
@@ -801,57 +915,63 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
   
 
 
+
     new = copy.deepcopy(  cl_base  )
-    # print new.end.magmom
-    # sys.exit()
+
     new.len_units = 'Angstrom' #! Because from VASP
 
 
-    new.path["input_geo"] = geo_folder + struct_des[it_new].sfolder + '/' + \
-        it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
-    print 'new.path', new.path["input_geo"]
+
     new.version = ver_new
+
+    if id_base_st_type == 'init':
+        st = new.init
+    elif id_base_st_type == 'end':
+        st = new.end
+
+
+
 
     if inherit_type == "r2r3":
         des = ' Partly inherited from the final state of '+cl_base.name+'; r2 and r3 from '+calc_from_name
-        new.des = struct_des[it_new].des + des
-        new.end.rprimd[1] = st_from.rprimd[1].copy()
-        new.end.rprimd[2] = st_from.rprimd[2].copy()       
-        new.write_geometry("end",des)
+        # new.des = struct_des[it_new].des + des
+        st.rprimd[1] = st_from.rprimd[1].copy()
+        st.rprimd[2] = st_from.rprimd[2].copy()       
+        # new.write_geometry("end",des)
 
     elif inherit_type == "r1r2r3":
         des = ' Partly inherited from the final state of '+cl_base.name+'; r1, r2, r3 from '+calc_from_name
-        new.des = struct_des[it_new].des + des
-        new.end.rprimd = copy.deepcopy( st_from.rprimd )
+        # new.des = struct_des[it_new].des + des
+        st.rprimd = copy.deepcopy( st_from.rprimd )
         new.hex_a = calc_from.hex_a
         new.hex_c = calc_from.hex_c
-        new.end.xcart = xred2xcart(new.end.xred, new.end.rprimd) #calculate new xcart from xred, because rprimd was changed
-        new.write_geometry("end",des)
+        st.xcart = xred2xcart(new.end.xred, new.end.rprimd) #calculate new xcart from xred, because rprimd was changed
+        # new.write_geometry("end",des)
 
 
     elif inherit_type == "full":
         print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
         des = 'Fully inherited from the final state of '+cl_base.name
-        new.des = des + struct_des[it_new].des
-        new.write_geometry("end",des)
+        # new.des = des + struct_des[it_new].des
+        # new.write_geometry("end",des)
 
     elif inherit_type == "full_nomag":
         # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
-        des = 'Fully inherited from the final state of '+cl_base.name+'; "magmom" set to None'
-        new.des = des + struct_des[it_new].des
-        new.end.magmom = None
-        new.write_geometry("end",des)
+        des = 'Fully inherited from the final state of '+cl_base.name+'; "magmom" set to [None]'
+        # new.des = des + struct_des[it_new].des
+        st.magmom = [None]
+        # new.write_geometry("end",des)
 
 
 
     elif inherit_type == "atom_shift":
         des = 'obtainded from final state of '+cl_base.name+' by shifting atom '+ str(atom_to_shift) +' by '+ str(shift_vector)
-        new.des = des + struct_des[it_new].des
+        # new.des = des + struct_des[it_new].des
         
-        new.end.xcart[atom_to_shift-1] += np.asarray(shift_vector) 
-        new.end.xred = xcart2xred(new.end.xcart, new.end.rprimd)
-        new.write_geometry("end",des)
-        write_xyz(new.end)
+        st.xcart[atom_to_shift-1] += np.asarray(shift_vector) 
+        st.xred = xcart2xred(new.end.xcart, new.end.rprimd)
+        # new.write_geometry("end",des)
+        # write_xyz(new.end)
 
 
 
@@ -860,23 +980,25 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         Assumed that typat == 1 is matrix atoms
         """
         des = 'All impurities removed from the final state of '+cl_base.name
-        new.des = des + struct_des[it_new].des
+        # new.des = des + struct_des[it_new].des
      
-        st = cl_base.end
-        new.end.typat = []
-        new.end.xred = []
-        new.end.xcart = []
-        new.end.ntypat = 1
-        new.end.znucl = new.end.znucl[0:1]
-        for i, t in enumerate(st.typat):
+        st_copy = copy.deepcopy(st)
+        st.typat = []
+        st.xred = []
+        st.xcart = []
+        st.ntypat = 1
+        st.znucl = st.znucl[0:1]
+        for i, t in enumerate(st_copy.typat):
             if t == 1:
-                new.end.typat.append(t)
-                new.end.xred.append(st.xred[i])
-                new.end.xcart.append(st.xcart[i])
-        new.end.natom = len(new.end.xred)
-        new.init = new.end #just for sure
+                st.typat.append(t)
+                st.xred.append(st_copy.xred[i])
+                st.xcart.append(st_copy.xcart[i])
+        st.natom = len(st.xred)
+        # new.init = new.end #just for sure
         new.write_geometry("end",des)        
         write_xyz(new.end)
+
+
 
     elif inherit_type == "make_vacancy":
         """Remove  atom 'atom_to_remove' from final state of id_base"""
@@ -887,9 +1009,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         raise RuntimeError
 
         des = 'Atom '+str(atom_to_remove)+' removed from  '+cl_base.name
-        new.des = des + struct_des[it_new].des
+        # new.des = des + struct_des[it_new].des
 
-        st = new.end
+        # st = new.end
         del st.typat[atom_to_remove]
         del st.xcart[atom_to_remove]
         del st.xred[atom_to_remove]
@@ -899,14 +1021,14 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             znucl_new.append( st.znucl[t-1]  )
         st.znucl = znucl_new
         st.natom -=1
-        new.write_geometry("end", des)      
+        # new.write_geometry("end", des)      
 
         #make visualization by adding to vacancy hydrogen atom
-        st = copy.deepcopy(cl_base.end)
-        st.typat[atom_to_remove] = max(st.typat)+1
-        st.ntypat+=1
-        st.znucl.append(1)
-        write_xyz(st, file_name = "test_of_vacancy_creation."+str(new.version)+"."+st.name)
+        st_b_copy = copy.deepcopy(cl_base.end)
+        st_b_copy.typat[atom_to_remove] = max(st_b_copy.typat)+1
+        st_b_copy.ntypat+=1
+        st_b_copy.znucl.append(1)
+        write_xyz(st_b_copy, file_name = "test_of_vacancy_creation."+str(new.version)+"."+st_b_copy.name)
 
 
 
@@ -919,10 +1041,6 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         z_replace = element_name_inv(atom_to_replace)
 
 
-        if used_cell == 'init':
-            st = new.init
-        elif used_cell == 'end':
-            st = new.end
 
 
         znucl = st.znucl
@@ -957,15 +1075,45 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
 
-        des = 'Fully inherited from the '+ used_cell +' state of '+cl_base.name+\
+        des = 'Fully inherited from the '+ id_base_st_type +' state of '+cl_base.name+\
         ' by simple replacing of '+atom_to_replace+' by '+atom_new
 
-        new.des = des + struct_des[it_new].des
-        new.write_geometry(used_cell, des)
+        # new.des = des #+ struct_des[it_new].des
         # write_xyz(st)
 
     else:
         print_and_log("Error! Unknown type of Calculation inheritance"); raise RuntimeError
+
+
+
+    
+
+
+    #auto addition of description
+
+
+    if it_new not in struct_des: 
+        add_des(struct_des, it = it_new, it_folder = it_folder, des = 'auto '+des)
+        new.des =  struct_des[it_new].des
+
+    else:
+        new.des = des + struct_des[it_new].des
+
+
+    new.path["input_geo"] = geo_folder + struct_des[it_new].sfolder + '/' + \
+        it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+    print_and_log('Path for inherited calc=', new.path["input_geo"])
+   
+
+
+    #write files
+    new.write_geometry(id_base_st_type, des)
+    write_xyz(st)
+
+
+
+
+
     return
 
 

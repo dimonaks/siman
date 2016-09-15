@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*- 
+from __future__ import division, unicode_literals, absolute_import 
+
 from __future__ import print_function
 # from __future__ import division, unicode_literals, absolute_import 
 
@@ -55,9 +57,13 @@ class Structure():
     def __init__(self):
         self.name = ""
         self.des = ''
+        self.hex_a = None
+        self.hex_c = None
+        self.gbpos = None
         self.rprimd = [np.zeros((3)) for i in 0,1,2]
         self.xcart = []
         self.xred = []
+        self.magmom = []
 
     def xcart2xred(self,):
         self.xred = xcart2xred(self.xcart, self.rprimd)
@@ -68,7 +74,10 @@ class Structure():
 
     def add_atoms(self, atoms_xcart, element = 'Pu'):
         """
-        appends at the end. Takes care of ntypat, typat, znucl, nznucl, xred and natom
+        appends at the end. Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
+        
+        magmom is appended with 0.6, please take care of magnetic elements 
+
         Returns Structure()
         """
 
@@ -112,6 +121,8 @@ class Structure():
 
         st.typat.extend( [typ]*natom_to_add )
 
+        if any(st.magmom):
+            st.magmom.extend( [0.6]*natom_to_add  )
 
 
         return st
@@ -134,6 +145,16 @@ class Structure():
         del st.typat[i]
         del st.xred[i]
         del st.xcart[i]
+
+        # print ('Magmom deleted?')
+        if any(st.magmom):
+            del st.magmom[i]
+            # print ('Yes!')
+        else:
+            ''
+            # print ('No!')
+
+
 
         st.natom-=1
 
@@ -178,9 +199,20 @@ class Structure():
         z = element_name_inv(atom_type)
 
         new_xred = []
-        for t, xr in zip(st.typat, st.xred):
-            if st.znucl[t-1] == z:
-                new_xred.append(xr)
+        
+        if any(st.magmom):
+            new_magmom = []
+            for t, xr, m in zip(st.typat, st.xred, st.magmom):
+                if st.znucl[t-1] == z:
+                    new_xred.append(xr)
+                    new_magmom.append(m)
+        else:
+            for t, xr in zip(st.typat, st.xred):
+                if st.znucl[t-1] == z:
+                    new_xred.append(xr)
+
+
+        st.magmom = new_magmom
 
         st.xred = new_xred
 
@@ -216,7 +248,7 @@ class Structure():
         # print type(atoms_xcart)
 
 
-class Calculation():
+class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation"""
     def __init__(self, inset = None):
         #super(CalculationAbinit, self).__init__()
@@ -356,7 +388,9 @@ class Calculation():
 
 
 
-
+            self.init.hex_a = self.hex_a
+            self.init.hex_c = self.hex_c
+            self.init.gbpos = self.gbpos
             self.init.name = self.name+'.init'
             self.init.xcart = self.xcart 
             self.init.xred = self.xred
@@ -436,17 +470,24 @@ class Calculation():
         with open(self.path["input_geo"],"w") as f:
             f.write("des "+description+"\n")
             f.write("len_units "+self.len_units+"\n")
-            f.write("hex_a "+str(self.hex_a)+"\n")
-            f.write("hex_c "+str(self.hex_c)+"\n")
-            try: self.gbpos
-            except AttributeError:
-                self.gbpos = None
-            f.write("gbpos "+str(self.gbpos)+"\n")
+            
+            if hasattr(st, 'hex_a'):
+                f.write("hex_a "+str(st.hex_a)+"\n")
+            if hasattr(st, 'hex_c'):
+                f.write("hex_c "+str(st.hex_c)+"\n")
+
+            # try: self.gbpos
+            # except AttributeError:
+            #     self.gbpos = None
+            if hasattr(st, 'gbpos'):
+                f.write("gbpos "+str(st.gbpos)+"\n")
+            
+
             f.write("version "+str(self.version)+"\n")
             
             try: st.magmom
             except AttributeError:
-                st.magmom = None
+                st.magmom = [None]
             # print st.magmom 
             # sys.exit()
             if any(st.magmom):
@@ -532,9 +573,11 @@ class CalculationAbinit(Calculation):
 
 
 
-
 class CalculationVasp(Calculation):
     """Methods for calculations made using VASP DFT code"""
+    def __init__(self, inset = None):
+        super(CalculationVasp, self).__init__(inset)
+        self.len_units = 'Angstrom'
 
 
 
@@ -544,7 +587,6 @@ class CalculationVasp(Calculation):
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
         
-        self.len_units = 'Angstrom'
         self.hex_a = None
         self.hex_c = None
         self.gbpos = None
@@ -617,8 +659,6 @@ class CalculationVasp(Calculation):
                 
             elif "dir" in type_of_coordinates or 'Dir' in type_of_coordinates:
                 for nz in st.nznucl:
-
-
 
                     for i in range(nz):
                         vec = f.readline().split()
@@ -914,7 +954,7 @@ class CalculationVasp(Calculation):
         # print self.set.vasp_params
 
         # print self.set.vasp_params['MAGMOM']
-        if hasattr(self.init, 'magmom') and any(self.init.magmom) and self.init.magmom[0]:
+        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and any(self.init.magmom):
 
             print_and_log('Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
@@ -1132,7 +1172,9 @@ class CalculationVasp(Calculation):
 
 
 
-    def write_sge_script(self, input_geofile = "header", version = 1, option = None, prevcalcver = None, savefile = None, schedule_system = None):
+    def write_sge_script(self, input_geofile = "header", version = 1, option = None, 
+        prevcalcver = None, savefile = None, schedule_system = None,
+        output_files_names = None):
         """Without arguments writes header, else adds sequence of calculatios
             option - 'inherit_xred' - control inheritance, or 'master' - run serial on master 
             prevcalcver - ver of previous calc; for first none
@@ -1541,7 +1583,8 @@ class CalculationVasp(Calculation):
                 # f.write("\n")
 
 
-        else: #footer
+        else: 
+            """footer"""
             with open(run_name,'a') as f: #append information about run
 
                 if neb_flag:
@@ -1636,11 +1679,39 @@ class CalculationVasp(Calculation):
                     # for n in range
 
 
+
+                # print (calc[id].calc_method )
+                # sys.exit()
+                if 'uniform_scale' in self.calc_method:
+                    # print (input_geofile)
+                    
+                    f.write("\n\n#Starting fitting tool \n")
+
+                    outputs = [ os.path.basename(out) for out in output_files_names ]
+                    f.write('~/tools/fit_tool.py '+list2string(outputs)+'\n' )
+                    f.write('cp 100.POSCAR POSCAR \n')
+                    run_command(option = option, name = (self.id[0]+'.'+self.id[1]+'.100'), 
+                        parrallel_run_command = parrallel_run_command, write = True)
+                    mv_files_according_versions('co', '100', name_mod = '', write = True, rm_chg_wav = 'cw')
+
+                    # sys.exit()
+
+
+
+
+
+
+
                 #clean 
                 f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
 
 
+
+
             runBash('chmod +x '+run_name)
+
+
+
 
 
         if hasattr(self, 'associated_outcars') and  self.associated_outcars:
@@ -2016,8 +2087,10 @@ class CalculationVasp(Calculation):
                 #if "Total" in line:
                     #gstress.append( red_prec(float(line.split()[4])*1000 *100, 1000 )  )
                 if "volume of cell" in line:
-                    try:                     self.end.vol = float(line.split()[4])
-                    except ValueError: print_and_log("Warning! Cant read volume in calc "+self.name+"\n")
+                    try:                     
+                        self.end.vol = float(line.split()[4])
+                    except ValueError: 
+                        print_and_log("Warning! Cant read volume in calc "+self.name+"\n")
                     #print self.vol      
 
                 if "generate k-points for:" in line: 
@@ -2142,7 +2215,7 @@ class CalculationVasp(Calculation):
             #else: maxdrift = 
             # print magn
             
-            self.end.magmom = tot_mag_by_atoms[-1]
+            self.end.magmom = tot_mag_by_atoms[-1].tolist()
 
             """Try to read xred from CONCAR and calculate xcart"""
 
