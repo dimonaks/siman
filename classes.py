@@ -147,7 +147,7 @@ class Structure():
         del st.xcart[i]
 
         # print ('Magmom deleted?')
-        if any(st.magmom):
+        if hasattr(st, 'magmom') and any(st.magmom):
             del st.magmom[i]
             # print ('Yes!')
         else:
@@ -199,9 +199,9 @@ class Structure():
         z = element_name_inv(atom_type)
 
         new_xred = []
+        new_magmom = []
         
-        if any(st.magmom):
-            new_magmom = []
+        if hasattr(st, 'magmom') and any(st.magmom):
             for t, xr, m in zip(st.typat, st.xred, st.magmom):
                 if st.znucl[t-1] == z:
                     new_xred.append(xr)
@@ -1688,6 +1688,7 @@ class CalculationVasp(Calculation):
                     f.write("\n\n#Starting fitting tool \n")
 
                     outputs = [ os.path.basename(out) for out in output_files_names ]
+                    f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
                     f.write('~/tools/fit_tool.py '+list2string(outputs)+'\n' )
                     f.write('cp 100.POSCAR POSCAR \n')
                     run_command(option = option, name = (self.id[0]+'.'+self.id[1]+'.100'), 
@@ -2260,6 +2261,10 @@ class CalculationVasp(Calculation):
             yznormal = np.cross(self.init.rprimd[1], self.init.rprimd[2])
             #print yznormal
             #print np.cross( yznormal, np.array([1,0,0]) )
+            if not hasattr(self.init, 'gbpos'):
+                self.init.gbpos = None#for compatability
+
+            self.gbpos = self.init.gbpos #for compatability
             if self.gbpos:
                 if any( np.cross( yznormal, np.array([1,0,0]) ) ) != 0: 
                     print_and_log("Warning! The normal to yz is not parallel to x. Take care of gb area\n")
@@ -2382,27 +2387,29 @@ class CalculationVasp(Calculation):
                     plt.show()
 
             if 'mag' in show:
+                print ('\n\n\n')
                 # print_and_log
                 # print 'Final mag moments for atoms:'
                 # print np.arange(self.end.natom)[ifmaglist]+1
                 # print np.array(tot_mag_by_atoms)
-                print ('Dist from 1st atom to Fe atoms:, please make me more general')
                 sur   = local_surrounding(self.end.xcart[0], self.end, n_neighbours = 4, control = 'atoms', 
                 periodic  = True, only_elements = [26,])
                 dist = np.array(sur[3]).round(2)
                 numb = np.array(sur[2])
-                for mag in tot_mag_by_atoms:
-                    print (mag[numb].round(3))
+                # for mag in tot_mag_by_atoms:
+                print ('first step ', tot_mag_by_atoms[0][numb].round(3) )
+                print ('last  step ', tot_mag_by_atoms[-1][numb].round(3) )
 
                     # sys.exit()
-
-                print ( [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(np.array(sur[3]).round(2), np.array(sur[2])+1) ] )
+                print ('Dist from 1st atom to Fe atoms:, please make me more general')
+                print ('dist:atom = ', 
+                [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(  np.array(sur[3]).round(2), np.array(sur[2])+1  )  ] )
 
                 self.tot_mag_by_atoms = tot_mag_by_atoms
                 plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
                 # plt.plot(np.array(sur[3]).round(2), tot_mag_by_atoms[-1][numb]) mag vs dist for last step
                 
-                print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
+                # print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
                 # plt.show()
 
 

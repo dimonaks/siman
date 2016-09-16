@@ -13,13 +13,18 @@ from pymatgen.io.vasp.inputs import Poscar
 
 from operator import itemgetter
 
+sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to siman library
+from ase.utils.eos import EquationOfState
+
+
+
 log             = header.log
 geo_folder      = header.geo_folder
 cluster_address = header.cluster_address
 corenum         = header.corenum
 project_path_cluster = header.project_path_cluster
 pmgkey          = header.project_conf.pmgkey
-
+path_to_images = header.path_to_images
 
 
 def clean_run(schedule_system = None):
@@ -183,7 +188,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
     coord = 'direct', savefile = 'oc', show = None, comment = None, 
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, ppn = None,
-    calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None):
+    calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None,
+    scale_region = None, n_scale_images = 7,
+    ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
 
@@ -373,14 +380,18 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         if it_new not in struct_des:
             add_des(struct_des, it_new, struct_des[it].sfolder, 'uniform_scale: scaled "images" for '+it+'.'+str(setlist)+'.'+str(v)   )
 
-        cl_temp = CalculationVasp()
-        cl_temp.len_units = ''
+
         verlist_new = []
         for inputset in setlist:
+            cl_temp = CalculationVasp(varset[inputset])
             iid = (it,inputset,v)
-            sts = scale_cell_uniformly(calc[iid].end, parent_calc_name = str(iid))
+            write_xyz(calc[iid].end, file_name =calc[iid].end.name+'_used_for_scaling')
+
+            sts = scale_cell_uniformly(calc[iid].end, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = str(iid))
+            
             for i, s in enumerate(sts):
                 ver_new = i+1
+                s.name = it_new+'.'+s.name
                 cl_temp.init = s
                 cl_temp.version = ver_new
                 cl_temp.path["input_geo"] = geo_folder + struct_des[it_new].sfolder + '/' + \
@@ -388,18 +399,28 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
                 cl_temp.write_siman_geo(geotype = "init", 
                     description = s.des, override = True)
-    
+                write_xyz(s)
                 verlist_new.append(ver_new)
+            #make version 100
             cl_temp.version = 100
             cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
+            cl_temp.id = (it_new, inputset, 100)
+            cl_temp.state = '2.ready to read outcar'
+            blockdir = struct_des[it_new].sfolder+"/"+varset[inputset].blockfolder #calculation folder
+            iid = cl_temp.id          
+            cl_temp.name = str(iid[0])+'.'+str(iid[1])+'.'+str(iid[2])
+            cl_temp.dir = blockdir+"/"+ str(iid[0]) +'.'+ str(iid[1])+'/'
+            cl_temp.path["output"] = cl_temp.dir+'100.OUTCAR'
+            cl_temp.cluster_address      = header.cluster_address
+            cl_temp.project_path_cluster = header.project_path_cluster
+            calc[cl_temp.id] = cl_temp
             # cl_temp.init = None
-            
+
 
         print_and_log(len(sts), 'uniform images have been created.')
         
 
 
-        iid = ()
 
 
 
@@ -1178,7 +1199,11 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         matr - key of bulk cell with pure matrix.
 
 
-        show - (str), allows to show additional information (force)
+        - show - (str), allows to show additional information:
+            - mag - magnetic moments on magnetic atoms 
+            - en  - convergence of total energy vs max force
+            - mep - neb path
+            - fo  - max force on each md step
 
         energy_ref - energy in eV; substracted from energy diffs
         
@@ -1341,8 +1366,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
             outst2 = ("%s"%calc[id].name).ljust(name_field_length)
-            outst2+='&'
-            # print outst2+'&'            
+            outst2+='|'
             outst_end = '' 
             
             if   b_id :
@@ -1655,7 +1679,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             a0 = {1} A
             E0 = {2} eV
             B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B)
-            eos.plot("images/fit_a.png", show = True)
+            eos.plot(path_to_images+'/fit_a.png', show = True)
 
             # my_plot(xlim = (2.79, 2.86),
             #     # etotl = (alist, etotlist, '-'),  
@@ -1740,7 +1764,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-            final_outstring = ("{:} & {:.2f} eV \n".format(id[0]+'.'+id[1], redox  ))
+            final_outstring = ("{:} | {:.2f} eV \n".format(id[0]+'.'+id[1], redox  ))
             
             print final_outstring
 
@@ -1759,8 +1783,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             name_without_ext = 'mep.'+itise
             path2mep_l = cl.dir+name_without_ext+'.eps'
             if not os.path.exists(path2mep_l) or '2' in up:
-                get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address)
-                get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address)
+                ''
+                get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address, )
+                get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address, )
             
             if push2archive:
                 shutil.copy(path2mep_l, header.project_conf.path_to_images)
@@ -1768,65 +1793,76 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 
                 figfile = '{{'+name_without_ext+'}}'
                 figlabel = itise
-                print(
-                "\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n" 
+                tex_text = \
+                ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
                 "\caption{{\label{{fig:{:s}}} {:s} }}\n"
-                "\end{{figure}}\n".format(figfile, figlabel, description_for_archive+' for '+figlabel )
-                    )
-
+                "\end{{figure}}\n").format(figfile, figlabel, description_for_archive+' for '+figlabel )
+                print (tex_text)
+                with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+') as f:
+                    if tex_text not in f.read():
+                        f.write(tex_text)
 
 
             # print path2mep_l
-            if os.path.exists(path2mep_l) and 'mep' in show:
-                # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
+            if 'mep' in show:
+                if os.path.exists(path2mep_l):
+                    # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
 
-                runBash('evince '+path2mep_l)
-            else:
-                a =  glob.glob(cl.dir+'*mep*')
-                if a:
-                    runBash('evince '+a[0])
+                    runBash('evince '+path2mep_l)
+                else:
+                    a =  glob.glob(cl.dir+'*mep*')
+                    if a:
+                        runBash('evince '+a[0])
 
                 # print (a)
 
             # trying to get one image closest to the saddle point
             if cl.version == 2:
                 im = cl.set.vasp_params['IMAGES']
-                if im % 2 > 0: #odd
-                    i = im//2 + 1
-                else:
-                    i = im/2
-                # i = 2 #chose image
-                if choose_image:
-                    i = choose_image
-                cl_i = copy.deepcopy(cl)
-                cl_i.version+=i
-                cl_i.id = (cl.id[0], cl.id[1], cl_i.version)
-                cl_i.name = str(cl_i.id[0])+'.'+str(cl_i.id[1])+'.'+str(cl_i.id[2])
-                # print cl_i.name
-                cl_i.path["output"] = cl_i.dir+'0'+str(i)+"/OUTCAR"
-                # for i in range():
+                # if im % 2 > 0: #odd
+                #     i = im//2 + 1
+                # else:
+                #     i = im/2
+                # if choose_image:
+                #     i = choose_image
 
-                cl_i.associated_outcars = [ aso[2:] for aso in cl_i.associated_outcars  ]
+                for i in range(im):
+                    i+=1
+                    cl_i = copy.deepcopy(cl)
+                    cl_i.version+=i
+                    cl_i.id = (cl.id[0], cl.id[1], cl_i.version)
+                    cl_i.name = str(cl_i.id[0])+'.'+str(cl_i.id[1])+'.'+str(cl_i.id[2])
+                    # print cl_i.name
+                    cl_i.path["output"] = cl_i.dir+'0'+str(i)+"/OUTCAR"
+                    # for i in range():
 
-                # print cl_i.path["output"] 
-                cl_i.state = '2. Ready to read outcar'
-                # if not os.path.exists(cl_i.path["output"]):
-                #     load = 'o'
-                outst2 = ("%s"%cl_i.name).ljust(name_field_length)
+                    cl_i.associated_outcars = [ aso[2:] for aso in cl_i.associated_outcars  ]
 
-                print outst2+'&'+cl_i.read_results(loadflag, show = show, choose_outcar = choose_outcar)
+                    # print cl_i.path["output"] 
+                    cl_i.state = '2. Ready to read outcar'
+                    # if not os.path.exists(cl_i.path["output"]):
+                    #     load = 'o'
+                    outst2 = ("%s"%cl_i.name).ljust(name_field_length)
+                    if readfiles:
+                        print(outst2+'|'+cl_i.read_results(loadflag, show = show, choose_outcar = choose_outcar) )
+                    else:
+                        print_and_log(outst2+' | File was not read')
+                    
 
-                if cl_i.id in calc:
-                    print_and_log('Please test code below this message to save prev calcs')
-                    # if cl_i != calc[cl_i.id]
-                    #     if hasattr(calc[cl_i.id], 'prev') and calc[cl_i.id].prev:
-                    #         prevlist = calc[cl_i.id].prev
-                    #     else:
-                    #         prevlist = [calc[cl_i.id]]
-                    #     cl_i.prev = prevlist
-                    #     calc[cl_i.id] = cl_i
-                else:
-                    calc[cl_i.id] = cl_i
+                    if cl_i.id in calc: #move creation of calcs with images to add_neb
+                        ''
+                        # print_and_log('Please test code below this message to save prev calcs')
+                        # if cl_i != calc[cl_i.id]
+                        #     if hasattr(calc[cl_i.id], 'prev') and calc[cl_i.id].prev:
+                        #         prevlist = calc[cl_i.id].prev
+                        #     else:
+                        #         prevlist = [calc[cl_i.id]]
+                        #     cl_i.prev = prevlist
+                        #     calc[cl_i.id] = cl_i
+                    else:
+                        calc[cl_i.id] = cl_i
+
+
 
                 if 0: #copy files according to chosen outcar to run nebresults locally 
                     wd = cl_i.dir

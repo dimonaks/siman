@@ -18,13 +18,14 @@ def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_c
     scales = np.linspace(scale_region[0], scale_region[1], n_scale_images)
     # print scales
     scaled_sts = []
-    for s in scales:
+    for j, s in enumerate(scales):
         st_s = copy.deepcopy(st)
         for i in (0,1,2):
             st_s.rprimd[i] *= (1 + s/100.)
 
         st_s.xred2xcart()
         st_s.des = 'obtained from '+str(parent_calc_name)+' by uniform scaling by '+str(s)+' %'
+        st_s.name = str(j+1)
         scaled_sts.append(st_s)
         # print st_s.rprimd
 
@@ -404,6 +405,8 @@ def xred2xcart(xred, rprimd):
 
 def return_atoms_to_cell(st):
 
+
+    st = copy.deepcopy(st)
     bob = 0; upb = 1;
     n = 0 
     # print st.xred
@@ -747,7 +750,8 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
 
                 f.write( "%.5f %.5f %.5f \n"%( xcart[i][0], xcart[i][1], xcart[i][2] ) )
 
-
+            for r in st.rprimd:
+                f.write('Tv {:.10f} {:.10f} {:.10f}\n'.format(*r)  )
 
 
     # os._exit(1)

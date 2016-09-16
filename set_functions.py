@@ -272,10 +272,11 @@ class InputSet():
 
 
     def set_potential(self,znucl, arg):
-        
-        if type(arg) is not str:
-            sys.exit("\nset_potential error\n")
-        
+        # print arg
+        if type(arg) not in (str, unicode):
+            # sys.exit("\nset_potential error\n")
+            raise RuntimeError
+
         if znucl in self.potdir:
             if arg == self.potdir[znucl]:
                 print_and_log( "Warning! You already have the same potential for "+str(znucl)+" element\n" )
