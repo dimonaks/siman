@@ -22,6 +22,7 @@ def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_c
         st_s = copy.deepcopy(st)
         for i in (0,1,2):
             st_s.rprimd[i] *= (1 + s/100.)
+        print st_s.rprimd
 
         st_s.xred2xcart()
         st_s.des = 'obtained from '+str(parent_calc_name)+' by uniform scaling by '+str(s)+' %'

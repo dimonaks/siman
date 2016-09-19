@@ -248,6 +248,15 @@ class Structure():
         # print type(atoms_xcart)
 
 
+
+    # def sum_of_coord(self):
+    #     sumx = 0
+    #     for x in self.xcart:
+    #         sumx+=x
+    #     sumx/=len(self.xcart)
+    #     return sumx
+
+
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation"""
     def __init__(self, inset = None):
@@ -2215,8 +2224,8 @@ class CalculationVasp(Calculation):
                 pass
             #else: maxdrift = 
             # print magn
-            
-            self.end.magmom = tot_mag_by_atoms[-1].tolist()
+            if tot_mag_by_atoms:
+                self.end.magmom = tot_mag_by_atoms[-1].tolist()
 
             """Try to read xred from CONCAR and calculate xcart"""
 

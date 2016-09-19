@@ -6,7 +6,8 @@ import header
 from header import print_and_log, runBash
 from classes import CalculationVasp, Description
 from functions import gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 from pymatgen.matproj.rest import MPRester
 from pymatgen.io.vasp.inputs import Poscar
@@ -262,6 +263,10 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         !Check To create folders and add calculations add_flag should have value 'add' 
 
 
+    TODO:
+    Now number of images is taken from self.set.vasp_params['IMAGES']; 
+    In the case of generalization to other codes, set.nimages should be added and used
+
     """
 
     header.close_run = True
@@ -366,7 +371,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
     if 'uniform_scale' in calc_method:
-        print_and_log('Starting   uniform_scale  calculation ... ')
+        print_and_log('Preparing   uniform_scale  calculation ... ')
 
         if len(verlist) > 1:
             print_and_log('Error! Currently   uniform_scale  is allowed only for one version')
@@ -423,14 +428,13 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-
         it      = it_new
         verlist = verlist_new
         # sys.exit()
 
 
 
-
+    write_batch_list = [True for v in verlist] #which version should be written in batch_script - not used now
 
 
 
@@ -490,10 +494,13 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         for v in verlist:
             id = (it,inputset,v)
             
-            if typconv and id not in conv[nc]: conv[nc].append(id)
+            if typconv and id not in conv[nc]: 
+                conv[nc].append(id)
             
-            try: blockfolder = varset[inputset].blockfolder
-            except AttributeError: blockfolder = varset[ise].blockfolder
+            try: 
+                blockfolder = varset[inputset].blockfolder
+            except AttributeError: 
+                blockfolder = varset[ise].blockfolder
             
             blockdir = struct_des[it].sfolder+"/"+blockfolder #calculation folder
 
@@ -510,6 +517,66 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
         #write batch footer in some cases
+
+
+    if 'neb' in calc_method:
+        if len(setlist) > 1:
+            print_and_log('In "neb" mode only one set is allowed' )
+            raise RuntimeError
+        print_and_log('Preparing   neb  calculation ... ')
+
+        #create necessary calculations without
+        nimages = varset[setlist[0]].vasp_params['IMAGES']
+        # verlist+=[ 3+v for v in range(nimages)  ] #list of images starts from 3 (1 and 2 are final and start)
+
+        # write_batch_list+=[False for v in range(nimages)] #not used now
+
+        #probably the add_calculation() should be used instead of the duplicating for code below, but then 
+        #the creation of footer should be taken out
+        #from add_calculation and put in add_loop() in the end.
+        cl = calc[it, setlist[0], 2]
+        
+        for i in range(nimages):
+            i+=3
+            cl_i = copy.deepcopy(cl)
+            cl_i.version = i
+            cl_i.id = (cl.id[0], cl.id[1], cl_i.version)
+            cl_i.name = str(cl_i.id[0])+'.'+str(cl_i.id[1])+'.'+str(cl_i.id[2])
+            
+            n = i - 2
+            if n < 10:
+                n_st = '0'+str(n)
+            elif n < 100:
+                n_st = str(n)
+
+
+            cl_i.path["output"] = cl_i.dir + n_st + "/OUTCAR"
+            print_and_log(i , cl_i.path["output"], 'overwritten in database')
+
+
+            cl_i.state = '2. Ready to read outcar'
+
+            if cl_i.id in calc: # for 'continue' mode the add_calculation() takes care, but here it should be
+                                # repeated. Again think about using only add_calculation and  write_batch_list
+                ''
+                # print_and_log('Please test code below this message to save prev calcs')
+                # if cl_i != calc[cl_i.id]
+                #     if hasattr(calc[cl_i.id], 'prev') and calc[cl_i.id].prev:
+                #         prevlist = calc[cl_i.id].prev
+                #     else:
+                #         prevlist = [calc[cl_i.id]]
+                #     cl_i.prev = prevlist
+                #     calc[cl_i.id] = cl_i
+            else:
+                ''
+            calc[cl_i.id] = cl_i
+
+
+
+
+
+
+
 
 
 
@@ -1169,7 +1236,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
-    description_for_archive = None):
+    description_for_archive = None, old_behaviour  = False):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -1787,37 +1854,11 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address, )
                 get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address, )
             
-            if push2archive:
-                shutil.copy(path2mep_l, header.project_conf.path_to_images)
-                print_and_log('push2archive:', path2mep_l, 'copied to', header.project_conf.path_to_images, imp = 'y')
-                
-                figfile = '{{'+name_without_ext+'}}'
-                figlabel = itise
-                tex_text = \
-                ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
-                "\caption{{\label{{fig:{:s}}} {:s} }}\n"
-                "\end{{figure}}\n").format(figfile, figlabel, description_for_archive+' for '+figlabel )
-                print (tex_text)
-                with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+') as f:
-                    if tex_text not in f.read():
-                        f.write(tex_text)
 
 
-            # print path2mep_l
-            if 'mep' in show:
-                if os.path.exists(path2mep_l):
-                    # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
-
-                    runBash('evince '+path2mep_l)
-                else:
-                    a =  glob.glob(cl.dir+'*mep*')
-                    if a:
-                        runBash('evince '+a[0])
-
-                # print (a)
 
             # trying to get one image closest to the saddle point
-            if cl.version == 2:
+            if old_behaviour and cl.version == 2: #old behaviour, now created automatically in add callc
                 im = cl.set.vasp_params['IMAGES']
                 # if im % 2 > 0: #odd
                 #     i = im//2 + 1
@@ -1861,6 +1902,91 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                         #     calc[cl_i.id] = cl_i
                     else:
                         calc[cl_i.id] = cl_i
+
+
+
+
+
+
+            # print path2mep_l
+            if 'mep' in show:
+                if 0:
+                    if os.path.exists(path2mep_l):
+                        # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
+
+                        runBash('evince '+path2mep_l)
+                    else:
+                        a =  glob.glob(cl.dir+'*mep*')
+                        if a:
+                            runBash('evince '+a[0])
+
+
+                ni = cl.set.vasp_params['IMAGES']
+                mep_energies = []
+                cl1 = calc[cl.id[0], cl.id[1], 1]
+                mep_energies.append(cl1.energy_sigma0)
+
+                coord1 =  np.sum(cl1.end.xcart[1:], axis = 0)
+                mep_pos  = [0,]
+                coord1at = cl1.end.xcart[0]
+
+                print coord1at
+                for v in range(3, ni+3):
+                    # print v
+                    cl_i = calc[cl.id[0], cl.id[1], v]
+                    mep_energies.append(cl_i.energy_sigma0)
+                    mep_pos.append( np.linalg.norm (coord1 - np.sum(cl_i.end.xcart, axis = 0)) )
+                    print coord1 - np.sum(cl_i.end.xcart[1:], axis = 0)
+                    print coord1at - cl_i.end.xcart[0]
+
+                cl2 = calc[cl.id[0], cl.id[1], 2]
+                print cl2.end.xcart[0]
+
+
+
+                mep_energies.append(cl2.energy_sigma0)
+
+                mep_pos.append( np.linalg.norm (coord1 - np.sum(cl2.end.xcart, axis = 0)) )
+
+                print mep_pos
+
+
+                mine = min(mep_energies)
+                coor = range( ni+2 )
+                plt.plot(mep_pos,  np.array(mep_energies)-mine, )
+                # plt.show()
+
+
+
+
+
+
+
+                # print (a)
+
+
+            if push2archive:
+                shutil.copy(path2mep_l, header.project_conf.path_to_images)
+                print_and_log('push2archive:', path2mep_l, 'copied to', header.project_conf.path_to_images, imp = 'y')
+                
+                figfile = '{{'+name_without_ext+'}}'
+                figlabel = itise
+                tex_text = \
+                ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
+                "\caption{{\label{{fig:{:s}}} {:s} }}\n"
+                "\end{{figure}}\n").format(figfile, figlabel, description_for_archive+' for '+figlabel )
+                print (tex_text)
+                with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+') as f:
+                    if tex_text not in f.read():
+                        f.write(tex_text)
+
+
+
+
+
+
+
+
 
 
 
