@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*- 
+from __future__ import division, unicode_literals, absolute_import 
 
-from header import *
+# from header import *
 from functions import write_xyz, replic
 # import header
 # from operator import itemgetter
@@ -11,6 +12,65 @@ from functions import write_xyz, replic
 # from dos.functions import plot_dos
 
 # from ase.utils.eos import EquationOfState
+import scipy
+from scipy import interpolate
+from scipy.interpolate import spline
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+
+import header
+
+
+def plot_mep(atom_pos, mep_energies):
+    """
+    Used for NEB method
+    atom_pos (list) - xcart positions of diffusing atom along the path,
+    mep_energies (list) - full energies of the system corresponding to atom_pos
+    """
+
+    #Create
+    atom_pos = np.array(atom_pos)
+    data = atom_pos.T #
+    tck, u= interpolate.splprep(data) #now we get all the knots and info about the interpolated spline
+    path = interpolate.splev(np.linspace(0,1,500), tck) #increase the resolution by increasing the spacing, 500 in this example
+    path = np.array(path)
+
+
+    diffs = np.diff(path.T, axis = 0)
+    path_length =  np.linalg.norm( diffs, axis = 1).sum()
+    mep_pos =  np.array([p*path_length for p in u])
+
+
+    if 1: #plot the path in 3d
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.plot(data[0], data[1], data[2], label='originalpoints', lw =2, c='Dodgerblue')
+        ax.plot(path[0], path[1], path[2], label='fit', lw =2, c='red')
+        ax.legend()
+        plt.show()
+
+
+
+
+
+
+
+    mine = min(mep_energies)
+    eners = np.array(mep_energies)-mine
+
+    
+    
+    xnew = np.linspace(0, path_length)
+
+    spl = spline(mep_pos, eners, xnew )
+
+    fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, spl, 'b-'), xlim = (-0.05, None  ),
+    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)' )
+
+
+    return
+
 
 
 

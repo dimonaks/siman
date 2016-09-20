@@ -259,7 +259,7 @@ class Structure():
 
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation"""
-    def __init__(self, inset = None):
+    def __init__(self, inset = None, iid = None):
         #super(CalculationAbinit, self).__init__()
         self.name = "noname"
         self.set = copy.deepcopy(inset)
@@ -272,7 +272,9 @@ class Calculation(object):
         "output":None}
         self.calc_method = None #
         self.prev = [] # list of previous calculations
-
+        if iid:
+            self.id = iid
+            self.name = str(iid[0])+'.'+str(iid[1])+'.'+str(iid[2])
 
     def read_geometry(self,filename = None):
         """Reads geometrical data from filename file in abinit format"""
@@ -584,8 +586,8 @@ class CalculationAbinit(Calculation):
 
 class CalculationVasp(Calculation):
     """Methods for calculations made using VASP DFT code"""
-    def __init__(self, inset = None):
-        super(CalculationVasp, self).__init__(inset)
+    def __init__(self, inset = None, iid = None):
+        super(CalculationVasp, self).__init__(inset, iid)
         self.len_units = 'Angstrom'
 
 
@@ -1431,6 +1433,8 @@ class CalculationVasp(Calculation):
                     f.write("module add prun/1.0\n")
                     f.write("module add intel/16.0.2.181\n")
                     f.write("module add impi/5.1.3.181\n")
+                    f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
+                    f.write("export PATH=$PATH:~/tools\n")
 
 
 
@@ -1697,7 +1701,7 @@ class CalculationVasp(Calculation):
                     f.write("\n\n#Starting fitting tool \n")
 
                     outputs = [ os.path.basename(out) for out in output_files_names ]
-                    f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
+                    # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
                     f.write('~/tools/fit_tool.py '+list2string(outputs)+'\n' )
                     f.write('cp 100.POSCAR POSCAR \n')
                     run_command(option = option, name = (self.id[0]+'.'+self.id[1]+'.100'), 

@@ -5,7 +5,9 @@ import copy, traceback, datetime, sys, os, glob, shutil
 import header
 from header import print_and_log, runBash
 from classes import CalculationVasp, Description
-from functions import gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly
+from functions import gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance
+from picture_functions import plot_mep
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -236,7 +238,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             - 'inherit_xred' - if verlist is provided, xred are copied from previous version to the next
             - all options available for inherit_icalc() subroutine (now only 'full' is tested)
 
-        - ise_new (str) - name of new set for inherited calculation  
+        - ise_new (str) - name of new set for inherited calculation  ('uniform_scale')
 
 
         - typconv - ? to be described.
@@ -387,13 +389,24 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
         verlist_new = []
+
+        if ise_new and len(setlist) > 1:
+            raise RuntimeError
+
         for inputset in setlist:
-            cl_temp = CalculationVasp(varset[inputset])
+
             iid = (it,inputset,v)
+            
             write_xyz(calc[iid].end, file_name =calc[iid].end.name+'_used_for_scaling')
 
             sts = scale_cell_uniformly(calc[iid].end, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = str(iid))
             
+            if ise_new:
+                inputset = ise_new
+                iid = (it,inputset,v)
+
+            cl_temp = CalculationVasp(varset[inputset], iid)
+
             for i, s in enumerate(sts):
                 ver_new = i+1
                 s.name = it_new+'.'+s.name
@@ -413,9 +426,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             cl_temp.state = '2.ready to read outcar'
             blockdir = struct_des[it_new].sfolder+"/"+varset[inputset].blockfolder #calculation folder
             iid = cl_temp.id          
-            cl_temp.name = str(iid[0])+'.'+str(iid[1])+'.'+str(iid[2])
-            cl_temp.dir = blockdir+"/"+ str(iid[0]) +'.'+ str(iid[1])+'/'
-            cl_temp.path["output"] = cl_temp.dir+'100.OUTCAR'
+            cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
+            cl_temp.dir = blockdir+"/"+ str(cl_temp.id[0]) +'.'+ str(cl_temp.id[1])+'/'
+            cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
             cl_temp.cluster_address      = header.cluster_address
             cl_temp.project_path_cluster = header.project_path_cluster
             calc[cl_temp.id] = cl_temp
@@ -430,6 +443,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         it      = it_new
         verlist = verlist_new
+        if ise_new:
+            setlist = [ise_new]
         # sys.exit()
 
 
@@ -1921,43 +1936,55 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                             runBash('evince '+a[0])
 
 
-                ni = cl.set.vasp_params['IMAGES']
-                mep_energies = []
+                
+                #find moving atom
                 cl1 = calc[cl.id[0], cl.id[1], 1]
-                mep_energies.append(cl1.energy_sigma0)
-
-                coord1 =  np.sum(cl1.end.xcart[1:], axis = 0)
-                mep_pos  = [0,]
-                coord1at = cl1.end.xcart[0]
-
-                print coord1at
-                for v in range(3, ni+3):
-                    # print v
-                    cl_i = calc[cl.id[0], cl.id[1], v]
-                    mep_energies.append(cl_i.energy_sigma0)
-                    mep_pos.append( np.linalg.norm (coord1 - np.sum(cl_i.end.xcart, axis = 0)) )
-                    print coord1 - np.sum(cl_i.end.xcart[1:], axis = 0)
-                    print coord1at - cl_i.end.xcart[0]
-
                 cl2 = calc[cl.id[0], cl.id[1], 2]
-                print cl2.end.xcart[0]
+                
+                diffv = np.array(cl1.init.xcart) - np.array(cl2.init.xcart)
+                diffn = np.linalg.norm(diffv, axis = 1)
+                atom_num = np.argmax(diffn) # number of atom moving along the path
+
+                #prepare lists
+                ni = cl.set.vasp_params['IMAGES']
+                vlist = [1]+range(3, ni+3)+[2]
+                mep_energies = []
+                atom_pos     = []
+                for v in vlist:
+                    cli = calc[cl.id[0], cl.id[1], v]
+                    # cli.end = return_to_cell(cli.end)
+                    mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy 
+                    # mep_energies.append(  cli.energy_sigma0   ) #use last energy 
+                    atom_pos.append( cli.end.xcart[atom_num] )
+
+                # print np.array(atom_pos)
+
+                #test if the distances between points are not spoiled by PBC 
+                nbc = range(-1, 2)
+                jj=0
+                for x in atom_pos:
+
+                    x2 = atom_pos[jj+1]
+                    r = cl.end.rprimd
+                    d1, _ = image_distance(x, x2, r, order = 1) #minimal distance
+                    x2_gen = (x2 + (r[0] * i  +  r[1] * j  +  r[2] * k) for i in nbc for j in nbc for k in nbc) #generator over PBC images
+                    x2c = copy.deepcopy(x2)
+                    ii = 0
+                    while  np.linalg.norm(x - x2c) > d1: #find the closest PBC image position
+                        if ii > 100:
+                            break
+                        ii+=1
+                        x2c = next(x2_gen)
+                    atom_pos[jj+1] = x2c
+                    jj+=1
+                    if jj == len(atom_pos)-1: # the last point is not needed, we could not use slice since we need to use changed atom_pos in place
+                        break
+                    # print np.linalg.norm(x - x2c), d1
 
 
 
-                mep_energies.append(cl2.energy_sigma0)
 
-                mep_pos.append( np.linalg.norm (coord1 - np.sum(cl2.end.xcart, axis = 0)) )
-
-                print mep_pos
-
-
-                mine = min(mep_energies)
-                coor = range( ni+2 )
-                plt.plot(mep_pos,  np.array(mep_energies)-mine, )
-                # plt.show()
-
-
-
+                plot_mep(atom_pos, mep_energies)
 
 
 

@@ -911,7 +911,7 @@ def write_lammps(cl, state, filepath = ''):
 
 
 
-def image_distance(x1, x2, r, order = 1):
+def image_distance(x1, x2, r, order = 1, sort_flag = True):
     """
     Calculate smallest distance and the next smallest distance between two atoms 
     correctly treating periodic boundary conditions and oblique cells.
@@ -920,7 +920,7 @@ def image_distance(x1, x2, r, order = 1):
     order - the order of periodic images which are accounted in the calcualtion of distances between atoms.
     for cubic cells, order = 1 always provide correct result.
     For highly oblique cell you should test and find the needed value of 'order' after which results are the same.
-
+    sort_flag (bool) - use False if you do not need sorting of distances 
     return d1, d2 - the smallest and next smallest distances between atoms
 
     """
@@ -930,9 +930,11 @@ def image_distance(x1, x2, r, order = 1):
             for k in range(-order, order+1):
                 x2i = x2 + (r[0] * i + r[1] * j + r[2] * k) #determine coordinates of image of atom 2 in corresponding image cells
                 d.append(   np.linalg.norm(x1 - x2i)   )
-    d.sort()
+    
+    if sort_flag:
+        d.sort()
     #print d
-    assert d[0] == min(d)
+    # assert d[0] == min(d)
     return d[0], d[1] #, math.sqrt(dxl[0]**2 + dxl[1]**2 + dxl[2]**2)
 
 
