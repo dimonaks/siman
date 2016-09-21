@@ -1990,7 +1990,7 @@ class CalculationVasp(Calculation):
 
             # sys.exit()
             ldauu = None
-
+            e_sig0 = 0 #energy sigma 0 every scf iteration
 
             # print self.set.vasp_params
 
@@ -2146,12 +2146,20 @@ class CalculationVasp(Calculation):
                     self.list_e_sigma0.append(  self.energy_sigma0  )
                     self.list_e_without_entr.append(  self.e_without_entr  )
 
+                if "energy without entropy =" in line:
+                    e_sig0_prev = e_sig0
+                    e_sig0 = float(line.split()[7])
 
 
 
                 if "free  energy   TOTEN  =" in line:
                     #self.energy = float(line.split()[4])
                     self.energy_free = float(line.split()[4]) #F free energy
+                
+
+
+
+
                 if re_lengths.search(line):
                     self.vlength = [red_prec( float(l),1000 ) for l in outcarlines[i_line + 1].split()[0:3]]
                     #print self.vlength
@@ -2302,6 +2310,15 @@ class CalculationVasp(Calculation):
                 # print ( np.unique(ldauu)  )
 
 
+            #Check if energy is converged relative to relaxation
+            if len(self.list_e_sigma0) > 2:
+                e_diff_md = (self.list_e_sigma0[-1] - self.list_e_sigma0[-2])*1000 #meV
+
+            e_diff = (e_sig0_prev - e_sig0)*1000 #meV
+            if e_diff > self.set.vasp_params['EDIFF']*1000:
+                print_and_log("Attention!, SCF was not converged to desirable prec", e_diff, '>', 
+                    self.set.vasp_params['EDIFF']*1000, 'meV')
+
 
             #  Construct beatifull table
             #self.a1 = float(v[0])/2 ; self.a2 = float(v[1])/2/math.sqrt(0.75); self.c = float(v[2])  # o1b
@@ -2349,6 +2366,9 @@ class CalculationVasp(Calculation):
             totd = ("%.0f" % (   max_tdrift/max_magnitude * 100      ) ).center(j[22])
             nsg = ("%s" % (     nsgroup     ) ).center(j[22])
             Uhu   = " {:3.1f} ".format(u_hubbard)
+            edg   = ' {:3.0f} '.format( e_diff_md)
+            ed    = ' {:3.0f} '.format( e_diff)
+
             """Warning! concentrations are calculated correctly only for cells with one impurity atom"""
             #gbcon = ("%.3f" % (     1./self.end.yzarea      ) ).center(j[23]) # surface concentation at GB A-2
             #bcon = ("%.1f" % (     1./self.natom * 100      ) ).center(j[24]) # volume atomic concentration, %
@@ -2368,7 +2388,7 @@ class CalculationVasp(Calculation):
             outst_gbe = voro+etot+               d+vol+d+kspacing+d+strs+d+eprs+d+nat+d+time+d+Nmd+d+War+d+nsg+"\\\\" # For comparing gb energies and volume
             outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
             
-            outst_cathode = etot+d+lens+d+strs+d+nat+d+time+d+Nmd+d+War+d+nsg+d+Uhu
+            outst_cathode = d.join([etot, lens, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
             # print self.end.xred[-1]
             #print outstring_kp_ec
             # print show
@@ -2424,6 +2444,8 @@ class CalculationVasp(Calculation):
                 
                 # print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
                 # plt.show()
+
+
 
 
 

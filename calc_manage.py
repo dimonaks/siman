@@ -30,6 +30,16 @@ pmgkey          = header.project_conf.pmgkey
 path_to_images = header.path_to_images
 
 
+
+def clean_history_file(history_list):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in history_list if not (x in seen or seen_add(x))]
+
+
+
+
+
 def clean_run(schedule_system = None):
     """
     INPUT:
@@ -1948,13 +1958,15 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 #prepare lists
                 ni = cl.set.vasp_params['IMAGES']
                 vlist = [1]+range(3, ni+3)+[2]
+                # print vlist
                 mep_energies = []
                 atom_pos     = []
                 for v in vlist:
                     cli = calc[cl.id[0], cl.id[1], v]
+                    # print cli.id
                     # cli.end = return_to_cell(cli.end)
-                    mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy 
-                    # mep_energies.append(  cli.energy_sigma0   ) #use last energy 
+                    # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy 
+                    mep_energies.append(  cli.energy_sigma0   ) #use last energy 
                     atom_pos.append( cli.end.xcart[atom_num] )
 
                 # print np.array(atom_pos)

@@ -60,7 +60,7 @@ def get_from_server(files = None, to = None,  addr = None):
         files = [files]
     
     files_str = ' :'.join(np.array(files ))
-    print_and_log('Trying to download', files_str, 'from server')
+    print_and_log('Trying to download', files_str, 'from server', imp = 'n')
 
     out = runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
     # print 'out === ',out
