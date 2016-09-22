@@ -74,6 +74,7 @@ vasp_other_keys = [
 'BMIX_MAG',
 'WC',
 'MAXMIX',
+'OCCDIR1',
 ]
 
 siman_keys = [

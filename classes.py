@@ -970,7 +970,9 @@ class CalculationVasp(Calculation):
             print_and_log('Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
         elif hasattr(self.set, 'magnetic_moments') and self.set.magnetic_moments:
-            print_and_log('Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set\n')
+            print_and_log('Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set')
+            print_and_log('self.set.magnetic_moments = ', self.set.magnetic_moments)
+            
             mag_mom_other = 0.6 # magnetic moment for all other elements
             magmom = []
             for iat in range(self.init.natom):
@@ -1070,7 +1072,9 @@ class CalculationVasp(Calculation):
         
 
 
-
+        # print (self.init.magmom, 'asdfaaaaaaaaaaaa')
+        
+        # sys.exit()
 
         return
 
@@ -1091,7 +1095,7 @@ class CalculationVasp(Calculation):
             f.write( 'SYSTEM = %s\n\n'%(self.des) )
             for key in sorted(self.set.vasp_params):
 
-                if key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom: #
+                if key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
                     f.write('MAGMOM = '+list2string(self.init.magmom)+"\n") #magmom from geo file has higher preference
                     # sys.exit()
                     continue
@@ -1370,6 +1374,7 @@ class CalculationVasp(Calculation):
         
         elif schedule_system == 'SLURM':
             parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI"
+            parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI_aksenov"
         else:
             raise RuntimeError
 
@@ -1992,7 +1997,20 @@ class CalculationVasp(Calculation):
             ldauu = None
             e_sig0 = 0 #energy sigma 0 every scf iteration
 
-            # print self.set.vasp_params
+
+            #which kind of forces to use
+            if ' CHAIN + TOTAL  (eV/Angst)\n' in outcarlines:
+                force_keyword = 'CHAIN + TOTAL  (eV/Angst)'
+                ff  = (0, 1, 2)
+                force_prefix = ' chain+tot '
+
+            else:
+                force_keyword = 'TOTAL-FORCE'
+                ff  = (3, 4, 5)
+                force_prefix = ' tot '
+
+
+
 
             for line in outcarlines:
 
@@ -2068,17 +2086,18 @@ class CalculationVasp(Calculation):
                     except:
                         self.magn2 = 0
 
-                if "TOTAL-FORCE" in line:
+
+                if force_keyword in line:
                     # Calculate forces here...
                     forces = []
                     magnitudes = []
 
-                    for j in range(0,self.init.natom):
+                    for j in range(self.init.natom):
                         parts = outcarlines[i_line+j+2].split()
                         # print "parts", parts
-                        x = float(parts[3])
-                        y = float(parts[4])
-                        z = float(parts[5])
+                        x = float(parts[ff[0]])
+                        y = float(parts[ff[1]])
+                        z = float(parts[ff[2]])
                         forces.append([x,y,z])
                         magnitudes.append(math.sqrt(x*x + y*y + z*z))
                     average.append( red_prec( sum(magnitudes)/self.init.natom * 1000 ) )
@@ -2086,6 +2105,8 @@ class CalculationVasp(Calculation):
                     maxforce.append( [imax, round(magnitudes[imax] * 1000)]  )
                     # mforce.append( round(magnitudes[imax] * 1000))
                     
+               
+
                 #Check total drift
                 if "total drift:" in line:
                     #print line
@@ -2301,6 +2322,7 @@ class CalculationVasp(Calculation):
 
 
             #deal with ldauu
+            u_hubbard = 0
             if ldauu: 
                 ldauu = np.array(ldauu.split()[7:]).astype(float)
                 # print (ldauu)
@@ -2398,7 +2420,7 @@ class CalculationVasp(Calculation):
 
             if 'fo' in show:
                 # print "Maxforce by md steps (meV/A) = %s;"%(str(maxforce)  )
-                print_and_log("\n\nMax. F. (meV/A) = \n{:};".format(np.array([m[1] for m in maxforce ])[:]  ), imp = 'Y'  )
+                print_and_log("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in maxforce ])[:]  ), imp = 'Y'  )
                 # print "\nAve. F. (meV/A) = \n%s;"%(  np.array(average)  )
                 # import inspect
                 # print inspect.getargspec(plt.plot).args
@@ -2429,8 +2451,10 @@ class CalculationVasp(Calculation):
                 periodic  = True, only_elements = [26,])
                 dist = np.array(sur[3]).round(2)
                 numb = np.array(sur[2])
-                # for mag in tot_mag_by_atoms:
                 print ('first step ', tot_mag_by_atoms[0][numb].round(3) )
+                # for mag in tot_mag_by_atoms:
+                #     print ('  -', mag[numb].round(3) )
+
                 print ('last  step ', tot_mag_by_atoms[-1][numb].round(3) )
 
                     # sys.exit()
@@ -2443,7 +2467,8 @@ class CalculationVasp(Calculation):
                 # plt.plot(np.array(sur[3]).round(2), tot_mag_by_atoms[-1][numb]) mag vs dist for last step
                 
                 # print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
-                # plt.show()
+                if 'p' in show:
+                    plt.show()
 
 
 

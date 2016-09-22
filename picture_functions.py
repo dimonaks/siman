@@ -42,7 +42,7 @@ def plot_mep(atom_pos, mep_energies):
     mep_pos =  np.array([p*path_length for p in u])
 
 
-    if 1: #plot the path in 3d
+    if 0: #plot the path in 3d
         fig = plt.figure()
         ax = Axes3D(fig)
         ax.plot(data[0], data[1], data[2], label='originalpoints', lw =2, c='Dodgerblue')

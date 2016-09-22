@@ -382,7 +382,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-    if 'uniform_scale' in calc_method:
+    if calc_method and 'uniform_scale' in calc_method:
         print_and_log('Preparing   uniform_scale  calculation ... ')
 
         if len(verlist) > 1:
@@ -544,7 +544,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         #write batch footer in some cases
 
 
-    if 'neb' in calc_method:
+    if calc_method and 'neb' in calc_method:
         if len(setlist) > 1:
             print_and_log('In "neb" mode only one set is allowed' )
             raise RuntimeError
@@ -1965,8 +1965,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                     cli = calc[cl.id[0], cl.id[1], v]
                     # print cli.id
                     # cli.end = return_to_cell(cli.end)
-                    # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy 
-                    mep_energies.append(  cli.energy_sigma0   ) #use last energy 
+                    mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy 
+                    # mep_energies.append(  cli.energy_sigma0   ) #use last energy 
                     atom_pos.append( cli.end.xcart[atom_num] )
 
                 # print np.array(atom_pos)
