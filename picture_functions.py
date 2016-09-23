@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import 
 
-# from header import *
+from header import print_and_log
 from functions import write_xyz, replic
 # import header
 # from operator import itemgetter
@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import header
 
 
-def plot_mep(atom_pos, mep_energies):
+def plot_mep(atom_pos, mep_energies, image_name = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path,
@@ -65,18 +65,18 @@ def plot_mep(atom_pos, mep_energies):
 
     spl = spline(mep_pos, eners, xnew )
 
-    fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, spl, 'b-'), xlim = (-0.05, None  ),
-    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)' )
+    path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, spl, 'b-'), xlim = (-0.05, None  ),
+    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name)
 
 
-    return
+    return path2saved
 
 
 
 
 def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name = None,
     xlim = None, ylim = None, title = None, figsize = None,
-    xlog = False,ylog = False, scatter = False, legend = False, markersize = 10,  linewidth = 3, hor = False, format = 'png', dpi = 300,
+    xlog = False,ylog = False, scatter = False, legend = False, markersize = 10,  linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
     **data):
     """Should be used in two below sections!
     Creates one plot with two dependecies and fit them;
@@ -85,7 +85,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
     power - the power of polynom
 
 
-    format - format of saved file.
+    fig_format - format of saved file.
     dpi    - resolution of saved file
 
     data - each entry should be (X, Y, 'r-')
@@ -97,7 +97,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
         
         plt.figure(figsize=figsize)
-        if title: plt.title(title)
+        if title: 
+            plt.title(title)
         plt.ylabel(ylabel)
         plt.xlabel(xlabel)
 
@@ -173,14 +174,28 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
                 path_to_images
             except:
                 path_to_images = ''
-            print "Saving image ... to ", str(image_name)+'.'+format
-            plt.savefig(str(image_name)+'.'+format, dpi = dpi, format=format)
-            plt.close()
+            
+
+            if fig_format in image_name:
+                path2saved = str(image_name)
+
+            else:
+                path2saved = str(image_name)+'.'+fig_format
+            
+
+
+            plt.savefig(path2saved, dpi = dpi, format=fig_format)
+            print_and_log("Image saved to ", path2saved)
+
+            plt.clf()
+            plt.close('all')
+
         else:
             plt.show()
 
 
-    return 
+
+    return path2saved
 
 
 def plot_bar(xlabel = "xlabel", ylabel = "ylabel",

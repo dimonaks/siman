@@ -31,6 +31,30 @@ path_to_images = header.path_to_images
 
 
 
+
+
+def push_figure_to_archive(local_figure_path, caption, figlabel = None ):
+    shutil.copy(local_figure_path, header.project_conf.path_to_images)
+    print_and_log('push_figure_to_archive():', local_figure_path, 'copied to', header.project_conf.path_to_images, imp = 'y')
+    
+    name_without_ext =   '.'.join( os.path.basename(local_figure_path).split('.')[:-1]) 
+    figfile = '{{'+name_without_ext+'}}'
+
+    if not figlabel:
+        figlabel = '.'.join(name_without_ext.split('.')[:-1])
+    
+
+    tex_text = \
+    ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
+    "\caption{{\label{{fig:{:s}}} {:s} }}\n"
+    "\end{{figure}}\n").format(figfile, figlabel, caption+' for '+figlabel )
+    # print (tex_text)
+    with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+') as f:
+        if tex_text not in f.read():
+            f.write(tex_text)
+    return
+
+
 def clean_history_file(history_list):
     seen = set()
     seen_add = seen.add
@@ -1771,17 +1795,21 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             a0 = {1} A
             E0 = {2} eV
             B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B)
-            eos.plot(path_to_images+'/fit_a.png', show = True)
+            savedpath = 'figs/'+cl.name+'.eps'
+            # plt.close()
+            # plt.clf()
+            # plt.close('all')
+            
+            eos.plot(savedpath, show = True)
+            # plt.clf()
 
-            # my_plot(xlim = (2.79, 2.86),
-            #     # etotl = (alist, etotlist, '-'),  
-            #     # magn1 = (alist, magn1, '-'),
-            #     magn2 = (alist, magn2, '-'),
-            #     )
+            if push2archive:
+                push_figure_to_archive(local_figure_path = savedpath, caption = description_for_archive)
 
 
 
-            pass
+
+
 
 
         elif analys_type == 'dimer':
@@ -1934,93 +1962,77 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
             # print path2mep_l
-            if 'mep' in show:
-                if 0:
-                    if os.path.exists(path2mep_l):
-                        # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
+            if 0:
+                if os.path.exists(path2mep_l):
+                    # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
 
-                        runBash('evince '+path2mep_l)
-                    else:
-                        a =  glob.glob(cl.dir+'*mep*')
-                        if a:
-                            runBash('evince '+a[0])
+                    runBash('evince '+path2mep_l)
+                else:
+                    a =  glob.glob(cl.dir+'*mep*')
+                    if a:
+                        runBash('evince '+a[0])
 
 
-                
-                #find moving atom
-                cl1 = calc[cl.id[0], cl.id[1], 1]
-                cl2 = calc[cl.id[0], cl.id[1], 2]
-                
-                diffv = np.array(cl1.init.xcart) - np.array(cl2.init.xcart)
-                diffn = np.linalg.norm(diffv, axis = 1)
-                atom_num = np.argmax(diffn) # number of atom moving along the path
+            
+            #find moving atom
+            cl1 = calc[cl.id[0], cl.id[1], 1]
+            cl2 = calc[cl.id[0], cl.id[1], 2]
+            
+            diffv = np.array(cl1.init.xcart) - np.array(cl2.init.xcart)
+            diffn = np.linalg.norm(diffv, axis = 1)
+            atom_num = np.argmax(diffn) # number of atom moving along the path
 
-                #prepare lists
-                ni = cl.set.vasp_params['IMAGES']
-                vlist = [1]+range(3, ni+3)+[2]
-                # print vlist
-                mep_energies = []
-                atom_pos     = []
-                for v in vlist:
-                    cli = calc[cl.id[0], cl.id[1], v]
-                    # print cli.id
-                    # cli.end = return_to_cell(cli.end)
-                    mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy 
-                    # mep_energies.append(  cli.energy_sigma0   ) #use last energy 
-                    atom_pos.append( cli.end.xcart[atom_num] )
+            #prepare lists
+            ni = cl.set.vasp_params['IMAGES']
+            vlist = [1]+range(3, ni+3)+[2]
+            # print vlist
+            mep_energies = []
+            atom_pos     = []
+            for v in vlist:
+                cli = calc[cl.id[0], cl.id[1], v]
+                # print cli.id
+                # cli.end = return_to_cell(cli.end)
+                # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy - not very good, sometimes unconverged energy could be lower! 
+                mep_energies.append(  cli.energy_sigma0   ) #use last energy 
+                atom_pos.append( cli.end.xcart[atom_num] )
 
-                # print np.array(atom_pos)
+            # print np.array(atom_pos)
 
-                #test if the distances between points are not spoiled by PBC 
-                nbc = range(-1, 2)
-                jj=0
-                for x in atom_pos:
+            #test if the distances between points are not spoiled by PBC 
+            nbc = range(-1, 2)
+            jj=0
+            for x in atom_pos:
 
-                    x2 = atom_pos[jj+1]
-                    r = cl.end.rprimd
-                    d1, _ = image_distance(x, x2, r, order = 1) #minimal distance
-                    x2_gen = (x2 + (r[0] * i  +  r[1] * j  +  r[2] * k) for i in nbc for j in nbc for k in nbc) #generator over PBC images
-                    x2c = copy.deepcopy(x2)
-                    ii = 0
-                    while  np.linalg.norm(x - x2c) > d1: #find the closest PBC image position
-                        if ii > 100:
-                            break
-                        ii+=1
-                        x2c = next(x2_gen)
-                    atom_pos[jj+1] = x2c
-                    jj+=1
-                    if jj == len(atom_pos)-1: # the last point is not needed, we could not use slice since we need to use changed atom_pos in place
+                x2 = atom_pos[jj+1]
+                r = cl.end.rprimd
+                d1, _ = image_distance(x, x2, r, order = 1) #minimal distance
+                x2_gen = (x2 + (r[0] * i  +  r[1] * j  +  r[2] * k) for i in nbc for j in nbc for k in nbc) #generator over PBC images
+                x2c = copy.deepcopy(x2)
+                ii = 0
+                while  np.linalg.norm(x - x2c) > d1: #find the closest PBC image position
+                    if ii > 100:
                         break
-                    # print np.linalg.norm(x - x2c), d1
+                    ii+=1
+                    x2c = next(x2_gen)
+                atom_pos[jj+1] = x2c
+                jj+=1
+                if jj == len(atom_pos)-1: # the last point is not needed, we could not use slice since we need to use changed atom_pos in place
+                    break
+                # print np.linalg.norm(x - x2c), d1
 
 
 
 
+            path2saved = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')
+            
+            if 'mep' in show:
                 plot_mep(atom_pos, mep_energies)
 
 
 
-
-                # print (a)
-
-
             if push2archive:
-                shutil.copy(path2mep_l, header.project_conf.path_to_images)
-                print_and_log('push2archive:', path2mep_l, 'copied to', header.project_conf.path_to_images, imp = 'y')
-                
-                figfile = '{{'+name_without_ext+'}}'
-                figlabel = itise
-                tex_text = \
-                ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
-                "\caption{{\label{{fig:{:s}}} {:s} }}\n"
-                "\end{{figure}}\n").format(figfile, figlabel, description_for_archive+' for '+figlabel )
-                print (tex_text)
-                with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+') as f:
-                    if tex_text not in f.read():
-                        f.write(tex_text)
-
-
-
+                # push_figure_to_archive(local_figure_path = path2mep_l, caption = description_for_archive)
+                push_figure_to_archive(local_figure_path = path2saved, caption = description_for_archive)
 
 
 

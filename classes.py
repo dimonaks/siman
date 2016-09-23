@@ -81,8 +81,8 @@ class Structure():
         Returns Structure()
         """
 
-        print_and_log('Warning! Method add_atoms() was not carefully tested ')
-        print_and_log('Adding atom ', element)
+        # print_and_log('Warning! Method add_atoms() was not carefully tested ')
+        print_and_log('self.add_atoms(): adding atom ', element)
 
         st = copy.deepcopy(self)
 
@@ -2469,7 +2469,7 @@ class CalculationVasp(Calculation):
                 # print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
                 if 'p' in show:
                     plt.show()
-
+                plt.clf()
 
 
 

@@ -36,7 +36,6 @@ plt.rcParams['mathtext.fontset'] = "stix"
 
 
 """Global matplotlib control"""
-
 # size = 22 #for one coloumn figures
 size = 16 #for DOS
 # size = 16 #for two coloumn figures
@@ -95,14 +94,30 @@ kB = 8.617e-5 # eV/K
 
 warnings = True
 
-def print_and_log(*logstrings, **debug_level):
+def print_and_log(*logstrings, **argdic):
     """
     '' - silent
     e - errors and warnings
     a - attentions
     m - minimalistic output of scientific procedures - only obligatory mess are shown
     M - maximalistic output of scientific procedures  
+    debug_level importance:
+        'n' - not important at all - for debugging
+        ''  - almost all actions, no flag is needed
+        'y' - important - major actions
+        'Y' - super important, or output asked by user
     """
+    end = '\n\n'# no argument for end, make one separate line
+    for key in argdic:
+        if 'imp' in key:
+            debug_level = argdic[key]
+        else:
+            debug_level  = '' # no flag is provided
+        
+        if 'end' in key:
+            end = argdic[key]
+
+
     try:
         debug_level  = debug_level.values()[0]
     except:
@@ -111,21 +126,32 @@ def print_and_log(*logstrings, **debug_level):
     # print debug_level
     mystring = ''
     for m in logstrings:
-        mystring+=' '+str(m)
+        mystring+=str(m)+' '
 
-    if '\n' not in mystring[-2:-1]:
-        mystring+='\n'
+
+    # if '\n' not in mystring[-2:-1]:
+    #     ''
+
+    if len(mystring.splitlines()) == 1:
+        mystring = '-- '+mystring
+    else:
+        mystring = '    '+mystring.replace('\n', '\n    ') 
+    
+    mystring+=end
+
 
     if 'Error' in mystring or 'Warning' in mystring:
         mystring+='\n\n\n'
     
+
 
     if warnings:
         ''
         if 'n' in debug_level:
             pass
         else:
-            print ('--'+mystring,)
+
+            print (mystring,  end = "")
 
     log.write(mystring)
 
