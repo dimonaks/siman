@@ -3,7 +3,7 @@ from __future__ import division, unicode_literals, absolute_import
 
 from __future__ import print_function
 # from __future__ import division, unicode_literals, absolute_import 
-
+from tabulate import tabulate
 
 
 """
@@ -1824,7 +1824,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def read_results(self, load = '', out_type = '', voronoi = False, show = '', choose_outcar = None):
+    def read_results(self, load = '', out_type = '', voronoi = False, show = '', choose_outcar = None, alkali_ion_number = None):
 
         """
         Download and Read VASP OUTCAR file
@@ -1996,7 +1996,7 @@ class CalculationVasp(Calculation):
             # sys.exit()
             ldauu = None
             e_sig0 = 0 #energy sigma 0 every scf iteration
-
+            occ_matricies = {} # the number of atom is the key
 
             #which kind of forces to use
             if ' CHAIN + TOTAL  (eV/Angst)\n' in outcarlines:
@@ -2238,8 +2238,25 @@ class CalculationVasp(Calculation):
                     ldauu = line
 
 
+                if 'onsite density matrix' in line:
+                    i_at = int( outcarlines[i_line-2].split()[2]  )
+                    l_at = int( outcarlines[i_line-2].split()[8]  )
+                    # print (i_at)
+                    spin1 = []
+                    spin2 = []
+                    nm = 2*l_at+1
+                    for i in range(nm):
+                        spin1.append( np.array(outcarlines[i_line+4+i].split()).astype(float) )
+                    for i in range(nm):
+                        spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )
+                                        
+
+                    occ_matricies[i_at] = spin1+spin2
+                    # print (np.array(spin1) )
+
 
                 i_line += 1
+            # sys.exit()
             #Check total drift
             max_magnitude = max(magnitudes)
             max_tdrift    = max(tdrift)
@@ -2333,6 +2350,7 @@ class CalculationVasp(Calculation):
 
 
             #Check if energy is converged relative to relaxation
+            e_diff_md = self.energy_sigma0
             if len(self.list_e_sigma0) > 2:
                 e_diff_md = (self.list_e_sigma0[-1] - self.list_e_sigma0[-2])*1000 #meV
 
@@ -2441,14 +2459,27 @@ class CalculationVasp(Calculation):
 
                     plt.show()
 
+
+            if 'mag' in show or 'occ' in show:
+                st = self.end
+                alkali_ions = []
+                for i, typ, x in zip(range(st.natom), st.typat, st.xcart):
+                    z = st.znucl[typ-1]
+                    if z in header.ALKALI_ION_ELEMENTS:
+                        alkali_ions.append([i, z, x])
+
+                chosen_ion = alkali_ions[0]
+                        # alkali_ions[min(alkali_ions)]
+                sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = 4, control = 'atoms', 
+                periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
+
             if 'mag' in show:
                 print ('\n\n\n')
                 # print_and_log
                 # print 'Final mag moments for atoms:'
                 # print np.arange(self.end.natom)[ifmaglist]+1
                 # print np.array(tot_mag_by_atoms)
-                sur   = local_surrounding(self.end.xcart[0], self.end, n_neighbours = 4, control = 'atoms', 
-                periodic  = True, only_elements = [26,])
+
                 dist = np.array(sur[3]).round(2)
                 numb = np.array(sur[2])
                 print ('first step ', tot_mag_by_atoms[0][numb].round(3) )
@@ -2458,7 +2489,8 @@ class CalculationVasp(Calculation):
                 print ('last  step ', tot_mag_by_atoms[-1][numb].round(3) )
 
                     # sys.exit()
-                print ('Dist from 1st atom to Fe atoms:, please make me more general')
+                print ('Dist from 1st found alkali ion ',element_name_inv( chosen_ion[1]),
+                    ' to sur. transition met atoms: (Use *alkali_ion_number* to choose ion manually)')
                 print ('dist:atom = ', 
                 [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(  np.array(sur[3]).round(2), np.array(sur[2])+1  )  ] )
 
@@ -2471,8 +2503,26 @@ class CalculationVasp(Calculation):
                     plt.show()
                 plt.clf()
 
+            if 'occ' in show:
+                ''
+                # print (occ_matricies)
+                df = pd.DataFrame(occ_matricies)
+                # print (df)
+                print ( )
+                i = 0
+                i_mag_at = sur[2][i]
+                dist_toi = np.round(sur[3][i], 2)
+                # print (i_mag_at)
+                l05 = len(occ_matricies[i_mag_at])//2
 
+                print_and_log( 'Occ. matrix for atom ', i_mag_at+1, ':  ; dist to alk ion is ', 
+                dist_toi, 'A', end = '\n' )
+                print_and_log('Spin 1:',end = '\n' )
+                print_and_log(tabulate(occ_matricies[i_mag_at][0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'],  tablefmt='psql'),end = '\n' )
+                print_and_log('Spin 2:',end = '\n' )
+                print_and_log(tabulate(occ_matricies[i_mag_at][l05:],  tablefmt='psql') )
 
+            sys.exit()
 
 
             log.write("Reading of results completed\n\n")
@@ -2507,10 +2557,14 @@ class CalculationVasp(Calculation):
     def get_chg_file(self, filetype = 'CHGCAR'):
         #cl - object of CalculationVasp class
         path_to_chg = self.dir+str(self.version)+"."+filetype
-        if not os.path.exists(path_to_chg): 
-            print_and_log( 'Charge file is downloading')
-            log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
-            print_and_log( path_to_chg, 'was downloaded')
+
+
+        # if not os.path.exists(path_to_chg): 
+        #     print_and_log( 'Charge file is downloading')
+        #     log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
+        #     print_and_log( path_to_chg, 'was downloaded')
+        get_from_server(path_to_chg, self.dir, header.CLUSTER_ADDRESS)
+
             
         return path_to_chg
 
@@ -2527,7 +2581,7 @@ class CalculationVasp(Calculation):
 
     def bader_analysis(self):
         #Make bader on server
-        #assumes that bader is intalled
+        #assumes that bader is installed
         v = str(self.version)
         path = project_path_cluster+self.dir
         CHG     = path+v+".CHG"

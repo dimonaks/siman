@@ -1285,7 +1285,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
-    description_for_archive = None, old_behaviour  = False):
+    description_for_archive = None, old_behaviour  = False,
+    alkali_ion_number = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -1316,7 +1317,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
         - show - (str), allows to show additional information:
-            - mag - magnetic moments on magnetic atoms 
+            - mag - magnetic moments on magnetic atoms
+                *alkali_ion_number* (int) - number of atom around which to sort mag moments 
             - en  - convergence of total energy vs max force
             - mep - neb path
             - fo  - max force on each md step
@@ -1448,7 +1450,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             
             if readfiles:
 
-                    outst = calc[id].read_results(loadflag, analys_type, voronoi, show, choose_outcar = choose_outcar)
+                    outst = calc[id].read_results(loadflag, analys_type, voronoi, show, 
+                        choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
 
 
 

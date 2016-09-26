@@ -169,6 +169,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
 
         plt.tight_layout()
+        path2saved = ''
         if image_name:
             try:
                 path_to_images
