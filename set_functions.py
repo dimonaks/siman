@@ -75,6 +75,7 @@ vasp_other_keys = [
 'WC',
 'MAXMIX',
 'OCCDIR1',
+'OCCEXT',
 ]
 
 siman_keys = [
@@ -82,6 +83,7 @@ siman_keys = [
 'u_ramping_nstep', #number of u ramping steps
 'magnetic_moments',
 'afm_ordering',
+'set_sequence'# sequence of sets
 ]
 
 def read_vasp_sets(varset, user_vasp_sets, override_global = False):
@@ -162,6 +164,7 @@ class InputSet():
     def __init__(self,ise):
         #super(InputSet, self).__init__()
         self.ise = ise
+        self.name = ise
         self.des   = "" # description
         self.potdir = {}
         self.units = "vasp"

@@ -5,7 +5,7 @@ import copy, traceback, datetime, sys, os, glob, shutil
 import header
 from header import print_and_log, runBash
 from classes import CalculationVasp, Description
-from functions import gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance
+from functions import list2string, gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance
 from picture_functions import plot_mep
 
 import matplotlib.pyplot as plt
@@ -28,6 +28,101 @@ corenum         = header.corenum
 project_path_cluster = header.project_path_cluster
 pmgkey          = header.project_conf.pmgkey
 path_to_images = header.path_to_images
+
+
+
+
+
+
+
+
+def write_batch_header(batch_script_filename = None,
+    schedule_system = None, path_to_job = None, job_name = 'SuperJob', number_cores = 1  ):
+    """
+    self-explanatory)
+    path_to_job (str) - absolute path to job folder 
+    """
+    with open(batch_script_filename,'w') as f:
+
+
+        if schedule_system == 'SGE':
+            f.write("#!/bin/tcsh   \n")
+            f.write("#$ -M aksenov@mpie.de\n")
+            f.write("#$ -m be\n")
+            f.write("#$ -S /bin/tcsh\n")
+            f.write("#$ -cwd \n")
+            f.write("#$ -R y \n")
+            f.write("#$ -o "+path_to_job+" -j y\n\n")
+
+            f.write("cd "+path_to_job+"\n")
+            f.write("module load sge\n")
+            f.write("module load vasp/parallel/5.2.12\n\n")
+
+
+        if schedule_system == 'PBS':
+            f.write("#!/bin/bash   \n")
+            f.write("#PBS -N "+job_name+"\n")
+            f.write("#PBS -l walltime=99999999:00:00 \n")
+            f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            f.write("#PBS -r n\n")
+            f.write("#PBS -j eo\n")
+            f.write("#PBS -m bea\n")
+            f.write("#PBS -M dimonaks@gmail.com\n")
+            f.write("cd $PBS_O_WORKDIR\n")
+            f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
+            f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
+
+
+        if schedule_system == 'SLURM':
+            if '~' in path_to_job:
+                print_and_log('Error! For slurm std err and out you need full paths')
+                raise RuntimeError
+            f.write("#!/bin/bash   \n")
+            f.write("#SBATCH -J "+job_name+"\n")
+            f.write("#SBATCH -t 250:00:00 \n")
+            f.write("#SBATCH -N 1\n")
+            f.write("#SBATCH -n "+str(number_cores)+"\n")
+            f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
+            f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
+            f.write("#SBATCH --mem-per-cpu=7675\n")
+            f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
+            f.write("#SBATCH --mail-type=END\n")
+            f.write("cd "+path_to_job+"\n")
+            f.write("export OMP_NUM_THREADS=1\n")
+
+            f.write("module add prun/1.0\n")
+            f.write("module add intel/16.0.2.181\n")
+            f.write("module add impi/5.1.3.181\n")
+            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
+            f.write("export PATH=$PATH:~/tools\n")
+
+
+    return
+
+
+
+
+
+def write_batch_body(mode = None):
+    """
+    mode -
+
+    """
+    ''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -226,7 +321,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     coord = 'direct', savefile = 'oc', show = None, comment = None, 
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, ppn = None,
     calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None,
-    scale_region = None, n_scale_images = 7,
+    scale_region = None, n_scale_images = 7, id_from = None,
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -266,12 +361,14 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         - comment - arbitrary comment for history.
 
+
+        #inherit flags:
         - inherit_option (str):
             - 'continue'     - copy last contcar to poscar, outcar to prev.outcar and run again; on the next launch prev.outcar
                 will be rewritten, please improve the code to save all previous outcars 
             - 'inherit_xred' - if verlist is provided, xred are copied from previous version to the next
             - all options available for inherit_icalc() subroutine (now only 'full' is tested)
-
+        - *id_from* - see inherit_icalc()
         - ise_new (str) - name of new set for inherited calculation  ('uniform_scale')
 
 
@@ -310,7 +407,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     schedule_system = header.project_conf.SCHEDULE_SYSTEM
 
     if ppn:
-        header.corenum = ppn
+        corenum = ppn
+    else:
+        corenum = header.CORENUM
 
     struct_des = header.struct_des
 
@@ -490,22 +589,39 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
     #inherit option
-    if inherit_option in ['full', 'full_nomag', 'r2r3', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
+    if inherit_option in ['occ', 'full', 'full_nomag', 'r2r3', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
         if inherit_option == 'full':
             it_new = it+'.if'
         if inherit_option == 'full_nomag':
             it_new = it+'.ifn'
-        
+
+        if inherit_option == 'occ':
+            #please add additional vars to control for which atoms the inheritance should take place
+            it_new = it+'.ifo' #full inheritence + triggering OMC        
+
+
+
+
+
+
+        if it_folder:
+            section_folder = it_folder
+        else:
+            section_folder = struct_des[it_new].sfolder
+
+
+
+
 
         if it_new not in struct_des:
-            add_des(struct_des, it_new, struct_des[it].sfolder, 'Inherited '+inherit_option+' from '+it+'.'+str(setlist)+'.'+str(verlist)   )
+            add_des(struct_des, it_new, section_folder, 'Inherited '+inherit_option+' from '+it+'.'+str(setlist)+'.'+str(verlist)   )
 
         for inputset in setlist:
             for v in verlist:
                 id = (it,inputset,v)
                 # print (calc[id].end.magmom)
                 # sys.exit()
-                inherit_icalc(inherit_option, it_new, v, id, calc)
+                inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder)
         
         if ise_new:
             print_and_log('Inherited calculation uses set', ise_new)
@@ -558,7 +674,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 schedule_system = schedule_system, 
                 calc_method = calc_method, u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
-                output_files_names = output_files_names
+                output_files_names = output_files_names,
+                corenum = corenum
                 )
             
             prevcalcver = v
@@ -655,7 +772,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     calc, varset, update = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, schedule_system = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None, output_files_names = None):
+    mat_proj_st_id = None, output_files_names = None, corenum = 1):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
@@ -710,11 +827,15 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             cl_prev = copy.deepcopy(calc[id])
 
         calc[id] = CalculationVasp( varset[id[1]] )
+        cl = calc[id]
 
         calc[id].id = id 
         calc[id].name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
         calc[id].dir = blockdir+"/"+ str(id[0]) +'.'+ str(id[1])+'/'
         
+
+        batch_script_filename = cl.dir+cl.id[0]+"."+cl.id[1]+'.run'        
+
 
         # all additional properties:
         if not hasattr(calc_method, '__iter__'):
@@ -743,11 +864,18 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-        calc[id].cluster_address = cluster_address
-        calc[id].corenum = corenum
-        calc[id].project_path_cluster = project_path_cluster
+        calc[id].cluster_address = header.CLUSTER_ADDRESS
+        calc[id].project_path_cluster = header.project_path_cluster
+        
+        calc[id].corenum = corenum #this is correct - corenum provided to functions
+        calc[id].schedule_system = schedule_system
+
+
         if mat_proj_st_id:
             calc[id].mat_proj_st_id = mat_proj_st_id
+
+
+
 
         if inherit_option == 'continue' and cl_prev:
             if hasattr(cl_prev, 'prev') and cl_prev.prev:
@@ -763,9 +891,18 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if update in ['up1', 'up2']:
             if not os.path.exists(calc[id].dir):
                 log.write( runBash("mkdir -p "+calc[id].dir) )         #Create directory if does not exist
-                log.write( runBash("ssh "+cluster_address+" ' mkdir -p "+calc[id].dir+" ' ") )
+                log.write( runBash("ssh "+calc[id].cluster_address+" ' mkdir -p "+calc[id].dir+" ' ") )
+            
             if id[2] == first_version:
-                calc[id].write_sge_script(schedule_system = schedule_system) #write header only once
+                
+                # if header.NEW_BATCH:
+                write_batch_header(batch_script_filename = batch_script_filename,
+                    schedule_system = cl.schedule_system, 
+                    path_to_job = header.PATH_TO_PROJECT_ON_CLUSTER+cl.dir, 
+                    job_name = cl.id[0]+"."+cl.id[1], number_cores = cl.corenum  )
+                
+                # else:
+                #     calc[id].write_sge_script(schedule_system = schedule_system) #write header only once
 
         if input_geo_file:
             geofilelist = glob.glob(input_geo_file) 
@@ -805,7 +942,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             geofilelist = glob.glob(input_folder+'/*.geo*') #Find input_geofile    
 
 
-        for input_geofile in geofilelist:
+        for input_geofile in geofilelist: #quite stupid to have this loop here - much better to move this to upper function, and the loop will not be needed
+            
             #print runBash("grep version "+str(input_geofile) )
             input_geofile = os.path.normpath(input_geofile)
             if input_geo_format in ['abinit',]:
@@ -820,17 +958,25 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             if curv == id[2]:
 
-                copy_to = os.path.normpath(calc[id].dir+input_geofile.split('/')[-1])
+                calc_geofile_path = os.path.normpath(calc[id].dir+input_geofile.split('/')[-1])
                 
-                if input_geofile != copy_to:
-                    # print os.path.normpath(input_geofile)
-                    # print os.path.normpath(copy_to)
+                if input_geofile != calc_geofile_path: # copy initial geo file and other files to calc folder
 
-                    dire = os.path.dirname(copy_to)
-                    if not os.path.exists(dire):
-                        os.makedirs(dire)
+                    makedir(calc_geofile_path)
+                    # dire = os.path.dirname(copy_to)
+                    # if not os.path.exists(dire):
+                    #     os.makedirs(dire)
+                    # print (input_geofile)
+                    # sys.exit()
+                    shutil.copyfile(input_geofile, calc_geofile_path)
+                    dir_1 = os.path.dirname(input_geofile)
+                    dir_2 = os.path.dirname(calc_geofile_path) 
+                    
+                    if 'OCCEXT' in calc[id].set.vasp_params and calc[id].set.vasp_params['OCCEXT'] == 1:
 
-                    shutil.copyfile(input_geofile, copy_to)
+                        shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
+
+
 
                 
                 if input_geo_format == 'abinit':
@@ -885,7 +1031,15 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             calc[id].write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
             
-            out_name = calc[id].write_sge_script(str(version)+".POSCAR", version, inherit_option, prevcalcver, savefile, schedule_system = schedule_system)
+
+
+            # if header.NEW_BATCH:
+            #     ''
+            # else:            
+            out_name = calc[id].write_sge_script(str(version)+".POSCAR", version, 
+                inherit_option, prevcalcver, savefile, 
+                schedule_system = schedule_system, mode = 'body',
+                batch_script_filename = batch_script_filename)
             
                         
             if out_name:
@@ -899,22 +1053,22 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-            if id[2] == last_version:  #write footer      
-                calc[id].write_sge_script('footer', schedule_system = schedule_system, option = inherit_option, 
-                    output_files_names = output_files_names)
-
-
-            
-
-
-
             if id[2] == first_version:
                 calc[id].add_potcar()
             
             calc[id].calculate_nbands()
 
-            if id[2] == last_version:        
+
+
+            if id[2] == last_version:
+
+                calc[id].write_sge_script(mode = 'footer', schedule_system = schedule_system, option = inherit_option, 
+                    output_files_names = output_files_names, batch_script_filename = batch_script_filename )
+                
+                runBash('chmod +x '+batch_script_filename)
+
                 calc[id].make_incar_and_copy_all(update)
+                
                 calc[id].make_run(schedule_system = schedule_system)
 
 
@@ -965,6 +1119,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             remove_imp    - removes all atoms with typat > 1
             replace_atoms - atoms of type 'atom_to_replace' in 'id_base' will be replaced by 'atom_new' type.
             make_vacancy  - produce vacancy by removing 'atom_to_remove' starting from 0
+            occ           - take occ from *id_from* and create file OCCMATRIX for 
+                            OMC [https://github.com/WatsonGroupTCD/Occupation-matrix-control-in-VASP]
+
 
         id_base_st_type - use init or end structure of id_base calculation.
         id_from_st_type  - init or end for id_from
@@ -1022,12 +1179,16 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     if id_from:
         if type(id_from) == str: # if string - treated like file name
+            print_and_log("I detect *id_from* path provided; taking some information from:", id_from)
+
             calc_from = CalculationVasp();
             calc_from.read_geometry(id_from)
             calc_from.end = calc_from.init
             calc_from_name = id_from
         else:
-            print "id_from", id_from
+            print_and_log("I detect *id_from* Calculation(); taking some information from:", id_from, id_from_st_type)
+            
+
             calc_from = calc[id_from]
             calc_from_name = calc_from.name
 
@@ -1068,6 +1229,22 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
 
+    #path to new calc
+    if it_folder:
+        section_folder = it_folder
+    else:
+        section_folder = struct_des[it_new].sfolder
+
+
+    it_new_folder = geo_folder + section_folder + '/' + it_new
+    new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+
+    makedir(new.path["input_geo"])
+    print_and_log('Path for inherited calc =', it_new_folder)
+
+
+
+
 
     if inherit_type == "r2r3":
         des = ' Partly inherited from the final state of '+cl_base.name+'; r2 and r3 from '+calc_from_name
@@ -1098,6 +1275,59 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         # new.des = des + struct_des[it_new].des
         st.magmom = [None]
         # new.write_geometry("end",des)
+
+    elif inherit_type == "occ":
+        des = 'Fully inherited from the final state of '+cl_base.name+'; occupation matrix is taken from '+calc_from_name
+
+        #create OCCMATRIX 
+        print_and_log('Inherit option: "occ", reading occupation matrices from',calc_from_name)
+        
+        if not calc_from.occ_matrices:
+            print_and_log('Error! calc_from.occ_matrices is empty')
+
+            raise RuntimeError
+
+
+        print_and_log('I create OCCMATRIX in ', it_new_folder)
+
+
+        with open(it_new_folder+'/OCCMATRIX', 'w') as f:
+            occs = calc_from.occ_matrices
+            numat = len(occs)
+            f.write(str(numat)+'  #num of atoms to be specified\n')
+            
+            at_nums = occs.keys()
+            at_spin = [] # # 2 or 1
+            at_ltyp = [] # l - orbital type, 1 - s, 2 - d, 3 - f
+            for key in occs: 
+                occ = occs[key]
+                if len(occ) == 10: # spin polarized, d orbital
+                    at_spin.append(2)
+                    at_ltyp.append(2)
+                else:
+                    raise RuntimeError # please write by yourself for other cases
+
+
+            for i, l, s in zip(at_nums, at_spin, at_ltyp):
+
+                f.write(list2string([i+1, l, s])+'    #i, l, s\n')
+                # for sp in range(s):
+                f.write('spin 1\n')
+                for row in occs[i][ 0:len(occs[i])//s ]:
+                    f.write(list2string(row)+'\n')
+                if s == 2:
+                    f.write('spin 2\n')
+                    for row in occs[i][ len(occs[i])//s: ]:
+                        f.write(list2string(row)+'\n')
+                f.write('\n')
+
+        # st.magmom = [None]
+        
+
+
+
+        # sys.exit()
+
 
 
 
@@ -1132,8 +1362,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
                 st.xcart.append(st_copy.xcart[i])
         st.natom = len(st.xred)
         # new.init = new.end #just for sure
-        new.write_geometry("end",des)        
-        write_xyz(new.end)
+        # new.write_geometry("end",des)        
+        # write_xyz(new.end)
 
 
 
@@ -1227,23 +1457,17 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
     #auto addition of description
-
-
     if it_new not in struct_des: 
         add_des(struct_des, it = it_new, it_folder = it_folder, des = 'auto '+des)
         new.des =  struct_des[it_new].des
-
     else:
         new.des = des + struct_des[it_new].des
 
-
-    new.path["input_geo"] = geo_folder + struct_des[it_new].sfolder + '/' + \
-        it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
-    print_and_log('Path for inherited calc=', new.path["input_geo"])
-   
-
-
     #write files
+
+    # print new.end.xcart
+
+
     new.write_geometry(id_base_st_type, des)
     write_xyz(st)
 
@@ -2026,7 +2250,6 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-            path2saved = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')
             
             if 'mep' in show:
                 plot_mep(atom_pos, mep_energies)
@@ -2034,7 +2257,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
             if push2archive:
-                # push_figure_to_archive(local_figure_path = path2mep_l, caption = description_for_archive)
+                path2saved = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')
                 push_figure_to_archive(local_figure_path = path2saved, caption = description_for_archive)
 
 

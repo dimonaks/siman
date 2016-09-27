@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import 
 
-from __future__ import print_function
+# from __future__ import print_function
 # from __future__ import division, unicode_literals, absolute_import 
 from tabulate import tabulate
 
@@ -258,7 +258,14 @@ class Structure():
 
 
 class Calculation(object):
-    """Main class of siman. Objects of this class contain all information about first-principles calculation"""
+    """Main class of siman. Objects of this class contain all information about first-principles calculation
+        List of important fields:
+            - init (Structure)
+            - end  (Structure)
+            - occ_matrices (dict) - occupation matrices, number of atom (starting from 0) is used as key
+
+
+    """
     def __init__(self, inset = None, iid = None):
         #super(CalculationAbinit, self).__init__()
         self.name = "noname"
@@ -1171,10 +1178,12 @@ class CalculationVasp(Calculation):
 
         list_to_copy.extend( glob.glob(d+'/*POSCAR*') )
         list_to_copy.extend( glob.glob(d+'/*.run*') )
-        string_of_paths = ""
 
-        for nf in list_to_copy:
-            string_of_paths += nf+" " #Compose all files for copy in one string
+        if 'OCCEXT' in self.set.vasp_params and self.set.vasp_params['OCCEXT'] == 1:
+            list_to_copy.append(d+'OCCMATRIX')
+
+
+        string_of_paths = list2string(list_to_copy)
 
         
         if "up" in update: #Copy to server
@@ -1189,17 +1198,25 @@ class CalculationVasp(Calculation):
 
     def write_sge_script(self, input_geofile = "header", version = 1, option = None, 
         prevcalcver = None, savefile = None, schedule_system = None,
-        output_files_names = None):
+        output_files_names = None,
+        mode = None,
+        batch_script_filename = None):
         """Without arguments writes header, else adds sequence of calculatios
             option - 'inherit_xred' - control inheritance, or 'master' - run serial on master 
             prevcalcver - ver of previous calc; for first none
             savefile - 'cdawx', where c-charge, d-dos, a- AECCAR, w-wavefile, x-xml
             schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
-
+            mode - 
+                body
+                footer
         """
 
 
         # print 'Starting write_sge()', input_geofile
+        varset = header.varset
+        
+        f = open(batch_script_filename,'a') #
+
 
         def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod_prev = '', write = True, curver = None):
             """1. Input files preparation
@@ -1316,8 +1333,8 @@ class CalculationVasp(Calculation):
                     chg  = pre + '.CHG'
                     f.write("mv CHG "+chg+"\n")
                     f.write("gzip "+chg+"\n")
-                else:
-                    f.write("rm CHG \n") #file can be used only for visualization
+                # else:
+                #     f.write("rm CHG \n") #file can be used only for visualization
 
 
 
@@ -1345,7 +1362,9 @@ class CalculationVasp(Calculation):
                 if 'w' in rm_chg_wav:
                     ''
                     f.write("rm WAVECAR\n") #
-
+                if 'v' in rm_chg_wav: #chgcar for visualization
+                    ''
+                    f.write("rm CHG\n") #
 
             return
 
@@ -1379,355 +1398,383 @@ class CalculationVasp(Calculation):
             raise RuntimeError
 
 
-        run_name = self.dir+self.id[0]+"."+self.id[1]+'.run'        
+        run_name = batch_script_filename     
         job_name = self.id[0]+"."+self.id[1]
         neb_flag = ('neb' in self.calc_method or 'only_neb' in self.calc_method)
 
-        if input_geofile == "header":
-            with open(run_name,'w') as f:
-                if schedule_system == 'SGE':
-                    f.write("#!/bin/tcsh   \n")
-                    f.write("#$ -M aksenov@mpie.de\n")
-                    f.write("#$ -m be\n")
-                    f.write("#$ -S /bin/tcsh\n")
-                    f.write("#$ -cwd \n")
-                    f.write("#$ -R y \n")
-                    f.write("#$ -o "+self.dir+" -j y\n\n")
-
-                    f.write("cd "+self.dir+"\n")
-                    f.write("module load sge\n")
-                    f.write("module load vasp/parallel/5.2.12\n\n")
-
-
-                # import random
-                # foo = ['01', '02', '03', '04', '05', '06', '07', '08', '10', '12', '13', '15', '16', '17', '18', '19', '20']
-                # print(random.choice(foo)
-
-                if schedule_system == 'PBS':
-                    f.write("#!/bin/bash   \n")
-                    f.write("#PBS -N "+job_name+"\n")
-                    f.write("#PBS -l walltime=99999999:00:00 \n")
-                    f.write("#PBS -l nodes=1:ppn="+str(header.corenum)+"\n")
-                    f.write("#PBS -r n\n")
-                    f.write("#PBS -j eo\n")
-                    f.write("#PBS -m bea\n")
-                    f.write("#PBS -M dimonaks@gmail.com\n")
-                    f.write("cd $PBS_O_WORKDIR\n")
-                    f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
-                    f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
-
-                    # f.write("cd "+self.dir+"\n")
-
-                    # f.write("module load sge\n")
-                    # f.write("module load vasp/parallel/5.2.12\n\n")
-
-                if schedule_system == 'SLURM':
-                    f.write("#!/bin/bash   \n")
-                    f.write("#SBATCH -J "+job_name+"\n")
-                    f.write("#SBATCH -t 250:00:00 \n")
-                    f.write("#SBATCH -N 1\n")
-                    f.write("#SBATCH -n "+str(header.corenum)+"\n")
-                    f.write("#SBATCH -o "+cluster_home+self.dir+"sbatch.out\n")
-                    f.write("#SBATCH -e "+cluster_home+self.dir+"sbatch.err\n")
-                    f.write("#SBATCH --mem-per-cpu=7675\n")
-                    f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
-                    f.write("#SBATCH --mail-type=END\n")
-                    f.write("cd ~/"+self.dir+"\n")
-                    f.write("export OMP_NUM_THREADS=1\n")
-
-                    f.write("module add prun/1.0\n")
-                    f.write("module add intel/16.0.2.181\n")
-                    f.write("module add impi/5.1.3.181\n")
-                    f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
-                    f.write("export PATH=$PATH:~/tools\n")
+        if hasattr(self.set, 'set_sequence') and self.set.set_sequence and any(self.set.set_sequence):
+            sets = [varset[ise] for ise in self.set.set_sequence]
+        else:
+            sets = []
 
 
 
+        if 0:
+            ''
+            # if input_geofile == "header":
+                # with open(run_name,'w') as f:
+                # if schedule_system == 'SGE':
+                #     f.write("#!/bin/tcsh   \n")
+                #     f.write("#$ -M aksenov@mpie.de\n")
+                #     f.write("#$ -m be\n")
+                #     f.write("#$ -S /bin/tcsh\n")
+                #     f.write("#$ -cwd \n")
+                #     f.write("#$ -R y \n")
+                #     f.write("#$ -o "+self.dir+" -j y\n\n")
 
-                # f.write("rm WAVECAR\n")                
-                # f.write("rm WAVECAR\n")                
-
-            # f.close()
-
+                #     f.write("cd "+self.dir+"\n")
+                #     f.write("module load sge\n")
+                #     f.write("module load vasp/parallel/5.2.12\n\n")
 
 
+                # # import random
+                # # foo = ['01', '02', '03', '04', '05', '06', '07', '08', '10', '12', '13', '15', '16', '17', '18', '19', '20']
+                # # print(random.choice(foo)
 
-        elif input_geofile != "footer": #control part of script
+                # if schedule_system == 'PBS':
+                #     f.write("#!/bin/bash   \n")
+                #     f.write("#PBS -N "+job_name+"\n")
+                #     f.write("#PBS -l walltime=99999999:00:00 \n")
+                #     f.write("#PBS -l nodes=1:ppn="+str(header.corenum)+"\n")
+                #     f.write("#PBS -r n\n")
+                #     f.write("#PBS -j eo\n")
+                #     f.write("#PBS -m bea\n")
+                #     f.write("#PBS -M dimonaks@gmail.com\n")
+                #     f.write("cd $PBS_O_WORKDIR\n")
+                #     f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
+                #     f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
+
+                #     # f.write("cd "+self.dir+"\n")
+
+                #     # f.write("module load sge\n")
+                #     # f.write("module load vasp/parallel/5.2.12\n\n")
+
+                # if schedule_system == 'SLURM':
+                #     f.write("#!/bin/bash   \n")
+                #     f.write("#SBATCH -J "+job_name+"\n")
+                #     f.write("#SBATCH -t 250:00:00 \n")
+                #     f.write("#SBATCH -N 1\n")
+                #     f.write("#SBATCH -n "+str(header.corenum)+"\n")
+                #     f.write("#SBATCH -o "+cluster_home+self.dir+"sbatch.out\n")
+                #     f.write("#SBATCH -e "+cluster_home+self.dir+"sbatch.err\n")
+                #     f.write("#SBATCH --mem-per-cpu=7675\n")
+                #     f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
+                #     f.write("#SBATCH --mail-type=END\n")
+                #     f.write("cd ~/"+self.dir+"\n")
+                #     f.write("export OMP_NUM_THREADS=1\n")
+
+                #     f.write("module add prun/1.0\n")
+                #     f.write("module add intel/16.0.2.181\n")
+                #     f.write("module add impi/5.1.3.181\n")
+                #     f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
+                #     f.write("export PATH=$PATH:~/tools\n")
+
+
+
+
+                    # f.write("rm WAVECAR\n")                
+                    # f.write("rm WAVECAR\n")                
+
+                # f.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+        def write_body(v = None, savefile = None, set_mod = ''):
+            """
+            set_mod (str) - additional modification of names needed for *set_sequence* regime, should be '.setname'
+            """
+
+            if 'only_neb' in self.calc_method:
+                write = False
+                write_poscar = False
+            else:
+                write = True
+                write_poscar = True                
+
+            #neb
+            if 'neb' in self.calc_method: 
+                if write: 
+                    f.write("#NEB run, start and final configurations, then IMAGES:\n") 
+                update_incar(parameter = 'IMAGES', value = 0, write = write) # start and final runs
 
             
-            v = str(version)
+            if 0: #experimental preliminary non-magnetic run
+                ''
+                #     if self.set.vasp_params['ISPIN'] == 2:
+                #         print_and_log('Magnetic calculation detected; For better convergence',
+                #          'I add first non-magnetic run', imp = 'Y')
+                #         write = True
+                #         name_mod_last = '.'+'NM'
+                #         name_mod = '.NM'
+
+                #         if write: 
+                #             f.write("#Preliminary non-magnetic run:\n")  
+                #         prepare_input(prevcalcver = prevcalcver, option = option,
+                #          input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write, curver = version)
+
+                #         update_incar(parameter = 'ISPIN', value = 1, write = write) #
+                        
+                #         run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+
+                #         if write:
+                #             f.write("cp CONTCAR POSCAR  #prepare for basic run\n")
+                #             write_poscar = False  
+
+                #         mv_files_according_versions('co', v, name_mod = name_mod, write = write, rm_chg_wav = '')
+
+                #         update_incar(parameter = 'ISPIN', value = 2, write = write) #
 
 
-            self.associated_outcars = []
 
 
+            if 'u_ramping' in self.calc_method:
+
+                if write: 
+                    f.write("#U-ramping run:\n")  
+
+                # name_mod_last = '.'+name_mod_U_last()
+                name_mod_last = '.U00'+set_mod #since u_ramp starts from u = 00, it is more correct to continue from 00
+
+                # print name_mod_last
+                # print 'prevcalver', prevcalcver
+
+                if write: 
+                    f.write("rm CHGCAR\n")                
+
+                prepare_input(prevcalcver = prevcalcver, option = option,
+                 input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write_poscar, curver = version)
 
 
-            with open(run_name,'a') as f: #append information about run
+                for i_u in range(self.set.u_ramping_nstep):
 
-                if 'only_neb' in self.calc_method:
-                    write = False
-                    write_poscar = False
-                else:
-                    write = True
-                    write_poscar = True                
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write)
 
-                #neb
-                if 'neb' in self.calc_method: 
+                    name_mod   = '.U'+str(u).replace('.', '')+set_mod
+                   
+                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+
                     if write: 
-                        f.write("#NEB run, start and final configurations, then IMAGES:\n") 
-                    update_incar(parameter = 'IMAGES', value = 0, write = write) # start and final runs
+                        f.write("cp CONTCAR POSCAR\n")                
+
+                    mv_files_according_versions('o', v, name_mod = name_mod, write = write, rm_chg_wav = '')
+                
+                    self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
+
+
+                mv_files_according_versions(savefile = 'c', v=v, name_mod = name_mod) #save more files for last U
+                analysis_script(write = write)
+                # print self.associated
+
+
+
+
+
+            elif 'afm_ordering' in self.calc_method:
+
+                #Comment - inherit_xred option is not available here
+                f.write("rm CHGCAR\n")                
+                if not savefile: 
+                    savefile = 'o'
+
+                for i, magmom in enumerate(self.magnetic_orderings):
+
+                    name_mod   = '.AFM'+str(i)+set_mod
+
+                    update_incar(parameter = 'MAGMOM', value = magmom)
+
+                    prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile)
+                    
+                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command)
+
+                    mv_files_according_versions(savefile, v, name_mod = name_mod)
+                
+                    self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
+
+                analysis_script()
+            
+
+            else: #simple run
+                
+                if not savefile: 
+                    savefile = 'cdox'
+
+                if write: 
+                        f.write("#Basic run:\n")  
+
+                name_mod   = set_mod
+                name_mod_last = set_mod
+
+                prepare_input(prevcalcver = prevcalcver, option = option, name_mod_prev = name_mod_last,
+                    input_geofile = input_geofile, write = write_poscar, curver =version)
+
+                run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+
+                mv_files_according_versions(savefile, v, write = write, name_mod = name_mod, rm_chg_wav = '')
+
+
+            return
+        
+
+
+        def write_footer():
+            """footer"""
+            if neb_flag:
+                print_and_log('Writing scripts for NEB method', important = 'n')
+                nim = self.set.vasp_params['IMAGES']
+                nim_str = str(nim)
+
+                subfolders = []
+                for n in range(1, nim+1):
+                    if n < 10:
+                        n_st = '0'+str(n)
+                    elif n < 100:
+                        n_st = str(n)
+                    subfolders.append(n_st)
+
+
+                if 'u_ramping' in self.calc_method:
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = self.set.u_ramping_nstep-1, write = False)
+                    name_mod   = '.U'+str(u).replace('.', '')
+                    # name_mod_last = name_mod_U_last()+'.'
+                    name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
+                
+                else:
+                    name_mod_last = ''
+                    name_mod   = ''
+
+                start = '1'+name_mod+'.OUTCAR '
+                final = '2'+name_mod+'.OUTCAR '
+
+
+
+                f.write("\n\n#Starting NEB script \n")
+
+                if option and 'continue' in option:
+                    prevout = name_mod_last+'OUTCAR '
+
+                    for n_st in subfolders:
+                        f.write('cp '+n_st+'/'+prevout+n_st+'/'+'prev.'+prevout+'  # inherit_option = continue\n' )
+                        f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR  # inherit_option = continue\n')
+                        f.write('mv '+n_st+'/CHGCAR '+n_st+'/prev.CHGCAR   # inherit_option = continue\n')
+
+                else:
+                    f.write('~/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
 
                 
-                if 0: #experimental preliminary non-magnetic run
-                    if self.set.vasp_params['ISPIN'] == 2:
-                        print_and_log('Magnetic calculation detected; For better convergence',
-                         'I add first non-magnetic run', imp = 'Y')
-                        write = True
-                        name_mod_last = '.'+'NM'
-                        name_mod = '.NM'
+                f.write('cp '+start+ '00/OUTCAR\n')
+                
+                if nim+1 < 10: 
+                    nim_plus_one_str = '0'+str(nim+1)
 
-                        if write: 
-                            f.write("#Preliminary non-magnetic run:\n")  
-                        prepare_input(prevcalcver = prevcalcver, option = option,
-                         input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write, curver = version)
+                f.write('cp '+final + nim_plus_one_str + '/OUTCAR\n' )
 
-                        update_incar(parameter = 'ISPIN', value = 1, write = write) #
-                        
-                        run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
-
-                        if write:
-                            f.write("cp CONTCAR POSCAR  #prepare for basic run\n")
-                            write_poscar = False  
-
-                        mv_files_according_versions('co', v, name_mod = name_mod, write = write, rm_chg_wav = '')
-
-                        update_incar(parameter = 'ISPIN', value = 2, write = write) #
+                update_incar(parameter = 'IMAGES', value = nim)
 
 
 
 
                 if 'u_ramping' in self.calc_method:
 
-                    if write: 
-                        f.write("#U-ramping run:\n")  
-
-
-
-                    # name_mod_last = '.'+name_mod_U_last()
-                    name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
-
-                    # print name_mod_last
-                    # print 'prevcalver', prevcalcver
-
-                    if write: 
-                        f.write("rm CHGCAR\n")                
-
-                    prepare_input(prevcalcver = prevcalcver, option = option,
-                     input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write_poscar, curver = version)
-
                     for i_u in range(self.set.u_ramping_nstep):
 
 
-                        u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write)
+                        u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u)
 
-                        name_mod   = '.U'+str(u).replace('.', '')
-
-
-
+                        name_mod   = 'U'+str(u).replace('.', '')
 
                         
-                        run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+                        run_command(option = option, name = self.name+'.images'+nim_str+'.'+name_mod, 
+                            parrallel_run_command = parrallel_run_command, write = True)
 
-
-                        if write: 
-                            f.write("cp CONTCAR POSCAR\n")                
-
-
-                        mv_files_according_versions('o', v, name_mod = name_mod, write = write, rm_chg_wav = '')
-                    
-                        self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
-
-                        # print 'write_sge(): as_outcars=', self.associated_outcars
-
-
-                    mv_files_according_versions(savefile = 'c', v=v, name_mod = name_mod) #save more files for last U
-                    analysis_script(write = write)
-                    # print self.associated
-
-
-                elif 'afm_ordering' in self.calc_method:
-
-                    #Comment - inherit_xred option is not available here
-                    f.write("rm CHGCAR\n")                
-                    if not savefile: savefile = 'o'
-
-                    for i, magmom in enumerate(self.magnetic_orderings):
-
-                        name_mod   = '.AFM'+str(i)
-
-                        update_incar(parameter = 'MAGMOM', value = magmom)
-
-                        prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile)
-                        
-                        run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command)
-
-                        mv_files_according_versions(savefile, v, name_mod = name_mod)
-                    
-                        self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
-
-                    analysis_script()
-                
-
-
-
-                else:
-                    
-                    if not savefile: savefile = 'cdox'
-
-                    if write: 
-                            f.write("#Basic run:\n")  
-
-                    prepare_input(prevcalcver = prevcalcver, option = option, 
-                        input_geofile = input_geofile, write = write_poscar, curver =version)
-
-                    run_command(option = option, name = self.name, parrallel_run_command = parrallel_run_command, write = write)
-
-                    mv_files_according_versions(savefile, v, write = write, rm_chg_wav = '')
-
-
-
-
-                # f.write("\n")
-
-
-        else: 
-            """footer"""
-            with open(run_name,'a') as f: #append information about run
-
-                if neb_flag:
-                    print_and_log('Writing scripts for NEB method', important = 'n')
-                    nim = self.set.vasp_params['IMAGES']
-                    nim_str = str(nim)
-
-                    subfolders = []
-                    for n in range(1, nim+1):
-                        if n < 10:
-                            n_st = '0'+str(n)
-                        elif n < 100:
-                            n_st = str(n)
-                        subfolders.append(n_st)
-
-
-                    if 'u_ramping' in self.calc_method:
-                        u = update_incar(parameter = 'LDAUU', u_ramp_step = self.set.u_ramping_nstep-1, write = False)
-                        name_mod   = '.U'+str(u).replace('.', '')
-                        # name_mod_last = name_mod_U_last()+'.'
-                        name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
-                    
-                    else:
-                        name_mod_last = ''
-                        name_mod   = ''
-
-                    start = '1'+name_mod+'.OUTCAR '
-                    final = '2'+name_mod+'.OUTCAR '
-
-
-
-                    f.write("\n\n#Starting NEB script \n")
-
-                    if option and 'continue' in option:
-                        prevout = name_mod_last+'OUTCAR '
 
                         for n_st in subfolders:
-                            f.write('cp '+n_st+'/'+prevout+n_st+'/'+'prev.'+prevout+'  # inherit_option = continue\n' )
-                            f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR  # inherit_option = continue\n')
-                            f.write('mv '+n_st+'/CHGCAR '+n_st+'/prev.CHGCAR   # inherit_option = continue\n')
 
-                    else:
-                        f.write('~/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
+                            f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR'+'\n' )
+                            f.write('cp '+n_st+'/OUTCAR  '+n_st+'/'+name_mod+'.OUTCAR'+'\n' )
 
                     
-                    f.write('cp '+start+ '00/OUTCAR\n')
-                    
-                    if nim+1 < 10: 
-                        nim_plus_one_str = '0'+str(nim+1)
+                        # self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
-                    f.write('cp '+final + nim_plus_one_str + '/OUTCAR\n' )
+                else:
 
-                    update_incar(parameter = 'IMAGES', value = nim)
+                    run_command(option = option, name = (self.name+'.images'+nim_str), 
+                    parrallel_run_command = parrallel_run_command, write = True)
 
 
 
 
-                    if 'u_ramping' in self.calc_method:
-
-                        for i_u in range(self.set.u_ramping_nstep):
-
-
-                            u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u)
-
-                            name_mod   = 'U'+str(u).replace('.', '')
-
-                            
-                            run_command(option = option, name = self.name+'.images'+nim_str+'.'+name_mod, 
-                                parrallel_run_command = parrallel_run_command, write = True)
-
-
-                            for n_st in subfolders:
-
-                                f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR'+'\n' )
-                                f.write('cp '+n_st+'/OUTCAR  '+n_st+'/'+name_mod+'.OUTCAR'+'\n' )
-
-                        
-                            # self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
-
-                    else:
-
-                        run_command(option = option, name = (self.name+'.images'+nim_str), 
-                        parrallel_run_command = parrallel_run_command, write = True)
+                f.write('export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ \n')
+                f.write('~/tools/vts/nebresults.pl  \n')
+                f.write('find . -name WAVECAR -delete\n')
+                f.write('find . -name PROCAR -delete\n')
+                # for n in range
 
 
 
+            # print (calc[id].calc_method )
+            # sys.exit()
+            if 'uniform_scale' in self.calc_method:
+                # print (input_geofile)
+                
+                f.write("\n\n#Starting fitting tool \n")
 
-                    f.write('export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ \n')
-                    f.write('~/tools/vts/nebresults.pl  \n')
-                    f.write('find . -name WAVECAR -delete\n')
-                    f.write('find . -name PROCAR -delete\n')
-                    # for n in range
+                outputs = [ os.path.basename(out) for out in output_files_names ]
+                # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
+                f.write('~/tools/fit_tool.py '+list2string(outputs)+'\n' )
+                f.write('cp 100.POSCAR POSCAR \n')
+                run_command(option = option, name = (self.id[0]+'.'+self.id[1]+'.100'), 
+                    parrallel_run_command = parrallel_run_command, write = True)
+                mv_files_according_versions('co', '100', name_mod = '', write = True, rm_chg_wav = 'cw')
 
-
-
-                # print (calc[id].calc_method )
                 # sys.exit()
-                if 'uniform_scale' in self.calc_method:
-                    # print (input_geofile)
-                    
-                    f.write("\n\n#Starting fitting tool \n")
-
-                    outputs = [ os.path.basename(out) for out in output_files_names ]
-                    # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
-                    f.write('~/tools/fit_tool.py '+list2string(outputs)+'\n' )
-                    f.write('cp 100.POSCAR POSCAR \n')
-                    run_command(option = option, name = (self.id[0]+'.'+self.id[1]+'.100'), 
-                        parrallel_run_command = parrallel_run_command, write = True)
-                    mv_files_according_versions('co', '100', name_mod = '', write = True, rm_chg_wav = 'cw')
-
-                    # sys.exit()
 
 
 
 
+            #clean 
+            f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+
+            return
+
+
+        if mode == "body": #control part of script
+            self.associated_outcars = []
+
+            write_body( v = str(version), savefile = savefile)
+
+            for curset in sets:
+                
+                f.write('\n#sequence set:\n')
+                
+                f.write('cp '+curset.ise+'.INCAR  INCAR\n')
+                
+                write_body( v = str(version), savefile = savefile, set_mod = '.'+curset.ise)
 
 
 
-                #clean 
-                f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+        elif mode == 'footer': 
+            
+
+            write_footer()
 
 
 
 
-            runBash('chmod +x '+run_name)
 
 
 
@@ -1738,6 +1785,7 @@ class CalculationVasp(Calculation):
         else:
             out = None
         # print 'write_sge() out=', out
+        f.close()
         
         return  out#return OUTCAR name
     
@@ -1996,7 +2044,7 @@ class CalculationVasp(Calculation):
             # sys.exit()
             ldauu = None
             e_sig0 = 0 #energy sigma 0 every scf iteration
-            occ_matricies = {} # the number of atom is the key
+            occ_matrices = {} # the number of atom is the key
 
             #which kind of forces to use
             if ' CHAIN + TOTAL  (eV/Angst)\n' in outcarlines:
@@ -2008,6 +2056,15 @@ class CalculationVasp(Calculation):
                 force_keyword = 'TOTAL-FORCE'
                 ff  = (3, 4, 5)
                 force_prefix = ' tot '
+
+
+
+            #make more general for other codes, 
+            if self.set.vasp_params['ISPIN'] == 2:
+                spin_polarized = True
+            else:
+                spin_polarized = False
+
 
 
 
@@ -2239,7 +2296,7 @@ class CalculationVasp(Calculation):
 
 
                 if 'onsite density matrix' in line:
-                    i_at = int( outcarlines[i_line-2].split()[2]  )
+                    i_at = int( outcarlines[i_line-2].split()[2]  ) #starting from one
                     l_at = int( outcarlines[i_line-2].split()[8]  )
                     # print (i_at)
                     spin1 = []
@@ -2247,11 +2304,13 @@ class CalculationVasp(Calculation):
                     nm = 2*l_at+1
                     for i in range(nm):
                         spin1.append( np.array(outcarlines[i_line+4+i].split()).astype(float) )
-                    for i in range(nm):
-                        spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )
+                    
+                    if spin_polarized:
+                        for i in range(nm):
+                            spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )
                                         
 
-                    occ_matricies[i_at] = spin1+spin2
+                    occ_matrices[i_at-1] = spin1+spin2
                     # print (np.array(spin1) )
 
 
@@ -2473,6 +2532,8 @@ class CalculationVasp(Calculation):
                 sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = 4, control = 'atoms', 
                 periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
 
+                # print (sur)
+
             if 'mag' in show:
                 print ('\n\n\n')
                 # print_and_log
@@ -2505,24 +2566,25 @@ class CalculationVasp(Calculation):
 
             if 'occ' in show:
                 ''
-                # print (occ_matricies)
-                df = pd.DataFrame(occ_matricies)
+                # print (matrices)
                 # print (df)
-                print ( )
                 i = 0
                 i_mag_at = sur[2][i]
                 dist_toi = np.round(sur[3][i], 2)
-                # print (i_mag_at)
-                l05 = len(occ_matricies[i_mag_at])//2
+                # print (st.znucl[st.typat[i_mag_at]-1] )
+                l05 = len(occ_matrices[i_mag_at])//2
+
+                df = pd.DataFrame(occ_matrices[i_mag_at]).round(2)
 
                 print_and_log( 'Occ. matrix for atom ', i_mag_at+1, ':  ; dist to alk ion is ', 
                 dist_toi, 'A', end = '\n' )
                 print_and_log('Spin 1:',end = '\n' )
-                print_and_log(tabulate(occ_matricies[i_mag_at][0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'],  tablefmt='psql'),end = '\n' )
+                print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'],  tablefmt='psql'),end = '\n' )
                 print_and_log('Spin 2:',end = '\n' )
-                print_and_log(tabulate(occ_matricies[i_mag_at][l05:],  tablefmt='psql') )
+                print_and_log(tabulate(df[l05:],  tablefmt='psql') )
+            self.occ_matrices = occ_matrices
 
-            sys.exit()
+            # sys.exit()
 
 
             log.write("Reading of results completed\n\n")
@@ -2563,7 +2625,10 @@ class CalculationVasp(Calculation):
         #     print_and_log( 'Charge file is downloading')
         #     log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
         #     print_and_log( path_to_chg, 'was downloaded')
-        get_from_server(path_to_chg, self.dir, header.CLUSTER_ADDRESS)
+        out = get_from_server(path_to_chg, self.dir, header.CLUSTER_ADDRESS)
+
+        if out:
+            path_to_chg = 'file not found'
 
             
         return path_to_chg

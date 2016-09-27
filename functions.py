@@ -70,6 +70,8 @@ def get_from_server(files = None, to = None,  addr = None):
         files[0]+='.gz'
         # print files[0]
         out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+';gunzip '+to_new)
+        if out:
+            print_and_log('    No gz either!', imp = 'n')
 
 
 
