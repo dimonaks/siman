@@ -32,6 +32,12 @@ path_to_images = header.path_to_images
 
 
 
+def log_func_exec():
+    """
+    save to history the executed form
+    """
+    ''
+
 
 
 
@@ -268,7 +274,7 @@ def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided descr
     else:
         struct_des[it] = Description(it_folder, des)
         # hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
-        hstring = 'add_des(struct_des, {:s}, {:s}, {:s})    #on {:})'.format(it, it_folder, des, datetime.date.today())
+        hstring = 'add_des("{:s}", "{:s}", "{:s}")    #on {:})'.format(it, it_folder, des, datetime.date.today())
 
         try:
             if hstring != header.history[-1]: header.history.append( hstring  )
@@ -318,10 +324,11 @@ def update_des(struct_des, des_list):
 
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
-    coord = 'direct', savefile = 'oc', show = None, comment = None, 
-    input_geo_format = 'abinit', ifolder = None, input_geo_file = None, ppn = None,
+    coord = 'direct', savefile = 'ov', show = None, comment = None, 
+    input_geo_format = 'abinit', ifolder = None, input_geo_file = None, corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None,
     scale_region = None, n_scale_images = 7, id_from = None,
+    n_neb_images = None, occ_atom_coressp = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -349,7 +356,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             'cart'
 
         - savefile - controls which files are saved during VASP run on server; check
-            'ocdawx' - outcar, chgcar, dos, AECCAR,WAVECAR, xml
+            'ocvdawx' - outcar, chgcar, chg, dos, AECCAR,WAVECAR, xml
 
         - ifolder - explicit path to folder where to search for input geo file.
 
@@ -371,13 +378,15 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         - *id_from* - see inherit_icalc()
         - ise_new (str) - name of new set for inherited calculation  ('uniform_scale')
 
+        - occ_atom_coressp (dict) see inherit_icalc()
+
 
         - typconv - ? to be described.
         
         - 'from_geoise' - part of folder name with geometry input files. allows to use geometry files from different sets.
         please find how it was used
 
-        - ppn - number of cores used for calculation; overwrites header.corenum
+        - corenum - number of cores used for calculation; overwrites header.corenum
 
         - calc_method - provides additional functionality:
             - 'u_ramping'    - realizes U ramping approach #Phys Rev B 82, 195128
@@ -406,8 +415,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
     schedule_system = header.project_conf.SCHEDULE_SYSTEM
 
-    if ppn:
-        corenum = ppn
+    if corenum:
+        # corenum = ppn
+        ''
     else:
         corenum = header.CORENUM
 
@@ -437,21 +447,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     setlist = [s.strip() for s in setlist]
 
 
-
-
-
-
-    hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
-    args = hstring.split('(')[1].split(',')
-    # arg1 = args[0], arg2 = args[1]
-    # print args[0], it
-    hstring = hstring.replace(args[0], "'"+it+"'")
-    hstring = hstring.replace(args[1], str(setlist))
-    # print hstring
-    try:
-        if hstring != header.history[-1]: header.history.append( hstring  )
-    except:
-        header.history.append( hstring  )
+    if not hasattr(calc_method, '__iter__'):
+        calc_method = [calc_method]
 
 
 
@@ -501,7 +498,40 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, fv, mat_proj_id)
         input_geo_format = 'vasp'
 
+    neb_flag = calc_method and not set(['neb', 'only_neb']).isdisjoint(calc_method)
+    # print neb_flag
+    # print calc_method
+    # sys.exit()
 
+    if neb_flag: #put nimage values for set_sequence
+        curset = varset[ setlist[0] ]
+        if not n_neb_images:
+            n_neb_images = varset[curset.vasp_params['IMAGES']]
+
+        if not n_neb_images:
+            print_and_log('Error! You did not provide number of NEB images nor in *n_neb_images* nor in your set!')
+            raise RuntimeError
+
+
+        if corenum % n_neb_images > 0:
+            print_and_log('Error! Number of cores should be dividable by number of IMAGES')
+            raise RuntimeError
+
+
+
+
+        nebsets = [curset]
+        
+        if hasattr(curset, 'set_sequence') and curset.set_sequence:
+            for s in curset.set_sequence:
+                nebsets.append(varset[s])
+
+        for s in nebsets:
+            s.init_images_value = copy.deepcopy(s.vasp_params['IMAGES'])
+            s.vasp_params['IMAGES'] = n_neb_images
+        #     print s.vasp_params['IMAGES']
+        # sys.exit()
+        print_and_log('Attention, I update number of images in the set to', n_neb_images, 'for this calculation; ', imp = 'y')
 
 
 
@@ -518,7 +548,12 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
         if it_new not in struct_des:
-            add_des(struct_des, it_new, struct_des[it].sfolder, 'uniform_scale: scaled "images" for '+it+'.'+str(setlist)+'.'+str(v)   )
+            if it_folder:
+                section_folder = it_folder
+            else:
+                section_folder = struct_des[it].sfolder
+
+            add_des(struct_des, it_new, section_folder, 'uniform_scale: scaled "images" for '+it+'.'+str(setlist)+'.'+str(v)   )
 
 
         verlist_new = []
@@ -621,7 +656,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 id = (it,inputset,v)
                 # print (calc[id].end.magmom)
                 # sys.exit()
-                inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder)
+                inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp)
         
         if ise_new:
             print_and_log('Inherited calculation uses set', ise_new)
@@ -631,6 +666,28 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             print_and_log('Inherited calculation uses the same sets', setlist)
 
         it = it_new
+
+
+
+
+    if 0:
+        hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
+        args = hstring.split('(')[1].split(',')
+        hstring = hstring.replace(args[0], "'"+it+"'")
+        hstring = hstring.replace(args[1], str(setlist))
+    else: #more useful and convenient
+        hstring = "res_loop('{:s}', {:s}, {:s}, show = 'fo'  )     # comment = {:s}, on {:s}  ".format(
+            it, str(setlist), str(verlist), comment, str(datetime.date.today() )  )
+    # try:
+    if hstring != header.history[-1]: 
+        header.history.append( hstring  )
+    # except:
+    #     header.history.append( hstring  )
+
+
+
+
+
 
 
 
@@ -682,10 +739,11 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-        #write batch footer in some cases
 
 
-    if calc_method and 'neb' in calc_method:
+    # if calc_method and 'neb' in calc_method:
+    if neb_flag:
+
         if len(setlist) > 1:
             print_and_log('In "neb" mode only one set is allowed' )
             raise RuntimeError
@@ -737,7 +795,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 ''
             calc[cl_i.id] = cl_i
 
-
+        #return back images values
+        for s in nebsets:
+            s.vasp_params['IMAGES'] = s.init_images_value #return back
 
 
 
@@ -838,8 +898,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         # all additional properties:
-        if not hasattr(calc_method, '__iter__'):
-            calc_method = [calc_method]
+
         calc[id].calc_method = calc_method
 
         # print calc[id].calc_method 
@@ -1101,7 +1160,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     id_from = None,
     atom_new = None, atom_to_replace = None,  id_base_st_type = 'end', atom_to_remove = None, id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
-    it_folder = None
+    it_folder = None, occ_atom_coressp = None
     ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
@@ -1121,7 +1180,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             make_vacancy  - produce vacancy by removing 'atom_to_remove' starting from 0
             occ           - take occ from *id_from* and create file OCCMATRIX for 
                             OMC [https://github.com/WatsonGroupTCD/Occupation-matrix-control-in-VASP]
-
+                            - occ_atom_coressp (dict) {iatom_calc_from:iatom_calc_base, ... } (atomno starting from 0!!!)
 
         id_base_st_type - use init or end structure of id_base calculation.
         id_from_st_type  - init or end for id_from
@@ -1154,8 +1213,11 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     """
 
 
-    hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
-    if hstring != header.history[-1]: header.history.append( hstring  )
+    # hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
+    hstring = "inherit_icalc(it_new = '{:s}', ver_new = {:s}, id_base = {:s}, id_from = {:s})   # on {:s}".format(
+        it_new, str(ver_new), id_base, id_from, str( datetime.date.today())   )
+    if hstring != header.history[-1]: 
+        header.history.append( hstring  )
 
     #if inherit_type not in header.history[-1] or \
     #it_new not in header.history[-1]:   header.history.append( hstring  )
@@ -1279,20 +1341,49 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     elif inherit_type == "occ":
         des = 'Fully inherited from the final state of '+cl_base.name+'; occupation matrix is taken from '+calc_from_name
 
-        #create OCCMATRIX 
         print_and_log('Inherit option: "occ", reading occupation matrices from',calc_from_name)
         
         if not calc_from.occ_matrices:
             print_and_log('Error! calc_from.occ_matrices is empty')
-
             raise RuntimeError
 
 
-        print_and_log('I create OCCMATRIX in ', it_new_folder)
+        #additional control to which atoms should be applied
+        #if cells are different
+        print_and_log('You can use *occ_atom_coressp* to control for which atoms you inherit occupations')
 
 
-        with open(it_new_folder+'/OCCMATRIX', 'w') as f:
+
+        if calc_from.end.natom != new.natom or occ_atom_coressp:
+            
+            if calc_from.end.natom != new.natom:
+                print_and_log('Attention! Numbers of atoms are different. Please use *occ_atom_coressp* or I will try to use most closest to alkali ion d-atoms ')
+
+            if not occ_atom_coressp:
+                # raise RuntimeError
+                print_and_log('Please run res_loop(show = "occ") for *id_base*=',id_base, ' and *id_from*=',id_from, 'to save self.dist_numb')
+
+
+                occ_atom_coressp = {}
+                occ_atom_coressp[calc_from.dist_numb[0][1] ] = new.dist_numb[0][1] 
+            
+            
+            print_and_log('The occ matrices will be inherited from atom # in id_from to atom # in id_base:', end = '\n')
+            occs = {}
+                
+            for iat_from in occ_atom_coressp: # key is atom number in id_from 
+                iat_new = occ_atom_coressp[iat_from] #new is based on id_base
+                occs[ iat_new ] = calc_from.occ_matrices[iat_from]
+                print_and_log('        occ:',iat_from+1,'-->', iat_new+1)
+        else:
+            print_and_log('The cells seems to be consistent; full inheritence of occ_matrices')
             occs = calc_from.occ_matrices
+        
+        # sys.exit()
+
+        #create OCCMATRIX 
+        print_and_log('I create OCCMATRIX in ', it_new_folder)
+        with open(it_new_folder+'/OCCMATRIX', 'w') as f:
             numat = len(occs)
             f.write(str(numat)+'  #num of atoms to be specified\n')
             

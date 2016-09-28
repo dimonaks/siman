@@ -65,6 +65,7 @@ def read_database(scratch = False):
 
         try: header.history = d['history'] 
         except KeyError:
+            header.history = ['Project started on '+datetime.date.today()]
             log.write( "There is still no history in database. The list is in header module ");
         
 

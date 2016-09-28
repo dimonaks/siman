@@ -1218,7 +1218,8 @@ class CalculationVasp(Calculation):
         f = open(batch_script_filename,'a') #
 
 
-        def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod_prev = '', write = True, curver = None):
+        def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod_prev = '', write = True, 
+            curver = None, copy_poscar_flag = True):
             """1. Input files preparation
 
                 curver - current version
@@ -1229,9 +1230,11 @@ class CalculationVasp(Calculation):
                 # if not 'only_neb' in self.calc_method:
                 precont = str(prevcalcver)+name_mod_prev+'.CONTCAR' #previous contcar
                 if option == 'inherit_xred' and prevcalcver:
-                    f.write('grep -A '+str(self.init.natom)+ ' "Direct" '+precont+' >> '+input_geofile+ ' \n')
+                    if copy_poscar_flag:
 
-                if option == 'continue':
+                        f.write('grep -A '+str(self.init.natom)+ ' "Direct" '+precont+' >> '+input_geofile+ ' \n')
+
+                if option == 'continue': #test for the case of sequence set
                     ''
                     precont = str(curver)+name_mod_prev+'.CONTCAR ' #previous contcar
                     preout  = str(curver)+name_mod_prev+'.OUTCAR ' #previous outcar
@@ -1239,8 +1242,8 @@ class CalculationVasp(Calculation):
                     f.write("cp "+preout+'prev.'+preout+" # inherit_option = continue\n")
                     f.write('mv CHGCAR prev.CHGCAR   # inherit_option = continue\n')
                 else:
-
-                    f.write("cp "+input_geofile+" POSCAR\n")
+                    if copy_poscar_flag:
+                        f.write("cp "+input_geofile+" POSCAR\n")
         
 
 
@@ -1313,7 +1316,8 @@ class CalculationVasp(Calculation):
             return
 
 
-        def mv_files_according_versions(savefile, v, name_mod = '', write = True, rm_chg_wav = 'cw'):    
+        def mv_files_according_versions(savefile, v, name_mod = '', write = True, rm_chg_wav = 'cw',
+            ):    
             """3. Out files saving block
                 
                 rm_chg_wav - if True than CHGCAR and WAVECAR are removed
@@ -1323,22 +1327,29 @@ class CalculationVasp(Calculation):
             if write:
                 pre = v + name_mod
 
+                contcar = pre+'.CONTCAR'
+
                 if "o" in savefile:
 
                     f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
-                    f.write("mv CONTCAR "         + v + name_mod +  ".CONTCAR\n")
+                    f.write("mv CONTCAR "         + contcar+'\n')
                     f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
                 
-                if "c" in savefile:
+                if "v" in savefile: # v means visualization chgcar
                     chg  = pre + '.CHG'
                     f.write("mv CHG "+chg+"\n")
                     f.write("gzip "+chg+"\n")
+                
+                if 'c' in savefile: # 
+                    fln = 'CHGCAR'
+                    chgcar  = pre +'.'+fln
+                    f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
+                    f.write('gzip '+chgcar+'\n')                
+
+
+
                 # else:
                 #     f.write("rm CHG \n") #file can be used only for visualization
-
-
-
-
 
 
                 if "d" in savefile:
@@ -1358,15 +1369,15 @@ class CalculationVasp(Calculation):
 
 
                 if 'c' in rm_chg_wav:
-                    f.write("rm CHGCAR \n") #file is important for continuation
+                    f.write("rm CHGCAR   # rm_chg_wav flag\n") #file is important for continuation
                 if 'w' in rm_chg_wav:
                     ''
-                    f.write("rm WAVECAR\n") #
+                    f.write("rm WAVECAR  # rm_chg_wav flag\n") #
                 if 'v' in rm_chg_wav: #chgcar for visualization
                     ''
-                    f.write("rm CHG\n") #
+                    f.write("rm CHG   # rm_chg_wav flag\n") #
 
-            return
+            return contcar
 
 
         def analysis_script(write = True):
@@ -1403,9 +1414,9 @@ class CalculationVasp(Calculation):
         neb_flag = ('neb' in self.calc_method or 'only_neb' in self.calc_method)
 
         if hasattr(self.set, 'set_sequence') and self.set.set_sequence and any(self.set.set_sequence):
-            sets = [varset[ise] for ise in self.set.set_sequence]
+            sets = [self.set]+[varset[ise] for ise in self.set.set_sequence]
         else:
-            sets = []
+            sets = [self.set]
 
 
 
@@ -1494,7 +1505,8 @@ class CalculationVasp(Calculation):
 
 
  
-        def write_body(v = None, savefile = None, set_mod = ''):
+        def write_body(v = None, savefile = None, set_mod = '', copy_poscar_flag = True,
+            final_analysis_flag = True):
             """
             set_mod (str) - additional modification of names needed for *set_sequence* regime, should be '.setname'
             """
@@ -1548,19 +1560,25 @@ class CalculationVasp(Calculation):
                     f.write("#U-ramping run:\n")  
 
                 # name_mod_last = '.'+name_mod_U_last()
-                name_mod_last = '.U00'+set_mod #since u_ramp starts from u = 00, it is more correct to continue from 00
+                name_mod_last = '.U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
 
                 # print name_mod_last
                 # print 'prevcalver', prevcalcver
 
-                if write: 
-                    f.write("rm CHGCAR\n")                
+                if write and copy_poscar_flag: 
+                    f.write("rm CHGCAR    #u-ramp init from scratch\n")                
 
                 prepare_input(prevcalcver = prevcalcver, option = option,
-                 input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write_poscar, curver = version)
+                 input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write_poscar, curver = version,
+                 copy_poscar_flag = copy_poscar_flag)
+
+                if copy_poscar_flag:
+                    usteps = range(self.set.u_ramping_nstep)
+                else:
+                    usteps = [self.set.u_ramping_nstep-1]  # now it the case of sequence_set for contin sets only the last U is used
 
 
-                for i_u in range(self.set.u_ramping_nstep):
+                for i_u in usteps:
 
                     u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write)
 
@@ -1569,14 +1587,25 @@ class CalculationVasp(Calculation):
                     run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
 
                     if write: 
-                        f.write("cp CONTCAR POSCAR\n")                
+                        if copy_poscar_flag:
 
-                    mv_files_according_versions('o', v, name_mod = name_mod, write = write, rm_chg_wav = '')
+                            f.write("cp CONTCAR POSCAR   #u-ramp preparation\n")                
+
+                    contcar_file = mv_files_according_versions('o', v, name_mod = name_mod, write = write, rm_chg_wav = '')
                 
+
+
                     self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
+                if final_analysis_flag:
+                    rm_chg_wav = 'cw' #The chgcar is removed for the sake of harddrive space
+                else:
+                    rm_chg_wav = ''
 
-                mv_files_according_versions(savefile = 'c', v=v, name_mod = name_mod) #save more files for last U
+
+                mv_files_according_versions(savefile = 'v', v=v, name_mod = name_mod, rm_chg_wav = rm_chg_wav) #save more files for last U
+                
+
                 analysis_script(write = write)
                 # print self.associated
 
@@ -1597,11 +1626,12 @@ class CalculationVasp(Calculation):
 
                     update_incar(parameter = 'MAGMOM', value = magmom)
 
-                    prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile)
+                    prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile,
+                        copy_poscar_flag = copy_poscar_flag)
                     
                     run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command)
 
-                    mv_files_according_versions(savefile, v, name_mod = name_mod)
+                    contcar_file = mv_files_according_versions(savefile, v, name_mod = name_mod)
                 
                     self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
@@ -1611,28 +1641,83 @@ class CalculationVasp(Calculation):
             else: #simple run
                 
                 if not savefile: 
-                    savefile = 'cdox'
+                    savefile = 'vcdox'
 
                 if write: 
                         f.write("#Basic run:\n")  
 
                 name_mod   = set_mod
-                name_mod_last = set_mod
+                name_mod_last = ''
 
                 prepare_input(prevcalcver = prevcalcver, option = option, name_mod_prev = name_mod_last,
-                    input_geofile = input_geofile, write = write_poscar, curver =version)
+                    input_geofile = input_geofile, write = write_poscar, curver = version,
+                    copy_poscar_flag = copy_poscar_flag)
 
                 run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
 
-                mv_files_according_versions(savefile, v, write = write, name_mod = name_mod, rm_chg_wav = '')
+                contcar_file = mv_files_according_versions(savefile, v, write = write, name_mod = name_mod, rm_chg_wav = '')
 
 
-            return
+            return contcar_file
         
 
 
-        def write_footer():
+        def write_footer(set_mod = '', run_tool_flag = True, final_analysis_flag = True):
             """footer"""
+            
+            def u_ramp_prepare():
+                if 'u_ramping' in self.calc_method:
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = self.set.u_ramping_nstep-1, write = False)
+                    name_mod   = '.U'+str(u).replace('.', '')
+                    # name_mod_last = name_mod_U_last()+'.'
+                    name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
+                
+                else:
+                    name_mod_last = ''
+                    name_mod   = ''                
+
+                return name_mod, name_mod_last
+
+            def u_ramp_loop(ver_prefix = '', subfolders = None, run_name_prefix = None):
+
+                if not subfolders:
+                    subfolders = ['.']
+
+                
+
+                if run_tool_flag:
+                    usteps = range(self.set.u_ramping_nstep)
+                else:
+                    usteps = [self.set.u_ramping_nstep-1]  # now it the case of sequence_set for contin sets only the last U is used
+
+
+
+                for i_u in usteps:
+
+
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u)
+
+                    name_mod   = ver_prefix+'U'+str(u).replace('.', '')
+
+                    
+                    run_command(option = option, name = run_name_prefix+'.'+name_mod, 
+                        parrallel_run_command = parrallel_run_command, write = True)
+
+
+                    for n_st in subfolders:
+
+                        f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR'+'               #u_ramp_loop()\n' )
+                        f.write('cp '+n_st+'/OUTCAR  '+n_st+'/'+name_mod+'.OUTCAR'+'  #u_ramp_loop()\n' )
+                        contcar = name_mod+'.CONTCAR'
+                        f.write('cp '+n_st+'/CONTCAR  '+n_st+'/'+contcar+'            #u_ramp_loop()\n' )
+
+                        # self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
+
+
+                return contcar
+
+
+            contcar_file = 'CONTCAR'
             if neb_flag:
                 print_and_log('Writing scripts for NEB method', important = 'n')
                 nim = self.set.vasp_params['IMAGES']
@@ -1647,15 +1732,8 @@ class CalculationVasp(Calculation):
                     subfolders.append(n_st)
 
 
-                if 'u_ramping' in self.calc_method:
-                    u = update_incar(parameter = 'LDAUU', u_ramp_step = self.set.u_ramping_nstep-1, write = False)
-                    name_mod   = '.U'+str(u).replace('.', '')
-                    # name_mod_last = name_mod_U_last()+'.'
-                    name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
-                
-                else:
-                    name_mod_last = ''
-                    name_mod   = ''
+                name_mod, name_mod_last = u_ramp_prepare()
+
 
                 start = '1'+name_mod+'.OUTCAR '
                 final = '2'+name_mod+'.OUTCAR '
@@ -1673,55 +1751,40 @@ class CalculationVasp(Calculation):
                         f.write('mv '+n_st+'/CHGCAR '+n_st+'/prev.CHGCAR   # inherit_option = continue\n')
 
                 else:
-                    f.write('~/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
+                    
+                    if run_tool_flag:
+                        f.write('~/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
 
-                
-                f.write('cp '+start+ '00/OUTCAR\n')
-                
+
                 if nim+1 < 10: 
                     nim_plus_one_str = '0'+str(nim+1)
 
-                f.write('cp '+final + nim_plus_one_str + '/OUTCAR\n' )
+                if run_tool_flag:
+                    f.write('cp '+start +  '00/OUTCAR\n')
+                    f.write('cp '+final +  nim_plus_one_str + '/OUTCAR\n' )
+
 
                 update_incar(parameter = 'IMAGES', value = nim)
 
 
-
-
                 if 'u_ramping' in self.calc_method:
 
-                    for i_u in range(self.set.u_ramping_nstep):
 
-
-                        u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u)
-
-                        name_mod   = 'U'+str(u).replace('.', '')
-
-                        
-                        run_command(option = option, name = self.name+'.images'+nim_str+'.'+name_mod, 
-                            parrallel_run_command = parrallel_run_command, write = True)
-
-
-                        for n_st in subfolders:
-
-                            f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR'+'\n' )
-                            f.write('cp '+n_st+'/OUTCAR  '+n_st+'/'+name_mod+'.OUTCAR'+'\n' )
-
-                    
-                        # self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
+                    contcar_file = u_ramp_loop(subfolders = subfolders, run_name_prefix = self.name+'.images'+nim_str)
+              
 
                 else:
 
                     run_command(option = option, name = (self.name+'.images'+nim_str), 
                     parrallel_run_command = parrallel_run_command, write = True)
 
+                    contcar_file = 'CONTCAR'
 
-
-
-                f.write('export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ \n')
-                f.write('~/tools/vts/nebresults.pl  \n')
-                f.write('find . -name WAVECAR -delete\n')
-                f.write('find . -name PROCAR -delete\n')
+                if final_analysis_flag:
+                    f.write('export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ \n')
+                    f.write('~/tools/vts/nebresults.pl  \n')
+                    f.write('find . -name WAVECAR -delete\n')
+                    f.write('find . -name PROCAR -delete\n')
                 # for n in range
 
 
@@ -1730,47 +1793,90 @@ class CalculationVasp(Calculation):
             # sys.exit()
             if 'uniform_scale' in self.calc_method:
                 # print (input_geofile)
+                name_mod = set_mod
                 
-                f.write("\n\n#Starting fitting tool \n")
+                if run_tool_flag:
+                    f.write("\n\n#Starting fitting tool \n")
+                    outputs = [ os.path.basename(out) for out in output_files_names ]
+                    # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
+                    f.write('~/tools/fit_tool.py '+list2string(outputs)+'\n' )
+                    f.write('cp 100.POSCAR POSCAR \n')
+                
+                if 'u_ramping' in self.calc_method:
+                    
 
-                outputs = [ os.path.basename(out) for out in output_files_names ]
-                # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
-                f.write('~/tools/fit_tool.py '+list2string(outputs)+'\n' )
-                f.write('cp 100.POSCAR POSCAR \n')
-                run_command(option = option, name = (self.id[0]+'.'+self.id[1]+'.100'), 
-                    parrallel_run_command = parrallel_run_command, write = True)
-                mv_files_according_versions('co', '100', name_mod = '', write = True, rm_chg_wav = 'cw')
+                    contcar_file = u_ramp_loop(ver_prefix = '100.', run_name_prefix = self.name+'.fitted')
+
+                else:
+
+                    run_command(option = option, name = self.id[0]+'.'+self.id[1]+'.100'+name_mod, 
+                        parrallel_run_command = parrallel_run_command, write = True)
+                    contcar_file = mv_files_according_versions('vo', '100', name_mod = name_mod, write = True, rm_chg_wav = 'cw')
 
                 # sys.exit()
 
 
+            #clean at the end
+            if final_analysis_flag:
+                f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+
+            return contcar_file
 
 
-            #clean 
-            f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
 
-            return
 
+        nsets = len(sets)
 
         if mode == "body": #control part of script
             self.associated_outcars = []
 
-            write_body( v = str(version), savefile = savefile)
-
-            for curset in sets:
-                
-                f.write('\n#sequence set:\n')
-                
+        for k, curset in enumerate(sets):
+            
+            if nsets > 1: #the incar name is modified during creation only if more than 1 set is detected
+                f.write('\n#sequence set: '+curset.ise+' \n')
                 f.write('cp '+curset.ise+'.INCAR  INCAR\n')
-                
-                write_body( v = str(version), savefile = savefile, set_mod = '.'+curset.ise)
-
-
-
-        elif mode == 'footer': 
             
 
-            write_footer()
+            if k < nsets-1:
+                set_mod = '.'+curset.ise
+                final_analysis_flag = False
+            else: #last set
+                set_mod = '' # the last step do no use modifications of names 
+                final_analysis_flag = True #for footer
+
+
+
+            if k == 0: # additional control of prepare_input routine and footer
+                copy_poscar_flag = True # the flag as also used to detect first set
+                run_tool_flag = True
+            else:
+                copy_poscar_flag = False
+                run_tool_flag  = False
+
+            if mode == "body":
+                
+                contcar_file = write_body( v = str(version), savefile = savefile, 
+                    set_mod = set_mod, copy_poscar_flag = copy_poscar_flag, final_analysis_flag = final_analysis_flag)
+            
+            elif mode == 'footer':
+                if copy_poscar_flag: 
+                    f.write('\n#Footer section: \n')
+
+                contcar_file = write_footer(set_mod = set_mod, run_tool_flag = run_tool_flag,
+                 final_analysis_flag = final_analysis_flag)
+
+
+            if k < nsets-1:
+                f.write('cp '+contcar_file+' POSCAR  #sequence_set: preparation of input geo for next set\n')
+
+
+
+
+        # elif mode == 'footer': 
+        #     ''
+            # for k, curset in enumerate(sets):
+
+            # write_footer(set_mod = set_mod)
 
 
 
@@ -2527,12 +2633,16 @@ class CalculationVasp(Calculation):
                     if z in header.ALKALI_ION_ELEMENTS:
                         alkali_ions.append([i, z, x])
 
-                chosen_ion = alkali_ions[0]
+                chosen_ion = alkali_ions[0] #just the first one is used
                         # alkali_ions[min(alkali_ions)]
                 sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = 4, control = 'atoms', 
                 periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
 
                 # print (sur)
+                dist = np.array(sur[3]).round(2)
+                numb = np.array(sur[2])
+                self.dist_numb = zip(dist, numb)
+
 
             if 'mag' in show:
                 print ('\n\n\n')
@@ -2541,8 +2651,7 @@ class CalculationVasp(Calculation):
                 # print np.arange(self.end.natom)[ifmaglist]+1
                 # print np.array(tot_mag_by_atoms)
 
-                dist = np.array(sur[3]).round(2)
-                numb = np.array(sur[2])
+
                 print ('first step ', tot_mag_by_atoms[0][numb].round(3) )
                 # for mag in tot_mag_by_atoms:
                 #     print ('  -', mag[numb].round(3) )
@@ -2553,7 +2662,7 @@ class CalculationVasp(Calculation):
                 print ('Dist from 1st found alkali ion ',element_name_inv( chosen_ion[1]),
                     ' to sur. transition met atoms: (Use *alkali_ion_number* to choose ion manually)')
                 print ('dist:atom = ', 
-                [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(  np.array(sur[3]).round(2), np.array(sur[2])+1  )  ] )
+                [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(  dist, numb+1  )  ] )
 
                 self.tot_mag_by_atoms = tot_mag_by_atoms
                 plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
@@ -2569,15 +2678,15 @@ class CalculationVasp(Calculation):
                 # print (matrices)
                 # print (df)
                 i = 0
-                i_mag_at = sur[2][i]
-                dist_toi = np.round(sur[3][i], 2)
+                dist_toi = dist[i]
+                i_mag_at = numb[i]
                 # print (st.znucl[st.typat[i_mag_at]-1] )
                 l05 = len(occ_matrices[i_mag_at])//2
 
                 df = pd.DataFrame(occ_matrices[i_mag_at]).round(2)
 
-                print_and_log( 'Occ. matrix for atom ', i_mag_at+1, ':  ; dist to alk ion is ', 
-                dist_toi, 'A', end = '\n' )
+                print_and_log( 'Occ. matrix for atom ', i_mag_at+1, 
+                    ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )
                 print_and_log('Spin 1:',end = '\n' )
                 print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'],  tablefmt='psql'),end = '\n' )
                 print_and_log('Spin 2:',end = '\n' )
