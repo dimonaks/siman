@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import 
 
-# from __future__ import print_function
+from __future__ import print_function
 # from __future__ import division, unicode_literals, absolute_import 
 from tabulate import tabulate
 
@@ -2682,7 +2682,9 @@ class CalculationVasp(Calculation):
                 dist = np.array(sur[3]).round(2)
                 numb = np.array(sur[2])
                 self.dist_numb = zip(dist, numb)
-
+                dist_dic = {}
+                for d, n in self.dist_numb:
+                    dist_dic[n] = d 
 
             if 'mag' in show:
                 print ('\n\n\n')
@@ -2717,16 +2719,27 @@ class CalculationVasp(Calculation):
                 ''
                 # print (matrices)
                 # print (df)
-                i = 0
-                dist_toi = dist[i]
-                i_mag_at = numb[i]
+                print_and_log('Distances (A) from alkali ion #',chosen_ion[0]+1,' to transition atoms:', 
+                    ',  '.join([ '({:}<->{:}): {:.2f}'.format(chosen_ion[0]+1, iat, d) for d, iat in zip(  dist, numb+1  )  ])  )
+                
+                show_occ_for_atoms = [int(n) for n in re.findall(r'\d+', show)]
+                # print (show_occ_for_atom)
+                # sys.exit()
+                if show_occ_for_atoms:
+                    iat = show_occ_for_atoms[0]-1
+                    # dist_toi = dist_dic[iat]
+                    i_mag_at = iat
+                else:
+                    i = 0
+                    # dist_toi = dist[i]
+                    i_mag_at = numb[i]
                 # print (st.znucl[st.typat[i_mag_at]-1] )
                 l05 = len(occ_matrices[i_mag_at])//2
 
                 df = pd.DataFrame(occ_matrices[i_mag_at]).round(2)
 
-                print_and_log( 'Occ. matrix for atom ', i_mag_at+1, 
-                    ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )
+                print_and_log( 'Occ. matrix for atom ', i_mag_at+1, end = '\n' )
+                    # ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )
                 print_and_log('Spin 1:',end = '\n' )
                 print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'],  tablefmt='psql'),end = '\n' )
                 print_and_log('Spin 2:',end = '\n' )
