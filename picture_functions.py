@@ -180,6 +180,10 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
             if fig_format in image_name:
                 path2saved = str(image_name)
 
+            elif str(image_name).split('.')[-1] in ['eps', 'png', 'pdf']:
+                path2saved = str(image_name)
+                fig_format = str(image_name).split('.')[-1]
+
             else:
                 path2saved = str(image_name)+'.'+fig_format
             

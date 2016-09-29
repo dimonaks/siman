@@ -1120,14 +1120,23 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
             if id[2] == last_version:
-
+                list_to_copy = []
+                
                 calc[id].write_sge_script(mode = 'footer', schedule_system = schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename )
                 
                 runBash('chmod +x '+batch_script_filename)
 
-                calc[id].make_incar_and_copy_all(update)
+                # calc[id].make_incar_and_copy_all(update)
+                list_to_copy.extend( cl.make_incar() )
                 
+
+                list_to_copy.extend( cl.make_kpoints_file() )
+                
+                cl.copy_to_cluster(list_to_copy, update)
+
+
+
                 calc[id].make_run(schedule_system = schedule_system)
 
 
@@ -2344,7 +2353,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             
             if 'mep' in show:
                 plot_mep(atom_pos, mep_energies)
-
+                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.png')
 
 
             if push2archive:

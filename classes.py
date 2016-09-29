@@ -907,7 +907,7 @@ class CalculationVasp(Calculation):
         runBash("cat "+potcar_files+" >"+path_to_potcar)
 
         print_and_log( "POTCAR files: "+potcar_files+"\n")        
-        return
+        return path_to_potcar
 
 
     def calculate_nbands(self):
@@ -1085,7 +1085,7 @@ class CalculationVasp(Calculation):
 
         return
 
-    def make_incar_and_copy_all(self, update):
+    def make_incar(self):
         """Makes Incar file for current calculation and copy all
         TO DO: there is no need to send all POSCAR files; It is enothg to send only one. However for rsync its not that crucial
         """
@@ -1093,35 +1093,68 @@ class CalculationVasp(Calculation):
         
         
         #Generate incar
-        vp = self.set.vasp_params
+        varset = header.varset
+        d = self.dir
         natom = self.init.natom
-        #please make consistent
-        # print vp
+        incar_list = []
 
-        with open(self.dir+"INCAR",'w') as f:
-            f.write( 'SYSTEM = %s\n\n'%(self.des) )
-            for key in sorted(self.set.vasp_params):
-
-                if key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
-                    f.write('MAGMOM = '+list2string(self.init.magmom)+"\n") #magmom from geo file has higher preference
-                    # sys.exit()
-                    continue
-                
-                if self.set.vasp_params[key] == None:
-                    continue
+        setlist = [self.set]
+        
+        if hasattr(self.set, 'set_sequence') and self.set.set_sequence:
+            for s in self.set.set_sequence:
+                setlist.append(varset[s])
 
 
-                if type(self.set.vasp_params[key]) == list:
-                    lis = self.set.vasp_params[key]
-                    f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
+        nsets = len(setlist)
+        for i, curset in enumerate(setlist):
+
+            if i == nsets-1:
+                name_mod = ''
+            else:
+                name_mod = curset.ise+'.'
+
+            incar_filename = d+name_mod+'INCAR'
+            vp = curset.vasp_params
+            
+
+            with open(incar_filename,'w') as f:
+                f.write( 'SYSTEM = %s\n\n'%(self.des) )
+                for key in sorted(self.set.vasp_params):
+
+                    if key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
+                        f.write('MAGMOM = '+list2string(self.init.magmom)+"\n") #magmom from geo file has higher preference
+                        # sys.exit()
+                        continue
+                    
+                    if self.set.vasp_params[key] == None:
+                        continue
+
+
+                    if type(self.set.vasp_params[key]) == list:
+                        lis = self.set.vasp_params[key]
+                        f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
+                   
+                    else:
+                        f.write(key+" = "+str( self.set.vasp_params[key] ) +"\n")
                
-                else:
-                    f.write(key+" = "+str( self.set.vasp_params[key] ) +"\n")
-           
 
-            f.write("\n")
+                f.write("\n")
 
-        print_and_log( "INCAR was generated\n")
+
+
+
+            print_and_log(incar_filename, "was generated\n")
+        
+            incar_list.append(incar_filename)
+        
+
+        return incar_list
+
+
+
+
+    
+    def make_kpoints_file(self):
 
         #Generate KPOINTS
         d = self.dir
@@ -1159,13 +1192,14 @@ class CalculationVasp(Calculation):
                 print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
 
 
-
-            list_to_copy = [d+"INCAR",d+"POTCAR",d+"KPOINTS"]
+            filename = d+"KPOINTS"
+            # list_to_copy = [d+"INCAR",d+"POTCAR",d+"KPOINTS"]
 
         else:
             print_and_log( "This set is without KPOINTS file.\n")
+            filename = ''
 
-            list_to_copy = [d+"INCAR",d+"POTCAR"]
+            # list_to_copy = [d+"INCAR",d+"POTCAR"]
 
             #N = []
             #for i in 0, 1, 2:
@@ -1174,8 +1208,11 @@ class CalculationVasp(Calculation):
             #print_and_log("Kpoint   mesh is: "+str(N) )
             #print_and_log("The actual k-spacings is "+str(self.calc_kspacings(N) ) )
         #Copy section
+        return [filename]
 
-
+    def copy_to_cluster(self,list_to_copy, update):
+        d = self.dir
+        list_to_copy.append(d+'POTCAR')
         list_to_copy.extend( glob.glob(d+'/*POSCAR*') )
         list_to_copy.extend( glob.glob(d+'/*.run*') )
 
@@ -1193,7 +1230,7 @@ class CalculationVasp(Calculation):
             runBash('ssh '+ cluster_address+' "mkdir -p '+project_path_cluster+self.dir+'"') #create directory
             log.write( runBash("rsync -zave ssh "+string_of_paths+" "+cluster_address+":"+project_path_cluster+self.dir)+"\n" )
         #print "End make---------------------------------------------\n\n"
-
+        return
 
 
     def write_sge_script(self, input_geofile = "header", version = 1, option = None, 
@@ -1333,6 +1370,8 @@ class CalculationVasp(Calculation):
 
                     f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
                     f.write("mv CONTCAR "         + contcar+'\n')
+
+                if "i" in savefile:
                     f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
                 
                 if "v" in savefile: # v means visualization chgcar
@@ -2378,8 +2417,9 @@ class CalculationVasp(Calculation):
                 if "Iteration" in line:
                     self.mdstep = int(line.split('(')[0].split()[2].strip())
                     iterat +=1
+                    # print self.mdstep
+                    # print line
                     if mdstep_old != self.mdstep:
-                        #print "Stress:", self.stress 
                         nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
                     niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
                     mdstep_old = self.mdstep
