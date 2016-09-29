@@ -121,7 +121,7 @@ class Structure():
 
         st.typat.extend( [typ]*natom_to_add )
 
-        if any(st.magmom):
+        if hasattr(st, 'magmom') and any(st.magmom):
             st.magmom.extend( [0.6]*natom_to_add  )
 
 
