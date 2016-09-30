@@ -1,8 +1,15 @@
 from __future__ import division, unicode_literals, absolute_import 
-
+from small_functions import is_list_like, is_string_like
 # from classes import res_loop
 import header
 from header import *
+
+
+
+
+
+
+
 
 
 def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_calc_name = None, ):
@@ -22,7 +29,7 @@ def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_c
         st_s = copy.deepcopy(st)
         for i in (0,1,2):
             st_s.rprimd[i] *= (1 + s/100.)
-        print st_s.rprimd
+        # print st_s.rprimd
 
         st_s.xred2xcart()
         st_s.des = 'obtained from '+str(parent_calc_name)+' by uniform scaling by '+str(s)+' %'
@@ -44,7 +51,7 @@ def list2string(ilist):
 
 def push_to_server(files = None, to = None,  addr = None):
     
-    if not hasattr(files, '__iter__'):
+    if not is_list_like(files):
         files = [files]    
     
     files_str = ' '.join(np.array(files ))
@@ -56,7 +63,7 @@ def get_from_server(files = None, to = None,  addr = None):
     """
     The zip file is checked only for the first file in list *files*
     """
-    if not hasattr(files, '__iter__'):
+    if not is_list_like(files):
         files = [files]
     
     files_str = ' :'.join(np.array(files ))
@@ -140,7 +147,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
         
         if inv == 0: # does not work propely; mul below is also should be accounted
             axis_mul = range(-mul[i]+1, mul[i])
-            print 'axis_mul', axis_mul
+            print_and_log('axis_mul = ', axis_mul)
             inv_loc = 1
         
         if only_atoms == 'only_matrix':
@@ -191,7 +198,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
 
 
         bob = 0 - precb; upb = 1. + precu;
-        print bob, upb
+        # print bob, upb
         
 
         n = 0 
@@ -205,7 +212,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
 
         st.typat = new_typat
         st.xcart = new_xcart
-        print 'After removing, cell has ', len(st.xred)
+        print_and_log('After removing, cell has ', len(st.xred) )
         # print st.xred
         # st.xcart = xred2xcart(st.xred, st.rprimd)
         st.xred = xcart2xred(st.xcart, st.rprimd)
@@ -284,13 +291,15 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
             numbers = st.init_numbers
         else:
             numbers = range(natom)
-        temp = zip(dlist_unsort, xcart, typat, numbers, zlist)
+        temp = list(zip(dlist_unsort, xcart, typat, numbers, zlist) )
         if only_elements:
             # print temp[4]
             temp = [t for t in temp if t[4] in only_elements]
         # print temp
+        # print (zip)
+
         temp.sort(key = itemgetter(0))
-        temp2 = zip(*temp)
+        temp2 = list( zip(*temp) )
         dlist       = temp2[0][:n_neighbours+1]
         xcart_local = temp2[1][:n_neighbours+1]
         typat_local = temp2[2][:n_neighbours+1]
@@ -345,11 +354,11 @@ def salary_inflation():
     init_salary = 1500 # in jan 2000; other sources 2000 - very important
     for i,  l in enumerate( reversed(inflation2000_2014)  ):
         init_salary = (1+l/100)*init_salary
-        print init_salary, i+2000
+        print( init_salary, i+2000)
 
     salary2014 = 30000
     increase = salary2014/init_salary
-    print increase
+    print( increase)
 
 # salary_inflation()
 
@@ -358,7 +367,7 @@ def element_name_inv(el):
     nu_dict = { 200:'octa', 0:'n', 1:'H', 2:'He', 3:'Li', 4:'Be', 5:'B', 6:'C', 7:'N', 8:'O', 9:'F', 10:'Ne', 11:'Na', 12:'Mg', 13:'Al', 14:'Si', 15:'P', 16:'S', 17:'Cl', 18:'Ar', 19:'K', 20:'Ca', 21:'Sc', 22:'Ti', 23:'V', 24:'Cr', 25:'Mn', 26:'Fe', 27:'Co', 28:'Ni', 29:'Cu', 30:'Zn', 31:'Ga', 32:'Ge', 33:'As', 34:'Se', 35:'Br', 36:'Kr', 37:'Rb', 38:'Sr', 39:'Y', 40:'Zr', 41:'Nb', 42:'Mo', 43:'Tc', 44:'Ru', 45:'Rh', 46:'Pd', 47:'Ag', 48:'Cd', 49:'In', 50:'Sn', 51:'Sb', 52:'Te', 53:'I', 54:'Xe', 55:'Cs', 56:'Ba', 57:'La', 58:'Ce', 59:'Pr', 60:'Nd', 61:'Pm', 62:'Sm', 63:'Eu', 64:'Gd', 65:'Tb', 66:'Dy', 67:'Ho', 68:'Er', 69:'Tm', 70:'Yb', 71:'Lu', 72:'Hf', 73:'Ta', 74:'W', 75:'Re', 76:'Os', 77:'Ir', 78:'Pt', 79:'Au', 80:'Hg', 81:'Tl', 82:'Pb', 83:'Bi', 84:'Po', 85:'At', 86:'Rn', 87:'Fr', 88:'Ra', 89:'Ac', 90:'Th', 91:'Pa', 92:'U', 93:'Np', 94:'Pu', 95:'Am', 96:'Cm', 97:'Bk', 98:'Cf', 99:'Es', 100:'Fm', 101:'Md', 102:'No', 103:'Lr', 104:'Rf', 105:'Db', 106:'Sg', 107:'Bh', 108:'Hs', 109:'Mt', 110:'Ds', 111:'Rg', 112:'Cn', 114:'Uuq', 116:'Uuh', }
   
     # print type(el), el, type(str('sdf') )
-    if type(el) in (str, unicode):
+    if is_string_like(el):
         try: 
             elinv = el_dict[el]
         except:
@@ -461,14 +470,14 @@ def calc_ac(a1, c1, a2, c2, a_b = 0.1, c_b = 0.1, type = "two_atoms"):
     A = (a1**2 * c1) + (a2**2 * c2) - (a_b**2 * c_b)
     B = 0.5 * (c1/a1 + c2/a2)
     C = ( (a1**2 * c1) + (a2**2 * c2) ) * 0.5 #sum of cell volumes divided by 2 since during the construction of new cell we will use multiplication by 2
-    print "A,B=",A,B
+    # print "A,B=",A,B
     a = (A/B)**(1./3)
     c = a * B
     a = round(a,5)
     c = round(c,5)
-    print "a, c, c/a for cell with pure    hcp ", a_b, c_b, round(c_b/a_b,4)
-    print "a, c, c/a for cell with first  atom ", a1, c1, round(c1/a1,4)
-    print "a, c, c/a for cell with second atom ", a2, c2, round(c2/a2,4)
+    print_and_log( "a, c, c/a for cell with pure    hcp ", a_b, c_b, round(c_b/a_b,4), imp ='y' )
+    print_and_log( "a, c, c/a for cell with first  atom ", a1, c1, round(c1/a1,4), imp ='y' )
+    print_and_log( "a, c, c/a for cell with second atom ", a2, c2, round(c2/a2,4), imp ='y' )
 
     #for double cell
     a3 = (C/B)**(1./3)
@@ -477,9 +486,9 @@ def calc_ac(a1, c1, a2, c2, a_b = 0.1, c_b = 0.1, type = "two_atoms"):
     c3 = round(c3,5)    
 
     if type == "two_atoms":
-        print "a, c, c/a for cell with two   atoms ", a,  c, round(c/a,4), "# the same cell but with two atoms\n"
+        print_and_log( "a, c, c/a for cell with two   atoms ", a,  c, round(c/a,4), "# the same cell but with two atoms\n", imp ='y')
     elif type == "double_cell":
-        print "a, c, c/a for new cell              ", a3,  c3, round(c3/a3,4), "# for cell with V = V(first_cell) + V(second cell), but only for the case if V(second cell) == V(first_cell)"
+        print_and_log( "a, c, c/a for new cell              ", a3,  c3, round(c3/a3,4), "# for cell with V = V(first_cell) + V(second cell), but only for the case if V(second cell) == V(first_cell)", imp ='y')
 
     return a, c
 
@@ -557,7 +566,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
                 name  = el[0]+el[1]
                 if name != name_old: j = 1
                 label = str(j)+el[1]
-                print "label",label
+                # print "label",label
                 f.write('select '+el[0]+str(i+1)+'\ncpk 200\nset labeloffset 0 0\nset labelfront\ncolor label black\nlabel '+label+'\n font label 24 bold \n')
                 j+=1
                 name_old = name
@@ -572,10 +581,10 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
         
         # f.write('write image 2800 2800 png "'+pngfile+'"')
         f.write('write image 1800 1800 png "'+pngfile+'"')
-    print runBash(header.path_to_jmol+' -ions '+scriptfile)
+    print_and_log( runBash(header.path_to_jmol+' -ions '+scriptfile) )
     # print runBash('convert '+pngfile+' -shave 0x5% -trim '+pngfile) #cut by 5% from up and down (shave) and that trim left background
-    print pngfile
-    print runBash('convert '+pngfile+' -trim '+pngfile) # trim background
+    print_and_log( pngfile )
+    print_and_log( runBash('convert '+pngfile+' -trim '+pngfile)  ) # trim background
     return
 
 
@@ -624,7 +633,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
 
 
     if natom != len(xred) != len(xcart) != len(typat) or len(znucl) != max(typat): 
-        print "Error! write_xyz: check your arrays.\n\n"    
+        print_and_log( "Error! write_xyz: check your arrays.\n\n"    )
     # print st.natom, len(st.xred), len(st.xcart), len(st.typat), len(st.znucl), max(st.typat)
     
     print_and_log("write_xyz(): Name is", name, important = 'n')
@@ -632,7 +641,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
 
 
     if xcart == [] or len(xcart) != len(xred):
-        print "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n"
+        print_and_log( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n")
         xcart = xred2xcart(xred, rprimd)
         #print xcart[1]
     if path == None:
@@ -717,7 +726,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
                 imp_sub_positions.append(i)
 
     if imp_sub_positions : 
-        print imp_sub_positions, ': numbers of found atoms to be changed '
+        print_and_log( imp_sub_positions, ': numbers of found atoms to be changed ' )
 
 
     # for i in sorted(indices, reverse=True):
@@ -767,7 +776,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
         """
         
         """Choose gb atoms to change their color"""
-        print 'position of boundary 2', gbpos2
+        print_and_log( 'position of boundary 2', gbpos2)
         atomselection = ''
 
         #create consistent xcart_new list like it will be in Jmol
@@ -793,7 +802,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
                 # if x[0] > gbpos2 - gbwidth/2. and x[0] < gbpos2 + gbwidth/2.:
                     # print i, x[0], abs(x[0] - gbpos2)
                     gbatoms.append(i)
-            print 'Atoms at GB:', gbatoms
+            print_and_log( 'Atoms at GB:', gbatoms)
             atomselection = ''
             for i in gbatoms:
                 atomselection +='Ti'+str(i+1+len(imp_positions))+','
@@ -813,7 +822,7 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
         scriptfile = basepath+name+".jmol"
         pngfile = os.getcwd()+'/'+basepath+name+".png"
         
-        print 'imp_positions = ',imp_positions
+        print_and_log( 'imp_positions = ',imp_positions)
         write_jmol(xyzfile, pngfile, scriptfile, atomselection, topview = topview, rprimd =rprimd, shift = shift, label = [(pos[3], pos[4]) for pos in imp_positions], 
             specialcommand = specialcommand, orientation = orientation, boundbox =boundbox, rotate = rotate)
 
@@ -838,11 +847,11 @@ def write_lammps(cl, state, filepath = ''):
     natom = st.natom
 
     if natom != len(xred) != len(xcart) != len(typat) or len(znucl) != max(typat): 
-        print "Error! write_xyz: check your arrays.\n\n"    
+        print_and_log( "Error! write_xyz: check your arrays.\n\n"    )
     
     if name == '': name = 'noname'
     if xcart == [] or len(xcart) != len(xred):
-        print "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n"
+        print_and_log( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n", imp = 'y')
         xcart = xred2xcart(xred, rprimd)
         #print xcart[1]
 
@@ -982,9 +991,9 @@ def plot_charge_den():
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     X, Y, Z = axes3d.get_test_data(0.05)
-    print X
-    print Y
-    print Z
+    # print X
+    # print Y
+    # print Z
 
     ax.plot_surface(X, Y, Z, rstride=8, cstride=8, alpha=0.3)
     # cset = ax.contourf(X, Y, Z, zdir='z', offset=-100, cmap=cm.coolwarm)
@@ -1022,13 +1031,13 @@ def plot_interaction(calclist, calc):
     coeffs1 = np.polyfit(dX, e_seg, 1)        
     
     fit_func1 = np.poly1d(coeffs1)
-    print "list of seg energies: ", e_seg
-    print "list of dX          : ", dX
+    print( "list of seg energies: ", e_seg  )
+    print( "list of dX          : ", dX  )
 
-    print "Fitting using linear function:"
-    print fit_func1
-    print "E_seg0 = {0:0.0f} meV, standart enthalpy of segregation".format(fit_func1[0])
-    print "alpha  = {0:0.0f} meV, interaction coefficient".format(-fit_func1[1]/2)
+    print( "Fitting using linear function:"  )
+    print( fit_func1  )
+    print( "E_seg0 = {0:0.0f} meV, standart enthalpy of segregation".format(fit_func1[0])  )
+    print( "alpha  = {0:0.0f} meV, interaction coefficient".format(-fit_func1[1]/2)  )
 
     return
 
@@ -1066,11 +1075,11 @@ def calculate_voronoi(self, state = 'end'):
                 wlist.append( [ll[0], ll[5], ll[6], ll[2]] )
             # print 'Volume of atom ',ll[0],'is', ll[5]
             vsum= vsum+float(ll[5])
-        print 'Check total volume ', vsum, self.end.vol
+        print_and_log( 'Check total volume ', vsum, self.end.vol)
 
         wlist.sort(key = itemgetter(0)) #sort according to the position of atoms
-        print "atom #, voronoi vol, voronoi faces, x coordinate: ", 
-        print wlist
+        print_and_log( "atom #, voronoi vol, voronoi faces, x coordinate: ", )
+        print_and_log( wlist)
         for w in wlist:
             vorovol.append(float(w[1]))
             vorofaces.append(int(w[2]))
@@ -1086,7 +1095,7 @@ def calculate_voronoi(self, state = 'end'):
         voro+='&'
     else:
         voro = ""
-    print "Voronoi volume", voro
+    print_and_log( "Voronoi volume = ", voro, imp = 'y')
     return voro
 
 def log_history(hstring):
@@ -1112,9 +1121,9 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
     def myprint(string):
         if filename:
             f.write(string+"\n")
-            print string
+            print( string)
         else:
-            print string
+            print( string)
 
 
     if filename:
@@ -1124,7 +1133,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
 
     n = len(table[0].split('&'))-2
-    print 'Number of columns = ', n + 2
+    print( 'Number of columns = ', n + 2)
     
     myprint('\\begin{table'+fullpage+'}')
     myprint('\\center')

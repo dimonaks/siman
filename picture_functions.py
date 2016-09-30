@@ -118,7 +118,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
                     label = data[key][3]
                 except:
                     label = key
-                print 'label is ', label
+                # print 'label is ', label
 
                 plt.plot(data[key][0], data[key][1], data[key][2], linewidth = linewidth, label = label, markersize = markersize, alpha = 0.8)
 
@@ -152,7 +152,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
                 # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
                 # y_min  = fit_func2(x_min)
                 slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(data[key][0], data[key][1])
-                print 'R^2 = ', r_value**2, key
+                # print 'R^2 = ', r_value**2, key
 
 
         if xlog: plt.xscale('log')
@@ -220,7 +220,7 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
         shift = 0
         fig, ax = plt.subplots()
         for key in sorted(data):
-            print 'color', data[key][2]
+            # print 'color', data[key][2]
             ax.bar(ind+shift, data[key][1], width, color = data[key][2], label = data[key][-1])# yerr=menStd)
             # print ind
             shift+=width
@@ -296,8 +296,8 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
             N = len(data[0][0])
             xlabels = data[0][0]
             ind = np.arange(N)  # the x locations for the groups
-            print ind+width
-            print data[0][0]
+            # print ind+width
+            # print data[0][0]
             shift = 0.2
 
             for d in data:
@@ -335,8 +335,8 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
             N = len(data[0][0])
             xlabels = data[0][0]
             ind = np.arange(N)  # the x locations for the groups
-            print ind+width
-            print data[0][0]
+            # print ind+width
+            # print data[0][0]
             shift = 0.2
 
             for d in data:
@@ -383,7 +383,7 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
     # elif data1: gs.tight_layout(fig)
 
     if image_name:
-        print "Saving image ...", str(image_name)
+        print_and_log( "Saving image ...", str(image_name), imp = 'y')
         plt.savefig(str(image_name)+'.png', dpi = 200, format='png')
     else:
         plt.show()
@@ -514,7 +514,7 @@ def plot_bar_simple(xlabel = "xlabel", ylabel = "ylabel",
     shift = 0
     # for d in data:
     d = data
-    print d[2]
+    # print d[2]
 
     rects = ax.bar(ind+shift, d[1], width, color = d[2], label = d[-1],align="center" )# yerr=menStd)
     rects[0].set_color('g')
@@ -636,7 +636,7 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
 
             plt.tight_layout()
             #plt.savefig('images/'+image_name)
-            print 'Saving file ...',path_to_images+str(image_name)+'.png'
+            print_and_log( 'Saving file ...',path_to_images+str(image_name)+'.png', imp = 'y' )
             plt.savefig(path_to_images+str(image_name)+'.png',format='png', dpi = 300)
         return fit_func2  
 
@@ -807,7 +807,7 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
             name, "Sigma xx (MPa)", "Grain boundary energy (mJ/m$^2$)", 
             image_name+"_sxe")
         sxe_min = fit_sxe.deriv().r[power-2] #sigma xx at the minimum of energy
-        print "sigma xx at the minimum of energy is", sxe_min," MPa"
+        print_and_log( "sigma xx at the minimum of energy is", sxe_min," MPa")
 
 
         fit1 = fit_and_plot(pressures_init, gb_volumes,  pressures, gb_volumes, 1,
@@ -817,7 +817,7 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
         pulay = - calc[id].bulk_extpress
         #print " At external pressure of %.0f MPa; Pulay correction is %.0f MPa." % (ext_p_min+pulay, pulay)       
         #print " Egb = %.1f mJ m-2; Vgb = %.0f mA;"%(fit(ext_p_min), fit1(ext_p_min)  )
-        print ("%s.fit.pe_pv & %.0f & %.0f & %0.f & %0.f \\\\" %
+        print_and_log ("%s.fit.pe_pv & %.0f & %.0f & %0.f & %0.f \\\\" %
             (n[0]+'.'+n[1], fit(ext_p_min), fit1(ext_p_min),ext_p_min, ext_p_min+pulay   ))
 
 
@@ -899,7 +899,7 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
         #print atP
         #print at_zeroP
 
-        print "Compare V at -pulay and V for energy minimum", fit_pv(-pulay), Vmin
+        print_and_log( "Compare V at -pulay and V for energy minimum", fit_pv(-pulay), Vmin)
 
         return fit_pe(-pulay), fit_pv(-pulay), Emin, Vmin
 
@@ -1003,20 +1003,20 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
         eos = EquationOfState(clist,Z[2])
         v0, e0, B = eos.fit()
         #print "a = ", alist[2]
-        print '''
+        print_and_log( '''
         v0 = {0} A^3
         E0 = {1} eV
-        B  = {2} eV/A^3'''.format(v0, e0, B)
-        eos.plot('images/a[2]-eos.png')
+        B  = {2} eV/A^3'''.format(v0, e0, B) )
+        eos.plot('images/a[2]-eos.png') 
 
         eos = EquationOfState(alist,Zinv[2])
         v0, e0, B = eos.fit()
         #print "c = ", clist[2]
-        print '''
+        print_and_log( '''
         v0 = {0} A^3
         E0 = {1} eV
-        B  = {2} eV/A^3'''.format(v0, e0, B)
-        eos.plot('images/c[2]-eos.png')
+        B  = {2} eV/A^3'''.format(v0, e0, B) )
+        eos.plot('images/c[2]-eos.png') 
 
 
     if type_of_plot == "dimer":
@@ -1050,8 +1050,8 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
         fit_y1 = fit_func1(x_range); 
         f = fit_func1.deriv()
         min_e = fit_func1(f.r[2]).real
-        print "The minimum energy per atom and optimal length of dimer are {:.3f} eV and {:.3f} A".format( min_e/2., f.r[2].real)
-        print "The atomization energy for dimer is {:.3f} eV ; The energy of atom in box is taken from the provided b_id".format(min_e - 2*cl.e_ref)
+        print_and_log("The minimum energy per atom and optimal length of dimer are {:.3f} eV and {:.3f} A".format( min_e/2., f.r[2].real) )
+        print_and_log("The atomization energy for dimer is {:.3f} eV ; The energy of atom in box is taken from the provided b_id".format(min_e - 2*cl.e_ref) )
 
         plt.figure()
         plt.title(name)

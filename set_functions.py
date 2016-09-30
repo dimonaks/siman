@@ -140,7 +140,7 @@ def read_vasp_sets(varset, user_vasp_sets, override_global = False):
 
 
                 elif key == 'bfolder':
-                    print 'New blockfolder', param[key]
+                    print_and_log( 'New blockfolder', param[key])
 
 
 
@@ -188,9 +188,9 @@ class InputSet():
     def printme(self):
         for key in self.vasp_params:
             if self.vasp_params[key] == None: continue
-            print "{:30s} = {:s} ".format("s.vasp_params['"+key+"']", str(self.vasp_params[key]) )
+            print_and_log( "{:30s} = {:s} ".format("s.vasp_params['"+key+"']", str(self.vasp_params[key]) ) )
 
-        print self.potdir
+        print_and_log('POTDIR:', self.potdir)
 
     def update(self):
         #deprecated, but still can be usefull
@@ -225,7 +225,7 @@ class InputSet():
         if type(arg) is not str:
             sys.exit("\nadd_conv_kpoint error\n")
         if arg in self.conv_kpoint:
-            print "Warning! You already have this name in list"
+            print_and_log( "Warning! You already have this name in list")
             return    
         self.conv_kpoint.append(arg)
         self.history += "Name "+arg+" was added to self.conv_kpoint\n"
@@ -240,7 +240,7 @@ class InputSet():
             log.write( "Error! Set "+self.ise+" does not have conv_tsmear, I create new\n")
             self.conv_tsmear = []
         if arg in self.conv_tsmear:
-            print "Warning! You already have this name in list"
+            print_and_log( "Warning! You already have this name in list", imp = 'y')
             return    
         self.conv_tsmear.append(arg)
         self.history += "Name "+arg+" was added to self.conv_tsmear\n"
@@ -348,7 +348,7 @@ class InputSet():
         self.kpoints_file = True
         self.vasp_params['KSPACING'] = None
         if old == arg:
-            print "Warning! You did not change one of your parameters in new set"
+            print_and_log( "Warning! You did not change one of your parameters in new set", imp = 'y')
             return
         self.history += "ngkpt was changed from "+str(old)+" to "+str(arg) + " and KPOINTS file was swithed on\n"
         return

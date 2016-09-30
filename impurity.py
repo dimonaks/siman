@@ -78,8 +78,8 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
                     c_float(r_matrix), c_float(r_impurity), c_float(step_dec), c_float(fine), c_float(prec), \
                     r1, r2, r3 )
 
-    print "ntot is ", ntot.value
-    print "l_npores[0] is ",l_npores[0]
+    print_and_log( "ntot is ", ntot.value)
+    print_and_log( "l_npores[0] is ",l_npores[0])
 
     v = np.zeros((3))
     l_pxred = []
@@ -97,7 +97,8 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
 
 
 
-    if shift2 != ntot.value: print "Error! final shift2 not equal to ntot"
+    if shift2 != ntot.value: 
+        print_and_log( "Error! final shift2 not equal to ntot")
 
     #print l_pxred[0]
 
@@ -118,7 +119,7 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
     targetp = np.array((0.,0.,0.))
     if find_close_to: 
         targetp = np.asarray(find_close_to) #targer point
-        print "Target point is                        ",targetp
+        print_and_log( "Target point is                        ",targetp)
  
     a = step_dec/fine #the side of little cube formed by the mesh which is used to find spheres inside the pore.
     aaa = a*a*a
@@ -135,7 +136,7 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
             if d < d_min and x[0] <= 0.5 and x[1] <= 0.5 and x[2] <= 0.5:
                 d_min = d
                 x_min = x
-        print "The closest pore to the center has coordinates",x_min
+        print_and_log( "The closest pore to the center has coordinates",x_min)
         st_result.xred.append( x_min )
 
 
@@ -167,16 +168,16 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
             #    i2_min = i
 
         #print "rprimd[0][0]", rprimd[0][0]
-        print "Position of boundary is ",gbpos/rprimd[0][0]
+        print_and_log( "Position of boundary is ",gbpos/rprimd[0][0])
      
         #x_min[0] = gbpos/rprimd[0][0]
-        if find_close_to: print "The closest pore to the target point is [ %.2f  %.2f  %.2f ]"%(x_min[0], x_min[1], x_min[2])
-        else: print "The closest pore to the gb has coordinates",x_min
+        if find_close_to: print_and_log( "The closest pore to the target point is [ %.2f  %.2f  %.2f ]"%(x_min[0], x_min[1], x_min[2]))
+        else: print_and_log( "The closest pore to the gb has coordinates",x_min)
         st_result.xred.append( x_min )
         #st_result.xred.append( x_pre )           
         #Calculate volume of the pore using local balls:
-        print "The number of pore is ",i_min," ; It has ",l_npores[i_min], "local balls"
-        print "Volume of pore is ", l_npores[i_min] * a*a*a, " A^3";
+        print_and_log( "The number of pore is ",i_min," ; It has ",l_npores[i_min], "local balls")
+        print_and_log( "Volume of pore is ", l_npores[i_min] * a*a*a, " A^3")
         #st_result.xred.extend( l_pxred[i_min] )
         #st_result.xred.extend( l_pxred[i_pre] )   
 
@@ -205,12 +206,12 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
                 x2_min = x
                 i2_min = i
 
-        if find_close_to: print "The closest pore to the target point is [ %.2f  %.2f  %.2f ]"%(x2_min[0], x2_min[1], x2_min[2])
-        else:             print "The closest pore to the center of bulk has coordinates",x2_min
+        if find_close_to: print_and_log( "The closest pore to the target point is [ %.2f  %.2f  %.2f ]"%(x2_min[0], x2_min[1], x2_min[2]))
+        else:             print_and_log( "The closest pore to the center of bulk has coordinates",x2_min)
         st_result.xred.append( x2_min )           
         #Calculate volume of the pore using local balls:
-        print "The number of bulk pore is ",i2_min," ; It has ",l_npores[i2_min], "local balls"
-        print "Volume of pore is ", l_npores[i2_min] * a*a*a, " A^3";
+        print_and_log( "The number of bulk pore is ",i2_min," ; It has ",l_npores[i2_min], "local balls")
+        print_and_log( "Volume of pore is ", l_npores[i2_min] * a*a*a, " A^3")
         st_result.xred.extend( l_pxred[i2_min] )  
 
     elif calctype == 'all_local':
@@ -219,9 +220,9 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
         i_max = 0
         for i in range(npores.value):
             v_pore = l_npores[i] * aaa
-            print  "Volume of pore is ", l_npores[i] * aaa, " A^3";
+            print_and_log(  "Volume of pore is ", l_npores[i] * aaa, " A^3")
             if v_pore > v_max: v_max = v_pore; i_max = i
-        print "Pore number ", i_max,"has the largest volume ", v_max," A^3"
+        print_and_log( "Pore number ", i_max,"has the largest volume ", v_max," A^3")
         # st_result.xred = l_pxred[i_max] # here coordinates of all local points to show geometry of pore with largerst volume
         st_result.xred = [x for group in l_pxred for x in group ] # all pores
 
@@ -332,11 +333,11 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
                 #print a, b, c
                 #np.concatenate(a, b, c):
                 if not a:
-                    print "Can't find ", np.around(x,3), "in replic  "
+                    print_and_log( "Error! Can't find ", np.around(x,3), "in replic  ")
                     raise RuntimeError
 
             #assert all([ all( np.around(v1, 8) == np.around(v2, 8) ) for (v1, v2) in zip(st_rep_after.xcart, rep.init.xcart) ])
-            print "add_impurity: test succesfully done"
+            print_and_log( "add_impurity: test succesfully done")
 
         if natoms_v1 != len(added.init.xcart): print_and_log("You have different number of pores in different versions\n");  raise RuntimeError
         return
@@ -388,7 +389,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
 
             if put_exactly_to:
                 pores_xred = [np.array(put_exactly_to),]
-                print 'Inmpurity just put in ', pores_xred
+                print_and_log( 'Inmpurity just put in ', pores_xred)
             else:
                 pores = find_pores(new.init, r_mat, r_pore, step, fine, prec,  addtype, new.gbpos, find_close_to, check_pore_vol) #octahedral
                 pores_xred = pores.xred
@@ -411,7 +412,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
             st.xred.extend( pores_xred )
 
             if znucl in st.znucl:
-                print "znucl of added impurity is already in cell"
+                print_and_log( "znucl of added impurity is already in cell")
                 ind = st.znucl.index(znucl)
                 typat = ind+1
                 st.nznucl[ind]+=npores
@@ -464,7 +465,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
             write_xyz(new.init , xyzpath)
             new.write_geometry("init",new.des, override = override)
 
-        print "\n"
+        print_and_log( "\n")
 
 
         return new
@@ -552,7 +553,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
         #geofilelist = runBash('find '+geo_path+' -name "*grainA*.geo*" ').splitlines()
         #geofilelist = runBash('find '+geo_path+' -name "*.geo*" ').splitlines()
         geofilelist = glob.glob(geo_path+'/*.geo*')
-        print "There are several files here already: ", geofilelist
+        print_and_log( "There are several files here already: ", geofilelist, imp = 'y' )
         #print 'find '+geo_path+' -name "*.geo*" ',geofilelist
         #return
 
@@ -575,7 +576,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
             igl = input_geofile.split("/")
             #new.name = igl[-3]+'/'+igl[-3] #+input_geofile
             new.name = struct_des[it_new].sfolder+"/"+it_new+"/"+it_new
-            print "New path and part of name of file is ", new.name
+            print_and_log( "New path and part of name of file is ", new.name)
             #return
             new.des = 'Obtained from '+input_geofile+' by adding '+impurity_type+' impurity '
             #new.init.xred   = new.xred
@@ -619,7 +620,7 @@ def insert_cluster(insertion, i_center, matrix, m_center):
 
 
 
-    hproj = [ (r[0][i]+r[1][i]+r[2][i]) * 0.5 for i in 0,1,2 ] #projection of vectors on three axis
+    hproj = [ (r[0][i]+r[1][i]+r[2][i]) * 0.5 for i in (0,1,2) ] #projection of vectors on three axis
 
     for i, x in enumerate(ins.xcart):
         ins.xcart[i] = x - i_center
@@ -630,7 +631,7 @@ def insert_cluster(insertion, i_center, matrix, m_center):
     max_dis = 1
     for i_x, ix in enumerate(ins.xcart):
         dv_min = max_dis
-        print "Insertion atom ",ix,
+        print_and_log( "Insertion atom ",ix,)
         
         for j, mx in enumerate(mat.xcart):
             dv = mx - ix
@@ -651,12 +652,12 @@ def insert_cluster(insertion, i_center, matrix, m_center):
 
 
         if dv_min == max_dis:
-            print " is more far away from any matrix atom than ",dv_min," A; I insert it"
+            print_and_log( " is more far away from any matrix atom than ",dv_min," A; I insert it")
             mat.xcart.append( ix )
-            print 'type of added atom is ', ins.typat[i_x]
+            print_and_log( 'type of added atom is ', ins.typat[i_x])
             mat.typat.append( ins.typat[i_x]   )
         else:        
-            print "will replace martix atom", mat.xcart[j_r] 
+            print_and_log( "will replace martix atom", mat.xcart[j_r] )
             mat.xcart[j_r] = ix.copy()
     
 
@@ -685,7 +686,7 @@ def insert(it_ins, ise_ins, mat_path, it_new, calc, type_of_insertion = "xcart" 
         raise RuntimeError
 
     if it_ins not in mat_path and it_ins not in it_new: 
-        print it_ins, mat_path, it_new
+        print_and_log('Cells are', it_ins, mat_path, it_new)
         print_and_log("Error! you are trying to insert coordinates from cell with different name\n\n")
         #raise RuntimeError       
 
@@ -713,7 +714,7 @@ def insert(it_ins, ise_ins, mat_path, it_new, calc, type_of_insertion = "xcart" 
             ins_working = ins
             ins = calc[(it_ins, ise_ins, mat.version)]
         except KeyError: 
-            print "No key", (it_ins, ise_ins, mat.version), "I use previous working version !!!"
+            print_and_log( "No key", (it_ins, ise_ins, mat.version), "I use previous working version !!!", imp = 'y' )
             ins = ins_working
             #return
         #ins.end.znucl = ins.znucl

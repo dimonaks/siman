@@ -1,6 +1,8 @@
 # from header import *
 from __future__ import division, unicode_literals, absolute_import 
 
+
+from small_functions import is_list_like
 import copy, traceback, datetime, sys, os, glob, shutil
 import header
 from header import print_and_log, runBash
@@ -16,7 +18,7 @@ from pymatgen.io.vasp.inputs import Poscar
 
 from operator import itemgetter
 
-sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to siman library
+# sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to siman library
 from ase.utils.eos import EquationOfState
 
 
@@ -205,7 +207,7 @@ def complete_run(close_run = True):
         runBash('chmod +x run')
 
         log.write( runBash("rsync -zave ssh run "+cluster_address+":"+project_path_cluster) +"\n" )
-        print 'run sent'
+        print_and_log('run sent')
         # clean_run(header.project_conf.SCHEDULE_SYSTEM)
     
     return
@@ -324,7 +326,7 @@ def update_des(struct_des, des_list):
 
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
-    coord = 'direct', savefile = 'ov', show = None, comment = None, 
+    coord = 'direct', savefile = 'ov', show = None, comment = '', 
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None,
     scale_region = None, n_scale_images = 7, id_from = None,
@@ -438,16 +440,16 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     if it_folder: 
         it_folder = it_folder.strip()
 
-    if not hasattr(verlist, '__iter__'):
+    if not is_list_like(verlist):
         verlist = [verlist]
 
-    if not hasattr(setlist, '__iter__'):
+    if not is_list_like(setlist):
         setlist = [setlist]
 
     setlist = [s.strip() for s in setlist]
 
 
-    if not hasattr(calc_method, '__iter__'):
+    if not is_list_like(calc_method):
         calc_method = [calc_method]
 
 
@@ -676,7 +678,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         hstring = hstring.replace(args[0], "'"+it+"'")
         hstring = hstring.replace(args[1], str(setlist))
     else: #more useful and convenient
-        hstring = "res_loop('{:s}', {:s}, {:s}, show = 'fo'  )     # comment = {:s}, on {:s}  ".format(
+        hstring = "res_loop('{:s}', {:s}, {:s}, show = 'fo'  )     # {:s}, on {:s}  ".format(
             it, str(setlist), str(verlist), comment, str(datetime.date.today() )  )
     # try:
     if hstring != header.history[-1]: 
@@ -864,7 +866,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             status = "compl"
 
             if update == 'up2': 
-                print 'Calculation', calc[id].name, 'is finished, continue'
+                print_and_log( 'Calculation', calc[id].name, 'is finished, continue')
 
                 return
 
@@ -1046,7 +1048,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                 elif input_geo_format == 'cif':
                     if header.project_conf.CIF2CELL:
-                        print runBash("cif2cell "+input_geofile+"  -p vasp -o "+input_geofile.replace('.cif', '.POSCAR'))
+                        print_and_log( runBash("cif2cell "+input_geofile+"  -p vasp -o "+input_geofile.replace('.cif', '.POSCAR'))  )
                         input_geofile = input_geofile.replace('.cif', '.POSCAR')
                         
                         #check
@@ -1513,17 +1515,17 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         znucl = st.znucl
         
         if z_replace not in znucl: 
-            print "Error! Calc "+new.name+" does not have atoms of this type\n"
+            print_and_log("Error! Calc "+new.name+" does not have atoms of this type")
             raise RuntimeError
 
         if atom_to_replace not in id_base[0] or atom_new not in it_new:
-            print "Error! Something wrong with names of atom types\n"
+            print_and_log("Error! Something wrong with names of atom types")
             raise RuntimeError            
-        print "replace ", z_replace, "by", z_new
+        print_and_log( "replace ", z_replace, "by", z_new)
 
         znucl = [int(z) for z in znucl] # convert to int
         i_r = znucl.index(z_replace)
-        print "index ", i_r
+        print_and_log( "index ", i_r)
         znucl[i_r] = z_new
 
         if znucl[-2] == znucl[-1]: #just for special case
@@ -1531,7 +1533,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
             for i, t in enumerate(st.typat):
                 if t == st.ntypat:
-                    print "found ntypat" ,t
+                    print_and_log( "found ntypat" ,t)
                     st.typat[i]-=1
                     #print t
             st.ntypat-=1
@@ -1677,12 +1679,12 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
     """Setup"""
-
-    if not hasattr(verlist, '__iter__'):
+    if not is_list_like(verlist):
         verlist = [verlist]
 
-    if not hasattr(setlist, '__iter__'):
+    if not is_list_like(setlist):
         setlist = [setlist]
+        # print (setlist)
 
 
     if not calc:
@@ -1742,7 +1744,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         # if '4' not in calc[r_id].state:
         #     print "Start to read reference:"
         if readfiles:
-            print calc[r_id].read_results(loadflag, choose_outcar = choose_outcar)
+            print_and_log( calc[r_id].read_results(loadflag, choose_outcar = choose_outcar)  )
         e_r = calc[r_id].energy_sigma0 #reference calc
         nat_r = calc[r_id].end.natom # reference calc
         e1_r = e_r/nat_r # energy per one atom
@@ -1750,15 +1752,16 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
     """Main loop"""
+    # print (setlist)
     final_outstring = 'no calculation found'
     for inputset in setlist:
         for v in verlist:
             # print 'Starting loops'
 
             id = (it,inputset,v)
-
+            # print(id)
             if id not in calc:
-                id = (bytes(it), bytes(inputset), v) #try non-unicode for compatability with python2
+                id = (bytes(it, 'utf-8'), bytes(inputset, 'utf-8'), v) #try non-unicode for compatability with python2
                 if id not in calc:
                     print_and_log('Key', id,  'not found!', imp = 'Y')
                     continue #pass non existing calculations
@@ -1786,7 +1789,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 except:
                     b_id = (b_id[0], id[1], id[2] + b_ver_shift)
             if not hasattr(cl,'energy_sigma0'):
-                print cl.name, 'is not finished!, continue; file renamed to _unfinished'
+                print_and_log( cl.name, 'is not finished!, continue; file renamed to _unfinished')
                 outcar = cl.dir+str(v)+".OUTCAR"
                 outunf = outcar+"_unfinished"
                 runBash("mv "+outcar+" "+outunf)
@@ -1866,7 +1869,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
                     elif analys_type == 'matrix_diff': #
-                        print 'Calculating matrix_diff...'
+                        print_and_log( 'Calculating matrix_diff...')
                         
                         e_b = calc[b_id].energy_sigma0
                         n_m_b = calc[b_id].end.nznucl[0]
@@ -1878,7 +1881,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
                     elif analys_type == 'diff': #
-                        print 'Calculating diff...'
+                        print_and_log( 'Calculating diff...')
                         e_b = calc[b_id].energy_sigma0
                         v_b = calc[b_id].end.vol
                         diffE = e - e_b
@@ -1902,7 +1905,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
             final_outstring = outst2+outst + outst_end              
-            print final_outstring
+            print_and_log( final_outstring)
 
         emin = 0
         
@@ -1913,7 +1916,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         """Aditional analysis, plotting"""
         if '4' not in calc[id].state:
-            print "Calculation ",id, 'is unfinished; return'
+            print_and_log( "Calculation ",id, 'is unfinished; return')
             return
         final_list = () #if some part fill this list it will be returned instead of final_outstring
         
@@ -1922,11 +1925,11 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         if b_id: bcl = calc[b_id]
 
         if analys_type == 'gbe':
-            print("\nGrain boundary energy and excess volume fit:")
+            print_and_log("\nGrain boundary energy and excess volume fit:")
             plot_conv( conv[n], calc, "fit_gb_volume")
 
         elif analys_type == 'gbep':
-            print("\nGrain boundary energy and excess volume fit:")
+            print_and_log("\nGrain boundary energy and excess volume fit:")
             # plot_conv( conv[n], calc, "fit_gb_volume")
             final_outstring = plot_conv( conv[n], calc, "fit_gb_volume_pressure")
 
@@ -1938,7 +1941,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             
             if A != A_b: 
                 print_and_log("Warning! you are trying to compare calcs with different lateral sizes: "+str(A)+" "+str(A_b))
-                print "Areas are ", A, A_b," A^3"
+                print_and_log( "Areas are ", A, A_b," A^3")
             
             #Show results 
             id1 = (it,inputset,verlist[0]) #choosen to save calculated values at first version of version set
@@ -1959,7 +1962,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 calc[id1].v_seg = v_seg
             
             if not hasattr(calc[id1], 'e_seg'): 
-                print "Warning! Calculation ", id1, 'does not have e_seg and v_seg. Try to run with readfiles = True to calculate it.'
+                print_and_log( "Warning! Calculation ", id1, 'does not have e_seg and v_seg. Try to run with readfiles = True to calculate it.')
                 calc[id1].e_seg = 0; calc[id1].v_seg = 0
             
 
@@ -1977,7 +1980,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             id2 =(it,inputset, 2)
             st = calc[id2].end
             gbpos2 = calc[id2].gbpos 
-            print id2, 'is id2'
+            print_and_log( id2, 'is id2')
             # print gbpos2
             # print st.rprimd[0][0]/2.
             if gbpos2 == None:
@@ -2021,8 +2024,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 st_rr = replic(st_r, mul = (1,2,2), inv = -1 ) # to be sure that impurity is surrounded by atoms
 
                 dmax = 3
-                list = [ x  for x, t  in zip(st_rr.xcart, st_rr.typat) if np.linalg.norm(x_central - x) < dmax and t == 1]
-                nneigbours =  len(list)
+                nlist = [ x  for x, t  in zip(st_rr.xcart, st_rr.typat) if np.linalg.norm(x_central - x) < dmax and t == 1]
+                nneigbours =  len(nlist)
 
 
                 final_outstring = ("%s.fit.pe & %.0f & %.1f & %.2f & %.d & %4.0f & %4.0f & %4.0f & %s " %(
@@ -2043,8 +2046,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-            print  final_outstring
-            print '\\hline'
+            print_and_log(  final_outstring)
+            print_and_log( '\\hline')
 
 
         elif analys_type == 'e_2imp':
@@ -2055,7 +2058,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         elif analys_type == 'fit_ac':
 
-            print ("name %s_template          acell  %.5f  %.5f  %.5f # fit parameters are &%.5f &%.5f &%i &%i"  % (fit_hex(0.00002,0.00003,4000,6000, it, inputset, verlist, calc) )  )    
+            print_and_log ("name %s_template          acell  %.5f  %.5f  %.5f # fit parameters are &%.5f &%.5f &%i &%i"  % (fit_hex(0.00002,0.00003,4000,6000, it, inputset, verlist, calc) )  )    
 
         elif analys_type == 'fit_a':
             """Fit equation of state for bulk systems.
@@ -2117,11 +2120,11 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
             v0, e0, B = eos.fit()
             #print "c = ", clist[2]
-            print '''
+            print_and_log( '''
             v0 = {0} A^3
             a0 = {1} A
             E0 = {2} eV
-            B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B)
+            B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B)  )
             savedpath = 'figs/'+cl.name+'.eps'
             # plt.close()
             # plt.clf()
@@ -2213,7 +2216,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             final_outstring = ("{:} | {:.2f} eV \n".format(id[0]+'.'+id[1], redox  ))
             
-            print final_outstring
+            print_and_log( final_outstring )
 
             final_list = {'is':id[0], 'redox_pot':redox, 'id_is':id, 'id_ds':b_id, 
             'kspacing':cl.set.vasp_params['KSPACING'], 'time':cl.time/3600.,
@@ -2311,7 +2314,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             #prepare lists
             ni = cl.set.vasp_params['IMAGES']
-            vlist = [1]+range(3, ni+3)+[2]
+            vlist = [1]+list(range(3, ni+3) )+[2]
             # print vlist
             mep_energies = []
             atom_pos     = []
@@ -2434,7 +2437,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
         coeffs1 = np.polyfit(T, F, 8)
         fit_func = np.poly1d(coeffs1)
         T_range = np.linspace(min(T), max(T))
-        print 'I return', key
+        print_and_log( 'I return', key)
 
         return T_range, fit_func
 
@@ -2446,7 +2449,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
     
         log_history(  "{:}    #on {:}".format( traceback.extract_stack(None, 2)[0][3],   datetime.date.today() )  )
 
-        print type(from_id)
+        # print type(from_id)
         if type(from_id) == str:
             from_cl = CalculationVasp()
             from_cl.read_poscar(from_id)
@@ -2477,11 +2480,12 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
          
         #run phonopy
-        print runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; rm POSCAR-*; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
-            +confname+' -c '+posname+' -d --tolerance=0.01')
+        print_and_log(
+            runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; rm POSCAR-*; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+            +confname+' -c '+posname+' -d --tolerance=0.01'), imp = 'y' )
 
         ndis = len( glob.glob('POSCAR-*') )
-        print ndis, ' displacement files was created'
+        print_and_log( ndis, ' displacement files was created', )
 
         os.chdir(savedPath)
 
@@ -2506,7 +2510,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
             npos = len( glob.glob(work_path+'/*.POSCAR') )
-            print range(1,npos+1), 'range'
+            # print range(1,npos+1), 'range'
             if not os.path.exists(work_path+"/1.POSCAR"):
                 res_loop(new_id[0],   new_id[1], range(1,npos+1), up = 'up1', input_geo_format = 'vasp', )
 
@@ -2541,17 +2545,17 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
             if not os.path.exists("FORCE_SETS"):
                 #run phonopy; read forces
                 ndis = len( glob.glob('*.vasprun.xml') )
-                print ndis, ' displacement files was Found'
-                print runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
-                    +'  -f {1..'+str(ndis)+'}.vasprun.xml --tolerance=0.01')
+                print_and_log( ndis, ' displacement files was Found')
+                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+                    +'  -f {1..'+str(ndis)+'}.vasprun.xml --tolerance=0.01'), imp = 'Y' )
 
             #calculate thermal prop
             result = 'thermal_properties_'+mpstr.replace(" ", "_")+'.yaml'
             if not os.path.exists(result):
 
                 posname = 'SPOSCAR'
-                print runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
-                    +confname+' -c '+posname+' -t -p -s --tolerance=0.01')
+                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+                    +confname+' -c '+posname+' -t -p -s --tolerance=0.01'), imp = 'y' )
 
                 shutil.copyfile('thermal_properties.yaml', result)
     

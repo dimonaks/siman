@@ -166,7 +166,8 @@ Need: import subprocess
     out = p.stdout.read().strip()
     # print cmd
     # print 'Bash output is\n'+out
-    return out  #This is the stdout from the shell command
+    # print ( str(out, 'utf-8') ) 
+    return str(out, 'utf-8')  #This is the stdout from the shell command
 
 
 

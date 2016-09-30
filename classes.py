@@ -60,7 +60,7 @@ class Structure():
         self.hex_a = None
         self.hex_c = None
         self.gbpos = None
-        self.rprimd = [np.zeros((3)) for i in 0,1,2]
+        self.rprimd = [np.zeros((3)) for i in [0,1,2] ]
         self.xcart = []
         self.xred = []
         self.magmom = []
@@ -993,7 +993,7 @@ class CalculationVasp(Calculation):
 
             #convert magmom to vasp ordering
 
-            zmagmom = [[] for x in xrange(0,self.init.ntypat)]
+            zmagmom = [[] for x in range(0,self.init.ntypat)]
 
             # print zmagmom
 
@@ -1108,7 +1108,7 @@ class CalculationVasp(Calculation):
         nsets = len(setlist)
         for i, curset in enumerate(setlist):
 
-            if i == nsets-1:
+            if nsets == 1:
                 name_mod = ''
             else:
                 name_mod = curset.ise+'.'
@@ -1119,23 +1119,23 @@ class CalculationVasp(Calculation):
 
             with open(incar_filename,'w') as f:
                 f.write( 'SYSTEM = %s\n\n'%(self.des) )
-                for key in sorted(self.set.vasp_params):
+                for key in sorted(vp):
 
                     if key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
                         f.write('MAGMOM = '+list2string(self.init.magmom)+"\n") #magmom from geo file has higher preference
                         # sys.exit()
                         continue
                     
-                    if self.set.vasp_params[key] == None:
+                    if vp[key] == None:
                         continue
 
 
-                    if type(self.set.vasp_params[key]) == list:
-                        lis = self.set.vasp_params[key]
+                    if type(vp[key]) == list:
+                        lis = vp[key]
                         f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
                    
                     else:
-                        f.write(key+" = "+str( self.set.vasp_params[key] ) +"\n")
+                        f.write(key+" = "+str( vp[key] ) +"\n")
                
 
                 f.write("\n")
@@ -1756,7 +1756,7 @@ class CalculationVasp(Calculation):
                 return contcar
 
 
-            contcar_file = 'CONTCAR'
+            contcar_file = None
             if neb_flag:
                 print_and_log('Writing scripts for NEB method', important = 'n')
                 nim = self.set.vasp_params['IMAGES']
@@ -1865,6 +1865,10 @@ class CalculationVasp(Calculation):
 
 
         nsets = len(sets)
+        footer_flag = not set(self.calc_method).isdisjoint(['uniform_scale', 'neb', 'only_neb' ])
+
+
+
 
         if mode == "body": #control part of script
             self.associated_outcars = []
@@ -1872,8 +1876,9 @@ class CalculationVasp(Calculation):
         for k, curset in enumerate(sets):
             
             if nsets > 1: #the incar name is modified during creation only if more than 1 set is detected
-                f.write('\n#sequence set: '+curset.ise+' \n')
-                f.write('cp '+curset.ise+'.INCAR  INCAR\n')
+                if mode == 'body' or footer_flag:
+                    f.write('\n#sequence set: '+curset.ise+' \n')
+                    f.write('cp '+curset.ise+'.INCAR  INCAR\n')
             
 
             if k < nsets-1:
@@ -1905,7 +1910,7 @@ class CalculationVasp(Calculation):
                  final_analysis_flag = final_analysis_flag)
 
 
-            if k < nsets-1:
+            if k < nsets-1 and contcar_file:
                 f.write('cp '+contcar_file+' POSCAR  #sequence_set: preparation of input geo for next set\n')
 
 
@@ -2110,6 +2115,7 @@ class CalculationVasp(Calculation):
         """Start reading """
         if outcar_exist:
             s = runBash("grep 'General timing' "+path_to_outcar)
+            # print (s)
         else:
             s = 'no OUTCAR'
         if "g" in s:
@@ -2128,6 +2134,7 @@ class CalculationVasp(Calculation):
             #print 'grep "NPAR = approx SQRT( number of cores)" '+path_to_outcar
             #print nw
             tmp = path_to_outcar+".tmp"
+            print (nw)
             if nw:
                 nw = int(nw)
                 #remove warning
@@ -2503,9 +2510,9 @@ class CalculationVasp(Calculation):
                         if "Direct" in line:
                             self.end.xred = []
                             for i in range(self.natom):
-                                xr = np.asarray ( [float(x) for x in contcar.next().split()] )
+                                xr = np.asarray ( [float(x) for x in contcar.readline().split()] )
                                 self.end.xred.append( xr )
-
+                # print(self.end.xred)
 
 
 
@@ -2638,8 +2645,7 @@ class CalculationVasp(Calculation):
             #print outstring_kp_ec
             # print show
             # print 'force' in show
-            # if not hasattr(show, '__iter__')
-            #     show = [show]
+
 
             if 'fo' in show:
                 # print "Maxforce by md steps (meV/A) = %s;"%(str(maxforce)  )
