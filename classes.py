@@ -1012,7 +1012,7 @@ class CalculationVasp(Calculation):
             # print self.init.typat
             # print magmom
                 
-            self.set.vasp_params['MAGMOM'] = magmom
+            vp['MAGMOM'] = magmom
 
             #check possible antiferromagnetic configurations:
             spec_mom_is = []

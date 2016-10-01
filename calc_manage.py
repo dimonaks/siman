@@ -330,7 +330,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     input_geo_format = 'abinit', ifolder = None, input_geo_file = None, corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None,
     scale_region = None, n_scale_images = 7, id_from = None,
-    n_neb_images = None, occ_atom_coressp = None
+    n_neb_images = None, occ_atom_coressp = None,ortho = None,
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -626,7 +626,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
     #inherit option
-    if inherit_option in ['occ', 'full', 'full_nomag', 'r2r3', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
+    if inherit_option in ['supercell', 'occ', 'full', 'full_nomag', 'r2r3', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
         if inherit_option == 'full':
             it_new = it+'.if'
         if inherit_option == 'full_nomag':
@@ -635,6 +635,12 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         if inherit_option == 'occ':
             #please add additional vars to control for which atoms the inheritance should take place
             it_new = it+'.ifo' #full inheritence + triggering OMC        
+        if inherit_option == 'supercell':
+           if len(set(ortho))==1:
+                mod = '.s'+str(ortho[0])
+           else:
+                mod =  '.s'+list2string(ortho).replace(' ','')
+           it_new = it+mod
 
 
 
@@ -658,7 +664,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 id = (it,inputset,v)
                 # print (calc[id].end.magmom)
                 # sys.exit()
-                inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp)
+                inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp,ortho = ortho)
         
         if ise_new:
             print_and_log('Inherited calculation uses set', ise_new)
@@ -1171,7 +1177,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     id_from = None,
     atom_new = None, atom_to_replace = None,  id_base_st_type = 'end', atom_to_remove = None, id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
-    it_folder = None, occ_atom_coressp = None
+    it_folder = None, occ_atom_coressp = None, ortho = None,
     ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
@@ -1192,7 +1198,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             occ           - take occ from *id_from* and create file OCCMATRIX for 
                             OMC [https://github.com/WatsonGroupTCD/Occupation-matrix-control-in-VASP]
                             - occ_atom_coressp (dict) {iatom_calc_from:iatom_calc_base, ... } (atomno starting from 0!!!)
-
+            supercell - create orthogonal supercel using ortho list [a,b,c]
         id_base_st_type - use init or end structure of id_base calculation.
         id_from_st_type  - init or end for id_from
 
@@ -1226,7 +1232,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     # hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
     hstring = "inherit_icalc(it_new = '{:s}', ver_new = {:s}, id_base = {:s}, id_from = {:s})   # on {:s}".format(
-        it_new, str(ver_new), id_base, id_from, str( datetime.date.today())   )
+        it_new, str(ver_new), str(id_base), str(id_from), str( datetime.date.today())   )
     if hstring != header.history[-1]: 
         header.history.append( hstring  )
 
@@ -1234,7 +1240,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     #it_new not in header.history[-1]:   header.history.append( hstring  )
     calc = header.calc
     struct_des = header.struct_des
-
+    override  = False
     if type(id_base) == str:
         print_and_log('Reading id_base\n')
         cl_base = CalculationVasp()
@@ -1430,9 +1436,15 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
         # sys.exit()
 
-
-
-
+    elif inherit_type == 'supercell':
+        from geo import ortho_vec, create_supercell
+        mul_matrix = ortho_vec(st.rprimd, ortho_sizes = ortho)
+        print_and_log('Mul matrix is\n',mul_matrix)
+        sc = create_supercell(st, mul_matrix)
+        new.init = sc
+        new.end  = sc
+        des = 'obtained from'+cl_base.name+'by creating supercell'+str(ortho)
+        override = True
     elif inherit_type == "atom_shift":
         des = 'obtainded from final state of '+cl_base.name+' by shifting atom '+ str(atom_to_shift) +' by '+ str(shift_vector)
         # new.des = des + struct_des[it_new].des
@@ -1569,8 +1581,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     # print new.end.xcart
 
-
-    new.write_geometry(id_base_st_type, des)
+    #print(len(new.end.xred))
+    new.write_geometry(id_base_st_type, des, override = override)
     write_xyz(st)
 
 
