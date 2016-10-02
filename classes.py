@@ -910,9 +910,13 @@ class CalculationVasp(Calculation):
         return path_to_potcar
 
 
-    def calculate_nbands(self):
+    def calculate_nbands(self, curset):
         """Should be run after add_potcar()"""
         #1 add additional information to set
+        if not curset:
+            curset = self.set
+        vp = curset.vasp_params
+
 
         path_to_potcar = self.dir+'/POTCAR'
         self.init.zval = []
@@ -922,20 +926,20 @@ class CalculationVasp(Calculation):
                 # print line
                 self.init.zval.append(float(line.split()[5]))
         
-        try: self.set.add_nbands
-        except AttributeError: self.set.add_nbands = None
+        try: curset.add_nbands
+        except AttributeError: curset.add_nbands = None
 
-        if self.set.add_nbands != None:
+        if curset.add_nbands != None:
             tve =0
             for i in range(self.init.ntypat):
                 # print self.init.zval
                 tve += self.init.zval[i] * self.init.nznucl[i]
-            self.nbands = int ( round ( math.ceil(tve / 2.) * self.set.add_nbands ) )
-            self.set.vasp_params['NBANDS'] = self.nbands
+            self.nbands = int ( round ( math.ceil(tve / 2.) * curset.add_nbands ) )
+            vp['NBANDS'] = self.nbands
         return
 
 
-    def actualize_set(self):
+    def actualize_set(self, curset = None):
         """
         Makes additional processing of set parameters, which also depends on calculation
         """
@@ -944,11 +948,15 @@ class CalculationVasp(Calculation):
         #check if some parameters should be filled according to number of species
         #make element list
         el_list = [element_name_inv(el) for el in self.init.znucl]
-        vp = self.set.vasp_params
+        if not curset:
+            curset = self.set
+        vp = curset.vasp_params
+
 
 
         if 'LDAU' in vp and vp['LDAU']:        
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
+                print( vp[key])
                 if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
                     print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
                     # raise RuntimeError
@@ -968,25 +976,22 @@ class CalculationVasp(Calculation):
 
 
         """Process magnetic moments"""
-        # print dir(self.set)
-        # print self.set.vasp_params
 
-        # print self.set.vasp_params['MAGMOM']
         if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and any(self.init.magmom):
 
             print_and_log('Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
-        elif hasattr(self.set, 'magnetic_moments') and self.set.magnetic_moments:
+        elif hasattr(curset, 'magnetic_moments') and curset.magnetic_moments:
             print_and_log('Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set')
-            print_and_log('self.set.magnetic_moments = ', self.set.magnetic_moments)
+            print_and_log('curset.magnetic_moments = ', curset.magnetic_moments)
             
             mag_mom_other = 0.6 # magnetic moment for all other elements
             magmom = []
             for iat in range(self.init.natom):
                 typ = self.init.typat[iat]
                 el  = el_list[typ-1]
-                if el in self.set.magnetic_moments:
-                    magmom.append(self.set.magnetic_moments[el])
+                if el in curset.magnetic_moments:
+                    magmom.append(curset.magnetic_moments[el])
                 else:
                     magmom.append(mag_mom_other)
             
@@ -1071,11 +1076,11 @@ class CalculationVasp(Calculation):
             self.init.magmom = magmom
 
         
-        elif 'MAGMOM' in self.set.vasp_params and self.set.vasp_params['MAGMOM']: #just add * to magmom tag if it is provided without it
+        elif 'MAGMOM' in vp and vp['MAGMOM']: #just add * to magmom tag if it is provided without it
             print_and_log('Magnetic moments from vasp_params["MAGMOM"] are used\n')
             
-            if "*" not in self.set.vasp_params['MAGMOM']:
-                self.set.vasp_params['MAGMOM'] = str(natom) +"*"+ self.set.vasp_params['MAGMOM']
+            if "*" not in vp['MAGMOM']:
+                vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
         
 
 
@@ -1102,7 +1107,7 @@ class CalculationVasp(Calculation):
         
         if hasattr(self.set, 'set_sequence') and self.set.set_sequence:
             for s in self.set.set_sequence:
-                setlist.append(varset[s])
+                setlist.append(s)
 
 
         nsets = len(setlist)
@@ -1304,9 +1309,10 @@ class CalculationVasp(Calculation):
                 new_LDAUU_list = copy.deepcopy(set_LDAUU_list)
                 
                 # print set_LDAUU_list
-
+                u_step = 0
                 for i, u in enumerate(set_LDAUU_list):
-                    if u == 0: continue
+                    if u == 0:
+                        continue
                     u_step = np.linspace(0, u, self.set.u_ramping_nstep)[u_ramp_step]
                     u_step = np.round(u_step, 1)
                     # new_LDAUU_list[i] = value
@@ -1316,7 +1322,8 @@ class CalculationVasp(Calculation):
                 new_LDAUU = 'LDAUU = '+' '.join(['{:}']*len(new_LDAUU_list)).format(*new_LDAUU_list)
                 
                 command = "sed -i.bak '/LDAUU/c\\" + new_LDAUU + "' INCAR\n"
-
+                #print('u_step',u_step)
+                #sys.exit()
 
             elif parameter == 'MAGMOM':
 
@@ -1453,7 +1460,7 @@ class CalculationVasp(Calculation):
         neb_flag = ('neb' in self.calc_method or 'only_neb' in self.calc_method)
 
         if hasattr(self.set, 'set_sequence') and self.set.set_sequence and any(self.set.set_sequence):
-            sets = [self.set]+[varset[ise] for ise in self.set.set_sequence]
+            sets = [self.set]+[se for se in self.set.set_sequence]
         else:
             sets = [self.set]
 
@@ -1616,11 +1623,12 @@ class CalculationVasp(Calculation):
                 else:
                     usteps = [self.set.u_ramping_nstep-1]  # now it the case of sequence_set for contin sets only the last U is used
 
-
+                u_last = 100
                 for i_u in usteps:
 
                     u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write)
-
+                    if u == u_last:
+                        continue
                     name_mod   = '.U'+str(u).replace('.', '')+set_mod
                    
                     run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
@@ -1635,7 +1643,7 @@ class CalculationVasp(Calculation):
 
 
                     self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
-
+                    u_last = u
                 if final_analysis_flag:
                     rm_chg_wav = 'cw' #The chgcar is removed for the sake of harddrive space
                 else:

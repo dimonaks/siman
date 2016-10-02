@@ -142,14 +142,20 @@ def read_vasp_sets(varset, user_vasp_sets, override_global = False):
                 elif key == 'bfolder':
                     print_and_log( 'New blockfolder', param[key])
 
-
-
                 elif key in siman_keys:
                     s.set_attrp(key, param[key] )
                 
                 else:
                     print_and_log('Error! Uknown key: '+key)
                     raise RuntimeError
+             
+
+            if hasattr(s, 'set_sequence') and s.set_sequence:
+                sets = []
+                for se in s.set_sequence:
+                    sets.append(copy.deepcopy(varset[se]))
+                s.set_sequence = sets  #put objects instead of names
+
 
 
 
@@ -279,7 +285,7 @@ class InputSet():
 
     def set_potential(self,znucl, arg):
         # print arg
-        if type(arg) not in (str, unicode):
+        if type(arg) not in (str,):
             # sys.exit("\nset_potential error\n")
             raise RuntimeError
 

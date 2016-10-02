@@ -352,7 +352,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             'no_base': only relevant for typconv
             is the same as "up1", but the base set is ommited
             'up2' - update only unfinished calculations
-
+            'up3' - run only if id does not exist
         - coord - type of cooridnates written in POSCAR:
             'direct'
             'cart'
@@ -526,7 +526,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         
         if hasattr(curset, 'set_sequence') and curset.set_sequence:
             for s in curset.set_sequence:
-                nebsets.append(varset[s])
+                nebsets.append(s)
 
         for s in nebsets:
             s.init_images_value = copy.deepcopy(s.vasp_params['IMAGES'])
@@ -664,7 +664,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 id = (it,inputset,v)
                 # print (calc[id].end.magmom)
                 # sys.exit()
-                inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp,ortho = ortho)
+                if up != 'up3':
+                    inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp,ortho = ortho)
         
         if ise_new:
             print_and_log('Inherited calculation uses set', ise_new)
@@ -816,10 +817,10 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-    if up not in ('up1','up2'): 
-        print_and_log("Warning! You are in the test mode, please change up to up1; "); 
-        raise RuntimeError
-    return
+    if up not in ('up1','up2','up3'): 
+        print_and_log("Warning! You are in the test mode, to add please change up to up1; "); 
+        sys.exit()
+    return it
 
 
 
@@ -862,8 +863,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     cl_prev = None
 
 
-    try:
-        calc[id]
+    if id in calc: 
+        cl = calc[id]
         status = "exist"
         print_and_log(str(calc[id].name)+" has been already created and has state: "+str(calc[id].state)+"\n\n")
 
@@ -878,8 +879,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             if update != "up1": 
                 return #completed calculations updated only for "up1"
+        if status == 'exist' and update == 'up3':
+            return #
 
-    except KeyError:
+    else:
         #update = "up"
         status = "new"
         print_and_log( "There is no calculation with id "+ str(id)+". I create new with set "+str(inputset)+"\n" )        
@@ -1086,9 +1089,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         #print  calc[id].des
         calc[id].des += ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
         #print  calc[id].des
-
+        setlist = [cl.set]                                                                                                    
+        if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
+            for s in cl.set.set_sequence:
+                setlist.append(s)
         calc[id].check_kpoints()    
-        calc[id].actualize_set()
+        for curset in setlist:
+            calc[id].actualize_set(curset)
 
 
 
@@ -1122,8 +1129,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             if id[2] == first_version:
                 calc[id].add_potcar()
-            
-            calc[id].calculate_nbands()
+            for curset in setlist:
+                calc[id].calculate_nbands(curset)
 
 
 
