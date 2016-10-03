@@ -91,7 +91,7 @@ Ha_Bohr_to_eV_A = 51.4220641868956
 kB_to_GPa = 0.1
 eV_A_to_J_m = 16.021765
 kB = 8.617e-5 # eV/K
-TRANSITION_ELEMENTS = [26, 25, 28, 27]
+TRANSITION_ELEMENTS = [22, 23, 25, 26, 27, 28]
 ALKALI_ION_ELEMENTS = [3, 11, 19]
 warnings = True
 

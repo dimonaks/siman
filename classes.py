@@ -847,10 +847,10 @@ class CalculationVasp(Calculation):
             """Writes structure (POSCAR) in VASP format """
             f.write(self.name)
             
-            f.write("\n1\n")
+            f.write("\n{:18.15f}\n".format(1.0))
             
             for i in 0, 1, 2:
-                f.write('  %18.16f %18.16f %18.16f'%(rprimd[i][0]*to_ang,rprimd[i][1]*to_ang,rprimd[i][2]*to_ang))
+                f.write('{:10.6f} {:10.6f} {:10.6f}'.format(rprimd[i][0]*to_ang,rprimd[i][1]*to_ang,rprimd[i][2]*to_ang) )
                 f.write("\n")
 
             for n in nznucl:    
@@ -1644,8 +1644,9 @@ class CalculationVasp(Calculation):
 
                     self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
                     u_last = u
+                
                 if final_analysis_flag:
-                    rm_chg_wav = 'cw' #The chgcar is removed for the sake of harddrive space
+                    rm_chg_wav = 'w' #The wavcar is removed for the sake of harddrive space
                 else:
                     rm_chg_wav = ''
 
@@ -2772,7 +2773,8 @@ class CalculationVasp(Calculation):
             elif 'ecut' in out_type : outst = outst_ecut
             elif 'kp' in out_type   : outst = outst_kp
             elif 'ts' in out_type   : outst = outst_ts
-            else: outst = outst_cathode
+            else: 
+                outst = outst_cathode
             #else: print_and_log("Uknown type of outstring\n")
 
 
@@ -2781,7 +2783,8 @@ class CalculationVasp(Calculation):
 
         else:
             # print_and_log("Still no OUTCAR for mystery reason for", self.id)
-            print_and_log('OUTCAR not finished for', self.id)
+            ''
+            # print_and_log('OUTCAR not finished for', self.id)
             # raise RuntimeError
 
         return outst

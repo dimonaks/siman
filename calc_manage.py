@@ -538,15 +538,18 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
     if calc_method and 'uniform_scale' in calc_method:
+
+
+        it_new = it+'.su'
+        v = verlist[0]
+
+        # if up != 'up3':
         print_and_log('Preparing   uniform_scale  calculation ... ')
 
         if len(verlist) > 1:
             print_and_log('Error! Currently   uniform_scale  is allowed only for one version')
             raise RuntimeError
         
-
-        it_new = it+'.su'
-        v = verlist[0]
 
 
         if it_new not in struct_des:
@@ -604,15 +607,15 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             calc[cl_temp.id] = cl_temp
             # cl_temp.init = None
 
+            verlist = verlist_new
 
-        print_and_log(len(sts), 'uniform images have been created.')
+            print_and_log(len(sts), 'uniform images have been created.')
         
 
 
 
 
         it      = it_new
-        verlist = verlist_new
         if ise_new:
             setlist = [ise_new]
         # sys.exit()
@@ -655,7 +658,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-
+        # if up != 'up3':
         if it_new not in struct_des:
             add_des(struct_des, it_new, section_folder, 'Inherited '+inherit_option+' from '+it+'.'+str(setlist)+'.'+str(verlist)   )
 
@@ -664,15 +667,24 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 id = (it,inputset,v)
                 # print (calc[id].end.magmom)
                 # sys.exit()
-                if up != 'up3':
-                    inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp,ortho = ortho)
+                
+                inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp,ortho = ortho)
         
+
+
+
         if ise_new:
-            print_and_log('Inherited calculation uses set', ise_new)
+            if up != 'up3':
+                print_and_log('Inherited calculation uses set', ise_new)
+
             setlist = [ise_new,]
 
         else:
-            print_and_log('Inherited calculation uses the same sets', setlist)
+            if up != 'up3':
+                print_and_log('Inherited calculation uses the same sets', setlist)
+
+
+
 
         it = it_new
 
@@ -866,7 +878,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     if id in calc: 
         cl = calc[id]
         status = "exist"
-        print_and_log(str(calc[id].name)+" has been already created and has state: "+str(calc[id].state)+"\n\n")
+        if update != 'up3': #
+            print_and_log(str(calc[id].name)+" has been already created and has state: "+str(calc[id].state)+"\n\n")
 
         if "4" in calc[id].state: 
             complete_state = calc[id].state
@@ -879,6 +892,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             if update != "up1": 
                 return #completed calculations updated only for "up1"
+        
         if status == 'exist' and update == 'up3':
             return #
 
@@ -958,7 +972,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-        if update in ['up1', 'up2']:
+        if update in ['up1', 'up2', 'up3']:
             if not os.path.exists(calc[id].dir):
                 log.write( runBash("mkdir -p "+calc[id].dir) )         #Create directory if does not exist
                 log.write( runBash("ssh "+calc[id].cluster_address+" ' mkdir -p "+calc[id].dir+" ' ") )
@@ -1100,7 +1114,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-        if update in ['up1', 'up2']:
+        if update in ['up1', 'up2', 'up3']:
             
 
             calc[id].write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
@@ -1924,7 +1938,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
             final_outstring = outst2+outst + outst_end              
-            print_and_log( final_outstring)
+            print_and_log( final_outstring, end = '')
 
         emin = 0
         
@@ -1935,7 +1949,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         """Aditional analysis, plotting"""
         if '4' not in calc[id].state:
-            print_and_log( "Calculation ",id, 'is unfinished; return')
+            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return')
             return
         final_list = () #if some part fill this list it will be returned instead of final_outstring
         
