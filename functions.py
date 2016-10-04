@@ -1,9 +1,10 @@
 from __future__ import division, unicode_literals, absolute_import 
+import tempfile
+
 from small_functions import is_list_like, is_string_like
 # from classes import res_loop
 import header
 from header import *
-
 
 
 
@@ -59,7 +60,7 @@ def push_to_server(files = None, to = None,  addr = None):
 
     return runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
 
-def get_from_server(files = None, to = None,  addr = None):
+def get_from_server(files = None, to = None,  addr = None, trygz = True):
     """
     The zip file is checked only for the first file in list *files*
     """
@@ -68,11 +69,16 @@ def get_from_server(files = None, to = None,  addr = None):
     
     files_str = ' :'.join(np.array(files ))
     # print_and_log('Trying to download', files_str, 'from server', imp = 'n')
+    if not to:
+        f = tempfile.NamedTemporaryFile() 
+        to = f.name #system independent filename
+        f.close()
 
     out = runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
     # print 'out === ',out
-    to_new = to+'/'+os.path.basename(files[0])
-    if out:# and not os.path.exists(to_new):
+    if out and trygz:# and not os.path.exists(to_new):
+        to_new = to+'/'+os.path.basename(files[0])
+
         # print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
         files[0]+='.gz'
         # print files[0]

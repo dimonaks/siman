@@ -129,7 +129,8 @@ class Structure():
 
     def del_atoms(self, iat):
         """
-        Now can delete only one atom with number iat (int), starting from 0. Takes care of ntypat, typat, znucl, nznucl, xred and natom
+        Now can delete only one atom with number iat (int), starting from 0. 
+        Takes care of magmom, ntypat, typat, znucl, nznucl, xred and natom
         Returns Structure()
         """
 
@@ -271,7 +272,7 @@ class Calculation(object):
         self.name = "noname"
         self.set = copy.deepcopy(inset)
         self.end = Structure()
-        self.state = "1.Initialized"
+        self.state = "0.Initialized"
         self.path = {
         "input":None,
         "input_geo":None,
@@ -437,7 +438,7 @@ class Calculation(object):
 
 
 
-            self.state = "2.Geometry has been read"
+            self.state = "1.Geometry has been read"
 
 
 
@@ -1867,6 +1868,9 @@ class CalculationVasp(Calculation):
             #clean at the end
             if final_analysis_flag:
                 f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+                f.write('rm RUNNING\n')
+
+
 
             return contcar_file
 
@@ -1979,7 +1983,7 @@ class CalculationVasp(Calculation):
 
 
 
-        self.state = "3. Ready for start"
+        self.state = "2. Ready for start"
         log.write("\nRun file created\n")     
         return
 

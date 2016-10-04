@@ -1,8 +1,16 @@
+"""
+Oграничения режима sequence_set:
+1) OCCMATRIX не копируется для дочерних сетов
+2) Режим U-ramping выключен для дочерних сетов
+3) Есть еще, режим afm_ordering, возможно neb 
+
+"""
+
+
 from __future__ import division, unicode_literals, absolute_import 
 
 from header import log, print_and_log;
 import copy
-
 
 #Vasp keys
 vasp_electronic_keys = [

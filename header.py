@@ -155,6 +155,12 @@ def print_and_log(*logstrings, **argdic):
             print (mystring,  end = "")
 
     log.write(mystring)
+    
+    if 'Error!' in mystring:
+        print ('Error! keyword was detected in message; invoking sys.exit()')
+        sys.exit()
+
+    return
 
 def runBash(cmd, env = None):
     """Input - string; Executes Bash commands and returns stdout

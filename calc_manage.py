@@ -6,7 +6,7 @@ from small_functions import is_list_like
 import copy, traceback, datetime, sys, os, glob, shutil
 import header
 from header import print_and_log, runBash
-from classes import CalculationVasp, Description
+from classes import Calculation, CalculationVasp, Description
 from functions import list2string, gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance
 from picture_functions import plot_mep
 
@@ -103,6 +103,7 @@ def write_batch_header(batch_script_filename = None,
             f.write("module add impi/5.1.3.181\n")
             f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
             f.write("export PATH=$PATH:~/tools\n")
+            f.write("touch RUNNING\n")
 
 
     return
@@ -110,13 +111,6 @@ def write_batch_header(batch_script_filename = None,
 
 
 
-
-def write_batch_body(mode = None):
-    """
-    mode -
-
-    """
-    ''
 
 
 
@@ -319,6 +313,124 @@ def update_des(struct_des, des_list):
 
 
 
+def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, input_geo_format = None, input_geo_file = None):
+    """
+    Wrapper for reading geometry files
+    Also copies geofile and OCCMATRIX
+    returns Structure()
+    """
+
+    if input_geo_file:
+        geofilelist = glob.glob(input_geo_file) 
+        print_and_log("You provided the following geo file explicitly "+str(geofilelist)+"\n" )
+    
+    else:
+        print_and_log("I am searching for geofiles in folder "+input_folder+"\n" )
+        
+        if input_geo_format == 'abinit': 
+            searchinputtemplate = input_folder+'/*.geo*'
+        
+        elif input_geo_format == 'vasp': 
+            searchinputtemplate = input_folder+'/*POSCAR*'
+
+
+
+        elif input_geo_format == 'cif': 
+            searchinputtemplate = input_folder+'/*.cif'
+
+        # print 'searchinputtemplate = ', searchinputtemplate
+
+        # print  input_geo_format
+        geofilelist = glob.glob(searchinputtemplate) #Find input_geofile
+        # print geofilelist
+    # print os.path.basename(file[0])
+    geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
+
+
+    #additional search in target folder if no files in root # !!!Add for Vasp also 
+    if not geofilelist:
+        print_and_log("Attention! trying to find here "+input_folder+"/target\n" )
+        geofilelist = glob.glob(input_folder+'/target/*.geo*') #Find input_geofile            
+
+    if not geofilelist:
+        input_folder += '.'+inputset
+        print_and_log("Attention! trying to find here "+input_folder+"\n" )
+        geofilelist = glob.glob(input_folder+'/*.geo*') #Find input_geofile    
+
+
+    for input_geofile in geofilelist: #quite stupid to have this loop here - much better to move this to upper function, and the loop will not be needed
+        
+        #print runBash("grep version "+str(input_geofile) )
+        input_geofile = os.path.normpath(input_geofile)
+        if input_geo_format in ['abinit',]:
+            curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
+
+        elif input_geo_format == 'vasp': 
+            curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+
+        elif input_geo_format == 'cif': 
+            curv = int(os.path.basename(input_geofile).split('.')[0] )
+
+
+        if curv == curver:
+
+            if cl:
+                calc_geofile_path = os.path.normpath(cl.dir + input_geofile.split('/')[-1])
+                
+                if input_geofile != calc_geofile_path: # copy initial geo file and other files to calc folder
+
+                    makedir(calc_geofile_path)
+
+                    shutil.copyfile(input_geofile, calc_geofile_path)
+                    dir_1 = os.path.dirname(input_geofile)
+                    dir_2 = os.path.dirname(calc_geofile_path) 
+                    
+                    if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1:
+
+                        shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
+            else:
+                cl = Calculation()
+
+
+            if input_geo_format == 'abinit':
+                cl.read_geometry(input_geofile)
+            
+            elif input_geo_format == 'vasp':
+                cl.read_poscar(input_geofile)
+
+            elif input_geo_format == 'cif':
+                if header.project_conf.CIF2CELL:
+                    print_and_log( runBash("cif2cell "+input_geofile+"  -p vasp -o "+input_geofile.replace('.cif', '.POSCAR'))  )
+                    input_geofile = input_geofile.replace('.cif', '.POSCAR')
+                    
+                    #check
+                    if not os.path.exists(input_geofile):
+                        print_and_log("Error! Something wrong with conversion of cif2cell: \n")
+                        raise RuntimeError
+
+
+                    cl.read_poscar(input_geofile)
+                
+
+
+                else:
+                    print_and_log("Error! cif2cell is not available in your system")
+                    raise RuntimeError
+
+            
+            else:
+                raise RuntimeError
+
+            
+
+            break
+    
+    if cl and cl.path["input_geo"] == None: 
+        print_and_log("Error! Could not find geofile in this list: "+ str(geofilelist)+  "\n")
+        raise NameError #
+    
+
+    return cl.init
 
 
 
@@ -568,17 +680,26 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         for inputset in setlist:
 
-            iid = (it,inputset,v)
-            
-            write_xyz(calc[iid].end, file_name =calc[iid].end.name+'_used_for_scaling')
 
-            sts = scale_cell_uniformly(calc[iid].end, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = str(iid))
+            id_s = (it,inputset,v)
+            if id_s in calc:
+                st = calc[id_s].end
+                pname = str(id_s)
+            else:
+                st = smart_structure_read(curver = v, inputset = inputset, cl = None, input_folder = struct_des[it].sfolder+'/'+it, 
+                    input_geo_format = input_geo_format, input_geo_file = input_geo_file)
+                pname = st
+
+            write_xyz(st, file_name = st.name+'_used_for_scaling')
+            sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
             
+
+
             if ise_new:
                 inputset = ise_new
-                iid = (it,inputset,v)
+                id_s = (it,inputset,v)
 
-            cl_temp = CalculationVasp(varset[inputset], iid)
+            cl_temp = CalculationVasp(varset[inputset], id_s)
 
             for i, s in enumerate(sts):
                 ver_new = i+1
@@ -598,7 +719,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             cl_temp.id = (it_new, inputset, 100)
             cl_temp.state = '2.ready to read outcar'
             blockdir = struct_des[it_new].sfolder+"/"+varset[inputset].blockfolder #calculation folder
-            iid = cl_temp.id          
+            # iid = cl_temp.id          
             cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
             cl_temp.dir = blockdir+"/"+ str(cl_temp.id[0]) +'.'+ str(cl_temp.id[1])+'/'
             cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
@@ -845,10 +966,6 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-
-
-
-
 def add_calculation(structure_name, inputset, version, first_version, last_version, input_folder, blockdir, 
     calc, varset, update = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
@@ -868,10 +985,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     struct_des = header.struct_des
 
 
-
-
-
     id = (structure_name,inputset,version)
+
     cl_prev = None
 
 
@@ -921,25 +1036,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         batch_script_filename = cl.dir+cl.id[0]+"."+cl.id[1]+'.run'        
 
-
         # all additional properties:
-
         calc[id].calc_method = calc_method
 
-        # print calc[id].calc_method 
-        # sys.exit()
 
-        # calc[id].u_ramping_region = u_ramping_region
-        # if hasattr(calc[id].set, 'u_ramping_region'):
-        # print calc[id].set.u_ramping_nstep
         if hasattr(calc[id].set, 'u_ramping_nstep') and calc[id].set.u_ramping_nstep:
             print_and_log("Attention! U ramping method is detected from set\n\n")
-            # print calc[id].calc_method
             calc[id].calc_method.append('u_ramping')
-            # calc[id].u_ramping_region =calc[id].set.u_ramping_region
-            # sys.exit()
-
-        # print dir(calc[id].set)
 
         if hasattr(calc[id].set, 'afm_ordering'):
             print_and_log("Attention! afm_ordering method is detected from set\n\n")
@@ -968,141 +1071,32 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 calc[id].prev.append(cl_prev)
 
 
-
-
-
-
         if update in ['up1', 'up2', 'up3']:
             if not os.path.exists(calc[id].dir):
-                log.write( runBash("mkdir -p "+calc[id].dir) )         #Create directory if does not exist
+                log.write( runBash("mkdir -p "+calc[id].dir) )         #Create directory if it does not exist
                 log.write( runBash("ssh "+calc[id].cluster_address+" ' mkdir -p "+calc[id].dir+" ' ") )
             
             if id[2] == first_version:
-                
-                # if header.NEW_BATCH:
                 write_batch_header(batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
                     path_to_job = header.PATH_TO_PROJECT_ON_CLUSTER+cl.dir, 
                     job_name = cl.id[0]+"."+cl.id[1], number_cores = cl.corenum  )
-                
-                # else:
-                #     calc[id].write_sge_script(schedule_system = schedule_system) #write header only once
 
-        if input_geo_file:
-            geofilelist = glob.glob(input_geo_file) 
-            print_and_log("You provided the following geo file explicitly "+str(geofilelist)+"\n" )
-        
-        else:
-            print_and_log("I am searching for geofiles in folder "+input_folder+"\n" )
-            
-            if input_geo_format == 'abinit': 
-                searchinputtemplate = input_folder+'/*.geo*'
-            
-            elif input_geo_format == 'vasp': 
-                searchinputtemplate = input_folder+'/*POSCAR*'
-
-
-
-            elif input_geo_format == 'cif': 
-                searchinputtemplate = input_folder+'/*.cif'
-
-            # print 'searchinputtemplate = ', searchinputtemplate
-
-            # print  input_geo_format
-            geofilelist = glob.glob(searchinputtemplate) #Find input_geofile
-            # print geofilelist
-        # print os.path.basename(file[0])
-        geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
-
-
-        #additional search in target folder if no files in root # !!!Add for Vasp also 
-        if not geofilelist:
-            print_and_log("Attention! trying to find here "+input_folder+"/target\n" )
-            geofilelist = glob.glob(input_folder+'/target/*.geo*') #Find input_geofile            
-
-        if not geofilelist:
-            input_folder += '.'+inputset
-            print_and_log("Attention! trying to find here "+input_folder+"\n" )
-            geofilelist = glob.glob(input_folder+'/*.geo*') #Find input_geofile    
-
-
-        for input_geofile in geofilelist: #quite stupid to have this loop here - much better to move this to upper function, and the loop will not be needed
-            
-            #print runBash("grep version "+str(input_geofile) )
-            input_geofile = os.path.normpath(input_geofile)
-            if input_geo_format in ['abinit',]:
-                curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
-
-            elif input_geo_format == 'vasp': 
-                curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
-
-            elif input_geo_format == 'cif': 
-                curv = int(os.path.basename(input_geofile).split('.')[0] )
-
-
-            if curv == id[2]:
-
-                calc_geofile_path = os.path.normpath(calc[id].dir+input_geofile.split('/')[-1])
-                
-                if input_geofile != calc_geofile_path: # copy initial geo file and other files to calc folder
-
-                    makedir(calc_geofile_path)
-                    # dire = os.path.dirname(copy_to)
-                    # if not os.path.exists(dire):
-                    #     os.makedirs(dire)
-                    # print (input_geofile)
-                    # sys.exit()
-                    shutil.copyfile(input_geofile, calc_geofile_path)
-                    dir_1 = os.path.dirname(input_geofile)
-                    dir_2 = os.path.dirname(calc_geofile_path) 
-                    
-                    if 'OCCEXT' in calc[id].set.vasp_params and calc[id].set.vasp_params['OCCEXT'] == 1:
-
-                        shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
 
 
 
                 
-                if input_geo_format == 'abinit':
-                    calc[id].read_geometry(input_geofile)
-                
-                elif input_geo_format == 'vasp':
-                    calc[id].read_poscar(input_geofile)
-
-                elif input_geo_format == 'cif':
-                    if header.project_conf.CIF2CELL:
-                        print_and_log( runBash("cif2cell "+input_geofile+"  -p vasp -o "+input_geofile.replace('.cif', '.POSCAR'))  )
-                        input_geofile = input_geofile.replace('.cif', '.POSCAR')
-                        
-                        #check
-                        if not os.path.exists(input_geofile):
-                            print_and_log("Error! Something wrong with conversion of cif2cell: \n")
-                            raise RuntimeError
+        cl.init = smart_structure_read(curver = cl.id[2], inputset = inputset, cl = cl, input_folder = input_folder, 
+            input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
 
-                        calc[id].read_poscar(input_geofile)
-                    
 
 
-                    else:
-                        print_and_log("Error! cif2cell is not available in your system")
-                        raise RuntimeError
 
-                
-                else:
-                    raise RuntimeError
 
-                
-
-                break
-        
-        if calc[id].path["input_geo"] == None: 
-            print_and_log("Error! Could not find geofile in this list: "+ str(geofilelist)+  "\n")
-            raise NameError #
-        
-        #print  calc[id].des
         calc[id].des += ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
-        #print  calc[id].des
+
+
         setlist = [cl.set]                                                                                                    
         if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
             for s in cl.set.set_sequence:
@@ -1116,14 +1110,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         if update in ['up1', 'up2', 'up3']:
             
-
             calc[id].write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
             
-
-
-            # if header.NEW_BATCH:
-            #     ''
-            # else:            
+        
             out_name = calc[id].write_sge_script(str(version)+".POSCAR", version, 
                 inherit_option, prevcalcver, savefile, 
                 schedule_system = schedule_system, mode = 'body',
@@ -1136,8 +1125,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 name_mod = ''
                 calc[id].path["output"] = calc[id].dir+str(version)+name_mod+".OUTCAR" #set path to output
             
-
             output_files_names.append( calc[id].path["output"] )
+
 
 
 
@@ -1156,26 +1145,19 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 
                 runBash('chmod +x '+batch_script_filename)
 
-                # calc[id].make_incar_and_copy_all(update)
                 list_to_copy.extend( cl.make_incar() )
                 
-
                 list_to_copy.extend( cl.make_kpoints_file() )
                 
                 cl.copy_to_cluster(list_to_copy, update)
-
-
 
                 calc[id].make_run(schedule_system = schedule_system)
 
 
 
 
-
-
-        # if status == "compl": calc[id].state = complete_state #Even if completed state was updated, the state does not change
         if status == "compl": 
-            calc[id].state = '3. Can be completed but was reinitialized' #new behavior 30.08.2016
+            calc[id].state = '2. Can be completed but was reinitialized' #new behavior 30.08.2016
 
 
         print_and_log("\nCalculation "+str(id)+" added or updated\n\n")
@@ -1196,7 +1178,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     id_from = None,
-    atom_new = None, atom_to_replace = None,  id_base_st_type = 'end', atom_to_remove = None, id_from_st_type = 'end',
+    atom_new = None, atom_to_replace = None,  id_base_st_type = 'end', atoms_to_remove = None, i_atom_to_remove = None, id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
     it_folder = None, occ_atom_coressp = None, ortho = None,
     ):
@@ -1213,9 +1195,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             'full_nomag'  - full except magmom which are set to None
             r2r3          - use r2 and r3 from id_from
             r1r2r3        - use r1, r2 and r3 from id_from
-            remove_imp    - removes all atoms with typat > 1
+            remove_atoms  - removes atoms of type *atoms_to_remove (list of str)*
             replace_atoms - atoms of type 'atom_to_replace' in 'id_base' will be replaced by 'atom_new' type.
-            make_vacancy  - produce vacancy by removing 'atom_to_remove' starting from 0
+            make_vacancy  - produce vacancy by removing 'i_atom_to_remove' starting from 0
             occ           - take occ from *id_from* and create file OCCMATRIX for 
                             OMC [https://github.com/WatsonGroupTCD/Occupation-matrix-control-in-VASP]
                             - occ_atom_coressp (dict) {iatom_calc_from:iatom_calc_base, ... } (atomno starting from 0!!!)
@@ -1477,25 +1459,53 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
 
-    elif inherit_type == "remove_imp":
+    elif inherit_type == "remove_atoms":
         """
-        Assumed that typat == 1 is matrix atoms
+        
         """
-        des = 'All impurities removed from the final state of '+cl_base.name
-        # new.des = des + struct_des[it_new].des
+        des = 'All atoms of type' + str(atoms_to_remove)+' removed from the final state of '+cl_base.name
+        
+        atoms = [ element_name_inv(st.znucl[t-1])    for t in st.typat ]
+
+        # print (atoms)
+        atom_exsist = True
+        
+        while atom_exsist:
+            atoms = [ element_name_inv(st.znucl[t-1])    for t in st.typat ]
+
+            for i, at in enumerate(atoms):
+                
+                if at in atoms_to_remove:
+                    
+                    st = st.del_atoms(i)
+
+                    break
+            else:
+                atom_exsist = False
+            # print (atoms)
+
+        
+        st.name = it_new+'_from_'+new.name
+        override = True
+
+        # sys.exit()
      
-        st_copy = copy.deepcopy(st)
-        st.typat = []
-        st.xred = []
-        st.xcart = []
-        st.ntypat = 1
-        st.znucl = st.znucl[0:1]
-        for i, t in enumerate(st_copy.typat):
-            if t == 1:
-                st.typat.append(t)
-                st.xred.append(st_copy.xred[i])
-                st.xcart.append(st_copy.xcart[i])
-        st.natom = len(st.xred)
+        # st_copy = copy.deepcopy(st)
+        # st.typat = []
+        # st.xred = []
+        # st.xcart = []
+        # st.ntypat = 1
+        # st.znucl = st.znucl[0:1]
+        # for i, t in enumerate(st_copy.typat):
+        #     if t == 1:
+        #         st.typat.append(t)
+        #         st.xred.append(st_copy.xred[i])
+        #         st.xcart.append(st_copy.xcart[i])
+        # st.natom = len(st.xred)
+        
+
+
+
         # new.init = new.end #just for sure
         # new.write_geometry("end",des)        
         # write_xyz(new.end)
@@ -1503,20 +1513,20 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
     elif inherit_type == "make_vacancy":
-        """Remove  atom 'atom_to_remove' from final state of id_base"""
+        """Remove  atom 'i_atom_to_remove' from final state of id_base"""
 
 
         print_and_log('Warning! Please check inherit_type == "make_vacancy", typat can be wrong  if more than one element present in the system\n ',
             'Use del_atoms() method ')
         raise RuntimeError
 
-        des = 'Atom '+str(atom_to_remove)+' removed from  '+cl_base.name
+        des = 'Atom '+str(i_atom_to_remove)+' removed from  '+cl_base.name
         # new.des = des + struct_des[it_new].des
 
         # st = new.end
-        del st.typat[atom_to_remove]
-        del st.xcart[atom_to_remove]
-        del st.xred[atom_to_remove]
+        del st.typat[i_atom_to_remove]
+        del st.xcart[i_atom_to_remove]
+        del st.xred[i_atom_to_remove]
         ntypat = len(set(st.typat))
         znucl_new = []
         for t in sorted(set(st.typat)):
@@ -1527,7 +1537,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
         #make visualization by adding to vacancy hydrogen atom
         st_b_copy = copy.deepcopy(cl_base.end)
-        st_b_copy.typat[atom_to_remove] = max(st_b_copy.typat)+1
+        st_b_copy.typat[i_atom_to_remove] = max(st_b_copy.typat)+1
         st_b_copy.ntypat+=1
         st_b_copy.znucl.append(1)
         write_xyz(st_b_copy, file_name = "test_of_vacancy_creation."+str(new.version)+"."+st_b_copy.name)
@@ -1821,9 +1831,39 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                     b_id = (b_id[0], b_id[1], id[2] + b_ver_shift)
                 except:
                     b_id = (b_id[0], id[1], id[2] + b_ver_shift)
+            
             if not hasattr(cl,'energy_sigma0'):
-                print_and_log( cl.name, 'is not finished!, continue; file renamed to _unfinished')
-                outcar = cl.dir+str(v)+".OUTCAR"
+                
+                #check if job in queue
+                if 'SLURM' in header.SCHEDULE_SYSTEM:
+                    job_in_queue = cl.id[0]+'.'+cl.id[1] in runBash('ssh '+header.CLUSTER_ADDRESS+""" squeue -o '%o' """)
+                    # print(job_in_queue, cl.name)
+                
+                else:
+                    print_and_log('Error! I do not know how to check job status with chosen SCHEDULE_SYSTEM; Please teach me here! ')
+
+                if not get_from_server(cl.dir+'/RUNNING', addr = header.CLUSTER_ADDRESS, trygz = False): #if exist than '' is returned
+                    cl.state = '3. Running'
+                
+
+
+
+                elif job_in_queue:
+                    cl.state = '3. In queue'
+                    # print_and_log('Job is in queue')
+                    # sys.exit()
+
+                else:
+
+                    if '2' in cl.state:
+                        ''
+                    else:
+                        cl.state = '5. Some fault most probably'
+
+                # sys.exit()
+
+                print_and_log( cl.name, 'has state = ,',cl.state,'; I will continue; outcar file renamed to _unfinished')
+                outcar = cl.path['output']
                 outunf = outcar+"_unfinished"
                 runBash("mv "+outcar+" "+outunf)
 
