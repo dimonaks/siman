@@ -3,7 +3,7 @@ from __future__ import print_function
 import header
 from header import log, runBash, print_and_log
 
-import shelve, sys, datetime
+import shelve, sys, datetime, shutil
 
 
 """
@@ -35,7 +35,8 @@ def read_database(scratch = False):
     """
 
     # databasefile = 'calc.s' #was used with python2
-    databasefile = 'calc.gdbm'
+    # databasefile = 'calc.gdbm'
+    databasefile3 = 'calc.gdbm3'
 
     # if scratch == True: databasefile =   '/scratch/aksenov/calc.s'
     
@@ -43,7 +44,8 @@ def read_database(scratch = False):
     
     # mod = __import__("gdbm")
 
-    d = shelve.open(databasefile, protocol = 1)
+    # d = shelve.open(databasefile, protocol = 1)
+    d = shelve.open(databasefile3, protocol = 1)
     # d = shelve.Shelf(mod.open(databasefile, protocol=1))
 
 
@@ -108,8 +110,8 @@ def write_database(calc, conv, varset, size_on_start = None):
     """
     #size_on_finish = sys.getsizeof(dbase)
     #if size_on_finish != size_on_start:
-    runBash("cp calc.s calc_copy.s") #create copy before writing
-
+    # runBash("cp calc.s calc_copy.s") #create copy before writing
+    shutil.copyfile('calc.gdbm3', 'calc_copy.gdbm3')
     if 0:
         d = shelve.open('calc.s', protocol=1) #Write database of calculations
         d[calc_key]       = calc
@@ -132,15 +134,21 @@ def write_database(calc, conv, varset, size_on_start = None):
         d.close()
     else: #python3 
         import dbm
-        d = shelve.Shelf(dbm.open('calc.gdbm', 'c'), protocol=1) #Write dbm database for python3
+        # d = shelve.Shelf(dbm.open('calc.gdbm', 'c'), protocol=1) #Write dbm database for python3
+        # d[calc_key]       = calc
+        # d[conv_key]       = conv
+        # d[varset_key]     = varset
+        # d[history_key]    = header.history
+        # d[struct_des_key] = header.struct_des 
+        # d.close()        
+
+        d = shelve.Shelf(dbm.open('calc.gdbm3', 'n'), protocol = 3) #Write dbm database for python3
         d[calc_key]       = calc
         d[conv_key]       = conv
         d[varset_key]     = varset
         d[history_key]    = header.history
         d[struct_des_key] = header.struct_des 
-        d.close()        
-
-
+        d.close()   
 
 
     log.write("\nEnd of work at "+str(datetime.datetime.now())+'\n')

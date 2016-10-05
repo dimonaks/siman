@@ -130,8 +130,7 @@ def print_and_log(*logstrings, **argdic):
         mystring+=str(m)+' '
 
 
-    # if '\n' not in mystring[-2:-1]:
-    #     ''
+
 
     if len(mystring.splitlines()) == 1:
         mystring = '-- '+mystring
@@ -152,7 +151,9 @@ def print_and_log(*logstrings, **argdic):
             pass
         else:
 
+            # print ([mystring])
             print (mystring,  end = "")
+
 
     log.write(mystring)
     

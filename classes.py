@@ -4,7 +4,7 @@ from __future__ import division, unicode_literals, absolute_import
 from __future__ import print_function
 # from __future__ import division, unicode_literals, absolute_import 
 from tabulate import tabulate
-
+import itertools
 
 """
 Classes used in siman
@@ -40,10 +40,17 @@ class Description():
     Objects of this class include just folder and description of specific calculation.
     Mostly was needed for manual addition of new calculations
 
+    self.ngkpt_dict_for_kspacings (dict of lists) - the key is kspacing; the dict
+    contains k-meshes 
+    for all calculations
+    based on this geometry structure.
+    can be useful for fine tuning of k-mesh for specific kspacing.
+
     """
     def __init__(self, sectionfolder = "forgot_folder", description = "forgot_description"):
         self.des = description
         self.sfolder = sectionfolder
+        self.ngkpt_dict_for_kspacings = {}
 
 
 
@@ -761,7 +768,11 @@ class CalculationVasp(Calculation):
         return
     
 
-    def check_kpoints(self):
+    def check_kpoints(self, ngkpt = None):
+        """
+        TODO probably the method should transfered to Structure?
+        """
+        struct_des = header.struct_des
         to_ang_local = to_ang
         try:
             if "Ang" in self.len_units:
@@ -770,23 +781,59 @@ class CalculationVasp(Calculation):
         except AttributeError:
             print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n") 
         N_from_kspacing = []
-        # print self.set.vasp_params['KSPACING']
-        # print 
-        for i in 0, 1, 2:
-            N_from_kspacing.append( math.ceil( (np.linalg.norm(self.init.recip[i]) / to_ang_local) / self.set.vasp_params['KSPACING']) )
-        #print "Vector length is:", (np.linalg.norm(self.rprimd[0]), "Bohr"
 
-        if self.set.kpoints_file  == False:#self.set.vasp_params['KSPACING']:
-            N = N_from_kspacing
+        # if self.set.kpoints_file  == False:#self.set.vasp_params['KSPACING']:
+        #     N = N_from_kspacing
+        kspacing = self.set.vasp_params['KSPACING']
+        it = self.id[0]
 
-        if self.set.ngkpt:
+        # print (struct_des)
+        if ngkpt:
+            N = ngkpt
+
+        elif self.set.ngkpt:
             N = self.set.ngkpt
-        else:
+
+        elif hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') and kspacing in struct_des[it].ngkpt_dict_for_kspacings:
+
+            N = struct_des[it].ngkpt_dict_for_kspacings[kspacing]
+
+
+        elif kspacing:
+            for i in 0, 1, 2:
+                N_from_kspacing.append( math.ceil( (np.linalg.norm(self.init.recip[i]) / to_ang_local) / kspacing) )
+
             N = N_from_kspacing
+
+
+        else:
+            print_and_log( "Error! no information about k-points\n")
+
+
+
+        self.init.ngkpt = N_from_kspacing
+
+
+
+
 
 
         print_and_log("Kpoint   mesh is: "+str(N)+'\n' )
-        print_and_log("The actual k-spacings are "+str(self.calc_kspacings(N) )+'\n' )
+
+        if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') or  kspacing not in struct_des[it].ngkpt_dict_for_kspacings:
+            print_and_log('Several other options instead of automatically determined ngkpt = ',N,np.array(self.calc_kspacings(N) ).round(2), ':', end = '\n' )
+            print_and_log('ngkpt              |    actual kspacings       ', end = '\n' )
+            
+
+            for ngkpt in itertools.product([N[0]-1, N[0], N[0]+1], [N[1]-1, N[1], N[1]+1], [N[2]-1, N[2], N[2]+1]):
+                print_and_log(ngkpt, np.array(self.calc_kspacings(ngkpt) ).round(2), end = '\n' )
+
+            # user_ngkpt = input('Provide ngkpt:')
+            # print(user_ngkpt)
+            # sys.exit()
+
+        else:
+            print_and_log("The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2) )
         return N_from_kspacing
 
 
@@ -1132,8 +1179,14 @@ class CalculationVasp(Calculation):
                         # sys.exit()
                         continue
                     
+
                     if vp[key] == None:
                         continue
+
+                    if key == 'KSPACING' and self.set.kpoints_file: #attention! for k-points only the base set is used!!
+                        continue # since VASP has higher priority of KSPACING param, it should not be written 
+
+
 
 
                     if type(vp[key]) == list:
@@ -1162,25 +1215,49 @@ class CalculationVasp(Calculation):
     
     def make_kpoints_file(self):
 
+        struct_des = header.struct_des
         #Generate KPOINTS
+        kspacing = self.set.vasp_params['KSPACING']
+
+
+
+
+
         d = self.dir
+        it = self.id[0]
         if self.set.kpoints_file:
             if self.set.kpoints_file == True:
+
+
+
                 print_and_log( "You said to generate KPOINTS file.\n")
                 self.calc_kspacings()
                 #Generate kpoints file
 
                 #
-                if self.set.ngkpt:
+                if hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') and kspacing in struct_des[it].ngkpt_dict_for_kspacings:
+                    N =    struct_des[it].ngkpt_dict_for_kspacings[kspacing]
+                    print_and_log( 'Attention! ngkpt = ',N, 
+                        ' is adopted from struct_des which you provided for it ',it, ' and kspacing = ',kspacing)
+                    nk1 = N[0]; nk2 = N[1]; nk3 = N[2]
+                    self.set.ngkpt = N
+
+                elif self.set.ngkpt:
                     nk1 = self.set.ngkpt[0]; nk2 = self.set.ngkpt[1]; nk3 = self.set.ngkpt[2];
                     print_and_log( "Attention! ngkpt was used for kpoints file\n")
 
-                else:
+                
+                elif kspacing:
                     print_and_log( "Attention! ngkpt for kpoints file are created from kspacing; ngkpt is empty\n")
                     N = self.check_kpoints()
                     self.set.ngkpt = N
                     nk1 = N[0]; nk2 = N[1]; nk3 = N[2]
                 
+                else:
+                    print_and_log( "Error! could not find information about k-points\n")
+
+
+
                 with open(self.dir+"KPOINTS",'w') as f:
 
                     f.write("Automatic Mesh\n") #Comment
@@ -1193,13 +1270,13 @@ class CalculationVasp(Calculation):
                     f.write("0 0 0\n") # optional shift
 
                 print_and_log( "KPOINTS was generated\n")
+            
             else:
                 shutil.copyfile(self.set.kpoints_file, self.dir+"KPOINTS")
                 print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
 
 
             filename = d+"KPOINTS"
-            # list_to_copy = [d+"INCAR",d+"POTCAR",d+"KPOINTS"]
 
         else:
             print_and_log( "This set is without KPOINTS file.\n")
@@ -1706,6 +1783,7 @@ class CalculationVasp(Calculation):
 
                 contcar_file = mv_files_according_versions(savefile, v, write = write, name_mod = name_mod, rm_chg_wav = '')
 
+                self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
             return contcar_file
         
@@ -1860,7 +1938,7 @@ class CalculationVasp(Calculation):
 
                     run_command(option = option, name = self.id[0]+'.'+self.id[1]+'.100'+name_mod, 
                         parrallel_run_command = parrallel_run_command, write = True)
-                    contcar_file = mv_files_according_versions('vo', '100', name_mod = name_mod, write = True, rm_chg_wav = 'cw')
+                    contcar_file = mv_files_according_versions('vo', '100', name_mod = name_mod, write = True, rm_chg_wav = 'w')
 
                 # sys.exit()
 
@@ -2054,7 +2132,10 @@ class CalculationVasp(Calculation):
 
         """
 
-        if choose_outcar:
+        # print (choose_outcar, hasattr(self, 'associated_outcars'), self.associated_outcars)
+        if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar:
+            # print ('As outcars = ',self.associated_outcars)
+
             path_to_outcar = os.path.dirname(self.path["output"])+ '/'+ self.associated_outcars[choose_outcar-1]
 
         else:
@@ -2147,7 +2228,7 @@ class CalculationVasp(Calculation):
             #print 'grep "NPAR = approx SQRT( number of cores)" '+path_to_outcar
             #print nw
             tmp = path_to_outcar+".tmp"
-            print (nw)
+            # print ([nw])
             if nw:
                 nw = int(nw)
                 #remove warning
@@ -2469,8 +2550,11 @@ class CalculationVasp(Calculation):
                     spin2 = []
                     nm = 2*l_at+1
                     for i in range(nm):
-                        spin1.append( np.array(outcarlines[i_line+4+i].split()).astype(float) )
-                    
+                        line = outcarlines[i_line+4+i]
+                        try:
+                            spin1.append( np.array(line.split()).astype(float) )
+                        except:
+                            print_and_log('Warning! Somthing wrong with occ matrix:', line)
                     if spin_polarized:
                         for i in range(nm):
                             spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )

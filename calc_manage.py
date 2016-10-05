@@ -327,35 +327,30 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
     else:
         print_and_log("I am searching for geofiles in folder "+input_folder+"\n" )
         
-        if input_geo_format == 'abinit': 
-            searchinputtemplate = input_folder+'/*.geo*'
-        
-        elif input_geo_format == 'vasp': 
-            searchinputtemplate = input_folder+'/*POSCAR*'
+        search_templates = {}
 
+        search_templates['abinit'] = '*.geo*'
+        search_templates['vasp']   = '*POSCAR*'
+        search_templates['cif']    = '*.cif'
 
+        # print (input_geo_format)
+        if input_geo_format:
+            geofilelist = glob.glob(input_folder+'/'+search_templates[input_geo_format]) #Find input_geofile
+        else:
+            for key in search_templates:
+                geofilelist = glob.glob(input_folder+'/'+search_templates[key]) #Find input_geofile
+                if geofilelist:
+                    input_geo_format = key
+                    print_and_log(key,' format is detected. input files are ',geofilelist)
+                    break
 
-        elif input_geo_format == 'cif': 
-            searchinputtemplate = input_folder+'/*.cif'
-
-        # print 'searchinputtemplate = ', searchinputtemplate
-
-        # print  input_geo_format
-        geofilelist = glob.glob(searchinputtemplate) #Find input_geofile
-        # print geofilelist
-    # print os.path.basename(file[0])
-    geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
+        geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
 
 
     #additional search in target folder if no files in root # !!!Add for Vasp also 
-    if not geofilelist:
-        print_and_log("Attention! trying to find here "+input_folder+"/target\n" )
-        geofilelist = glob.glob(input_folder+'/target/*.geo*') #Find input_geofile            
-
-    if not geofilelist:
-        input_folder += '.'+inputset
-        print_and_log("Attention! trying to find here "+input_folder+"\n" )
-        geofilelist = glob.glob(input_folder+'/*.geo*') #Find input_geofile    
+    # if not geofilelist:
+    #     print_and_log("Attention! trying to find here "+input_folder+"/target\n" )
+    #     geofilelist = glob.glob(input_folder+'/target/*.geo*') #Find input_geofile            
 
 
     for input_geofile in geofilelist: #quite stupid to have this loop here - much better to move this to upper function, and the loop will not be needed
@@ -375,6 +370,7 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
         if curv == curver:
 
             if cl:
+
                 calc_geofile_path = os.path.normpath(cl.dir + input_geofile.split('/')[-1])
                 
                 if input_geofile != calc_geofile_path: # copy initial geo file and other files to calc folder
@@ -389,7 +385,7 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
 
                         shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
             else:
-                cl = Calculation()
+                cl = CalculationVasp()
 
 
             if input_geo_format == 'abinit':
@@ -439,7 +435,7 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
     coord = 'direct', savefile = 'ov', show = None, comment = '', 
-    input_geo_format = 'abinit', ifolder = None, input_geo_file = None, corenum = None,
+    input_geo_format = None, ifolder = None, input_geo_file = None, corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None,
     scale_region = None, n_scale_images = 7, id_from = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
@@ -648,8 +644,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         print_and_log('Attention, I update number of images in the set to', n_neb_images, 'for this calculation; ', imp = 'y')
 
 
-
+    scale_flag = False
     if calc_method and 'uniform_scale' in calc_method:
+        scale_flag = True
 
 
         it_new = it+'.su'
@@ -723,6 +720,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
             cl_temp.dir = blockdir+"/"+ str(cl_temp.id[0]) +'.'+ str(cl_temp.id[1])+'/'
             cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
+            
+            # cl_temp.associated_outcars
+
             cl_temp.cluster_address      = header.cluster_address
             cl_temp.project_path_cluster = header.project_path_cluster
             calc[cl_temp.id] = cl_temp
@@ -774,7 +774,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         if it_folder:
             section_folder = it_folder
         else:
-            section_folder = struct_des[it_new].sfolder
+            section_folder = struct_des[it].sfolder
 
 
 
@@ -785,11 +785,13 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         for inputset in setlist:
             for v in verlist:
-                id = (it,inputset,v)
-                # print (calc[id].end.magmom)
-                # sys.exit()
-                
-                inherit_icalc(inherit_option, it_new, v, id, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp,ortho = ortho)
+                id_base = (it,inputset,v)
+                # if id_base not in calc:
+                    # id_base = it
+
+
+
+                inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp, ortho = ortho)
         
 
 
@@ -944,7 +946,10 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-
+    if scale_flag:
+        cl = calc[it, setlist[0], 1]
+        
+        cl_temp.associated_outcars = [out.replace('/1.', '/100.') for out in cl.associated_outcars]
 
 
 
@@ -1101,7 +1106,20 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
             for s in cl.set.set_sequence:
                 setlist.append(s)
+        
+
+
+
+
         calc[id].check_kpoints()    
+        
+
+
+
+
+
+
+
         for curset in setlist:
             calc[id].actualize_set(curset)
 
@@ -1244,7 +1262,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     calc = header.calc
     struct_des = header.struct_des
     override  = False
-    if type(id_base) == str:
+    if type(id_base) == str: #use function below for other formats
         print_and_log('Reading id_base\n')
         cl_base = CalculationVasp()
         cl_base.read_geometry(id_base)
@@ -1253,9 +1271,24 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         cl_base.end = cl_base.init
 
     else:
+        # print(id_base)
         if id_base not in calc:
             ''
-            id_base = (bytes(id_base[0]),bytes(id_base[1]),id_base[2])
+            # id_base = (bytes(id_base[0]),bytes(id_base[1]),id_base[2])
+        if id_base not in calc:
+            cl_temp = CalculationVasp()
+            cl_temp.init = smart_structure_read( curver = id_base[2], input_folder = struct_des[id_base[0]].sfolder+'/'+id_base[0] )
+            cl_temp.end = copy.deepcopy(cl_temp.init)
+            cl_temp.name = id_base[0]+'from_file'
+            cl_temp.id = ('temp','temp',id_base[2])
+            calc[cl_temp.id] = cl_temp
+            id_base = cl_temp.id
+
+
+
+
+
+
         cl_base = calc[id_base]
 
 
@@ -1441,6 +1474,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     elif inherit_type == 'supercell':
         from geo import ortho_vec, create_supercell
+        print_and_log('rprimd is \n', st.rprimd)
+        
         mul_matrix = ortho_vec(st.rprimd, ortho_sizes = ortho)
         print_and_log('Mul matrix is\n',mul_matrix)
         sc = create_supercell(st, mul_matrix)
@@ -1794,6 +1829,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         # print e1_r
 
 
+
+
     """Main loop"""
     # print (setlist)
     final_outstring = 'no calculation found'
@@ -1824,6 +1861,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                         choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
 
 
+            # return
 
             if analys_type in ('e_seg', 'coseg'):
                 try:
@@ -1862,7 +1900,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
                 # sys.exit()
 
-                print_and_log( cl.name, 'has state = ,',cl.state,'; I will continue; outcar file renamed to _unfinished')
+                print_and_log( cl.name, 'has state = ,',cl.state,'; I will continue; outcar file renamed to _unfinished; path=', cl.dir)
                 outcar = cl.path['output']
                 outunf = outcar+"_unfinished"
                 runBash("mv "+outcar+" "+outunf)
@@ -1977,8 +2015,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             
 
 
-            final_outstring = outst2+outst + outst_end              
-            print_and_log( final_outstring, end = '')
+            final_outstring = outst2+outst + outst_end     
+            # print ([final_outstring])         
+            print_and_log( final_outstring, end = '\n')
 
         emin = 0
         
@@ -1989,7 +2028,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         """Aditional analysis, plotting"""
         if '4' not in calc[id].state:
-            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return')
+            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return Errors expected')
             return
         final_list = () #if some part fill this list it will be returned instead of final_outstring
         

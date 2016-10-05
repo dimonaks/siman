@@ -3,6 +3,7 @@ Oграничения режима sequence_set:
 1) OCCMATRIX не копируется для дочерних сетов
 2) Режим U-ramping выключен для дочерних сетов
 3) Есть еще, режим afm_ordering, возможно neb 
+4) kpoints file только для первого сета
 
 """
 
@@ -161,7 +162,11 @@ def read_vasp_sets(varset, user_vasp_sets, override_global = False):
             if hasattr(s, 'set_sequence') and s.set_sequence:
                 sets = []
                 for se in s.set_sequence:
-                    sets.append(copy.deepcopy(varset[se]))
+                    if type(se) == str:
+                        sets.append(copy.deepcopy(varset[se]))
+                    else:
+                        sets.append(copy.deepcopy(se))
+
                 s.set_sequence = sets  #put objects instead of names
 
 
