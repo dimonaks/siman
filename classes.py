@@ -278,6 +278,12 @@ class Calculation(object):
         #super(CalculationAbinit, self).__init__()
         self.name = "noname"
         self.set = copy.deepcopy(inset)
+        
+        # if self.set.set_sequence:
+
+
+
+
         self.end = Structure()
         self.state = "0.Initialized"
         self.path = {
@@ -1544,93 +1550,10 @@ class CalculationVasp(Calculation):
 
 
 
-        if 0:
-            ''
-            # if input_geofile == "header":
-                # with open(run_name,'w') as f:
-                # if schedule_system == 'SGE':
-                #     f.write("#!/bin/tcsh   \n")
-                #     f.write("#$ -M aksenov@mpie.de\n")
-                #     f.write("#$ -m be\n")
-                #     f.write("#$ -S /bin/tcsh\n")
-                #     f.write("#$ -cwd \n")
-                #     f.write("#$ -R y \n")
-                #     f.write("#$ -o "+self.dir+" -j y\n\n")
-
-                #     f.write("cd "+self.dir+"\n")
-                #     f.write("module load sge\n")
-                #     f.write("module load vasp/parallel/5.2.12\n\n")
-
-
-                # # import random
-                # # foo = ['01', '02', '03', '04', '05', '06', '07', '08', '10', '12', '13', '15', '16', '17', '18', '19', '20']
-                # # print(random.choice(foo)
-
-                # if schedule_system == 'PBS':
-                #     f.write("#!/bin/bash   \n")
-                #     f.write("#PBS -N "+job_name+"\n")
-                #     f.write("#PBS -l walltime=99999999:00:00 \n")
-                #     f.write("#PBS -l nodes=1:ppn="+str(header.corenum)+"\n")
-                #     f.write("#PBS -r n\n")
-                #     f.write("#PBS -j eo\n")
-                #     f.write("#PBS -m bea\n")
-                #     f.write("#PBS -M dimonaks@gmail.com\n")
-                #     f.write("cd $PBS_O_WORKDIR\n")
-                #     f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
-                #     f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
-
-                #     # f.write("cd "+self.dir+"\n")
-
-                #     # f.write("module load sge\n")
-                #     # f.write("module load vasp/parallel/5.2.12\n\n")
-
-                # if schedule_system == 'SLURM':
-                #     f.write("#!/bin/bash   \n")
-                #     f.write("#SBATCH -J "+job_name+"\n")
-                #     f.write("#SBATCH -t 250:00:00 \n")
-                #     f.write("#SBATCH -N 1\n")
-                #     f.write("#SBATCH -n "+str(header.corenum)+"\n")
-                #     f.write("#SBATCH -o "+cluster_home+self.dir+"sbatch.out\n")
-                #     f.write("#SBATCH -e "+cluster_home+self.dir+"sbatch.err\n")
-                #     f.write("#SBATCH --mem-per-cpu=7675\n")
-                #     f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
-                #     f.write("#SBATCH --mail-type=END\n")
-                #     f.write("cd ~/"+self.dir+"\n")
-                #     f.write("export OMP_NUM_THREADS=1\n")
-
-                #     f.write("module add prun/1.0\n")
-                #     f.write("module add intel/16.0.2.181\n")
-                #     f.write("module add impi/5.1.3.181\n")
-                #     f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
-                #     f.write("export PATH=$PATH:~/tools\n")
-
-
-
-
-                    # f.write("rm WAVECAR\n")                
-                    # f.write("rm WAVECAR\n")                
-
-                # f.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
  
         def write_body(v = None, savefile = None, set_mod = '', copy_poscar_flag = True,
-            final_analysis_flag = True):
+            final_analysis_flag = True, penult_set_name = None):
             """
             set_mod (str) - additional modification of names needed for *set_sequence* regime, should be '.setname'
             """
@@ -1685,8 +1608,12 @@ class CalculationVasp(Calculation):
 
                 # name_mod_last = '.'+name_mod_U_last()
                 name_mod_last = '.U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
-
-                # print name_mod_last
+                if penult_set_name:
+                    name_mod_last += '.'+penult_set_name #however, for multiset run, the structure for u=00 exists only
+                                                      #for penult set or maybe even for the first only set
+                    # print (name_mod_last, penult_set_name)
+                    # sys.exit()
+                    
                 # print 'prevcalver', prevcalcver
 
                 if write and copy_poscar_flag: 
@@ -1805,7 +1732,7 @@ class CalculationVasp(Calculation):
 
                 return name_mod, name_mod_last
 
-            def u_ramp_loop(ver_prefix = '', subfolders = None, run_name_prefix = None):
+            def u_ramp_loop(ver_prefix = '', subfolders = None, run_name_prefix = None, set_mod = ''):
 
                 if not subfolders:
                     subfolders = ['.']
@@ -1824,7 +1751,7 @@ class CalculationVasp(Calculation):
 
                     u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u)
 
-                    name_mod   = ver_prefix+'U'+str(u).replace('.', '')
+                    name_mod   = ver_prefix+'U'+str(u).replace('.', '')+set_mod
 
                     
                     run_command(option = option, name = run_name_prefix+'.'+name_mod, 
@@ -1897,12 +1824,14 @@ class CalculationVasp(Calculation):
                 if 'u_ramping' in self.calc_method:
 
 
-                    contcar_file = u_ramp_loop(subfolders = subfolders, run_name_prefix = self.name+'.images'+nim_str)
+                    contcar_file = u_ramp_loop(subfolders = subfolders, 
+                        run_name_prefix = self.name+'.n_'+nim_str, 
+                        set_mod = set_mod)
               
 
                 else:
 
-                    run_command(option = option, name = (self.name+'.images'+nim_str), 
+                    run_command(option = option, name = self.name+'.n_'+nim_str+name_mod, 
                     parrallel_run_command = parrallel_run_command, write = True)
 
                     contcar_file = 'CONTCAR'
@@ -1964,12 +1893,14 @@ class CalculationVasp(Calculation):
         if mode == "body": #control part of script
             self.associated_outcars = []
 
+        penult_set_name = None
         for k, curset in enumerate(sets):
             
             if nsets > 1: #the incar name is modified during creation only if more than 1 set is detected
                 if mode == 'body' or footer_flag:
                     f.write('\n#sequence set: '+curset.ise+' \n')
                     f.write('cp '+curset.ise+'.INCAR  INCAR\n')
+                penult_set_name = sets[-2].ise
             
 
             if k < nsets-1:
@@ -1991,7 +1922,8 @@ class CalculationVasp(Calculation):
             if mode == "body":
                 
                 contcar_file = write_body( v = str(version), savefile = savefile, 
-                    set_mod = set_mod, copy_poscar_flag = copy_poscar_flag, final_analysis_flag = final_analysis_flag)
+                    set_mod = set_mod, copy_poscar_flag = copy_poscar_flag, 
+                    final_analysis_flag = final_analysis_flag, penult_set_name = penult_set_name)
             
             elif mode == 'footer':
                 if copy_poscar_flag: 
@@ -2004,14 +1936,6 @@ class CalculationVasp(Calculation):
             if k < nsets-1 and contcar_file:
                 f.write('cp '+contcar_file+' POSCAR  #sequence_set: preparation of input geo for next set\n')
 
-
-
-
-        # elif mode == 'footer': 
-        #     ''
-            # for k, curset in enumerate(sets):
-
-            # write_footer(set_mod = set_mod)
 
 
 
@@ -2128,7 +2052,8 @@ class CalculationVasp(Calculation):
             ?
 
         ###DEPENDS:
-
+        TODO:
+        please split into outcar parser, downloader, and checker-formatter
 
         """
 
@@ -2198,7 +2123,7 @@ class CalculationVasp(Calculation):
 
 
 
-
+        # print(path_to_outcar)
 
         if os.path.exists(path_to_contcar):
             contcar_exist   = True
@@ -2212,10 +2137,17 @@ class CalculationVasp(Calculation):
             # print (s)
         else:
             s = 'no OUTCAR'
+        
         if "g" in s:
             self.state = "4. Calculation completed."
         else: 
-            self.state+=s
+            if '2' in self.state:
+                self.state = '2. '+s
+            else:
+                self.state = '5. '+s
+
+            
+
             outst = self.state
 
 
@@ -2567,6 +2499,15 @@ class CalculationVasp(Calculation):
                 i_line += 1
             # sys.exit()
             #Check total drift
+            
+
+
+            toldfe = self.set.vasp_params['EDIFF']*1000  # meV
+
+
+
+
+
             max_magnitude = max(magnitudes)
             max_tdrift    = max(tdrift)
             self.maxforce = maxforce[-1][1]
@@ -2664,10 +2605,13 @@ class CalculationVasp(Calculation):
                 e_diff_md = (self.list_e_sigma0[-1] - self.list_e_sigma0[-2])*1000 #meV
 
             e_diff = (e_sig0_prev - e_sig0)*1000 #meV
-            if e_diff > self.set.vasp_params['EDIFF']*1000:
-                print_and_log("Attention!, SCF was not converged to desirable prec", e_diff, '>', 
-                    self.set.vasp_params['EDIFF']*1000, 'meV')
 
+            if abs(e_diff) > toldfe:
+                toldfe_warning = '!'
+                print_and_log("Attention!, SCF was not converged to desirable prec", 
+                    round(e_diff,3), '>', toldfe, 'meV', imp = 'n')
+            else:
+                toldfe_warning = ''
 
             #  Construct beatifull table
             #self.a1 = float(v[0])/2 ; self.a2 = float(v[1])/2/math.sqrt(0.75); self.c = float(v[2])  # o1b
@@ -2715,8 +2659,8 @@ class CalculationVasp(Calculation):
             totd = ("%.0f" % (   max_tdrift/max_magnitude * 100      ) ).center(j[22])
             nsg = ("%s" % (     nsgroup     ) ).center(j[22])
             Uhu   = " {:3.1f} ".format(u_hubbard)
-            edg   = ' {:3.0f} '.format( e_diff_md)
-            ed    = ' {:3.0f} '.format( e_diff)
+            ed    = ' {:3.0f}'.format( e_diff)
+            edg   = ' {:3.1f} '.format( e_diff_md)
 
             """Warning! concentrations are calculated correctly only for cells with one impurity atom"""
             #gbcon = ("%.3f" % (     1./self.end.yzarea      ) ).center(j[23]) # surface concentation at GB A-2

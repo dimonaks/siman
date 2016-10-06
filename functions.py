@@ -68,7 +68,7 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
         files = [files]
     
     files_str = ' :'.join(np.array(files ))
-    # print_and_log('Trying to download', files_str, 'from server', imp = 'n')
+    print_and_log('Trying to download', files_str, 'from server', imp = 'n')
     if not to:
         f = tempfile.NamedTemporaryFile() 
         to = f.name #system independent filename

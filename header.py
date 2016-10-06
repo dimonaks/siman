@@ -109,27 +109,19 @@ def print_and_log(*logstrings, **argdic):
         'Y' - super important, or output asked by user
     """
     end = '\n\n'# no argument for end, make one separate line
+    
+    debug_level  = ''
     for key in argdic:
         if 'imp' in key:
             debug_level = argdic[key]
-        else:
-            debug_level  = '' # no flag is provided
         
         if 'end' in key:
             end = argdic[key]
 
 
-    try:
-        debug_level  = debug_level.values()[0]
-    except:
-        debug_level  = 'Mea'
-
-    # print debug_level
     mystring = ''
     for m in logstrings:
         mystring+=str(m)+' '
-
-
 
 
     if len(mystring.splitlines()) == 1:
@@ -147,11 +139,10 @@ def print_and_log(*logstrings, **argdic):
 
     if warnings:
         ''
+        # print(debug_level)
         if 'n' in debug_level:
             pass
         else:
-
-            # print ([mystring])
             print (mystring,  end = "")
 
 
@@ -162,6 +153,15 @@ def print_and_log(*logstrings, **argdic):
         sys.exit()
 
     return
+
+
+
+
+
+
+
+
+
 
 def runBash(cmd, env = None):
     """Input - string; Executes Bash commands and returns stdout

@@ -4,6 +4,7 @@ Oграничения режима sequence_set:
 2) Режим U-ramping выключен для дочерних сетов
 3) Есть еще, режим afm_ordering, возможно neb 
 4) kpoints file только для первого сета
+5) u-ramping inherit_xred - могут быть проблемы более чем для двух сетов
 
 """
 
@@ -159,15 +160,22 @@ def read_vasp_sets(varset, user_vasp_sets, override_global = False):
                     raise RuntimeError
              
 
-            if hasattr(s, 'set_sequence') and s.set_sequence:
-                sets = []
-                for se in s.set_sequence:
-                    if type(se) == str:
+                if key == 'set_sequence':
+                    sets = []
+                    for se in s.set_sequence:
                         sets.append(copy.deepcopy(varset[se]))
-                    else:
-                        sets.append(copy.deepcopy(se))
 
-                s.set_sequence = sets  #put objects instead of names
+                    s.set_sequence = sets  #put objects instead of names
+
+            # if hasattr(s, 'set_sequence') and s.set_sequence:
+            #     sets = []
+            #     for se in s.set_sequence:
+            #         if type(se) == str:
+            #             sets.append(copy.deepcopy(varset[se]))
+            #         else:
+            #             sets.append(copy.deepcopy(se))
+
+            #     s.set_sequence = sets  #put objects instead of names
 
 
 
@@ -194,6 +202,7 @@ class InputSet():
         self.tolmxf = None
         self.ngkpt  = None
         self.blockfolder = ''
+        self.set_sequence = None
         # self.kpoints_file = False
         # self.use_ngkpt = False
         #Code scpecific parameters, now only for Vasp

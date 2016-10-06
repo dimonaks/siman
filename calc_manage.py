@@ -22,6 +22,7 @@ from operator import itemgetter
 from ase.utils.eos import EquationOfState
 
 
+printlog = print_and_log
 
 log             = header.log
 geo_folder      = header.geo_folder
@@ -264,10 +265,7 @@ def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided descr
         None
     """
 
-    if it in struct_des and not override:
-        print_and_log("Error! "+it+' already exist in struct_des; use override = True if you really need it; or first remove using manually_remove_from_struct_des()')
-        raise RuntimeError
-    else:
+    if it not in struct_des or override:
         struct_des[it] = Description(it_folder, des)
         # hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
         hstring = 'add_des("{:s}", "{:s}", "{:s}")    #on {:})'.format(it, it_folder, des, datetime.date.today())
@@ -279,8 +277,9 @@ def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided descr
         print_and_log("New structure name "+it+ " added to struct_des dict"+"\n")
 
 
-
-
+    else:
+        print_and_log("Attention! "+it+' already exist in struct_des, skipping; use override = True if you really need it; or first remove using manually_remove_from_struct_des()')
+        # raise RuntimeError
 
 
     return
@@ -311,6 +310,17 @@ def update_des(struct_des, des_list):
     return create_additional(struct_des)
 
 
+def cif2poscar(cif_file, poscar_file):
+
+    if header.CIF2CELL:
+        print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
+        printlog('File',poscar_file, 'created.')
+
+        #check
+        if not os.path.exists(poscar_file):
+            print_and_log("Error! cif2cell failed")
+    else:
+        printlog('Error! cif2cell is not installed!')
 
 
 def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, input_geo_format = None, input_geo_file = None):
@@ -337,11 +347,14 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
         if input_geo_format:
             geofilelist = glob.glob(input_folder+'/'+search_templates[input_geo_format]) #Find input_geofile
         else:
-            for key in search_templates:
+            for key in ['abinit', 'vasp', 'cif']:
                 geofilelist = glob.glob(input_folder+'/'+search_templates[key]) #Find input_geofile
                 if geofilelist:
                     input_geo_format = key
                     print_and_log(key,' format is detected. input files are ',geofilelist)
+                    
+
+
                     break
 
         geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
@@ -596,17 +609,29 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-
     mat_proj_st_id = None
     if input_geo_format == 'mat_proj':
-        print_and_log("Taking structure "+it+" from materialsproject.org ...\n")
+        print_and_log("Taking structure "+it+" from materialsproject.org ...", imp = 'Y')
         if it_folder == None:
-            raise RuntimeError
-
-
-
-        mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, fv, mat_proj_id)
+            print_and_log('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
+        
+        mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, verlist[0], mat_proj_id)
         input_geo_format = 'vasp'
+
+    elif input_geo_format == 'cee_database':
+        print_and_log("Taking structure "+it+" from CEE CREI database of Skoltech ...", imp = 'Y')
+        
+        if it_folder == None:
+            print_and_log('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
+
+        get_structure_from_cee_database(it, it_folder, verlist[0]) #will transform it to vasp
+        input_geo_format = 'vasp'
+
+
+
+
+
+
 
     neb_flag = calc_method and not set(['neb', 'only_neb']).isdisjoint(calc_method)
     # print neb_flag
@@ -714,7 +739,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             cl_temp.version = 100
             cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
             cl_temp.id = (it_new, inputset, 100)
-            cl_temp.state = '2.ready to read outcar'
+            cl_temp.state = '2. separatly prepared'
             blockdir = struct_des[it_new].sfolder+"/"+varset[inputset].blockfolder #calculation folder
             # iid = cl_temp.id          
             cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
@@ -920,6 +945,10 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
             cl_i.path["output"] = cl_i.dir + n_st + "/OUTCAR"
             print_and_log(i , cl_i.path["output"], 'overwritten in database')
+
+            cl_i.associated_outcars = list([a.replace('2.', '') for a in cl.associated_outcars])
+
+
 
 
             cl_i.state = '2. Ready to read outcar'
@@ -1272,24 +1301,23 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     else:
         # print(id_base)
-        if id_base not in calc:
-            ''
             # id_base = (bytes(id_base[0]),bytes(id_base[1]),id_base[2])
-        if id_base not in calc:
+
+        if id_base in calc and hasattr(calc[id_base], 'id'):
+            ''
+            valid_calc = False
+            cl_base = calc[id_base]
+        else:
+
             cl_temp = CalculationVasp()
             cl_temp.init = smart_structure_read( curver = id_base[2], input_folder = struct_des[id_base[0]].sfolder+'/'+id_base[0] )
             cl_temp.end = copy.deepcopy(cl_temp.init)
             cl_temp.name = id_base[0]+'from_file'
             cl_temp.id = ('temp','temp',id_base[2])
-            calc[cl_temp.id] = cl_temp
-            id_base = cl_temp.id
+            cl_base = cl_temp
 
 
 
-
-
-
-        cl_base = calc[id_base]
 
 
     if id_from:
@@ -1597,7 +1625,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             raise RuntimeError
 
         if atom_to_replace not in id_base[0] or atom_new not in it_new:
-            print_and_log("Error! Something wrong with names of atom types")
+            print_and_log("Error! inherit_icalc(): Something wrong with names of atom types")
             raise RuntimeError            
         print_and_log( "replace ", z_replace, "by", z_new)
 
@@ -1702,13 +1730,14 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             'matrix_diff' - difference normalized by matrix atoms
 
             'redox_pot' - calculate redox potential relative to b_id() (deintercalated cathode) and energy_ref ( energy per one ion atom Li, Na in metallic state or in graphite)
-
+            'neb' - make neb path. The start and final configurations 
+            should be versions 1 and 2, the intermidiate images are starting from 3 to 3+nimages
             )
         voronoi - True of False - allows to calculate voronoi volume of impurities and provide them in output. only if lammps is installed
         b_id - key of base calculation (for example bulk cell), used in several regimes; 
         r_id - key of reference calculation; defines additional calculation (for example atom in vacuum or graphite to calculate formation energies); can contain directly the energy per one atom
 
-        up - controls if to download files from server; can be 'xo'
+        up - if equal to 'up2' the files are redownloaded; also can be used to download additional files can be 'xo' (deprecated?)
         
         readfiles (bool) - True - read from outcar, False - read from database; 
 
@@ -2339,7 +2368,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-        if cl.calc_method and ('neb' in cl.calc_method or 'only_neb' in cl.calc_method):
+        # if cl.calc_method and ('neb' in cl.calc_method or 'only_neb' in cl.calc_method):
+        if analys_type == 'neb':
             path2mep_s = cl.dir+'/mep.eps'
             itise = cl.id[0]+'.'+cl.id[1]
             name_without_ext = 'mep.'+itise
@@ -2689,12 +2719,48 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
 
+def get_structure_from_cee_database(it, it_folder, ver, struct = 'exp'):
+    """
+    struct (str) - 'exp' - experimental structures
+    """
+    database_server = 'aksenov@10.30.100.28'
+    database_path   = '/home/Data/CEStorage/'
 
-"""Take structures from Mat. projects"""
+    if 'exp' in struct:
+        templ = '*exp*.cif'
+
+    local_folder = it_folder+'/'+it+'/'
+
+    makedir(local_folder)
+
+    out = get_from_server(database_path+it+'/'+templ, local_folder, addr = database_server)
+
+    geofiles = glob.glob(local_folder+templ)
+    printlog(out, 'The following files have been downloaded', geofiles  )
+    
+    if len(geofiles) > 1:
+        printlog('Error! More than one file, check what you need')
+
+    
+    geofile_from_server = geofiles[0]
+    local_poscar_file = local_folder+it+'.POSCAR-'+str(ver)
+
+    cif2poscar(geofile_from_server, poscar_file = local_poscar_file)
+
+    add_des(header.struct_des, it, it_folder, des = 'taken automatically from cee_database: '+geofile_from_server)
+
+    
+    return
+
+
+
+
 
 
 def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_id = None):
     """
+    Take structures from Mat. projects
+
     Find material with 'it' stoichiometry (lowest energy) from materialsproject.org, 
     download and create field in struct_des and input POSCAR file
     ###INPUT:

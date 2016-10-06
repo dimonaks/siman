@@ -19,6 +19,13 @@ def ortho_vec(rprim, ortho_sizes = None):
     mul_matrix = mul_matrix.round(0)
     mul_matrix = mul_matrix.astype(int)
 
+    for i in [0,1,2]:
+        if mul_matrix[i][i] == 0:
+            mul_matrix[i][i] = 1
+
+
+
+
     return mul_matrix
 def create_supercell(st, mul_matrix, test_overlap = False): 
     """ 
