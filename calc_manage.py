@@ -443,7 +443,13 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
 
 
 
+def name_mod_supercell(ortho):
 
+    if len(set(ortho))==1:
+        mod = '.s'+str(ortho[0])
+    else:
+        mod =  '.s'+list2string(ortho).replace(' ','')
+    return mod
 
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
@@ -533,6 +539,10 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     In the case of generalization to other codes, set.nimages should be added and used
 
     """
+
+
+
+
 
     header.close_run = True
 
@@ -785,10 +795,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             #please add additional vars to control for which atoms the inheritance should take place
             it_new = it+'.ifo' #full inheritence + triggering OMC        
         if inherit_option == 'supercell':
-           if len(set(ortho))==1:
-                mod = '.s'+str(ortho[0])
-           else:
-                mod =  '.s'+list2string(ortho).replace(' ','')
+           
+           mod = name_mod_supercell(ortho)
+
            it_new = it+mod
 
 
@@ -1372,9 +1381,12 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
 
+
     #path to new calc
     if it_folder:
+        # add_des(struct_des, it_new, it_folder, des = 'auto by inherit_icalc '+inherit_type) see below
         section_folder = it_folder
+
     else:
         section_folder = struct_des[it_new].sfolder
 
@@ -1386,7 +1398,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     print_and_log('Path for inherited calc =', it_new_folder)
 
 
-
+    mul_matrix = None
 
 
     if inherit_type == "r2r3":
@@ -1507,10 +1519,13 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         mul_matrix = ortho_vec(st.rprimd, ortho_sizes = ortho)
         print_and_log('Mul matrix is\n',mul_matrix)
         sc = create_supercell(st, mul_matrix)
+        # sc.mul_matrix = mul_matrix.copy()
         new.init = sc
         new.end  = sc
         des = 'obtained from'+cl_base.name+'by creating supercell'+str(ortho)
         override = True
+    
+
     elif inherit_type == "atom_shift":
         des = 'obtainded from final state of '+cl_base.name+' by shifting atom '+ str(atom_to_shift) +' by '+ str(shift_vector)
         # new.des = des + struct_des[it_new].des
@@ -1671,6 +1686,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     else:
         new.des = des + struct_des[it_new].des
 
+    if mul_matrix != None:
+        struct_des[it_new].mul_matrix = mul_matrix
     #write files
 
     # print new.end.xcart
@@ -1905,27 +1922,28 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 if 'SLURM' in header.SCHEDULE_SYSTEM:
                     job_in_queue = cl.id[0]+'.'+cl.id[1] in runBash('ssh '+header.CLUSTER_ADDRESS+""" squeue -o '%o' """)
                     # print(job_in_queue, cl.name)
+                    # print(runBash('ssh '+header.CLUSTER_ADDRESS+""" squeue -o '%o' """))
                 
                 else:
                     print_and_log('Error! I do not know how to check job status with chosen SCHEDULE_SYSTEM; Please teach me here! ')
 
+
+
+
                 if not get_from_server(cl.dir+'/RUNNING', addr = header.CLUSTER_ADDRESS, trygz = False): #if exist than '' is returned
                     cl.state = '3. Running'
                 
-
-
-
                 elif job_in_queue:
                     cl.state = '3. In queue'
                     # print_and_log('Job is in queue')
                     # sys.exit()
 
                 else:
-
-                    if '2' in cl.state:
-                        ''
-                    else:
-                        cl.state = '5. Some fault most probably'
+                    # print(cl.state)
+                    # if '2' in cl.state:
+                    #     ''
+                    # else:
+                    cl.state = '5. Some fault most probably '+cl.state
 
                 # sys.exit()
 
@@ -2063,7 +2081,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         
 
         cl = calc[id]
-        if b_id: bcl = calc[b_id]
+        if b_id: 
+            bcl = calc[b_id]
 
         if analys_type == 'gbe':
             print_and_log("\nGrain boundary energy and excess volume fit:")

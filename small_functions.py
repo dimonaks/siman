@@ -6,3 +6,7 @@ def is_list_like(obj):
 
 def is_string_like(s):
 	return isinstance(s, string_types)
+
+
+
+

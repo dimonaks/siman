@@ -2136,15 +2136,17 @@ class CalculationVasp(Calculation):
             s = runBash("grep 'General timing' "+path_to_outcar)
             # print (s)
         else:
-            s = 'no OUTCAR'
+            s = '2. no OUTCAR'
+            self.state = s
         
         if "g" in s:
             self.state = "4. Calculation completed."
         else: 
             if '2' in self.state:
-                self.state = '2. '+s
+                ''
+                # self.state = '2. '+self.state
             else:
-                self.state = '5. '+s
+                self.state = s
 
             
 
