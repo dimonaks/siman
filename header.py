@@ -149,8 +149,9 @@ def print_and_log(*logstrings, **argdic):
     log.write(mystring)
     
     if 'Error!' in mystring:
-        print ('Error! keyword was detected in message; invoking sys.exit()')
-        sys.exit()
+        print ('Error! keyword was detected in message; invoking RuntimeError ')
+        # sys.exit()
+        raise RuntimeError
 
     return
 

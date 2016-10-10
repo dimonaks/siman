@@ -451,6 +451,28 @@ def name_mod_supercell(ortho):
         mod =  '.s'+list2string(ortho).replace(' ','')
     return mod
 
+
+
+def inherit_ngkpt(it_to, it_from, inputset):
+    struct_des = header.struct_des
+    ks = inputset.vasp_params['KSPACING']
+
+    for it in [it_to, it_from]:
+        if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings' ):
+            struct_des[it].ngkpt_dict_for_kspacings = {}
+
+    k_dict1 = struct_des[it_from].ngkpt_dict_for_kspacings
+    k_dict2 = struct_des[it_to].ngkpt_dict_for_kspacings
+
+    if ks in k_dict1:
+        k_dict2[ks] = k_dict1[ks]
+        printlog('inherit_ngkpt(): the k-grid from', it_from, 'was inherited to', it_to)
+    else:
+        printlog('no ngkpt for k-spacing', ks, 'in ngkpt_dict_for_kspacings of', it_from, 'ngkpt will determined from inputset k-spacing')
+    return
+
+
+
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
     coord = 'direct', savefile = 'ov', show = None, comment = '', 
@@ -458,6 +480,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None,
     scale_region = None, n_scale_images = 7, id_from = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
+    mul_matrix = None,
+    ngkpt = None,
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -508,6 +532,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         - ise_new (str) - name of new set for inherited calculation  ('uniform_scale')
 
         - occ_atom_coressp (dict) see inherit_icalc()
+        - ortho, mul_matrix - transfered to inherit_icalc
+        
+        - ngkpt (list) - the list of k-points provided explicitly added to struct_des
 
 
         - typconv - ? to be described.
@@ -644,10 +671,6 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
     neb_flag = calc_method and not set(['neb', 'only_neb']).isdisjoint(calc_method)
-    # print neb_flag
-    # print calc_method
-    # sys.exit()
-
     if neb_flag: #put nimage values for set_sequence
         curset = varset[ setlist[0] ]
         if not n_neb_images:
@@ -662,9 +685,6 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             print_and_log('Error! Number of cores should be dividable by number of IMAGES')
             raise RuntimeError
 
-
-
-
         nebsets = [curset]
         
         if hasattr(curset, 'set_sequence') and curset.set_sequence:
@@ -677,6 +697,11 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         #     print s.vasp_params['IMAGES']
         # sys.exit()
         print_and_log('Attention, I update number of images in the set to', n_neb_images, 'for this calculation; ', imp = 'y')
+
+
+
+
+
 
 
     scale_flag = False
@@ -705,12 +730,17 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             add_des(struct_des, it_new, section_folder, 'uniform_scale: scaled "images" for '+it+'.'+str(setlist)+'.'+str(v)   )
 
 
+
+
         verlist_new = []
 
         if ise_new and len(setlist) > 1:
             raise RuntimeError
 
         for inputset in setlist:
+
+
+            inherit_ngkpt(it_new, it, varset[inputset])
 
 
             id_s = (it,inputset,v)
@@ -762,7 +792,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             cl_temp.project_path_cluster = header.project_path_cluster
             calc[cl_temp.id] = cl_temp
             # cl_temp.init = None
-
+            fitted_v100_id = cl_temp.id
             verlist = verlist_new
 
             print_and_log(len(sts), 'uniform images have been created.')
@@ -813,19 +843,26 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-        # if up != 'up3':
-        if it_new not in struct_des:
-            add_des(struct_des, it_new, section_folder, 'Inherited '+inherit_option+' from '+it+'.'+str(setlist)+'.'+str(verlist)   )
+
+        # if it_new not in struct_des:    #inherit_icalc takes care of adding descriptions
+        #     add_des(struct_des, it_new, section_folder, 'Inherited '+inherit_option+' from '+it+'.'+str(setlist)+'.'+str(verlist)   )
 
         for inputset in setlist:
+
+            if inherit_option in ['full', 'full_nomag', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
+                inherit_ngkpt(it_new, it, varset[inputset]) # be carefull here
+
+
             for v in verlist:
                 id_base = (it,inputset,v)
                 # if id_base not in calc:
                     # id_base = it
 
+                # print(mul_
 
-
-                inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, it_folder = it_folder, occ_atom_coressp = occ_atom_coressp, ortho = ortho)
+                inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, 
+                    it_folder = it_folder, occ_atom_coressp = occ_atom_coressp, 
+                    ortho = ortho, mul_matrix = mul_matrix)
         
 
 
@@ -863,6 +900,19 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     #     header.history.append( hstring  )
 
 
+
+
+    if ngkpt: # add to struct_des
+        # print (setlist)
+        if len(setlist) > 1:
+            printlog('Error! add_loop(): *ngkpt* parameter is allowed only with one inputset')
+        else:
+            kspacing = varset[setlist[0]].kspacing
+            if not kspacing:
+                printlog('Error! add_loop(): no kspacing. In order to use inheritence of ngkpt I should know corresponding approximate kspacing, please provide')
+
+            printlog('add_loop(), you provided *ngkpt*, I add', ngkpt,'to description of',it,'for kspacing',kspacing, imp = 'Y')
+            struct_des[it].ngkpt_dict_for_kspacings[kspacing] = ngkpt
 
 
 
@@ -985,11 +1035,17 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
     if scale_flag:
+        #modify output names for fitted version 100, since it is created manually above and 
+        #by add_calculation; for u-ramping names are different
         cl = calc[it, setlist[0], 1]
+
+        calc[fitted_v100_id].path["output"] = cl.path["output"].replace('/1.', '/100.')
         
-        cl_temp.associated_outcars = [out.replace('/1.', '/100.') for out in cl.associated_outcars]
+        calc[fitted_v100_id].associated_outcars = [out.replace('1.', '100.') for out in cl.associated_outcars]
 
 
+        # print (fitted_v100_id, calc[fitted_v100_id].associated_outcars)
+        # sys.exit()
 
 
 
@@ -1159,6 +1215,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         for curset in setlist:
+            if len(setlist) > 1:
+                printlog('sequence set mode: set', curset.ise,':', end = '\n')
             calc[id].actualize_set(curset)
 
 
@@ -1236,7 +1294,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     id_from = None,
     atom_new = None, atom_to_replace = None,  id_base_st_type = 'end', atoms_to_remove = None, i_atom_to_remove = None, id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
-    it_folder = None, occ_atom_coressp = None, ortho = None,
+    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None,
     ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
@@ -1257,7 +1315,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             occ           - take occ from *id_from* and create file OCCMATRIX for 
                             OMC [https://github.com/WatsonGroupTCD/Occupation-matrix-control-in-VASP]
                             - occ_atom_coressp (dict) {iatom_calc_from:iatom_calc_base, ... } (atomno starting from 0!!!)
-            supercell - create orthogonal supercel using ortho list [a,b,c]
+            supercell - create orthogonal supercel using *ortho* list [a,b,c] or *mul_matrix* (3x3) ( higher priority)
         id_base_st_type - use init or end structure of id_base calculation.
         id_from_st_type  - init or end for id_from
 
@@ -1265,7 +1323,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         shift_vector - vector in decart cooridinates (Angstrom!!) by which the atom will be shifted
 
         - it_folder - section folder
-
+        
 
 
     Result: 
@@ -1398,8 +1456,6 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     print_and_log('Path for inherited calc =', it_new_folder)
 
 
-    mul_matrix = None
-
 
     if inherit_type == "r2r3":
         des = ' Partly inherited from the final state of '+cl_base.name+'; r2 and r3 from '+calc_from_name
@@ -1514,9 +1570,15 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     elif inherit_type == 'supercell':
         from geo import ortho_vec, create_supercell
-        print_and_log('rprimd is \n', st.rprimd)
+        print_and_log('       inherit_icalc(): starting supercell mode ...', imp = 'Y')
+        # print_and_log('rprimd is \n', st.rprimd)
         
-        mul_matrix = ortho_vec(st.rprimd, ortho_sizes = ortho)
+        if mul_matrix is None: #if *mul_matrix* is not provided, try to use *ortho*
+            mul_matrix = ortho_vec(st.rprimd, ortho_sizes = ortho)
+            printlog('*mul_matrix* was calculated from *ortho*')
+        else:
+            printlog('*mul_matrix* was explicitly provided')
+
         print_and_log('Mul matrix is\n',mul_matrix)
         sc = create_supercell(st, mul_matrix)
         # sc.mul_matrix = mul_matrix.copy()
@@ -1541,7 +1603,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         """
         
         """
-        des = 'All atoms of type' + str(atoms_to_remove)+' removed from the final state of '+cl_base.name
+        des = 'All atoms of type ' + str(atoms_to_remove)+' removed from the final state of '+cl_base.name
         
         atoms = [ element_name_inv(st.znucl[t-1])    for t in st.typat ]
 
@@ -1562,7 +1624,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
                 atom_exsist = False
             # print (atoms)
 
-        
+        new.init = st
+        new.end  = st
         st.name = it_new+'_from_'+new.name
         override = True
 
@@ -1686,14 +1749,17 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     else:
         new.des = des + struct_des[it_new].des
 
-    if mul_matrix != None:
+    if mul_matrix is not None:
         struct_des[it_new].mul_matrix = mul_matrix
     #write files
 
     # print new.end.xcart
 
     #print(len(new.end.xred))
+    # print (id_base_st_type)
     new.write_geometry(id_base_st_type, des, override = override)
+    
+
     write_xyz(st)
 
 

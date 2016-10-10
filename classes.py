@@ -4,7 +4,18 @@ from __future__ import division, unicode_literals, absolute_import
 from __future__ import print_function
 # from __future__ import division, unicode_literals, absolute_import 
 from tabulate import tabulate
-import itertools
+import numpy as np
+import itertools, os, copy, math, glob, re
+from header import print_and_log as printlog
+from header import print_and_log, runBash, red_prec
+from header import (path_to_potentials, to_ang, cluster_address, project_path_cluster, log)
+import header
+from functions import (read_vectors, read_list, words, local_surrounding, 
+    xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
+    get_from_server, push_to_server, list2string)
+
+
+
 
 """
 Classes used in siman
@@ -27,12 +38,6 @@ Calculation Structure():
 
 
 """
-from header import *
-import header
-from functions import (read_vectors, read_list, words, local_surrounding, 
-    xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server, list2string)
-
 
 
 class Description():
@@ -50,7 +55,7 @@ class Description():
     def __init__(self, sectionfolder = "forgot_folder", description = "forgot_description"):
         self.des = description
         self.sfolder = sectionfolder
-        self.ngkpt_dict_for_kspacings = {}
+        self.ngkpt_dict_for_kspacings = {} #the key is kspacing
 
 
 
@@ -82,8 +87,9 @@ class Structure():
     def add_atoms(self, atoms_xcart, element = 'Pu'):
         """
         appends at the end. Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
-        
-        magmom is appended with 0.6, please take care of magnetic elements 
+        atoms_xcart (list of ndarray)
+
+        magmom is appended with 0.6, please improve me! by using other values for magnetic elements 
 
         Returns Structure()
         """
@@ -776,7 +782,9 @@ class CalculationVasp(Calculation):
 
     def check_kpoints(self, ngkpt = None):
         """
+        The method updates init.ngkpt and ngkpt_dict_for_kspacings !!! as well provides possible options for it
         TODO probably the method should transfered to Structure?
+        Attention: the order should be the same as in make_kpoints_file
         """
         struct_des = header.struct_des
         to_ang_local = to_ang
@@ -787,22 +795,31 @@ class CalculationVasp(Calculation):
         except AttributeError:
             print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n") 
         N_from_kspacing = []
+        it = self.id[0]
+
+
+
+        if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings'): #compatibiliy issues
+            struct_des[it].ngkpt_dict_for_kspacings = {}
+
+        ngkpt_dict = struct_des[it].ngkpt_dict_for_kspacings
 
         # if self.set.kpoints_file  == False:#self.set.vasp_params['KSPACING']:
         #     N = N_from_kspacing
         kspacing = self.set.vasp_params['KSPACING']
-        it = self.id[0]
 
         # print (struct_des)
         if ngkpt:
             N = ngkpt
 
+
+
+        elif kspacing in ngkpt_dict:
+
+            N = ngkpt_dict[kspacing]
+
         elif self.set.ngkpt:
             N = self.set.ngkpt
-
-        elif hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') and kspacing in struct_des[it].ngkpt_dict_for_kspacings:
-
-            N = struct_des[it].ngkpt_dict_for_kspacings[kspacing]
 
 
         elif kspacing:
@@ -817,8 +834,11 @@ class CalculationVasp(Calculation):
 
 
 
-        self.init.ngkpt = N_from_kspacing
+        self.init.ngkpt = N
 
+        if kspacing not in ngkpt_dict:
+            ngkpt_dict[kspacing] = N
+            printlog('check_kpoints(): I added ',N,'as a k-grid for',kspacing,'in struct_des of', it)
 
 
 
@@ -1010,7 +1030,7 @@ class CalculationVasp(Calculation):
 
         if 'LDAU' in vp and vp['LDAU']:        
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
-                print( vp[key])
+                # print( vp[key])
                 if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
                     print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
                     # raise RuntimeError
@@ -1033,10 +1053,10 @@ class CalculationVasp(Calculation):
 
         if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and any(self.init.magmom):
 
-            print_and_log('Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
+            print_and_log('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
         elif hasattr(curset, 'magnetic_moments') and curset.magnetic_moments:
-            print_and_log('Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set')
+            print_and_log('actualize_set(): Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set', end = '\n')
             print_and_log('curset.magnetic_moments = ', curset.magnetic_moments)
             
             mag_mom_other = 0.6 # magnetic moment for all other elements
@@ -1474,7 +1494,7 @@ class CalculationVasp(Calculation):
                     fln = 'CHGCAR'
                     chgcar  = pre +'.'+fln
                     f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
-                    f.write('gzip '+chgcar+'\n')                
+                    f.write('gzip -f '+chgcar+'\n')                
 
 
 
@@ -2059,7 +2079,7 @@ class CalculationVasp(Calculation):
 
         # print (choose_outcar, hasattr(self, 'associated_outcars'), self.associated_outcars)
         if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar:
-            # print ('As outcars = ',self.associated_outcars)
+            # print ('associated outcars = ',self.associated_outcars)
 
             path_to_outcar = os.path.dirname(self.path["output"])+ '/'+ self.associated_outcars[choose_outcar-1]
 
@@ -2085,7 +2105,7 @@ class CalculationVasp(Calculation):
                 self.associated_energies = [float(e) for e in energies_str.split()]
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
-
+        print_and_log('read_results() path to outcar', path_to_outcar)
         outcar_exist   = False
 
         contcar_exist   = False
@@ -2717,23 +2737,27 @@ class CalculationVasp(Calculation):
             if 'mag' in show or 'occ' in show:
                 st = self.end
                 alkali_ions = []
+                dist_dic = {}
+
                 for i, typ, x in zip(range(st.natom), st.typat, st.xcart):
                     z = st.znucl[typ-1]
                     if z in header.ALKALI_ION_ELEMENTS:
                         alkali_ions.append([i, z, x])
 
-                chosen_ion = alkali_ions[0] #just the first one is used
-                        # alkali_ions[min(alkali_ions)]
-                sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = 4, control = 'atoms', 
-                periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
+                if len(alkali_ions) > 0:
+                    chosen_ion = alkali_ions[0] #just the first one is used
+                            # alkali_ions[min(alkali_ions)]
+                    sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = 4, control = 'atoms', 
+                    periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
 
-                # print (sur)
-                dist = np.array(sur[3]).round(2)
-                numb = np.array(sur[2])
-                self.dist_numb = zip(dist, numb)
-                dist_dic = {}
-                for d, n in self.dist_numb:
-                    dist_dic[n] = d 
+                    # print (sur)
+                    dist = np.array(sur[3]).round(2)
+                    numb = np.array(sur[2])
+                    self.dist_numb = zip(dist, numb)
+                    for d, n in self.dist_numb:
+                        dist_dic[n] = d 
+                else:
+                    numb = ifmaglist # if no alk ions show for all mag atoms
 
             if 'mag' in show:
                 print ('\n\n\n')
@@ -2750,19 +2774,23 @@ class CalculationVasp(Calculation):
                 print ('last  step ', tot_mag_by_atoms[-1][numb].round(3) )
 
                     # sys.exit()
-                print ('Dist from 1st found alkali ion ',element_name_inv( chosen_ion[1]),
-                    ' to sur. transition met atoms: (Use *alkali_ion_number* to choose ion manually)')
-                print ('dist:atom = ', 
-                [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(  dist, numb+1  )  ] )
+                if len(alkali_ions) > 0:
+                    print ('Dist from 1st found alkali ion ',element_name_inv( chosen_ion[1]),
+                        ' to sur. transition met atoms: (Use *alkali_ion_number* to choose ion manually)')
+                    print ('dist:atom = ', 
+                    [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(  dist, numb+1  )  ] )
 
                 self.tot_mag_by_atoms = tot_mag_by_atoms
-                plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
                 # plt.plot(np.array(sur[3]).round(2), tot_mag_by_atoms[-1][numb]) mag vs dist for last step
                 
                 # print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
                 if 'p' in show:
+                    plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
                     plt.show()
-                plt.clf()
+                    plt.clf()
+
+
+
 
             if 'occ' in show:
                 ''

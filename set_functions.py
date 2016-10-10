@@ -245,7 +245,7 @@ class InputSet():
         # self.vasp_params['NELM'] = self.nstep
         # self.vasp_params['NSW'] = self.ntime
         # self.vasp_params['EDIFFG'] = -self.tolmxf * c2
-
+        self.kspacing = self.vasp_params['KSPACING']
 
 
 
@@ -445,7 +445,7 @@ class InputSet():
 
 
 
-def inherit_iset(ise_new,ise_from,varset,override = False, newblockfolder = None):
+def inherit_iset(ise_new, ise_from, varset, override = False, newblockfolder = None):
     """ Create new set copying from existing and update some fields. If ise_from does not exist create new"""
 
     ise_new = ise_new.strip()
