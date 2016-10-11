@@ -1731,6 +1731,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         des = 'Fully inherited from the '+ id_base_st_type +' state of '+cl_base.name+\
         ' by simple replacing of '+atom_to_replace+' by '+atom_new
 
+        override = 1
         # new.des = des #+ struct_des[it_new].des
         # write_xyz(st)
 

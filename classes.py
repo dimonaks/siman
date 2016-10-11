@@ -5,6 +5,7 @@ from __future__ import print_function
 # from __future__ import division, unicode_literals, absolute_import 
 from tabulate import tabulate
 import numpy as np
+import pandas as pd
 import itertools, os, copy, math, glob, re
 from header import print_and_log as printlog
 from header import print_and_log, runBash, red_prec
@@ -917,9 +918,11 @@ class CalculationVasp(Calculation):
         if not os.path.exists(path):
             log.write( runBash("mkdir -p "+path) )
 
+        elnames = [element_name_inv(z) for z in znucl]
+
         with open(path+'/'+name_of_output_file,'w') as f:
             """Writes structure (POSCAR) in VASP format """
-            f.write(self.name)
+            f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; ' + self.name)
             
             f.write("\n{:18.15f}\n".format(1.0))
             
