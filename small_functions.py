@@ -9,4 +9,10 @@ def is_string_like(s):
 
 
 
-
+def merge_dics(dic1, dic2):
+	"""
+	return dic
+	"""
+	dic_new = dic1.copy()
+	dic_new.update(dic2)
+	return dic_new

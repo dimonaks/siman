@@ -1005,7 +1005,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             cl_i.path["output"] = cl_i.dir + n_st + "/OUTCAR"
             print_and_log(i , cl_i.path["output"], 'overwritten in database')
 
-            cl_i.associated_outcars = list([a.replace('2.', '') for a in cl.associated_outcars])
+            cl_i.associated_outcars = list([a.replace('2.', '', 1) for a in cl.associated_outcars])
 
 
 
@@ -1860,7 +1860,12 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
     RETURN:
-        result_list - list of results
+        (results_dic,    result_list)
+        or 
+        (result_string, result_list)
+
+        result_list - list of results; was used in previous versions, now left for compatibility
+        results_dic - should be used in current version! actually once was used as list, now should be used as dict
 
     TODO:
         Make possible update of b_id and r_id with up = 'up2' flag; now only id works correctly
@@ -2141,10 +2146,11 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
         """Aditional analysis, plotting"""
+        results_dic = {} #if some part fill this list it will be returned instead of final_outstring
+
         if '4' not in calc[id].state:
             print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return Errors expected')
-            return
-        final_list = () #if some part fill this list it will be returned instead of final_outstring
+            return {}, []
         
 
         cl = calc[id]
@@ -2263,7 +2269,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-                final_list = [id2[0]+'.'+id2[1], calc[id1].e_seg, calc[id1].v_seg, dgb, nneigbours, e_seg2, e_ch2, e_m2, segimp]
+                results_dic = [id2[0]+'.'+id2[1], calc[id1].e_seg, calc[id1].v_seg, dgb, nneigbours, e_seg2, e_ch2, e_m2, segimp]
             
             elif analys_type == 'coseg' :
                 calc[id2].e_seg = calc[id1].e_seg #save in version 2
@@ -2388,7 +2394,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             
             if '4' not in bcl.state:
                 print_and_log("Calculation ",bcl.id, 'is unfinished; return')
-                return [[], []]
+                return {}, []
 
 
             #normalize numbers of atoms by some element except Li and Na 
@@ -2445,7 +2451,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             
             print_and_log( final_outstring )
 
-            final_list = {'is':id[0], 'redox_pot':redox, 'id_is':id, 'id_ds':b_id, 
+            results_dic = {'is':id[0], 'redox_pot':redox, 'id_is':id, 'id_ds':b_id, 
             'kspacing':cl.set.vasp_params['KSPACING'], 'time':cl.time/3600.,
             'mdstep':cl.mdstep, 'ecut':cl.set.vasp_params['ENCUT'], 'niter':cl.iterat/cl.mdstep,
             'set_is':id[1] }
@@ -2580,15 +2586,20 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
+            _, diff_barrier = plot_mep(atom_pos, mep_energies, show = 0)
 
+            results_dic['barrier'] = diff_barrier
             
-            if 'mep' in show:
-                plot_mep(atom_pos, mep_energies)
-                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.png')
 
+            if 'mep' in show:
+                if 'mepp' in show:
+                    show_flag = True
+                else:
+                    show_flag = False
+                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.png', show = show_flag)
 
             if push2archive:
-                path2saved = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')
+                path2saved, _ = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')
                 push_figure_to_archive(local_figure_path = path2saved, caption = description_for_archive)
 
 
@@ -2616,8 +2627,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-    if final_list:
-        return final_list, result_list
+    if results_dic:
+        return results_dic, result_list
     else:
         return final_outstring.split('&'), result_list # only for last version or fit depending on type of analysis
 

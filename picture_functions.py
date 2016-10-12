@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import 
-
+import sys
 from header import print_and_log
 from functions import write_xyz, replic
 # import header
@@ -14,7 +14,10 @@ from functions import write_xyz, replic
 # from ase.utils.eos import EquationOfState
 import scipy
 from scipy import interpolate
-from scipy.interpolate import spline
+from scipy.interpolate import spline 
+# print (scipy.__version__)
+# print (dir(interpolate))
+from scipy.interpolate import  CubicSpline
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -22,7 +25,7 @@ import matplotlib.pyplot as plt
 import header
 
 
-def plot_mep(atom_pos, mep_energies, image_name = None):
+def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path,
@@ -63,18 +66,34 @@ def plot_mep(atom_pos, mep_energies, image_name = None):
     
     xnew = np.linspace(0, path_length)
 
-    spl = spline(mep_pos, eners, xnew )
+    # ynew = spline(mep_pos, eners, xnew )
+    spl = CubicSpline(mep_pos, eners, bc_type = 'natural' )
+    ynew = spl(xnew)
 
-    path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, spl, 'b-'), xlim = (-0.05, None  ),
-    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name)
+    #minimum now is always zero,
+    spl_der = spl.derivative()
+
+    mi = min(xnew)
+    ma = max(xnew)
+    r = spl_der.roots()
+    r = r[ np.logical_and(mi<r, r<ma) ] # only roots inside the interval are interesting
 
 
-    return path2saved
+    diff_barrier = max( spl(r) ) # the maximum value 
+    print_and_log('plot_mep(): Diffusion barrier =',round(diff_barrier, 2),' eV', imp = 'y')
+    # sys.exit()
+
+
+    path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, ynew, 'b-'), xlim = (-0.05, None  ),
+    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, show = show)
+
+
+    return path2saved, diff_barrier
 
 
 
 
-def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name = None,
+def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name = None, show = None,
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, legend = False, markersize = 10,  linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
     **data):
@@ -92,6 +111,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
     """
 
     # print data
+
 
     if 1:
 
@@ -194,8 +214,9 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
             plt.clf()
             plt.close('all')
-
-        else:
+        elif show is None:
+            show = True
+        if show:
             plt.show()
 
 
