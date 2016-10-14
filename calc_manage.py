@@ -7,7 +7,7 @@ import copy, traceback, datetime, sys, os, glob, shutil
 import header
 from header import print_and_log, runBash
 from classes import Calculation, CalculationVasp, Description
-from functions import list2string, gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance
+from functions import list2string, gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance, local_surrounding
 from picture_functions import plot_mep
 
 import matplotlib.pyplot as plt
@@ -26,12 +26,12 @@ printlog = print_and_log
 
 log             = header.log
 geo_folder      = header.geo_folder
-cluster_address = header.cluster_address
-corenum         = header.corenum
-project_path_cluster = header.project_path_cluster
+# cluster_address = header.cluster_address
+# corenum         = header.corenum
 pmgkey          = header.project_conf.pmgkey
 path_to_images = header.path_to_images
 
+# project_path_cluster = header.project_path_cluster
 
 
 
@@ -71,8 +71,9 @@ def write_batch_header(batch_script_filename = None,
         if schedule_system == 'PBS':
             f.write("#!/bin/bash   \n")
             f.write("#PBS -N "+job_name+"\n")
-            f.write("#PBS -l walltime=99999999:00:00 \n")
+            f.write("#PBS -l walltime=72:00:00 \n")
             f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
             f.write("#PBS -r n\n")
             f.write("#PBS -j eo\n")
             f.write("#PBS -m bea\n")
@@ -80,7 +81,9 @@ def write_batch_header(batch_script_filename = None,
             f.write("cd $PBS_O_WORKDIR\n")
             f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
             f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
-
+            f.write("module load Compilers/Intel/psxe_2015.6\n")
+            f.write("module load MPI/intel/5.1.3.258/intel \n")
+            f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n\n")
 
         if schedule_system == 'SLURM':
             if '~' in path_to_job:
@@ -96,6 +99,7 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH --mem-per-cpu=7675\n")
             f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
             f.write("#SBATCH --mail-type=END\n")
+            f.write("#SBATCH --nodelist=node-amg03\n")
             f.write("cd "+path_to_job+"\n")
             f.write("export OMP_NUM_THREADS=1\n")
 
@@ -162,11 +166,12 @@ def clean_history_file(history_list):
 
 
 
-def clean_run(schedule_system = None):
+def prepare_run():
     """
     INPUT:
         schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
     """
+    schedule_system = header.schedule_system
     with open('run','w') as f:
     
         if schedule_system == 'SGE':
@@ -189,10 +194,10 @@ def complete_run(close_run = True):
     if close_run:
 
         with open('run','a') as f:
-            if header.project_conf.SCHEDULE_SYSTEM == "PBS":
+            if header.schedule_system == "PBS":
                 f.write("qstat\n")
                 f.write("sleep 2\n")
-            elif header.project_conf.SCHEDULE_SYSTEM == "SLURM":
+            elif header.schedule_system == "SLURM":
                 f.write("squeue\n")
 
             f.write("mv run last_run\n")
@@ -200,8 +205,8 @@ def complete_run(close_run = True):
         
 
         runBash('chmod +x run')
-
-        log.write( runBash("rsync -zave ssh run "+cluster_address+":"+project_path_cluster) +"\n" )
+        # print("rsync -zave ssh run "+header.cluster_address+":"+header.project_path_cluster +"\n")
+        log.write( runBash("rsync -zave ssh run "+header.cluster_address+":"+header.project_path_cluster) +"\n" )
         print_and_log('run sent')
         # clean_run(header.project_conf.SCHEDULE_SYSTEM)
     
@@ -472,6 +477,36 @@ def inherit_ngkpt(it_to, it_from, inputset):
     return
 
 
+def choose_cluster(cluster_name):
+    """
+    *cluster_name* should be in header.project_conf.CLUSTERS dict
+    """
+    if cluster_name in header.CLUSTERS:
+        printlog('We use', cluster_name,'cluster')
+        clust = header.CLUSTERS[cluster_name]
+
+
+
+    else:
+        printlog('Cluster', cluster_name, 'is not found, using default')
+        clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
+
+
+    header.cluster_address = clust['address']
+    header.CLUSTER_ADDRESS = clust['address']
+    header.cluster_home    = clust['homepath']
+    header.CLUSTER_PYTHONPATH    = clust['pythonpath']
+    # header.SCHEDULE_SYSTEM    = clust['schedule']
+    header.schedule_system    = clust['schedule']
+    header.CORENUM    = clust['corenum']
+    header.corenum    = clust['corenum']
+    header.project_path_cluster = clust['homepath']+'/'+header.PATH2PROJECT
+
+    return
+
+
+
+
 
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
@@ -482,6 +517,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
     mul_matrix = None,
     ngkpt = None,
+    cluster = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -567,19 +603,24 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
     """
 
-
-
-
-
     header.close_run = True
 
-    schedule_system = header.project_conf.SCHEDULE_SYSTEM
+
+    choose_cluster(cluster)
+    
+    if header.first_run:
+        prepare_run()
+        header.first_run = False
+
+
+
+    schedule_system = header.schedule_system
 
     if corenum:
         # corenum = ppn
         ''
     else:
-        corenum = header.CORENUM
+        corenum = header.corenum
 
     struct_des = header.struct_des
 
@@ -815,22 +856,25 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
     #inherit option
-    if inherit_option in ['supercell', 'occ', 'full', 'full_nomag', 'r2r3', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
+    inh_opt_ngkpt = ['full', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
+    inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
+    if inherit_option in inh_opt_ngkpt+inh_opt_other:
         if inherit_option == 'full':
             it_new = it+'.if'
-        if inherit_option == 'full_nomag':
+
+        elif inherit_option == 'full_nomag':
             it_new = it+'.ifn'
 
-        if inherit_option == 'occ':
-            #please add additional vars to control for which atoms the inheritance should take place
-            it_new = it+'.ifo' #full inheritence + triggering OMC        
-        if inherit_option == 'supercell':
-           
-           mod = name_mod_supercell(ortho)
+        elif inherit_option == 'occ':
+            #please add additional vars to control for which atoms the inheritance should take place (added)
+            it_new = it+'.ifo' #full inheritence + triggering OMC from some other source        
 
+        elif inherit_option == 'supercell':
+           mod = name_mod_supercell(ortho)
            it_new = it+mod
 
-
+        elif inherit_option == 'antisite':
+            it_new = it+'.as'
 
 
 
@@ -849,8 +893,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         for inputset in setlist:
 
-            if inherit_option in ['full', 'full_nomag', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy',]:
-                inherit_ngkpt(it_new, it, varset[inputset]) # be carefull here
+
 
 
             for v in verlist:
@@ -864,7 +907,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                     it_folder = it_folder, occ_atom_coressp = occ_atom_coressp, 
                     ortho = ortho, mul_matrix = mul_matrix)
         
-
+            if inherit_option in inh_opt_ngkpt:
+                inherit_ngkpt(it_new, it, varset[inputset]) # 
 
 
         if ise_new:
@@ -1150,7 +1194,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-        calc[id].cluster_address = header.CLUSTER_ADDRESS
+        calc[id].cluster_address = header.cluster_address
         calc[id].project_path_cluster = header.project_path_cluster
         
         calc[id].corenum = corenum #this is correct - corenum provided to functions
@@ -1178,7 +1222,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             if id[2] == first_version:
                 write_batch_header(batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
-                    path_to_job = header.PATH_TO_PROJECT_ON_CLUSTER+cl.dir, 
+                    path_to_job = header.project_path_cluster+cl.dir, 
                     job_name = cl.id[0]+"."+cl.id[1], number_cores = cl.corenum  )
 
 
@@ -1316,6 +1360,12 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
                             OMC [https://github.com/WatsonGroupTCD/Occupation-matrix-control-in-VASP]
                             - occ_atom_coressp (dict) {iatom_calc_from:iatom_calc_base, ... } (atomno starting from 0!!!)
             supercell - create orthogonal supercel using *ortho* list [a,b,c] or *mul_matrix* (3x3) ( higher priority)
+            antisite  - create anitsite defect:
+                        curent implimintation takes the first alkali cation and the closest to it transition metal and swap them
+
+
+
+
         id_base_st_type - use init or end structure of id_base calculation.
         id_from_st_type  - init or end for id_from
 
@@ -1580,10 +1630,10 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             printlog('*mul_matrix* was explicitly provided')
 
         print_and_log('Mul matrix is\n',mul_matrix)
-        sc = create_supercell(st, mul_matrix)
+        st = create_supercell(st, mul_matrix)
         # sc.mul_matrix = mul_matrix.copy()
-        new.init = sc
-        new.end  = sc
+        # new.init = sc
+        # new.end  = sc
         des = 'obtained from'+cl_base.name+'by creating supercell'+str(ortho)
         override = True
     
@@ -1735,6 +1785,47 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         # new.des = des #+ struct_des[it_new].des
         # write_xyz(st)
 
+    elif inherit_type == "antisite":
+        #1. Find first alkali ion
+        def find_alkali_ion(st, j_need = 1):
+            #currently return the number of found alk ion of *j_need* occurence 
+            elements = st.get_elements_z()
+            # print (elements)
+            j = 0
+            for i, el in enumerate(elements):
+                if el in header.ALKALI_ION_ELEMENTS:
+                    # print (i,el)
+                    j+=1
+                    if j == j_need:
+                        return i
+
+
+        i_alk = find_alkali_ion(st, 4)
+        x_alk = st.xcart[i_alk]
+
+
+        #2. Find closest transition metal
+        sur = local_surrounding(x_alk, st, n_neighbours = 1, 
+            control = 'atoms', only_elements = header.TRANSITION_ELEMENTS, periodic  = True)
+
+        i_tr = sur[2][0]
+        x_tr = st.xcart[i_tr]
+        
+        #3. Swap atoms
+        write_xyz(st, file_name = st.name+'_antisite_start')
+        st = st.mov_atoms(i_alk, x_tr)
+        st = st.mov_atoms(i_tr,  x_alk)
+        write_xyz(st, file_name = st.name+'_antisite_final')
+
+        printlog('Atom ',i_alk+1,'and', i_tr+1,'were swapped')
+
+
+        des = 'Fully inherited from the '+ id_base_st_type +' state of '+cl_base.name+\
+        ' by simple swapping of '+str(i_alk)+' and '+str(x_alk)
+        override = True
+        # sys.exit()
+
+
     else:
         print_and_log("Error! Unknown type of Calculation inheritance"); raise RuntimeError
 
@@ -1758,7 +1849,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     #print(len(new.end.xred))
     # print (id_base_st_type)
-    new.write_geometry(id_base_st_type, des, override = override)
+    new.init = st
+    new.write_geometry('init', des, override = override)
     
 
     write_xyz(st)
@@ -1802,7 +1894,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     calc_method = None, u_ramping_region = None, input_geo_file = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None):
+    alkali_ion_number = None, cluster = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -1857,7 +1949,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         - ise_new - dummy
         - inherit_option - dummy
         - savefile - dummy
-
+        - cluster - dummy
 
     RETURN:
         (results_dic,    result_list)
@@ -1991,18 +2083,20 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             if not hasattr(cl,'energy_sigma0'):
                 
                 #check if job in queue
-                if 'SLURM' in header.SCHEDULE_SYSTEM:
-                    job_in_queue = cl.id[0]+'.'+cl.id[1] in runBash('ssh '+header.CLUSTER_ADDRESS+""" squeue -o '%o' """)
-                    # print(job_in_queue, cl.name)
-                    # print(runBash('ssh '+header.CLUSTER_ADDRESS+""" squeue -o '%o' """))
-                
-                else:
-                    print_and_log('Error! I do not know how to check job status with chosen SCHEDULE_SYSTEM; Please teach me here! ')
+                try:
+                    if 'SLURM' in cl.schedule_system:
+                        job_in_queue = cl.id[0]+'.'+cl.id[1] in runBash('ssh '+cl.cluster_address+""" squeue -o '%o' """)
+                        # print(job_in_queue, cl.name)
+                        # print(runBash('ssh '+header.CLUSTER_ADDRESS+""" squeue -o '%o' """))
+                    
+                    else:
+                        print_and_log('Error! I do not know how to check job status with chosen SCHEDULE_SYSTEM; Please teach me here! ')
+                except:
+                    printlog('Warning! cl.schedule_system')
+                    job_in_queue = ''
 
 
-
-
-                if not get_from_server(cl.dir+'/RUNNING', addr = header.CLUSTER_ADDRESS, trygz = False): #if exist than '' is returned
+                if not get_from_server(cl.dir+'/RUNNING', addr = cl.cluster_address, trygz = False): #if exist than '' is returned
                     cl.state = '3. Running'
                 
                 elif job_in_queue:
@@ -2468,8 +2562,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             path2mep_l = cl.dir+name_without_ext+'.eps'
             if not os.path.exists(path2mep_l) or '2' in up:
                 ''
-                get_from_server(files = path2mep_s, to = path2mep_l, addr = cluster_address, )
-                get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cluster_address, )
+                get_from_server(files = path2mep_s, to = path2mep_l, addr = cl.cluster_address, )
+                get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cl.cluster_address, )
             
 
 

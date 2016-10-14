@@ -9,7 +9,7 @@ import pandas as pd
 import itertools, os, copy, math, glob, re
 from header import print_and_log as printlog
 from header import print_and_log, runBash, red_prec
-from header import (path_to_potentials, to_ang, cluster_address, project_path_cluster, log)
+from header import (path_to_potentials, to_ang, log)
 import header
 from functions import (read_vectors, read_list, words, local_surrounding, 
     xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
@@ -83,6 +83,15 @@ class Structure():
 
     def xred2xcart(self,):
         self.xcart = xred2xcart(self.xred, self.rprimd)
+
+    def get_elements(self):
+        #return list of elements names
+        return [element_name_inv(self.znucl[t-1]) for t in self.typat]
+
+    def get_elements_z(self):
+        #return list of elements names
+        return [self.znucl[t-1] for t in self.typat]
+
 
 
     def add_atoms(self, atoms_xcart, element = 'Pu'):
@@ -1339,8 +1348,8 @@ class CalculationVasp(Calculation):
             print_and_log("Files to copy: "+string_of_paths+"\n")
 
             # temp_dir = os.path.dirname(project_path_cluster+self.dir)
-            runBash('ssh '+ cluster_address+' "mkdir -p '+project_path_cluster+self.dir+'"') #create directory
-            log.write( runBash("rsync -zave ssh "+string_of_paths+" "+cluster_address+":"+project_path_cluster+self.dir)+"\n" )
+            runBash('ssh '+ header.cluster_address+' "mkdir -p '+header.project_path_cluster+self.dir+'"') #create directory
+            log.write( runBash("rsync -zave ssh "+string_of_paths+" "+header.cluster_address+":"+header.project_path_cluster+self.dir)+"\n" )
         #print "End make---------------------------------------------\n\n"
         return
 
@@ -1416,7 +1425,7 @@ class CalculationVasp(Calculation):
                 new_LDAUU_list = copy.deepcopy(set_LDAUU_list)
                 
                 # print set_LDAUU_list
-                u_step = 0
+                u_step = 0.0
                 for i, u in enumerate(set_LDAUU_list):
                     if u == 0:
                         continue
@@ -1553,7 +1562,8 @@ class CalculationVasp(Calculation):
         if schedule_system == 'SGE':
             parrallel_run_command = "mpirun -x PATH vasp"
         elif schedule_system == 'PBS':
-            parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp"
+            # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
+            parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
         
         elif schedule_system == 'SLURM':
             parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI"
@@ -1768,17 +1778,22 @@ class CalculationVasp(Calculation):
                     usteps = [self.set.u_ramping_nstep-1]  # now it the case of sequence_set for contin sets only the last U is used
 
 
+                u_last = 100
 
                 for i_u in usteps:
 
 
                     u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u)
+                    if u == u_last:
+                        continue
 
                     name_mod   = ver_prefix+'U'+str(u).replace('.', '')+set_mod
 
                     
                     run_command(option = option, name = run_name_prefix+'.'+name_mod, 
                         parrallel_run_command = parrallel_run_command, write = True)
+                    
+                    u_last = u
 
 
                     for n_st in subfolders:
@@ -2108,7 +2123,7 @@ class CalculationVasp(Calculation):
                 self.associated_energies = [float(e) for e in energies_str.split()]
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
-        print_and_log('read_results() path to outcar', path_to_outcar)
+        # print_and_log('read_results() path to outcar', path_to_outcar)
         outcar_exist   = False
 
         contcar_exist   = False
@@ -2228,7 +2243,7 @@ class CalculationVasp(Calculation):
             tot_mag_by_atoms = [] #magnetic moments by atoms on each step
             tot_mag_by_mag_atoms = []
             #which atoms to use
-            magnetic_elements = [26, 27, 28]
+            magnetic_elements = header.MAGNETIC_ELEMENTS
             #Where magnetic elements?
             zlist = [int(self.end.znucl[t-1]) for t in self.end.typat]
             # print zlist
@@ -2869,7 +2884,7 @@ class CalculationVasp(Calculation):
         #     print_and_log( 'Charge file is downloading')
         #     log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
         #     print_and_log( path_to_chg, 'was downloaded')
-        out = get_from_server(path_to_chg, self.dir, header.CLUSTER_ADDRESS)
+        out = get_from_server(path_to_chg, self.dir, header.cluster_address)
 
         if out:
             path_to_chg = 'file not found'
@@ -2892,7 +2907,7 @@ class CalculationVasp(Calculation):
         #Make bader on server
         #assumes that bader is installed
         v = str(self.version)
-        path = project_path_cluster+self.dir
+        path = header.project_path_cluster+self.dir
         CHG     = path+v+".CHG"
         AECCAR0 = path+v+".AECCAR0"
         AECCAR2 = path+v+".AECCAR2"

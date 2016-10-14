@@ -61,10 +61,11 @@ TODO
 sys.path.append('/home/dim/Simulation_wrapper/ase') #
 
 # sys.path.append('../../Simulation_wrapper/')
-siman_run = True
 try:
     from project_conf import *
     import project_conf
+    siman_run = True
+
 except:
     print_and_log('Some module is used separatly')
     siman_run = False
@@ -72,8 +73,9 @@ except:
 # print 'header, geo_folder = ', geo_folder
 
 
-#Global names
+#Global variables
 close_run = False # alows to control close run file automatically after each add_loop
+first_run = True  # needed to write header of run script
 calc = {};
 conv = {};
 varset = {};
@@ -93,6 +95,7 @@ eV_A_to_J_m = 16.021765
 kB = 8.617e-5 # eV/K
 TRANSITION_ELEMENTS = [22, 23, 25, 26, 27, 28]
 ALKALI_ION_ELEMENTS = [3, 11, 19]
+MAGNETIC_ELEMENTS = [26, 27, 28]
 warnings = True
 
 def print_and_log(*logstrings, **argdic):
