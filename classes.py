@@ -7,6 +7,8 @@ from tabulate import tabulate
 import numpy as np
 import pandas as pd
 import itertools, os, copy, math, glob, re
+import matplotlib.pyplot as plt
+
 from header import print_and_log as printlog
 from header import print_and_log, runBash, red_prec
 from header import (path_to_potentials, to_ang, log)

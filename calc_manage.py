@@ -99,7 +99,7 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH --mem-per-cpu=7675\n")
             f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
             f.write("#SBATCH --mail-type=END\n")
-            f.write("#SBATCH --nodelist=node-amg03\n")
+            # f.write("#SBATCH --nodelist=node-amg03\n")
             f.write("cd "+path_to_job+"\n")
             f.write("export OMP_NUM_THREADS=1\n")
 
@@ -135,7 +135,7 @@ def write_batch_header(batch_script_filename = None,
 
 
 
-def push_figure_to_archive(local_figure_path, caption, figlabel = None ):
+def push_figure_to_archive(local_figure_path, caption, figlabel = None, autocompl = True ):
     shutil.copy(local_figure_path, header.project_conf.path_to_images)
     print_and_log('push_figure_to_archive():', local_figure_path, 'copied to', header.project_conf.path_to_images, imp = 'y')
     
@@ -145,14 +145,21 @@ def push_figure_to_archive(local_figure_path, caption, figlabel = None ):
     if not figlabel:
         figlabel = '.'.join(name_without_ext.split('.')[:-1])
     
+    if autocompl:
+        caption+=' for '+figlabel 
 
     tex_text = \
     ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
     "\caption{{\label{{fig:{:s}}} {:s} }}\n"
-    "\end{{figure}}\n").format(figfile, figlabel, caption+' for '+figlabel )
+    "\end{{figure}}\n").format(figfile, figlabel, caption )
+
+
     # print (tex_text)
     with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+') as f:
-        if tex_text not in f.read():
+        f.seek(0)
+        a = f.read()
+        # print (a)
+        if tex_text not in a:
             f.write(tex_text)
     return
 
@@ -517,7 +524,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
     mul_matrix = None,
     ngkpt = None,
-    cluster = None
+    cluster = None, override = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -886,15 +893,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-
-
-        # if it_new not in struct_des:    #inherit_icalc takes care of adding descriptions
-        #     add_des(struct_des, it_new, section_folder, 'Inherited '+inherit_option+' from '+it+'.'+str(setlist)+'.'+str(verlist)   )
-
         for inputset in setlist:
-
-
-
 
             for v in verlist:
                 id_base = (it,inputset,v)
@@ -904,8 +903,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 # print(mul_
 
                 inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, 
-                    it_folder = it_folder, occ_atom_coressp = occ_atom_coressp, 
-                    ortho = ortho, mul_matrix = mul_matrix)
+                    it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, 
+                    ortho = ortho, mul_matrix = mul_matrix, override =override)
         
             if inherit_option in inh_opt_ngkpt:
                 inherit_ngkpt(it_new, it, varset[inputset]) # 
@@ -1338,7 +1337,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     id_from = None,
     atom_new = None, atom_to_replace = None,  id_base_st_type = 'end', atoms_to_remove = None, i_atom_to_remove = None, id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
-    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None,
+    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, override = None
     ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
@@ -1407,7 +1406,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     #it_new not in header.history[-1]:   header.history.append( hstring  )
     calc = header.calc
     struct_des = header.struct_des
-    override  = False
+    # override  = False
     if type(id_base) == str: #use function below for other formats
         print_and_log('Reading id_base\n')
         cl_base = CalculationVasp()
@@ -1634,7 +1633,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         # sc.mul_matrix = mul_matrix.copy()
         # new.init = sc
         # new.end  = sc
-        des = 'obtained from'+cl_base.name+'by creating supercell'+str(ortho)
+        des = 'obtained from '+cl_base.name+' by creating supercell '+str(ortho)
         override = True
     
 
@@ -1815,9 +1814,14 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         write_xyz(st, file_name = st.name+'_antisite_start')
         st = st.mov_atoms(i_alk, x_tr)
         st = st.mov_atoms(i_tr,  x_alk)
+
         write_xyz(st, file_name = st.name+'_antisite_final')
 
         printlog('Atom ',i_alk+1,'and', i_tr+1,'were swapped')
+
+        #clear magmom
+        st.magmom = [None]
+
 
 
         des = 'Fully inherited from the '+ id_base_st_type +' state of '+cl_base.name+\
@@ -1840,6 +1844,11 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         new.des =  struct_des[it_new].des
     else:
         new.des = des + struct_des[it_new].des
+        if it_folder:
+            struct_des[it_new].sfolder = it_folder #update itfolder,
+
+
+
 
     if mul_matrix is not None:
         struct_des[it_new].mul_matrix = mul_matrix
