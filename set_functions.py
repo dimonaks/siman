@@ -10,6 +10,7 @@ Oграничения режима sequence_set:
 
 
 from __future__ import division, unicode_literals, absolute_import 
+import json
 
 from header import log, print_and_log;
 import copy
@@ -246,6 +247,12 @@ class InputSet():
         # self.vasp_params['NSW'] = self.ntime
         # self.vasp_params['EDIFFG'] = -self.tolmxf * c2
         self.kspacing = self.vasp_params['KSPACING']
+        self.ecut     = self.vasp_params['ENCUT']
+        # print (self.vasp_params)
+        if 'LDAUU' in self.vasp_params and self.vasp_params['LDAUU']:
+            self.dftu = True
+        else:
+            self.dftu = False
 
 
 
@@ -434,7 +441,9 @@ class InputSet():
         return
 
 
-
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, 
+                sort_keys=True, indent=4)
 
 
 

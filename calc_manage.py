@@ -3,7 +3,7 @@ from __future__ import division, unicode_literals, absolute_import
 
 
 from small_functions import is_list_like
-import copy, traceback, datetime, sys, os, glob, shutil
+import copy, traceback, datetime, sys, os, glob, shutil, re
 import header
 from header import print_and_log, runBash
 from classes import Calculation, CalculationVasp, Description
@@ -3015,12 +3015,33 @@ def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_id = Non
     
     return groundstate_st_id, path2poscar
 
+    #pymatgen drafts, can be useful
 
-# with MPRester(pmgkey) as m:
-#     print dir(m)
-#     print m.supported_properties
-#     print m.get_data('mp-540111', data_type='vasp', prop='total_magnetization')
-#     # 'total_magnetization'
+    # with MPRester(pmgkey) as m:
+    #     print dir(m)
+    #     print m.supported_properties
+    #     print m.get_data('mp-540111', data_type='vasp', prop='total_magnetization')
+    #     # 'total_magnetization'
+
+    #Pymatgen symmetry analyzer
+    # from pymatgen.io.vasp.inputs import Poscar
+    # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer as SA
+    # from pymatgen import Lattice, Structure, Molecule
+    # a = Structure.from_file('/home/aksenov/scientific_projects/cathode/Li2FePO4F/scaled/Li2FePO4F.ir.su.4uis/100.CONTCAR' )
+    # b = SA(a)
+    # print(b.get_space_group_symbol())
+    # print(a.get_space_group_info())
+    # # lattice = Lattice(st.rprimd)
+    # # print (lattice)
+
+    # struct = Structure(st.rprimd, st.get_elements(), st.xred)
+    # print(struct)
+
+
+
+
+
+
 
 
 def manually_remove_from_struct_des(struct_des, key):
@@ -3029,3 +3050,76 @@ def manually_remove_from_struct_des(struct_des, key):
     """
     del struct_des[key]
     print_and_log('Attention! Entry '+key+' was removed from struct_des dict/\n')
+
+
+
+
+
+
+
+
+def add_to_database(cl):
+    """
+    cl is Calculation which should be added to database
+    """
+
+    save_format = 'azh'
+    dbpath = header.PATH2DATABASE+'/'
+    it = cl.id[0]
+    sfolder = dbpath+header.struct_des[it].sfolder.split('/')[0]+'/'
+
+    name = []
+    if 'azh' in save_format:
+        #1. Single point calculation of total energy
+        # print(sfolder)
+        makedir(sfolder+'dummy')
+
+        #determine x for alkali ion from structure name
+        parsed = re.findall(r'([A-Z][a-z]*)(\d*)', it)
+        parsed = [(el, x if x else '1') for (el, x) in parsed ]
+
+        if parsed[0][0] in header.ALKALI_ION_ELEMENTS:
+            x = parsed[0][0]
+
+            if hasattr(cl, 'max_alk_ion_content'):
+                x = float(x)/cl.max_alk_ion_content
+            else:
+                x = '1'
+
+        else:
+            x = '0'
+        name.append('x'+x)
+
+        cl.read_results()
+        functional = cl.potcar_lines[0][0]
+        print(functional)
+
+        sfolder+=functional+'/'
+        makedir(sfolder+'dummy')
+
+        cl.set.update()
+        ecut = str(cl.set.ecut)
+
+        if cl.set.u_ramping_nstep:
+            name.append('UR'+ecut)
+
+        elif cl.set.dftu:
+            name.append('U'+ecut)
+        
+        else:
+            name.append(ecut)
+
+        name.extend(it.split('.')[1:]+[cl.id[1]]+[str(cl.id[2])])
+
+        name_str = '_'.join(name)
+        # print('_'.join(name) )
+
+        outcar_name = name_str+'.out'
+
+        shutil.copyfile(cl.path["output"], sfolder+outcar_name)
+
+        import json
+        # with open(sfolder+name_str+'.json', 'w') as fp:
+        #     json.dump(cl.set.__dict__, fp)
+
+        print(cl.set.toJSON())

@@ -95,7 +95,8 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
 
 def makedir(path):
     """
-    Make directory at path if it is not exist
+    *path* - path to some file 
+    Make dirname(path) directory if it does not exist
     """
     if not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))

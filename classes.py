@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*- 
-from __future__ import division, unicode_literals, absolute_import 
+from __future__ import division, unicode_literals, absolute_import, print_function
+import itertools, os, copy, math, glob, re
 
-from __future__ import print_function
-# from __future__ import division, unicode_literals, absolute_import 
+#additional packages
 from tabulate import tabulate
 import numpy as np
 import pandas as pd
-import itertools, os, copy, math, glob, re
 import matplotlib.pyplot as plt
+import pymatgen
 
+#siman packages
+import header
 from header import print_and_log as printlog
 from header import print_and_log, runBash, red_prec
 from header import (path_to_potentials, to_ang, log)
-import header
 from functions import (read_vectors, read_list, words, local_surrounding, 
     xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
     get_from_server, push_to_server, list2string)
@@ -80,6 +81,9 @@ class Structure():
         self.xred = []
         self.magmom = []
 
+
+
+
     def xcart2xred(self,):
         self.xred = xcart2xred(self.xcart, self.rprimd)
 
@@ -93,6 +97,14 @@ class Structure():
     def get_elements_z(self):
         #return list of elements names
         return [self.znucl[t-1] for t in self.typat]
+
+
+    def convert2pymatgen(self):
+        return pymatgen.Structure(self.rprimd, self.get_elements(), self.xred)
+
+    def get_space_group_info(self):
+        p = self.convert2pymatgen()
+        return p.get_space_group_info()
 
 
 
@@ -2106,7 +2118,6 @@ class CalculationVasp(Calculation):
         else:
             path_to_outcar  = self.path["output"]
         
-        # print 'classes: path to outcar', path_to_outcar
         path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
         path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
 
@@ -2125,7 +2136,7 @@ class CalculationVasp(Calculation):
                 self.associated_energies = [float(e) for e in energies_str.split()]
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
-        # print_and_log('read_results() path to outcar', path_to_outcar)
+        print_and_log('read_results() path to outcar', path_to_outcar)
         outcar_exist   = False
 
         contcar_exist   = False
@@ -2288,6 +2299,7 @@ class CalculationVasp(Calculation):
 
 
 
+            self.potcar_lines = []
 
             for line in outcarlines:
 
@@ -2300,7 +2312,8 @@ class CalculationVasp(Calculation):
                 #     if lastocc > 0:
                 #         print "Warning!!! at kpoint ", kpoint, " last band No. ",lastbandno, " is not empty ", lastocc
 
-
+                if 'TITEL' in line:
+                    self.potcar_lines.append( line.split()[2:] )
 
 
                 if "TOO FEW BANDS" in line:
