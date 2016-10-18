@@ -2136,7 +2136,7 @@ class CalculationVasp(Calculation):
                 self.associated_energies = [float(e) for e in energies_str.split()]
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
-        print_and_log('read_results() path to outcar', path_to_outcar)
+        # print_and_log('read_results() path to outcar', path_to_outcar)
         outcar_exist   = False
 
         contcar_exist   = False
@@ -2892,19 +2892,20 @@ class CalculationVasp(Calculation):
 
     def get_chg_file(self, filetype = 'CHGCAR'):
         #cl - object of CalculationVasp class
-        path_to_chg = self.dir+str(self.version)+"."+filetype
+        path_to_chg = self.path['output'].replace('OUTCAR',filetype)
 
-
+        # print(path_to_chg)
         # if not os.path.exists(path_to_chg): 
         #     print_and_log( 'Charge file is downloading')
         #     log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
         #     print_and_log( path_to_chg, 'was downloaded')
-        out = get_from_server(path_to_chg, self.dir, header.cluster_address)
+        out = get_from_server(path_to_chg, self.dir, self.cluster_address)
+
 
         if out:
             path_to_chg = 'file not found'
-
-            
+            printlog('Charge file', path_to_chg, 'was not found')
+           
         return path_to_chg
 
     def get_file(self, filename):

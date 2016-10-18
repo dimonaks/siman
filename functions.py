@@ -598,9 +598,9 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 
 
 
-def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 1 , 
+def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 1 , 
     imp_positions = [], specialcommand = None, analysis = None, show_around = None, replications = None, nnumber = 6, topview = True,
-    file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
+    filename = None, file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
     include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None
     ):
     """Writes st structure in xyz format in the folder xyz/path
@@ -635,6 +635,8 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
 
     if file_name:
         name = file_name
+    elif filename:
+        name = filename
     else:
         name = st.name
 
@@ -652,10 +654,11 @@ def write_xyz(st, path = '', repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 
         print_and_log( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n")
         xcart = xred2xcart(xred, rprimd)
         #print xcart[1]
-    if path == None:
-        basepath = './'
+    
+    if path:
+        basepath = path
     else:
-        basepath = 'xyz/'+path+'/'
+        basepath = 'xyz/'
 
 
 

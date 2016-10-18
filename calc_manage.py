@@ -2462,11 +2462,12 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             E0 = {2} eV
             B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B)  )
             savedpath = 'figs/'+cl.name+'.eps'
+            cl.B = B*160.218
             # plt.close()
             # plt.clf()
             # plt.close('all')
-            
-            eos.plot(savedpath, show = True)
+            if 'fit' in show:
+                eos.plot(savedpath, show = True)
             # plt.clf()
 
             if push2archive:
@@ -3118,8 +3119,41 @@ def add_to_database(cl):
 
         shutil.copyfile(cl.path["output"], sfolder+outcar_name)
 
-        import json
-        # with open(sfolder+name_str+'.json', 'w') as fp:
-        #     json.dump(cl.set.__dict__, fp)
+        write_xyz(cl.end, path = sfolder, filename =  name_str)
 
-        print(cl.set.toJSON())
+
+        #write input, problem with fitted version 100, which does not have input geometry, since they are created on cluster
+        # makedir(sfolder+'input/dummy')
+        # shutil.copyfile(cl.path["input_geo"], sfolder+'input/'+name_str+'.geo')
+
+
+        #write chg
+        path_to_chg = cl.get_chg_file('CHG')
+        makedir(sfolder+'bin/dummy')
+        print(path_to_chg)
+        gz = '.gz'
+        if gz not in path_to_chg:
+            gz = ''
+        shutil.copyfile(path_to_chg, sfolder+'bin/'+name_str+'.chg'+gz)
+
+
+
+        #make dat
+        #incars
+        makedir(sfolder+'dat/dummy')
+        incars = glob.glob(cl.dir+'/*INCAR*')
+        # print(incars)
+        for inc in incars:
+            shutil.copy(inc, sfolder+'dat/')
+
+
+        #kpoints
+        import json
+        with open(sfolder+'dat/kpoints_for_kspacings.json', 'w') as fp:
+            json.dump(header.struct_des[it].ngkpt_dict_for_kspacings, fp)
+
+        # print(cl.set.toJSON())
+
+
+        #prepare for neb
+        # makedir(sfolder+'neb_'+name_str+'/dummy')
