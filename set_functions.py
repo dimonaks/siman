@@ -242,17 +242,26 @@ class InputSet():
 
         self.tsmear = self.vasp_params['SIGMA'] / c1
         self.tolmxf = - self.vasp_params['EDIFFG'] / c2
+        self.toldfe = self.vasp_params['EDIFF'] / c1
         # self.vasp_params['EDIFF'] = self.toldfe * c1
         # self.vasp_params['NELM'] = self.nstep
         # self.vasp_params['NSW'] = self.ntime
         # self.vasp_params['EDIFFG'] = -self.tolmxf * c2
         self.kspacing = self.vasp_params['KSPACING']
-        self.ecut     = self.vasp_params['ENCUT']
+        self.ecut     = self.vasp_params['ENCUT'] / c1
         # print (self.vasp_params)
         if 'LDAUU' in self.vasp_params and self.vasp_params['LDAUU']:
             self.dftu = True
         else:
             self.dftu = False
+
+        if 'ISPIN' in self.vasp_params and self.vasp_params['ISPIN'] == 2:
+            self.spin_polarized = True
+        else:
+            self.spin_polarized = False
+
+
+
 
 
 

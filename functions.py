@@ -601,7 +601,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 1 , 
     imp_positions = [], specialcommand = None, analysis = None, show_around = None, replications = None, nnumber = 6, topview = True,
     filename = None, file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
-    include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None
+    include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None, show_around_x = None,
     ):
     """Writes st structure in xyz format in the folder xyz/path
 
@@ -615,10 +615,13 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
     specialcommand - any command at the end of script
 
-    analysis - additional processing, allows to show only specifice atoms, 'imp_surrounding' - shows Ti atoms only around impurity
+    analysis - additional processing, allows to show only specifice atoms, 
+        'imp_surrounding' - shows Ti atoms only around impurity
+        nnumber - number of neighbours to show
+        show_around - choose atom number around which to show
+        show_around_x - show atoms around point, has higher priority
+
     replications - list of replications, (2,2,2) 
-    nnumber - number of neighbours to show
-    show_around - choose atom number around which to show
 
     full_cell - returns atoms to cell and replicate boundary atoms
 
@@ -697,6 +700,15 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
                 lxcart+=x_t[0]
                 ltypat+=x_t[1]
             i+=1
+        
+        if show_around_x:
+            x = show_around_x
+            x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True)
+            # print x_t[1]
+            lxcart+=x_t[0]
+            ltypat+=x_t[1]            
+
+
         xcart = lxcart
         typat = ltypat
         natom = len(typat)

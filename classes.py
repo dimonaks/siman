@@ -313,7 +313,7 @@ class Calculation(object):
 
 
 
-
+        self.init = Structure()
         self.end = Structure()
         self.state = "0.Initialized"
         self.path = {
@@ -326,6 +326,9 @@ class Calculation(object):
         if iid:
             self.id = iid
             self.name = str(iid[0])+'.'+str(iid[1])+'.'+str(iid[2])
+        else:
+            self.id = ('0','0',0)
+
 
     def read_geometry(self,filename = None):
         """Reads geometrical data from filename file in abinit format"""
@@ -757,9 +760,11 @@ class CalculationVasp(Calculation):
             if not elements_list:
                 elements_list = name.split('!')[0].strip().split()
                 print_and_log('I take elements from the first line, The line is '+str(name.split('!'))+' you could use ! to add comment after name+\n')
-            
-
-
+                # print(elements_list)
+                if 'i2a' in elements_list[0]:
+                    printlog('i2a list detected')
+                    el = elements_list[0].split('[')[-1].replace(']','')
+                    elements_list = el.split(',')
             else:
                 print_and_log("Elements names have been taken from the end of coordinates, pymatgen file?\n")
 
@@ -836,14 +841,12 @@ class CalculationVasp(Calculation):
         if ngkpt:
             N = ngkpt
 
-
-
         elif kspacing in ngkpt_dict:
-
             N = ngkpt_dict[kspacing]
-
+            printlog('check_kpoints(): k-points will be used from *ngkpt_dict* of',it, N)
         elif self.set.ngkpt:
             N = self.set.ngkpt
+            printlog('check_kpoints(): k-points will be used from set.ngkpt of',self.set.ise)
 
 
         elif kspacing:
@@ -851,10 +854,11 @@ class CalculationVasp(Calculation):
                 N_from_kspacing.append( math.ceil( (np.linalg.norm(self.init.recip[i]) / to_ang_local) / kspacing) )
 
             N = N_from_kspacing
+            printlog('check_kpoints(): k-points are determined from kspacing',kspacing)
 
 
         else:
-            print_and_log( "Error! no information about k-points\n")
+            print_and_log("Error! check_kpoints(): no information about k-points\n")
 
 
 
@@ -865,10 +869,8 @@ class CalculationVasp(Calculation):
             printlog('check_kpoints(): I added ',N,'as a k-grid for',kspacing,'in struct_des of', it)
 
 
+        print_and_log("check_kpoints(): Kpoint   mesh is: ", N)
 
-
-
-        print_and_log("Kpoint   mesh is: "+str(N)+'\n' )
 
         if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') or  kspacing not in struct_des[it].ngkpt_dict_for_kspacings:
             print_and_log('Several other options instead of automatically determined ngkpt = ',N,np.array(self.calc_kspacings(N) ).round(2), ':', end = '\n' )
@@ -883,7 +885,7 @@ class CalculationVasp(Calculation):
             # sys.exit()
 
         else:
-            print_and_log("The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2) )
+            print_and_log("check_kpoints(): The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2) )
         return N_from_kspacing
 
 
@@ -2233,7 +2235,7 @@ class CalculationVasp(Calculation):
             self.mdstep = 1
             warnings = 0#""
             self.time = 0
-            nscflist = [] ; mdstep_old = 1; niter_old = 0
+            nscflist = []; mdstep_old = 1; niter_old = 0
             maxforce = []; average = [];  gstress =[]
             # mforce = []
             self.list_e_sigma0 = []
@@ -2243,7 +2245,8 @@ class CalculationVasp(Calculation):
             except:
                 self.end = Structure()
 
-            if not hasattr(self.end, "natom"): self.end.natom = self.natom
+            if not hasattr(self.end, "natom"): 
+                self.end.natom = self.natom
             #Structure() #create structure object with end values after calculation
             #self.end.typat = self.typat
             #self.end.znucl = self.znucl
@@ -2258,7 +2261,10 @@ class CalculationVasp(Calculation):
             #which atoms to use
             magnetic_elements = header.MAGNETIC_ELEMENTS
             #Where magnetic elements?
-            zlist = [int(self.end.znucl[t-1]) for t in self.end.typat]
+            try:
+                zlist = [int(self.init.znucl[t-1]) for t in self.init.typat] #in general it is better to read znucl and typat from outcar first
+            except:
+                zlist = []
             # print zlist
             # i_mag_start = None
             # i_mag_end   = None
@@ -2290,12 +2296,10 @@ class CalculationVasp(Calculation):
 
 
 
-            #make more general for other codes, 
-            if self.set.vasp_params['ISPIN'] == 2:
-                spin_polarized = True
-            else:
-                spin_polarized = False
-
+            try:
+                spin_polarized = self.set.spin_polarized # again it will be better to determine this from outcar 
+            except:
+                spin_polarized = None
 
 
 
@@ -2314,6 +2318,12 @@ class CalculationVasp(Calculation):
 
                 if 'TITEL' in line:
                     self.potcar_lines.append( line.split()[2:] )
+
+
+                if 'ions per type =' in line:
+                    self.end.nznucl = [int(n) for n in line.split()[4:]]
+                    self.end.ntypat = len(self.end.nznucl)
+
 
 
                 if "TOO FEW BANDS" in line:
@@ -2556,9 +2566,10 @@ class CalculationVasp(Calculation):
             #Check total drift
             
 
-
-            toldfe = self.set.vasp_params['EDIFF']*1000  # meV
-
+            try:
+                toldfe = self.set.toldfe*1000  # meV
+            except:
+                toldfe = 0
 
 
 
@@ -2570,8 +2581,13 @@ class CalculationVasp(Calculation):
             # print 'magn', magnitudes
             # print 'totdr', tdrift
             # print 'max_magnitude', max_magnitude
-            # try 
-            if max_magnitude < self.set.tolmxf: max_magnitude = self.set.tolmxf
+            try: 
+                
+                if max_magnitude < self.set.tolmxf: 
+                    max_magnitude = self.set.tolmxf
+            except:
+                ''
+
             #if any(d > 0.001 and d > max_magnitude for d in tdrift):
             if max_tdrift > 0.001 and max_tdrift > max_magnitude:
                 
@@ -2586,7 +2602,7 @@ class CalculationVasp(Calculation):
 
             #correction of bug; Take into account that VASP changes typat by sorting impurities of the same type.
             self.end.typat = []
-            for i, nz in enumerate(self.init.nznucl):
+            for i, nz in enumerate(self.end.nznucl):
                 for j in range(nz):
                     self.end.typat.append(i+1)
             #correction of bug
@@ -2693,19 +2709,36 @@ class CalculationVasp(Calculation):
             War = ("%i" % (warnings)    ).center(j[7])
             #nbands = ("%i" % (self.set.vasp_params["NBANDS"])    ).center(j[8])
             #added = ("%.0f" % ( (self.set.add_nbands - 1) * 100 )    ).center(j[15])
-            kmesh = ("%s" % (str(self.set.ngkpt) )    ).center(j[8])
-            ks = self.calc_kspacings()
-            kspacing = ("[%.2f,%.2f,%.2f]" % ( ks[0], ks[1], ks[2] )    ).center(j[9])
-            ks1 = ("[%.2f]" % ( ks[0] )    ).center(j[9])
+            try:
+                kmesh = ("%s" % (str(self.set.ngkpt) )    ).center(j[8])
+                ks = self.calc_kspacings()
+                kspacing = ("[%.2f,%.2f,%.2f]" % ( ks[0], ks[1], ks[2] )    ).center(j[9])
+                ks1 = ("[%.2f]" % ( ks[0] )    ).center(j[9])
+            except:
+                kmesh = ''
+                ks    = ''
+                kspacing = ''
+                ks1     = ''
+
             nkpt = ("%i" % ( self.NKPTS)     ).center(j[10])
             istrs = ("[%5i,%5i,%5i] " % ( self.intstress[0],self.intstress[1],self.intstress[2]  )    ).center(j[11])
             strs = ("%.0f,%.0f,%.0f " % ( self.stress[0],self.stress[1],self.stress[2]  )    ).center(j[11])   
             eprs = ("%.0f" % (self.extpress)).center(j[12])
-            tsm = ("%.0f" % (self.set.tsmear*1000)).center(j[13])
+            try:
+                tsm = ("%.0f" % (self.set.tsmear*1000)).center(j[13])
+            except:
+                tsm = ''
+
             entrr = ("%.3f" % (   (self.energy_free - self.energy_sigma0)/self.init.natom * 1000    )   ).center(j[14]) #entropy due to the use of smearing
-            npar = ("%i" % (self.set.vasp_params["NPAR"])).center(j[16])
-            lpl = ("%s" % (self.set.vasp_params["LPLANE"])).center(j[17])
-            ecut = ("%s" % (self.set.vasp_params["ENCUT"]) ).center(j[18]) 
+
+            try:
+                npar = ("%i" % (self.set.vasp_params["NPAR"])).center(j[16])
+                lpl = ("%s" % (self.set.vasp_params["LPLANE"])).center(j[17])
+                ecut = ("%s" % (self.set.vasp_params["ENCUT"]) ).center(j[18]) 
+            except:
+                npar = ''
+                lpl  = ''
+                ecut = ''
 
             lens = ("%.2f;%.2f;%.2f" % (v[0],v[1],v[2] ) ).center(j[19])
             r1 = ("%.2f" % ( v[0] ) ).center(j[19])            

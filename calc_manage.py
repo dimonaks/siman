@@ -100,6 +100,7 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
             f.write("#SBATCH --mail-type=END\n")
             # f.write("#SBATCH --nodelist=node-amg03\n")
+            f.write("#SBATCH --exclude=node-amg13\n")
             f.write("cd "+path_to_job+"\n")
             f.write("export OMP_NUM_THREADS=1\n")
 
@@ -787,8 +788,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         for inputset in setlist:
 
-
-            inherit_ngkpt(it_new, it, varset[inputset])
+            if inputset in varset:
+                inherit_ngkpt(it_new, it, varset[inputset])
 
 
             id_s = (it,inputset,v)
@@ -2643,6 +2644,12 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             
             #find moving atom
+            def find_moving_atom():
+                """
+                return number of atom which moves between two cell
+                """
+                return
+
             cl1 = calc[cl.id[0], cl.id[1], 1]
             cl2 = calc[cl.id[0], cl.id[1], 2]
             
@@ -2693,7 +2700,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             _, diff_barrier = plot_mep(atom_pos, mep_energies, show = 0)
 
             results_dic['barrier'] = diff_barrier
-            
+            cl1.barrier = diff_barrier
+            cl2.barrier = diff_barrier
 
             if 'mep' in show:
                 if 'mepp' in show:
