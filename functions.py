@@ -54,7 +54,7 @@ def push_to_server(files = None, to = None,  addr = None):
     
     if not is_list_like(files):
         files = [files]    
-    
+    # print('push_to_server(): files are :',files)
     files_str = ' '.join(np.array(files ))
     
 

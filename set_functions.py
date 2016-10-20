@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*- 
+from __future__ import division, unicode_literals, absolute_import, print_function
+
 """
 Oграничения режима sequence_set:
 1) OCCMATRIX не копируется для дочерних сетов
@@ -9,10 +12,10 @@ Oграничения режима sequence_set:
 """
 
 
-from __future__ import division, unicode_literals, absolute_import 
 import json
 
-from header import log, print_and_log;
+import header
+from header import print_and_log;
 import copy
 
 #Vasp keys
@@ -188,8 +191,30 @@ def read_vasp_sets(varset, user_vasp_sets, override_global = False):
 
 
 class InputSet():
-    """docstring for InputSet"""
-    def __init__(self,ise):
+    """docstring for InputSet
+    The second important class which is used to store 
+    parameters of calculation
+
+    For VASP parameters *self.vasp_params* dict is used;
+    usually it contains the parameters in the same format as INCAR file.
+    However, several exceptions are:
+    for 'LDAUU', 'LDAUJ', 'LDAUL' you should provide
+    dictionaries with correponding values for each element in the form: {'Co':3.4,}.
+    
+    self.potdir (dict) - name of POTCAR folder for each element, for example {3:'Li', 8:'O'}
+
+    self.blockfolder (str) - additional subfolder will be created calculation with this set
+
+    self.save_last_wave (bool) - set True to save last WAVECAR in u-ramping mode
+
+    self.kpoints_file - if True, k-points file is created, if string then it is considered as path to external kpoints file
+
+    self.path_to_potcar (str) - explicit path to potcar, can be used instead of self.potdir
+
+    self.set_sequence (list)  - list of InputSet() objects to make multiset runs. The current set is used as a first one.
+
+    """
+    def __init__(self, ise, path_to_potcar = None):
         #super(InputSet, self).__init__()
         self.ise = ise
         self.name = ise
@@ -204,8 +229,16 @@ class InputSet():
         self.ngkpt  = None
         self.blockfolder = ''
         self.set_sequence = None
-        # self.kpoints_file = False
+        self.kpoints_file = None # can be path to external file
+        self.save_last_wave = None #if True than do no remove last wavefunction
         # self.use_ngkpt = False
+        
+        if path_to_potcar:
+            self.path_to_potcar = path_to_potcar
+        else:
+            self.path_to_potcar = None
+
+
         #Code scpecific parameters, now only for Vasp
         for key in vasp_electronic_keys: 
             self.vasp_params[key] = None 
@@ -213,6 +246,14 @@ class InputSet():
             self.vasp_params[key] = None 
         for key in vasp_other_keys: 
             self.vasp_params[key] = None 
+
+
+        #add to varset
+        # if ise not in header.varset:
+        header.varset[ise] = self
+
+
+
 
     def printme(self):
         for key in self.vasp_params:
@@ -262,7 +303,23 @@ class InputSet():
 
 
 
+    def read_incar(self, filename):
+        with open(filename, 'r') as f:
+            # lines = f.readlines()
+            for l in f:
+                if '=' in l:
+                    (token, value) = l.split('=')
+                    value = value.split(';')[0]
+                    try:
+                        if '.' in value:
+                            value = float(value)
+                        else:
+                            value = int(value)
+                    except:
+                        pass
 
+                    self.vasp_params[token.strip()] = value
+        # self.update()
 
 
     def add_conv_kpoint(self,arg):
@@ -281,7 +338,7 @@ class InputSet():
         try:
             self.conv_tsmear[0]
         except AttributeError:
-            log.write( "Error! Set "+self.ise+" does not have conv_tsmear, I create new\n")
+            print_and_log( "Error! Set "+self.ise+" does not have conv_tsmear, I create new\n")
             self.conv_tsmear = []
         if arg in self.conv_tsmear:
             print_and_log( "Warning! You already have this name in list", imp = 'y')
@@ -298,10 +355,10 @@ class InputSet():
         try:
             self.conv[type_of_conv][0]
         except AttributeError:
-            log.write( "Warning! Set "+self.ise+" does not have conv, I create new\n")
+            print_and_log( "Warning! Set "+self.ise+" does not have conv, I create new\n")
             self.conv = {}
         except KeyError:
-            log.write( "Warning! Set "+self.ise+" does not have list for this key in conv, I add new\n")
+            print_and_log( "Warning! Set "+self.ise+" does not have list for this key in conv, I add new\n")
             self.conv[type_of_conv] = []
         except IndexError:
             pass
@@ -311,7 +368,7 @@ class InputSet():
             return    
         self.conv[type_of_conv].append(arg)
         self.history += "Name "+arg+" was added to self.conv["+type_of_conv+"]\n"
-        log.write( "Name "+arg+" was added to self.conv["+type_of_conv+"] of set "+self.ise+" \n")
+        print_and_log( "Name "+arg+" was added to self.conv["+type_of_conv+"] of set "+self.ise+" \n")
         self.update()
 
 
@@ -364,7 +421,7 @@ class InputSet():
             print_and_log("Warning! You did not change  "+name+"  in "+self.ise+" set\n")
             return
         self.history += " "+name+"  was changed from "+str(old)+" to "+str(arg) + "\n"
-        log.write(name+"  was changed from "+str(old)+" to "+str(arg) + " in set "+self.ise+" \n")
+        print_and_log(name+"  was changed from "+str(old)+" to "+str(arg) + " in set "+self.ise+" \n")
         self.update()                
         #print self.history
         return
@@ -381,7 +438,7 @@ class InputSet():
             print_and_log("Warning! You did not change  "+name+"  in "+self.ise+" set\n")
             return
         self.history += " "+name+"  was changed from "+str(old)+" to "+str(arg) + "\n"
-        log.write(" "+name+"  was changed from "+str(old)+" to "+str(arg) + " in set "+self.ise+" \n")
+        print_and_log(" "+name+"  was changed from "+str(old)+" to "+str(arg) + " in set "+self.ise+" \n")
         return
 
     def set_ngkpt(self,arg):
@@ -470,7 +527,7 @@ def inherit_iset(ise_new, ise_from, varset, override = False, newblockfolder = N
     ise_from = ise_from.strip()
 
     if ise_from not in varset:
-        log.write( "\nError! Set "+ise_from+" does not exist. I return new empty set\n")
+        print_and_log( "\nError! Set "+ise_from+" does not exist. I return new empty set\n")
         return InputSet(ise_new)
 
     old = varset[ise_from]

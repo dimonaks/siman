@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import 
 import sys
-from header import print_and_log
-from functions import write_xyz, replic
+
 # import header
 # from operator import itemgetter
 # from classes import res_loop , add_loop
@@ -17,12 +16,18 @@ from scipy import interpolate
 from scipy.interpolate import spline 
 # print (scipy.__version__)
 # print (dir(interpolate))
-from scipy.interpolate import  CubicSpline
+try:
+    from scipy.interpolate import  CubicSpline
+except:
+    print('scipy.interpolate.CubicSpline is not avail')
+
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 import header
+from header import print_and_log
+from functions import write_xyz, replic
 
 
 def plot_mep(atom_pos, mep_energies, image_name = None, show = None):

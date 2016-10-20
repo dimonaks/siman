@@ -1,5 +1,22 @@
 # from header import *
 from __future__ import division, unicode_literals, absolute_import 
+from operator import itemgetter
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+try:
+    from pymatgen.matproj.rest import MPRester
+    from pymatgen.io.vasp.inputs import Poscar
+except:
+    print('pymatgen is not avail')
+
+try:
+    # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to siman library
+    from ase.utils.eos import EquationOfState
+except:
+    print('ase is not avail')
+
 
 
 from small_functions import is_list_like
@@ -10,28 +27,10 @@ from classes import Calculation, CalculationVasp, Description
 from functions import list2string, gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance, local_surrounding
 from picture_functions import plot_mep
 
-import matplotlib.pyplot as plt
-import numpy as np
 
-from pymatgen.matproj.rest import MPRester
-from pymatgen.io.vasp.inputs import Poscar
-
-from operator import itemgetter
-
-# sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to siman library
-from ase.utils.eos import EquationOfState
 
 
 printlog = print_and_log
-
-log             = header.log
-geo_folder      = header.geo_folder
-# cluster_address = header.cluster_address
-# corenum         = header.corenum
-pmgkey          = header.project_conf.pmgkey
-path_to_images = header.path_to_images
-
-# project_path_cluster = header.project_path_cluster
 
 
 
@@ -137,8 +136,8 @@ def write_batch_header(batch_script_filename = None,
 
 
 def push_figure_to_archive(local_figure_path, caption, figlabel = None, autocompl = True ):
-    shutil.copy(local_figure_path, header.project_conf.path_to_images)
-    print_and_log('push_figure_to_archive():', local_figure_path, 'copied to', header.project_conf.path_to_images, imp = 'y')
+    shutil.copy(local_figure_path, header.path_to_images)
+    print_and_log('push_figure_to_archive():', local_figure_path, 'copied to', header.path_to_images, imp = 'y')
     
     name_without_ext =   '.'.join( os.path.basename(local_figure_path).split('.')[:-1]) 
     figfile = '{{'+name_without_ext+'}}'
@@ -214,7 +213,7 @@ def complete_run(close_run = True):
 
         runBash('chmod +x run')
         # print("rsync -zave ssh run "+header.cluster_address+":"+header.project_path_cluster +"\n")
-        log.write( runBash("rsync -zave ssh run "+header.cluster_address+":"+header.project_path_cluster) +"\n" )
+        printlog( runBash("rsync -zave ssh run "+header.cluster_address+":"+header.project_path_cluster) +"\n" )
         print_and_log('run sent')
         # clean_run(header.project_conf.SCHEDULE_SYSTEM)
     
@@ -340,13 +339,22 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
     """
     Wrapper for reading geometry files
     Also copies geofile and OCCMATRIX
+    cl - Calculation() can be already created before the functions
     returns Structure()
     """
-
+    curv = None
     if input_geo_file:
         geofilelist = glob.glob(input_geo_file) 
-        print_and_log("You provided the following geo file explicitly "+str(geofilelist)+"\n" )
-    
+        print_and_log("You provided the following geo file explicitly ",str(geofilelist), 
+            'version of file does not matter, I use *curver*',curver, 'as a new version' )
+        curv = curver #
+        if not input_geo_format:
+            if 'POSCAR' in input_geo_file:
+                input_geo_format = 'vasp'
+
+
+
+
     else:
         print_and_log("I am searching for geofiles in folder "+input_folder+"\n" )
         
@@ -383,14 +391,19 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
         
         #print runBash("grep version "+str(input_geofile) )
         input_geofile = os.path.normpath(input_geofile)
-        if input_geo_format in ['abinit',]:
-            curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
+        
+        if not curv:
+            if input_geo_format in ['abinit',]:
+                curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
 
-        elif input_geo_format == 'vasp': 
-            curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+            elif input_geo_format == 'vasp':
+                try: 
+                    curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+                except:
+                    printlog('Error! Could not determine version of poscar file')
 
-        elif input_geo_format == 'cif': 
-            curv = int(os.path.basename(input_geofile).split('.')[0] )
+            elif input_geo_format == 'cif': 
+                curv = int(os.path.basename(input_geofile).split('.')[0] )
 
 
         if curv == curver:
@@ -418,7 +431,7 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
                 cl.read_geometry(input_geofile)
             
             elif input_geo_format == 'vasp':
-                cl.read_poscar(input_geofile)
+                cl.read_poscar(input_geofile, version = curver)
 
             elif input_geo_format == 'cif':
                 if header.project_conf.CIF2CELL:
@@ -441,6 +454,8 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
 
             
             else:
+                print_and_log("Error! File format is unknown")
+
                 raise RuntimeError
 
             
@@ -485,7 +500,7 @@ def inherit_ngkpt(it_to, it_from, inputset):
     return
 
 
-def choose_cluster(cluster_name):
+def choose_cluster(cluster_name, cluster_home):
     """
     *cluster_name* should be in header.project_conf.CLUSTERS dict
     """
@@ -502,13 +517,17 @@ def choose_cluster(cluster_name):
 
     header.cluster_address = clust['address']
     header.CLUSTER_ADDRESS = clust['address']
-    header.cluster_home    = clust['homepath']
+    if cluster_home is not None:
+        header.cluster_home    = cluster_home
+    else:
+        header.cluster_home    = clust['homepath']
+    
     header.CLUSTER_PYTHONPATH    = clust['pythonpath']
     # header.SCHEDULE_SYSTEM    = clust['schedule']
     header.schedule_system    = clust['schedule']
     header.CORENUM    = clust['corenum']
     header.corenum    = clust['corenum']
-    header.project_path_cluster = clust['homepath']+'/'+header.PATH2PROJECT
+    header.project_path_cluster = header.cluster_home+'/'+header.PATH2PROJECT
 
     return
 
@@ -525,7 +544,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
     mul_matrix = None,
     ngkpt = None,
-    cluster = None, override = None
+    cluster = None, cluster_home = None,
+    override = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -601,6 +621,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
 
 
+        - cluster_home - override value of header.CLUSTERS
+
     Comments:
         !Check To create folders and add calculations add_flag should have value 'add' 
 
@@ -614,7 +636,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     header.close_run = True
 
 
-    choose_cluster(cluster)
+    choose_cluster(cluster, cluster_home)
     
     if header.first_run:
         prepare_run()
@@ -817,7 +839,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 s.name = it_new+'.'+s.name
                 cl_temp.init = s
                 cl_temp.version = ver_new
-                cl_temp.path["input_geo"] = geo_folder + struct_des[it_new].sfolder + '/' + \
+                cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
                                             it_new+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'
 
                 cl_temp.write_siman_geo(geotype = "init", 
@@ -961,7 +983,11 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-
+    if it not in struct_des:
+        if not it_folder:
+            printlog('Error! Structure',it,'is not in struct_des, Please provide *itfolder*')
+        else:
+            add_des(struct_des, it, it_folder, 'auto add_des '  )
 
     """Main Loop by setlist and verlist"""
     fv = verlist[0]; #first version
@@ -978,9 +1004,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         else:
             if from_geoise:
                 from_geoise = from_geoise[0]+inputset[1:] #it is supposed that the difference can be only in first digit
-                input_folder = geo_folder+it+"/" + it+"."+from_geoise #+ "/" + "grainA_s" #geo used for fitted
+                input_folder = header.geo_folder+it+"/" + it+"."+from_geoise #+ "/" + "grainA_s" #geo used for fitted
             else: 
-                input_folder = geo_folder+struct_des[it].sfolder+"/"+it
+                input_folder = header.geo_folder+struct_des[it].sfolder+"/"+it
 
 
         prevcalcver = None #version of previous calculation in verlist
@@ -1216,8 +1242,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         if update in ['up1', 'up2', 'up3']:
             if not os.path.exists(calc[id].dir):
-                log.write( runBash("mkdir -p "+calc[id].dir) )         #Create directory if it does not exist
-                log.write( runBash("ssh "+calc[id].cluster_address+" ' mkdir -p "+calc[id].dir+" ' ") )
+                printlog( runBash("mkdir -p "+calc[id].dir) )         #Create directory if it does not exist
+                printlog( runBash("ssh "+calc[id].cluster_address+" ' mkdir -p "+calc[id].dir+" ' ") )
             
             if id[2] == first_version:
                 write_batch_header(batch_script_filename = batch_script_filename,
@@ -1499,7 +1525,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         section_folder = struct_des[it_new].sfolder
 
 
-    it_new_folder = geo_folder + section_folder + '/' + it_new
+    it_new_folder = header.geo_folder + section_folder + '/' + it_new
     new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
 
     makedir(new.path["input_geo"])
@@ -2985,7 +3011,7 @@ def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_id = Non
 
 
     """
-    with MPRester(pmgkey) as m:
+    with MPRester(header.pmgkey) as m:
         # print m.get_materials_id_references('mp-24850')
         # print m.get_structures('mp-24850')
         # mp_entries = m.get_entries_in_chemsys(["Co", "O"])

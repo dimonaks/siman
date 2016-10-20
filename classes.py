@@ -1,19 +1,30 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import, print_function
-import itertools, os, copy, math, glob, re
+import itertools, os, copy, math, glob, re, shutil
 
 #additional packages
-from tabulate import tabulate
+try:
+    from tabulate import tabulate
+except:
+    print('tabulate is not avail')
+try:
+    import pandas as pd
+except:
+    print('pandas is not avail')
+
+try:
+    import pymatgen
+except:
+    print('pymatgen is not avail')
+
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import pymatgen
+
 
 #siman packages
 import header
 from header import print_and_log as printlog
 from header import print_and_log, runBash, red_prec
-from header import (path_to_potentials, to_ang, log)
 from functions import (read_vectors, read_list, words, local_surrounding, 
     xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
     get_from_server, push_to_server, list2string)
@@ -646,7 +657,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def read_poscar(self, filename):
+    def read_poscar(self, filename, version = None):
         """Read POSCAR file
         """
         if self.path["input_geo"] == None:
@@ -658,29 +669,26 @@ class CalculationVasp(Calculation):
 
 
         #Determine version
-        self.version = None
-        try:
+        if version:
+            self.version = version
+        else:
             print_and_log('Trying to find version at the end of filename POSCAR-v ...')
-            ver = int(filename.split('-')[-1])
-            # print filename.split('-')[-1]
-            # print 'ver', ver
-            print_and_log('OK\n')
-
-        except:
             try:
-                print_and_log('\nTrying to find version at the begenning of filename v.POSCAR...')
-                ver = int(os.path.basename(filename).split('.')[0] )
+                ver = int(filename.split('-')[-1])
                 print_and_log('OK\n')
-            
+
             except:
-                raise RuntimeError    
+                print_and_log('\nTrying to find version at the begenning of filename v.POSCAR...')
 
-        # sys.exit()
+                try:
+                    ver = int(os.path.basename(filename).split('.')[0] )
+                    print_and_log('OK\n')
+               
+                except:
+                    print_and_log('No version, using 1\n')
+                    ver = 1
 
-        self.version = ver
-        # except:
-        #     pass
-        # print self.version, 'version'
+            self.version = ver
 
 
 
@@ -816,7 +824,7 @@ class CalculationVasp(Calculation):
         Attention: the order should be the same as in make_kpoints_file
         """
         struct_des = header.struct_des
-        to_ang_local = to_ang
+        to_ang_local = header.to_ang
         try:
             if "Ang" in self.len_units:
                 to_ang_local = 1
@@ -856,8 +864,12 @@ class CalculationVasp(Calculation):
             N = N_from_kspacing
             printlog('check_kpoints(): k-points are determined from kspacing',kspacing)
 
+        elif self.set.kpoints_file:
+            print_and_log("K-points file was provided", self.set.kpoints_file)
+            N = None
 
         else:
+            # print(self.dir)
             print_and_log("Error! check_kpoints(): no information about k-points\n")
 
 
@@ -941,7 +953,7 @@ class CalculationVasp(Calculation):
         # print zxred
         # print nznucl
         if not os.path.exists(path):
-            log.write( runBash("mkdir -p "+path) )
+            printlog( runBash("mkdir -p "+path) )
 
         elnames = [element_name_inv(z) for z in znucl]
 
@@ -1003,41 +1015,55 @@ class CalculationVasp(Calculation):
         path_to_potcar = self.dir+'/POTCAR'
         potcar_files   = ""
 
-        for z in self.init.znucl:
-            potcar_files += path_to_potentials+'/'+self.set.potdir[ int(z) ]+"/POTCAR "
+        if self.set.potdir:
+            for z in self.init.znucl:
+                potcar_files += header.path_to_potentials+'/'+self.set.potdir[ int(z) ]+"/POTCAR "
 
-        runBash("cat "+potcar_files+" >"+path_to_potcar)
+            runBash("cat "+potcar_files+" >"+path_to_potcar)
 
-        print_and_log( "POTCAR files: "+potcar_files+"\n")        
+            print_and_log( "POTCAR files: "+potcar_files+"\n")        
+        elif self.set.path_to_potcar:
+            printlog('Attention! set.path_to_potcar is used !', self.set.path_to_potcar)
+            shutil.copyfile(self.set.path_to_potcar, path_to_potcar)
+            printlog('POTCAR was copied to', path_to_potcar)
+            path_to_potcar = self.set.path_to_potcar
+
+        else:
+            printlog('Attention! set.potdir dictionary is empy; POTCAR was not created!')
+            path_to_potcar = None
+        
         return path_to_potcar
 
 
-    def calculate_nbands(self, curset):
+    def calculate_nbands(self, curset, path_to_potcar = None):
         """Should be run after add_potcar()"""
         #1 add additional information to set
         if not curset:
             curset = self.set
         vp = curset.vasp_params
 
+        if path_to_potcar:
+            # path_to_potcar = self.dir+'/POTCAR'
+            self.init.zval = []
+            # print path_to_potcar
+            for line in open(path_to_potcar,'r'):
+                if "ZVAL" in line:
+                    # print line
+                    self.init.zval.append(float(line.split()[5]))
+            
+            try: curset.add_nbands
+            except AttributeError: curset.add_nbands = None
 
-        path_to_potcar = self.dir+'/POTCAR'
-        self.init.zval = []
-        # print path_to_potcar
-        for line in open(path_to_potcar,'r'):
-            if "ZVAL" in line:
-                # print line
-                self.init.zval.append(float(line.split()[5]))
-        
-        try: curset.add_nbands
-        except AttributeError: curset.add_nbands = None
+            if curset.add_nbands != None:
+                tve =0
+                for i in range(self.init.ntypat):
+                    # print self.init.zval
+                    tve += self.init.zval[i] * self.init.nznucl[i]
+                self.nbands = int ( round ( math.ceil(tve / 2.) * curset.add_nbands ) )
+                vp['NBANDS'] = self.nbands
+        else:
+            printlog('Attention! No path_to_potcar! skipping NBANDS calculation')
 
-        if curset.add_nbands != None:
-            tve =0
-            for i in range(self.init.ntypat):
-                # print self.init.zval
-                tve += self.init.zval[i] * self.init.nznucl[i]
-            self.nbands = int ( round ( math.ceil(tve / 2.) * curset.add_nbands ) )
-            vp['NBANDS'] = self.nbands
         return
 
 
@@ -1054,28 +1080,35 @@ class CalculationVasp(Calculation):
             curset = self.set
         vp = curset.vasp_params
 
+        # print(['LDAU'])
+        # print(vp)
+        # print(vp['LDAU'])
 
+        if 'LDAU' in vp and vp['LDAU']: 
+            # print(vp['LDAU'])
 
-        if 'LDAU' in vp and vp['LDAU']:        
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
                 # print( vp[key])
-                if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
-                    print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
-                    # raise RuntimeError
+                try:
+                    if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
+                        print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
+                        # raise RuntimeError
 
-                new = []
-                for el in el_list:
-                    if el in vp[key]:
-                        val = vp[key][el]
-                    else:
-                        if key == 'LDAUL':
-                            val = -1
+                    new = []
+                    for el in el_list:
+                        if el in vp[key]:
+                            val = vp[key][el]
                         else:
-                            val =  0
+                            if key == 'LDAUL':
+                                val = -1
+                            else:
+                                val =  0
 
-                    new.append(val)
-                vp[key] = new
-
+                        new.append(val)
+                    vp[key] = new
+                except AttributeError:
+                    printlog('LDAU* were not processed')
+                    pass
 
         """Process magnetic moments"""
 
@@ -1181,8 +1214,8 @@ class CalculationVasp(Calculation):
         elif 'MAGMOM' in vp and vp['MAGMOM']: #just add * to magmom tag if it is provided without it
             print_and_log('Magnetic moments from vasp_params["MAGMOM"] are used\n')
             
-            if "*" not in vp['MAGMOM']:
-                vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
+            # if "*" not in vp['MAGMOM']:
+            #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
         
 
 
@@ -1326,6 +1359,7 @@ class CalculationVasp(Calculation):
                 print_and_log( "KPOINTS was generated\n")
             
             else:
+                # print()
                 shutil.copyfile(self.set.kpoints_file, self.dir+"KPOINTS")
                 print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
 
@@ -1364,8 +1398,13 @@ class CalculationVasp(Calculation):
             print_and_log("Files to copy: "+string_of_paths+"\n")
 
             # temp_dir = os.path.dirname(project_path_cluster+self.dir)
-            runBash('ssh '+ header.cluster_address+' "mkdir -p '+header.project_path_cluster+self.dir+'"') #create directory
-            log.write( runBash("rsync -zave ssh "+string_of_paths+" "+header.cluster_address+":"+header.project_path_cluster+self.dir)+"\n" )
+            # print('self.dir',self.dir)
+            runBash('ssh '+ self.cluster_address+' "mkdir -p '+self.project_path_cluster+self.dir+'"') #create directory
+            # printlog( runBash("rsync -zave ssh "+string_of_paths+" "+self.cluster_address+":"+self.project_path_cluster+self.dir)+"\n" )
+        
+            push_to_server(string_of_paths,  self.project_path_cluster+self.dir, self.cluster_address)
+
+
         #print "End make---------------------------------------------\n\n"
         return
 
@@ -1516,7 +1555,7 @@ class CalculationVasp(Calculation):
                 if "v" in savefile: # v means visualization chgcar
                     chg  = pre + '.CHG'
                     f.write("mv CHG "+chg+"\n")
-                    f.write("gzip "+chg+"\n")
+                    f.write("gzip -f "+chg+"\n")
                 
                 if 'c' in savefile: # 
                     fln = 'CHGCAR'
@@ -1541,7 +1580,12 @@ class CalculationVasp(Calculation):
                     f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
                
                 if 'w' in savefile:
-                    f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
+                    fln = 'WAVECAR'
+                    wavecar  = pre +'.'+fln
+                    # f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
+                    f.write('mv '+fln+' '+wavecar+'\n') #
+                    f.write('gzip -f '+wavecar+'\n')  
+                    rm_chg_wav = rm_chg_wav.replace('w','')
                 # else:
                 #     f.write("rm WAVECAR\n")
 
@@ -1701,11 +1745,16 @@ class CalculationVasp(Calculation):
                 
                 if final_analysis_flag:
                     rm_chg_wav = 'w' #The wavcar is removed for the sake of harddrive space
+                
                 else:
                     rm_chg_wav = ''
 
+                if self.set.save_last_wave:
+                    # rm_chg_wav = ''
+                    save_last = 'vw'
 
-                mv_files_according_versions(savefile = 'v', v=v, name_mod = name_mod, rm_chg_wav = rm_chg_wav) #save more files for last U
+
+                mv_files_according_versions(savefile = save_last, v=v, name_mod = name_mod, rm_chg_wav = rm_chg_wav) #save more files for last U
                 
 
                 analysis_script(write = write)
@@ -2040,14 +2089,14 @@ class CalculationVasp(Calculation):
 
 
         self.state = "2. Ready for start"
-        log.write("\nRun file created\n")     
+        printlog("\nRun file created\n")     
         return
 
 
 
     def calc_kspacings(self,ngkpt = []):
         """Calculates reciprocal vectors and kspacing from ngkpt"""
-        to_ang_local = to_ang
+        to_ang_local = header.to_ang
         try:
             if "Ang" in self.len_units:
                 to_ang_local = 1
@@ -2223,7 +2272,7 @@ class CalculationVasp(Calculation):
                 pass
 
             with open(path_to_outcar, 'r') as outcar:
-                log.write("Start reading from "+ path_to_outcar+" \n")
+                printlog("Start reading from "+ path_to_outcar+" \n")
                 outcarlines = outcar.readlines()
 
             re_lengths = re.compile("length of vectors")
@@ -2834,10 +2883,12 @@ class CalculationVasp(Calculation):
 
 
                 print ('first step ', tot_mag_by_atoms[0][numb].round(3) )
+                # print ('first step all ', tot_mag_by_atoms[0][ifmaglist].round(3) )
                 # for mag in tot_mag_by_atoms:
                 #     print ('  -', mag[numb].round(3) )
 
                 print ('last  step ', tot_mag_by_atoms[-1][numb].round(3) )
+                # print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
 
                     # sys.exit()
                 if len(alkali_ions) > 0:
@@ -2892,7 +2943,7 @@ class CalculationVasp(Calculation):
             # sys.exit()
 
 
-            log.write("Reading of results completed\n\n")
+            printlog("Reading of results completed\n\n")
             
             if   out_type == 'gbe'  : outst = outst_gbe
             elif out_type == 'e_imp': outst = outst_imp
@@ -2930,7 +2981,7 @@ class CalculationVasp(Calculation):
         # print(path_to_chg)
         # if not os.path.exists(path_to_chg): 
         #     print_and_log( 'Charge file is downloading')
-        #     log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
+        #     printlog( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
         #     print_and_log( path_to_chg, 'was downloaded')
         out = get_from_server(path_to_chg, self.dir, self.cluster_address)
 
@@ -2946,7 +2997,7 @@ class CalculationVasp(Calculation):
         # filename - standart Vasp file name
         path_to_file = self.dir+str(self.version)+"."+filename
         if not os.path.exists(path_to_file): 
-            log.write( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_file+" "+self.dir)+'\n' ) #CHG
+            printlog( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_file+" "+self.dir)+'\n' ) #CHG
             print_and_log( path_to_file, 'was downloaded')
             
         return path_to_file
@@ -2971,11 +3022,11 @@ class CalculationVasp(Calculation):
         
         if runBash("ssh "+self.cluster_address+" '[ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ;' """): #true if file not exists
             print_and_log(  CHGCAR_sum, "not exist. try to calculate it ", imp = 'Y')
-            log.write( runBash("ssh "+self.cluster_address+" '"+command1+"'")+'\n' ) 
+            printlog( runBash("ssh "+self.cluster_address+" '"+command1+"'")+'\n' ) 
         
         if runBash("ssh "+self.cluster_address+" '[ -e "+   baderlog       +""" ] || echo "NO"     ;' """): #true if file not exists
             print_and_log(  baderlog, "not exist. try to calculate Bader ", imp = 'Y')
-            log.write( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n' ) 
+            printlog( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n' ) 
         ACF = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
         # print ACF
         ACF = ACF.splitlines()[2:] #list of lines with charges for each atom

@@ -25,14 +25,9 @@ from math import exp
 import optparse
 import re
 import colorsys
-import pandas as pd
-import matplotlib.pyplot as plt
+# import pandas as pd
 import matplotlib as mpl
-import matplotlib.gridspec as gridspec
 import scipy
-
-
-plt.rcParams['mathtext.fontset'] = "stix"
 
 
 """Global matplotlib control"""
@@ -47,7 +42,6 @@ mpl.rc('font',family='Serif')
 # mpl.rc('legend', fontsize= size) 
 # mpl.rc('Axes.annotate', fontsize= size) #does not work
 mpl.rcParams.update({'font.size': size})
-# mpl.use('agg') #switch matplotlib on or off; for running script using ssh
 
 
 
@@ -61,14 +55,26 @@ TODO
 sys.path.append('/home/dim/Simulation_wrapper/ase') #
 
 # sys.path.append('../../Simulation_wrapper/')
+
+history = []
+
 try:
     from project_conf import *
     import project_conf
     siman_run = True
 
 except:
-    print_and_log('Some module is used separatly')
+    print('Some module is used separately; default_project_conf.py is used')
     siman_run = False
+    from default_project_conf import *
+    history.append('separate run')
+    mpl.use('agg') #switch matplotlib on or off; for running script using ssh
+
+import matplotlib.pyplot as plt
+plt.rcParams['mathtext.fontset'] = "stix"
+# import matplotlib.gridspec as gridspec
+
+
 
 # print 'header, geo_folder = ', geo_folder
 
@@ -81,7 +87,6 @@ conv = {};
 varset = {};
 
 struct_des = {};
-history = []
 
 if siman_run:
     log = open('log','a')
@@ -148,8 +153,8 @@ def print_and_log(*logstrings, **argdic):
         else:
             print (mystring,  end = "")
 
-
-    log.write(mystring)
+    if siman_run:
+        log.write(mystring)
     
     if 'Error!' in mystring:
         print ('Error! keyword was detected in message; invoking RuntimeError ')
@@ -175,10 +180,15 @@ Need: import subprocess
     # my_env["PATH"] = "/opt/local/bin:/opt/local/sbin:" + my_env["PATH"]
     p = subprocess.Popen(cmd, executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr = subprocess.STDOUT, env = my_env)
     out = p.stdout.read().strip()
-    # print cmd
+    # print (cmd)
     # print 'Bash output is\n'+out
     # print ( str(out, 'utf-8') ) 
-    return str(out, 'utf-8')  #This is the stdout from the shell command
+    try:
+        out = str(out, 'utf-8')
+    except:
+        pass
+
+    return out  #This is the stdout from the shell command
 
 
 
