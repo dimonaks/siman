@@ -1,9 +1,11 @@
 from __future__ import division, unicode_literals, absolute_import 
-import os, tempfile
+import os, tempfile, copy
 import numpy as np
+from operator import itemgetter
 
 
 import header
+from header import print_and_log, runBash
 from small_functions import is_list_like, is_string_like
 # from classes import res_loop
 # from header import *

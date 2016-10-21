@@ -58,15 +58,6 @@ mv CHG 1.10.CHG
 gzip -f 1.10.CHG
 cp 1.10.CONTCAR POSCAR  #sequence_set: preparation of input geo for next set
 
-#sequence set: A 
-cp A.INCAR  INCAR
-#Basic run:
-prun /opt/vasp/bin/vasp5.4.1MPI >incar.batch.1.log
-sleep 20
-mv OUTCAR 1.OUTCAR
-mv CONTCAR 1.CONTCAR
-mv CHG 1.CHG
-gzip -f 1.CHG
 
 #Footer section: 
 rm RUNNING

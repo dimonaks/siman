@@ -2826,7 +2826,7 @@ class CalculationVasp(Calculation):
             outst_gbe = voro+etot+               d+vol+d+kspacing+d+strs+d+eprs+d+nat+d+time+d+Nmd+d+War+d+nsg+"\\\\" # For comparing gb energies and volume
             outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
             
-            outst_cathode = d.join([etot, lens, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
+            outst_cathode = d.join([etot, lens, nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
             # print self.end.xred[-1]
             #print outstring_kp_ec
             # print show
@@ -2882,14 +2882,15 @@ class CalculationVasp(Calculation):
                 else:
                     numb = ifmaglist # if no alk ions show for all mag atoms
 
-            if 'mag' in show:
+            if 'mag' in show and tot_mag_by_atoms:
                 print ('\n\n\n')
                 # print_and_log
                 # print 'Final mag moments for atoms:'
                 # print np.arange(self.end.natom)[ifmaglist]+1
                 # print np.array(tot_mag_by_atoms)
 
-
+                # print (tot_mag_by_atoms)
+                # if tot_mag_by_atoms:
                 print ('first step ', tot_mag_by_atoms[0][numb].round(3) )
                 # print ('first step all ', tot_mag_by_atoms[0][ifmaglist].round(3) )
                 # for mag in tot_mag_by_atoms:

@@ -131,11 +131,11 @@ print ('diff between new volume and target volume', np.dot( st.rprimd[0], np.cro
 with  open('100.POSCAR', 'w') as f:
     f.write('scaled to fitted using '+st.name+' '+st.filename+' :fit_tool.py\n')
 
-    f.write("{:18.15f}\n".format(1.0))
+    f.write("{0:18.15f}\n".format(1.0))
     
 
     for i in 0, 1, 2:
-        f.write('{:10.6f} {:10.6f} {:10.6f}\n'.format(st.rprimd[i][0], st.rprimd[i][1], st.rprimd[i][2] ) )
+        f.write('{0:10.6f} {1:10.6f} {2:10.6f}\n'.format(st.rprimd[i][0], st.rprimd[i][1], st.rprimd[i][2] ) )
 
     for n in st.nznucl:    
         f.write(str(n)+' ')
@@ -145,4 +145,4 @@ with  open('100.POSCAR', 'w') as f:
     f.write('Direct\n')
 
     for x in st.xred:
-        f.write("  {:18.16f}  {:18.16f}  {:18.16f}\n".format(x[0], x[1], x[2]) )
+        f.write("  {0:18.16f}  {1:18.16f}  {2:18.16f}\n".format(x[0], x[1], x[2]) )
