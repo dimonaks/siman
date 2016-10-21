@@ -1632,8 +1632,8 @@ class CalculationVasp(Calculation):
             parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
         
         elif schedule_system == 'SLURM':
-            parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI"
-            parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI_aksenov"
+            # parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI"
+            parrallel_run_command = header.vasp_command
         else:
             raise RuntimeError
 
@@ -1983,8 +1983,9 @@ class CalculationVasp(Calculation):
 
 
             #clean at the end
-            if final_analysis_flag:
-                f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+            if final_analysis_flag: 
+                if header.final_vasp_clean:
+                    f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
                 f.write('rm RUNNING\n')
 
 

@@ -16,7 +16,8 @@ CLUSTERS['cee'] = {'address':'aksenov@10.30.16.62',
 'homepath':'/home/aksenov/',
 'schedule':'SLURM',
 'corenum':16,
-'pythonpath':'/usr/lib64/python2.7/site-packages/numpy'
+'pythonpath':'/usr/lib64/python2.7/site-packages/numpy',
+'vasp_com':'prun /opt/vasp/bin/vasp5.4.1MPI',
 }
 
 CLUSTERS['skol'] = {'address':'Dmitry.Aksenov@10.30.17.10',

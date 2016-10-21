@@ -63,13 +63,29 @@ for incar in incars:
     s.read_incar(incar)
     sets.append(s)
     # s.printme()
+def to_int(s):
+    try:
+        ise = int(s.ise)
+    except:
+        ise = s.ise
+        print('Attention! non-integer prefix of Incar')
+    return ise
+
+
+sets = sorted(sets, key = to_int)
+print('Order of INCARS:')
+for s in sets:
+    print(s.ise)
+
 
 start_set = sets[0]
+start_set.remove_last_wave = False
 start_set.kpoints_file = kpoint
 start_set.set_sequence = sets[1:]
 header.varset['batch'] = start_set
 
-
+header.final_vasp_clean = False
+header.warnings = False
 header.copy_to_cluster_flag = False
 add_loop('incar', 'batch', 1, input_geo_file = poscar, it_folder = vaspfolder, cluster_home = '' )
 

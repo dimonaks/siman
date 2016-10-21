@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import division, unicode_literals, absolute_import, print_function
+
 """
 Siman - management of VASP calculations
 Author: Aksyonov D.A.
@@ -8,26 +10,22 @@ TODO:
 
 """
 
-from __future__ import unicode_literals
-# absolute_import 
-from __future__ import print_function
-import os, subprocess
-import math
-import numpy as np
-import copy
-import datetime
-import shutil
-import traceback
-import glob
-from operator import itemgetter
-import sys
-from math import exp
-import optparse
-import re
-import colorsys
+import os, subprocess, sys
+# import numpy as np
+# import copy
+# import datetime
+# import shutil
+# import traceback
+# import glob
+# from operator import itemgetter
+# import sys
+# from math import exp
+# import optparse
+# import re
+# import colorsys
 # import pandas as pd
 import matplotlib as mpl
-import scipy
+# import scipy
 
 
 """Global matplotlib control"""
@@ -80,6 +78,7 @@ plt.rcParams['mathtext.fontset'] = "stix"
 
 
 #Global variables
+final_vasp_clean     = True 
 copy_to_cluster_flag = True
 close_run = False # alows to control close run file automatically after each add_loop
 first_run = True  # needed to write header of run script

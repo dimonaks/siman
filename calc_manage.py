@@ -96,18 +96,21 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
             f.write("#SBATCH --mem-per-cpu=7675\n")
-            f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
-            f.write("#SBATCH --mail-type=END\n")
+
             # f.write("#SBATCH --nodelist=node-amg03\n")
-            f.write("#SBATCH --exclude=node-amg13\n")
+            if header.siman_run: #only for me
+                f.write("#SBATCH --exclude=node-amg13\n")
+                # f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
+                # f.write("#SBATCH --mail-type=END\n")
             f.write("cd "+path_to_job+"\n")
             f.write("export OMP_NUM_THREADS=1\n")
 
             f.write("module add prun/1.0\n")
             f.write("module add intel/16.0.2.181\n")
             f.write("module add impi/5.1.3.181\n")
-            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
-            f.write("export PATH=$PATH:~/tools\n")
+            if header.siman_run: #only for me
+                f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
+                f.write("export PATH=$PATH:~/tools\n")
             f.write("touch RUNNING\n")
 
 
@@ -348,6 +351,7 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
         print_and_log("You provided the following geo file explicitly ",str(geofilelist), 
             'version of file does not matter, I use *curver*',curver, 'as a new version' )
         curv = curver #
+        
         if not input_geo_format:
             if 'POSCAR' in input_geo_file:
                 input_geo_format = 'vasp'
@@ -391,8 +395,8 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
         
         #print runBash("grep version "+str(input_geofile) )
         input_geofile = os.path.normpath(input_geofile)
-        
-        if not curv:
+        # print(curv)
+        if curv is None:
             if input_geo_format in ['abinit',]:
                 curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
 
@@ -461,7 +465,11 @@ def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, 
             
 
             break
+        curv = None
     
+
+
+
     if cl and cl.path["input_geo"] == None: 
         print_and_log("Error! Could not find geofile in this list: "+ str(geofilelist)+  "\n")
         raise NameError #
@@ -528,6 +536,11 @@ def choose_cluster(cluster_name, cluster_home):
     header.CORENUM    = clust['corenum']
     header.corenum    = clust['corenum']
     header.project_path_cluster = header.cluster_home+'/'+header.PATH2PROJECT
+    try:
+        header.vasp_command = clust['vasp_com']
+    except:
+        header.vasp_command = None
+
 
     return
 
@@ -638,7 +651,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
     choose_cluster(cluster, cluster_home)
     
-    if header.first_run:
+    if header.first_run and header.copy_to_cluster_flag:
         prepare_run()
         header.first_run = False
 

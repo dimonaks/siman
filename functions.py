@@ -1,10 +1,12 @@
 from __future__ import division, unicode_literals, absolute_import 
-import tempfile
+import os, tempfile
+import numpy as np
 
+
+import header
 from small_functions import is_list_like, is_string_like
 # from classes import res_loop
-import header
-from header import *
+# from header import *
 
 
 
