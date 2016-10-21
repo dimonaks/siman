@@ -305,11 +305,12 @@ class InputSet():
 
     def read_incar(self, filename):
         with open(filename, 'r') as f:
-            # lines = f.readlines()
-            for l in f:
+            fil = f.read()
+            fil = fil.replace(';','\n').splitlines()
+            for l in fil:
                 if '=' in l:
                     (token, value) = l.split('=')
-                    value = value.split(';')[0]
+                    value = value.strip()
                     try:
                         if '.' in value:
                             value = float(value)

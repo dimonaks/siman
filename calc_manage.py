@@ -1332,10 +1332,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 list_to_copy.extend( cl.make_incar() )
                 
                 list_to_copy.extend( cl.make_kpoints_file() )
-                
-                cl.copy_to_cluster(list_to_copy, update)
+               
+                if header.copy_to_cluster_flag: 
+                    cl.copy_to_cluster(list_to_copy, update)
 
-                calc[id].make_run(schedule_system = schedule_system)
+                    calc[id].make_run(schedule_system = schedule_system)
 
 
 

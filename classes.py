@@ -1258,7 +1258,13 @@ class CalculationVasp(Calculation):
             
 
             with open(incar_filename,'w') as f:
-                f.write( 'SYSTEM = %s\n\n'%(self.des) )
+                if 'SYSTEM' in vp and vp['SYSTEM']:
+                    # print(vp['SYSTEM'])
+                    f.write('SYSTEM = '+str(vp['SYSTEM'])+'\n')
+                    vp['SYSTEM'] = None
+                else:
+                    f.write( 'SYSTEM = %s\n\n'%(self.des) )
+
                 for key in sorted(vp):
 
                     if key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
@@ -1750,8 +1756,9 @@ class CalculationVasp(Calculation):
                     rm_chg_wav = ''
 
                 if self.set.save_last_wave:
-                    # rm_chg_wav = ''
                     save_last = 'vw'
+                else:
+                    save_last = 'v'
 
 
                 mv_files_according_versions(savefile = save_last, v=v, name_mod = name_mod, rm_chg_wav = rm_chg_wav) #save more files for last U
