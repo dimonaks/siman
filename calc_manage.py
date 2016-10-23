@@ -1167,7 +1167,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     struct_des = header.struct_des
 
 
-    id = (structure_name,inputset,version)
+    id = (structure_name, inputset, version)
+    id_first = (structure_name, inputset, first_version)
+
 
     cl_prev = None
 
@@ -1327,10 +1329,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-            if id[2] == first_version:
-                calc[id].add_potcar()
+            if id == id_first:
+                path_to_potcar = calc[id].add_potcar()
             for curset in setlist:
-                calc[id].calculate_nbands(curset)
+                calc[id].calculate_nbands(curset, calc[id_first].path['potcar'])
 
 
 
@@ -2159,7 +2161,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                     # if '2' in cl.state:
                     #     ''
                     # else:
-                    cl.state = '5. Some fault most probably '+cl.state
+                    cl.state = '5. Some fault most probably '#+cl.state
 
                 # sys.exit()
 
@@ -2292,8 +2294,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         """Aditional analysis, plotting"""
         results_dic = {} #if some part fill this list it will be returned instead of final_outstring
 
-        if '4' not in calc[id].state:
-            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return Errors expected')
+        if id not in calc or '4' not in calc[id].state:
+            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []')
             return {}, []
         
 
@@ -2542,19 +2544,19 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 return {}, []
 
 
-            #normalize numbers of atoms by some element except Li and Na 
+            #normalize numbers of atoms by some element except Li, Na, K
             iLi = None; jLi = None
             # print cl.end.znucl
             for i, z in enumerate(cl.end.znucl):
                 # print i, z
-                if z in [3, 11]: 
+                if z in [3, 11, 19]: 
                     iLi = i
                     # print 'iLi is found'
                     continue
                 # print i, z
 
                 for j, zb in enumerate(bcl.end.znucl):
-                    if zb in [3, 11]: 
+                    if zb in [3, 11, 19]: 
                         jLi = j
                         continue
 
@@ -2590,7 +2592,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             redox = -(  ( cl.energy_sigma0 / n - bcl.energy_sigma0 / bn ) * mul  -  energy_ref  )
 
+            dV = cl.end.vol / n - bcl.end.vol / bn 
 
+            vol_red = dV / (cl.end.vol/n) * 100 # %
 
             final_outstring = ("{:} | {:.2f} eV \n".format(id[0]+'.'+id[1], redox  ))
             
@@ -2599,7 +2603,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             results_dic = {'is':id[0], 'redox_pot':redox, 'id_is':id, 'id_ds':b_id, 
             'kspacing':cl.set.vasp_params['KSPACING'], 'time':cl.time/3600.,
             'mdstep':cl.mdstep, 'ecut':cl.set.vasp_params['ENCUT'], 'niter':cl.iterat/cl.mdstep,
-            'set_is':id[1] }
+            'set_is':id[1], 'vol_red':vol_red }
 
 
 

@@ -10,7 +10,7 @@ TODO:
 
 """
 
-import os, subprocess, sys
+import os, subprocess, sys, shelve
 # import numpy as np
 # import copy
 # import datetime
@@ -83,6 +83,21 @@ copy_to_cluster_flag = True
 close_run = False # alows to control close run file automatically after each add_loop
 first_run = True  # needed to write header of run script
 calc = {};
+
+class CalcDict(dict):
+    def __getitem__(self, key):
+        # val = dict.__getitem__(self, key)
+        # print 'GET', key
+        databasefile3 = 'only_calc.gdbm3'
+        d = shelve.open(databasefile3, protocol = 3)
+        val = d[str(key)]
+        d.close()
+
+        return val
+
+
+calc2 = CalcDict()
+
 conv = {};
 varset = {};
 
@@ -164,7 +179,7 @@ def print_and_log(*logstrings, **argdic):
 
     return
 
-
+printlog = print_and_log
 
 
 

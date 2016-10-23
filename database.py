@@ -55,7 +55,8 @@ def read_database(scratch = False):
 
 
     try:
-        calc              = d[calc_key]; 
+        # calc              = d[calc_key]; 
+        calc              = {}; 
         conv              = d[conv_key]; 
         varset            = d[varset_key]; 
         header.history    = d[history_key]
@@ -160,6 +161,13 @@ def write_database(calc, conv, varset, size_on_start = None):
         d[history_key]    = header.history
         d[struct_des_key] = header.struct_des 
         d.close()   
+
+
+        d = shelve.Shelf(dbm.open('only_calc.gdbm3', 'n'), protocol = 3)
+        for key in calc:
+            d[str(key)] = calc[key]
+        d.close()
+
 
 
     log.write("\nEnd of work at "+str(datetime.datetime.now())+'\n')

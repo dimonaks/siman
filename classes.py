@@ -1029,9 +1029,11 @@ class CalculationVasp(Calculation):
             path_to_potcar = self.set.path_to_potcar
 
         else:
-            printlog('Attention! set.potdir dictionary is empy; POTCAR was not created!')
+            printlog('Attention! set.potdir dictionary is empty; POTCAR was not created!')
             path_to_potcar = None
         
+        self.path['potcar'] = path_to_potcar
+
         return path_to_potcar
 
 
@@ -1971,11 +1973,11 @@ class CalculationVasp(Calculation):
                 if 'u_ramping' in self.calc_method:
                     
 
-                    contcar_file = u_ramp_loop(ver_prefix = '100.', run_name_prefix = self.name+'.fitted')
+                    contcar_file = u_ramp_loop(ver_prefix = '100.', run_name_prefix = self.id[0]+'.fitted', set_mod = set_mod)
 
                 else:
 
-                    run_command(option = option, name = self.id[0]+'.'+self.id[1]+'.100'+name_mod, 
+                    run_command(option = option, name = self.id[0]+'.'+self.id[1]+'.100'+name_mod+'.fitted', 
                         parrallel_run_command = parrallel_run_command, write = True)
                     contcar_file = mv_files_according_versions('vo', '100', name_mod = name_mod, write = True, rm_chg_wav = 'w')
 
@@ -2280,7 +2282,10 @@ class CalculationVasp(Calculation):
                 pass
 
             with open(path_to_outcar, 'r') as outcar:
-                printlog("Start reading from "+ path_to_outcar+" \n")
+                
+                printlog("Start reading from "+ path_to_outcar, imp = 'n')
+                
+
                 outcarlines = outcar.readlines()
 
             re_lengths = re.compile("length of vectors")
@@ -2826,7 +2831,7 @@ class CalculationVasp(Calculation):
             outst_gbe = voro+etot+               d+vol+d+kspacing+d+strs+d+eprs+d+nat+d+time+d+Nmd+d+War+d+nsg+"\\\\" # For comparing gb energies and volume
             outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
             
-            outst_cathode = d.join([etot, lens, nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
+            outst_cathode = d.join([etot, lens, vol,nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
             # print self.end.xred[-1]
             #print outstring_kp_ec
             # print show
@@ -2952,7 +2957,7 @@ class CalculationVasp(Calculation):
             # sys.exit()
 
 
-            printlog("Reading of results completed\n\n")
+            printlog("Reading of results completed\n\n", imp = 'n')
             
             if   out_type == 'gbe'  : outst = outst_gbe
             elif out_type == 'e_imp': outst = outst_imp
