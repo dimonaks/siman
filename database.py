@@ -56,7 +56,7 @@ def read_database(scratch = False):
 
     try:
         # calc              = d[calc_key]; 
-        calc              = {}; 
+        # calc              = {}; 
         conv              = d[conv_key]; 
         varset            = d[varset_key]; 
         header.history    = d[history_key]
@@ -64,9 +64,9 @@ def read_database(scratch = False):
 
     except KeyError: 
         
-        try: calc = d[calc_key] #dictionary of calculations
-        except KeyError:
-            log.write( "There is no database of calculations. I create new"); calc = {}
+        # try: calc = d[calc_key] #dictionary of calculations
+        # except KeyError:
+        #     log.write( "There is no database of calculations. I create new"); calc = {}
         
 
 
@@ -97,7 +97,7 @@ def read_database(scratch = False):
     d.close()
     #print history
 
-    return calc, conv, varset, sys.getsizeof(d)
+    return conv, varset, sys.getsizeof(d)
 
 
 def write_database(calc, conv, varset, size_on_start = None):
@@ -155,19 +155,19 @@ def write_database(calc, conv, varset, size_on_start = None):
         # d.close()        
 
         d = shelve.Shelf(dbm.open(databasefile3, 'n'), protocol = 3) #Write dbm database for python3
-        d[calc_key]       = calc
+        # d[calc_key]       = calc
         d[conv_key]       = conv
         d[varset_key]     = varset
         d[history_key]    = header.history
         d[struct_des_key] = header.struct_des 
         d.close()   
 
-
-        d = shelve.Shelf(dbm.open('only_calc.gdbm3', 'n'), protocol = 3)
-        for key in calc:
-            d[str(key)] = calc[key]
-        d.close()
-
+        with shelve.Shelf(dbm.open(header.calc_database, 'w'), protocol = 3) as d:
+            for key in calc:
+                d[str(key)] = calc[key]
+        
+        # with dbm.open(header.calc_database, 'w') as d:
+        #     d.reorganize()
 
 
     log.write("\nEnd of work at "+str(datetime.datetime.now())+'\n')

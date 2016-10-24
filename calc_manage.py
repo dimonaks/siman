@@ -99,7 +99,8 @@ def write_batch_header(batch_script_filename = None,
 
             # f.write("#SBATCH --nodelist=node-amg03\n")
             if header.siman_run: #only for me
-                f.write("#SBATCH --exclude=node-amg13\n")
+                if header.EXCLUDE_NODES:
+                    f.write("#SBATCH --exclude=node-amg13\n")
                 # f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
                 # f.write("#SBATCH --mail-type=END\n")
             f.write("cd "+path_to_job+"\n")
@@ -1124,7 +1125,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         calc[fitted_v100_id].path["output"] = cl.path["output"].replace('/1.', '/100.')
         
-        calc[fitted_v100_id].associated_outcars = [out.replace('1.', '100.') for out in cl.associated_outcars]
+        calc[fitted_v100_id].associated_outcars = [out.replace('1.', '100.', 1) for out in cl.associated_outcars]
 
 
         # print (fitted_v100_id, calc[fitted_v100_id].associated_outcars)
@@ -1340,7 +1341,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 list_to_copy = []
                 
                 calc[id].write_sge_script(mode = 'footer', schedule_system = schedule_system, option = inherit_option, 
-                    output_files_names = output_files_names, batch_script_filename = batch_script_filename )
+                    output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )
                 
                 runBash('chmod +x '+batch_script_filename)
 
@@ -1940,7 +1941,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
 
-def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_type = 'no', b_id = (), 
+def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_type = 'no', b_id = None, 
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None,
@@ -2062,19 +2063,23 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
     emin = 0
-    if len(b_id) == 3: # for all cases besides e_seg and coseg for wich b_id is determined every iteration
-        # print "Start to read ", b_id
-        # if '4' not in calc[b_id].state:
-        if readfiles:
-            calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
-        
-        e_b = 1e10; v_b = 1e10
-        if '4' in calc[b_id].state:
-            e_b = calc[b_id].energy_sigma0
-            v_b = calc[b_id].end.vol
+    if b_id:
+        if b_id in calc:
+            if len(b_id) == 3: # for all cases besides e_seg and coseg for wich b_id is determined every iteration
+                # print "Start to read ", b_id
+                # if '4' not in calc[b_id].state:
+                if readfiles:
+                    calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
+                
+                e_b = 1e10; v_b = 1e10
+                if '4' in calc[b_id].state:
+                    e_b = calc[b_id].energy_sigma0
+                    v_b = calc[b_id].end.vol
+                else:
+                    print_and_log('Warning! Calculation ',b_id, 'was not finished; please check, now skipping ...', important = 'y')
         else:
-            print_and_log('Warning! Calculation ',b_id, 'was not finished; please check, now skipping ...', important = 'y')
-
+            printlog('res_loop(): b_id', b_id, 'does not exist. return {} []')
+            return {}, []
 
     #define reference values
     e1_r = 0
@@ -2709,6 +2714,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             atom_pos     = []
             for v in vlist:
                 cli = calc[cl.id[0], cl.id[1], v]
+                if '4' not in cli.state:
+                    printlog('res_loop(): Calc',cli.id,'is not finished; return')
+                    return {}, []
                 # print cli.id
                 # cli.end = return_to_cell(cli.end)
                 # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy - not very good, sometimes unconverged energy could be lower! 

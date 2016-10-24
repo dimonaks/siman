@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import, print_function
-import itertools, os, copy, math, glob, re, shutil
+import itertools, os, copy, math, glob, re, shutil, sys
 
 #additional packages
 try:
@@ -1438,6 +1438,9 @@ class CalculationVasp(Calculation):
         
         f = open(batch_script_filename,'a') #
 
+        # print(savefile)
+        # sys.exit()
+
 
         def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod_prev = '', write = True, 
             curver = None, copy_poscar_flag = True):
@@ -1823,7 +1826,7 @@ class CalculationVasp(Calculation):
         
 
 
-        def write_footer(set_mod = '', run_tool_flag = True, final_analysis_flag = True):
+        def write_footer(set_mod = '', run_tool_flag = True, savefile = None, final_analysis_flag = True):
             """footer"""
             
             def u_ramp_prepare():
@@ -1976,10 +1979,22 @@ class CalculationVasp(Calculation):
                     contcar_file = u_ramp_loop(ver_prefix = '100.', run_name_prefix = self.id[0]+'.fitted', set_mod = set_mod)
 
                 else:
+                    if final_analysis_flag:
+                        rm_chg_wav = 'w' #The wavcar is removed for the sake of harddrive space
+                    
+                    else:
+                        rm_chg_wav = ''
+
+
+
 
                     run_command(option = option, name = self.id[0]+'.'+self.id[1]+'.100'+name_mod+'.fitted', 
                         parrallel_run_command = parrallel_run_command, write = True)
-                    contcar_file = mv_files_according_versions('vo', '100', name_mod = name_mod, write = True, rm_chg_wav = 'w')
+
+                    # print(savefile)
+                    # sys.exit()
+
+                    contcar_file = mv_files_according_versions(savefile, '100', name_mod = name_mod, write = True, rm_chg_wav = rm_chg_wav)
 
                 # sys.exit()
 
@@ -2037,12 +2052,17 @@ class CalculationVasp(Calculation):
                 contcar_file = write_body( v = str(version), savefile = savefile, 
                     set_mod = set_mod, copy_poscar_flag = copy_poscar_flag, 
                     final_analysis_flag = final_analysis_flag, penult_set_name = penult_set_name)
-            
+
+                
+
             elif mode == 'footer':
                 if copy_poscar_flag: 
                     f.write('\n#Footer section: \n')
 
-                contcar_file = write_footer(set_mod = set_mod, run_tool_flag = run_tool_flag,
+
+                # print(savefile)
+                # sys.exit()
+                contcar_file = write_footer(set_mod = set_mod, run_tool_flag = run_tool_flag, savefile = savefile,
                  final_analysis_flag = final_analysis_flag)
 
 
@@ -2318,6 +2338,8 @@ class CalculationVasp(Calculation):
 
             nsgroup = 1
             magnitudes = []
+            self.mag_sum = [] #toatal mag summed by atoms, +augmentation
+
             tot_mag_by_atoms = [] #magnetic moments by atoms on each step
             tot_mag_by_mag_atoms = []
             #which atoms to use
@@ -2583,6 +2605,15 @@ class CalculationVasp(Calculation):
                         nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
                     niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
                     mdstep_old = self.mdstep
+
+
+                if 'number of electron ' in line:
+                    # print (line)
+                    self.mag_sum.append( [float(line.split()[5]), 0])
+
+                if 'augmentation part' in line:
+                    # print (line)
+                    self.mag_sum[-1][1]= float(line.split()[4])
 
 
 
@@ -2861,6 +2892,9 @@ class CalculationVasp(Calculation):
 
                     plt.show()
 
+            if 'smag' in show:
+                # printlog('{:s}'.format([round(m) for m in self.mag_sum]) )
+                printlog(np.array(self.mag_sum).round(2) )
 
             if 'mag' in show or 'occ' in show:
                 st = self.end
@@ -2886,6 +2920,7 @@ class CalculationVasp(Calculation):
                         dist_dic[n] = d 
                 else:
                     numb = ifmaglist # if no alk ions show for all mag atoms
+                    chosen_ion = None
 
             if 'mag' in show and tot_mag_by_atoms:
                 print ('\n\n\n')
@@ -2927,8 +2962,9 @@ class CalculationVasp(Calculation):
                 ''
                 # print (matrices)
                 # print (df)
-                print_and_log('Distances (A) from alkali ion #',chosen_ion[0]+1,' to transition atoms:', 
-                    ',  '.join([ '({:}<->{:}): {:.2f}'.format(chosen_ion[0]+1, iat, d) for d, iat in zip(  dist, numb+1  )  ])  )
+                if chosen_ion:
+                    print_and_log('Distances (A) from alkali ion #',chosen_ion[0]+1,' to transition atoms:', 
+                        ',  '.join([ '({:}<->{:}): {:.2f}'.format(chosen_ion[0]+1, iat, d) for d, iat in zip(  dist, numb+1  )  ])  )
                 
                 show_occ_for_atoms = [int(n) for n in re.findall(r'\d+', show)]
                 # print (show_occ_for_atom)
@@ -2944,7 +2980,7 @@ class CalculationVasp(Calculation):
                 # print (st.znucl[st.typat[i_mag_at]-1] )
                 l05 = len(occ_matrices[i_mag_at])//2
 
-                df = pd.DataFrame(occ_matrices[i_mag_at]).round(2)
+                df = pd.DataFrame(occ_matrices[i_mag_at]).round(5)
 
                 print_and_log( 'Occ. matrix for atom ', i_mag_at+1, end = '\n' )
                     # ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )

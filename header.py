@@ -82,26 +82,42 @@ final_vasp_clean     = True
 copy_to_cluster_flag = True
 close_run = False # alows to control close run file automatically after each add_loop
 first_run = True  # needed to write header of run script
-calc = {};
+
+calc_database = 'only_calc.gdbm3'
 
 class CalcDict(dict):
     def __getitem__(self, key):
-        # val = dict.__getitem__(self, key)
-        # print 'GET', key
-        databasefile3 = 'only_calc.gdbm3'
-        d = shelve.open(databasefile3, protocol = 3)
-        val = d[str(key)]
-        d.close()
+        # print(self)
 
+        if dict.__contains__(self, key):
+            # print('key', key, 'is  in self')
+            val = dict.__getitem__(self, key)
+        
+        else:
+            with shelve.open(calc_database, protocol = 3) as d:
+                try:
+                    val = d[str(key)]
+                    dict.__setitem__(self, key, val)
+                # print('reading ',key, 'from db')
+                # print(val)
+                except:
+                    val = None
         return val
 
+    def __contains__(self, key):
+        with shelve.open(calc_database, protocol = 3) as d:
+            # print('checking if key',key, 'is in db:', str(key) in d)
+            # print(self)
+            return str(key) in d
 
-calc2 = CalcDict()
 
+calc = CalcDict()
 conv = {};
 varset = {};
-
 struct_des = {};
+
+
+
 
 if siman_run:
     log = open('log','a')
@@ -117,6 +133,8 @@ TRANSITION_ELEMENTS = [22, 23, 25, 26, 27, 28]
 ALKALI_ION_ELEMENTS = [3, 11, 19]
 MAGNETIC_ELEMENTS = [26, 27, 28]
 warnings = True
+# EXCLUDE_NODES = False
+
 
 def print_and_log(*logstrings, **argdic):
     """
@@ -163,7 +181,7 @@ def print_and_log(*logstrings, **argdic):
     if warnings:
         ''
         # print(debug_level)
-        if 'n' in debug_level:
+        if 'n' in debug_level and 'n' not in warnings:
             pass
         else:
             print (mystring,  end = "")
