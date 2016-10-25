@@ -838,6 +838,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 pname = st
 
             write_xyz(st, file_name = st.name+'_used_for_scaling')
+            printlog('Scale_region is', scale_region)
             sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
             
 

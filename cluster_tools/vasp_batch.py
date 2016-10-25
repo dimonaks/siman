@@ -52,7 +52,6 @@ except:
 
 poscar = glob.glob(vaspfolder+'/*POSCAR*')[0]
 potcar = glob.glob(vaspfolder+'/*POTCAR*')[0]
-# poscar = '/home/aksenov/scientific_projects/cathode/LiFePO4/scaled/FePO4.id.su.4uis/1.POSCAR'
 
 # print(incars)
 
