@@ -3131,6 +3131,7 @@ def add_to_database(cl):
     sfolder = dbpath+header.struct_des[it].sfolder.split('/')[0]+'/'
 
     name = []
+
     if 'azh' in save_format:
         #1. Single point calculation of total energy
         # print(sfolder)
@@ -3139,8 +3140,9 @@ def add_to_database(cl):
         #determine x for alkali ion from structure name
         parsed = re.findall(r'([A-Z][a-z]*)(\d*)', it)
         parsed = [(el, x if x else '1') for (el, x) in parsed ]
+        print(parsed[0][0])
 
-        if parsed[0][0] in header.ALKALI_ION_ELEMENTS:
+        if parsed[0][0] in [element_name_inv(z) for z in header.ALKALI_ION_ELEMENTS]:
             x = parsed[0][0]
 
             if hasattr(cl, 'max_alk_ion_content'):
@@ -3153,28 +3155,41 @@ def add_to_database(cl):
         name.append('x'+x)
 
         cl.read_results()
-        functional = cl.potcar_lines[0][0]
-        print(functional)
-
-        sfolder+=functional+'/'
-        makedir(sfolder+'dummy')
+        
+        # sfolder+=functional+'/'
+        # makedir(sfolder+'dummy')
 
         cl.set.update()
-        ecut = str(cl.set.ecut)
+
+
+
+
+        (pot, func) = cl.potcar_lines[0][0].split('_')
+        
+        if cl.set.spin_polarized:
+            func = 'U'+func #unrestricted
+
 
         if cl.set.u_ramping_nstep:
-            name.append('UR'+ecut)
-
+            func += '-UR'
         elif cl.set.dftu:
-            name.append('U'+ecut)
-        
-        else:
-            name.append(ecut)
+            func += '-U'
+
+        func+=pot.lower()
+        ecut = str(round(cl.set.ecut ))
+
+        func+=ecut
+        # print(func)
+        name.append(func)
 
         name.extend(it.split('.')[1:]+[cl.id[1]]+[str(cl.id[2])])
 
         name_str = '_'.join(name)
         # print('_'.join(name) )
+
+        # sys.exit()
+
+
 
         outcar_name = name_str+'.out'
 
@@ -3188,15 +3203,60 @@ def add_to_database(cl):
         # shutil.copyfile(cl.path["input_geo"], sfolder+'input/'+name_str+'.geo')
 
 
-        #write chg
-        path_to_chg = cl.get_chg_file('CHG')
-        makedir(sfolder+'bin/dummy')
-        print(path_to_chg)
-        gz = '.gz'
-        if gz not in path_to_chg:
-            gz = ''
-        shutil.copyfile(path_to_chg, sfolder+'bin/'+name_str+'.chg'+gz)
+        st_mp = cl.end.convert2pymatgen()
+        sg_before =  st_mp.get_space_group_info() 
+        # from pymatgen.symmetry.finder import SymmetryFinder
+        # sf = SymmetryFinder(st_mp_prim)
+        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
+        sf = SpacegroupAnalyzer(st_mp, symprec = 0.1)
+
+        st_mp_prim = sf.find_primitive()
+        # st_mp_prim = sf.get_primitive_standard_structure()
+        # st_mp_prim = sf.get_conventional_standard_structure()
+
+
+        # st_mp_conv = sf.get_conventional_standard_structure()
+        # print(st_mp_conv)
+        # print(st_mp_conv.lattice.matrix)
+        print(st_mp_prim)
+        print(st_mp_prim.lattice)
+
+        sg_after = st_mp_prim.get_space_group_info()
+
+        if sg_before[0] != sg_after[0]:
+            printlog('Error! the space group was changed after primitive cell searching', sg_before, sg_after)
+
+        if st_mp_prim:
+            from pymatgen.io.cif import CifWriter
+            cif = CifWriter(st_mp_prim, symprec = 0.1)
+            cif_name =  name_str+'.cif'
+            cif.write_file(sfolder+cif_name)
+            printlog('Writing cif', cif_name)
+
+        if 0:
+            #get multiplication matrix which allows to obtain the supercell from primitive cell.
+            #however this matrix is not integer which is not convinient.
+            print(st_mp.lattice.matrix.round(2))
+            print(st_mp_prim.lattice.matrix.round(2))
+
+            mul_matrix = np.dot(st_mp.lattice.matrix, np.linalg.inv(st_mp_prim.lattice.matrix) )
+
+            print(mul_matrix.round(1))
+
+            rprimd = np.dot(mul_matrix, st_mp_prim.lattice.matrix  )
+
+            print(rprimd.round(2))
+
+        #write chg
+        if 0:
+            path_to_chg = cl.get_chg_file('CHG')
+            makedir(sfolder+'bin/dummy')
+            print(path_to_chg)
+            gz = '.gz'
+            if gz not in path_to_chg:
+                gz = ''
+            shutil.copyfile(path_to_chg, sfolder+'bin/'+name_str+'.chg'+gz)
 
 
         #make dat
@@ -3218,3 +3278,7 @@ def add_to_database(cl):
 
         #prepare for neb
         # makedir(sfolder+'neb_'+name_str+'/dummy')
+
+
+
+

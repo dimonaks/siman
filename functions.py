@@ -79,14 +79,19 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
         f.close()
 
     out = runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
-    # print 'out === ',out
+    # print ('out === ',out)
+    # print(out and trygz)
     if out and trygz:# and not os.path.exists(to_new):
         to_new = to+'/'+os.path.basename(files[0])
 
-        # print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
+        print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
         files[0]+='.gz'
-        # print files[0]
-        out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+';gunzip '+to_new)
+        to_new = to+'/'+os.path.basename(files[0])
+
+        # print (files[0])
+        out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+'; ')
+        runBash('gunzip -f '+to_new)
+        print(out)
         if out:
             ''
             # print_and_log('    No gz either!', imp = 'n')

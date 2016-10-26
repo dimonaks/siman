@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import, print_function
-import itertools, os, copy, math, glob, re, shutil, sys
+import itertools, os, copy, math, glob, re, shutil, sys, pickle
 
 #additional packages
 try:
@@ -27,7 +27,7 @@ from header import print_and_log as printlog
 from header import print_and_log, runBash, red_prec
 from functions import (read_vectors, read_list, words, local_surrounding, 
     xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server, list2string)
+    get_from_server, push_to_server, list2string, makedir)
 
 
 
@@ -315,7 +315,7 @@ class Calculation(object):
 
 
     """
-    def __init__(self, inset = None, iid = None):
+    def __init__(self, inset = None, iid = None, output = None):
         #super(CalculationAbinit, self).__init__()
         self.name = "noname"
         self.set = copy.deepcopy(inset)
@@ -331,7 +331,7 @@ class Calculation(object):
         "input":None,
         "input_geo":None,
         "potential":None,
-        "output":None}
+        "output":output}
         self.calc_method = None #
         self.prev = [] # list of previous calculations
         if iid:
@@ -341,7 +341,7 @@ class Calculation(object):
             self.id = ('0','0',0)
 
 
-    def read_geometry(self,filename = None):
+    def read_geometry(self, filename = None):
         """Reads geometrical data from filename file in abinit format"""
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
@@ -636,7 +636,16 @@ class Calculation(object):
         """
         return self.write_geometry(*args, **kwargs)
 
-
+    def serialize(self, filename):
+        """
+        save as pickle object, return path
+        """
+        file = filename+'.pickle'
+        makedir(file)
+        with open(file, 'wb') as f:
+            # Pickle the 'data' dictionary using the highest protocol available.
+            pickle.dump(self, f, 2)
+        return file
 
 class CalculationAbinit(Calculation):
     """docstring for CalculationAbinit"""
@@ -651,8 +660,8 @@ class CalculationAbinit(Calculation):
 
 class CalculationVasp(Calculation):
     """Methods for calculations made using VASP DFT code"""
-    def __init__(self, inset = None, iid = None):
-        super(CalculationVasp, self).__init__(inset, iid)
+    def __init__(self, inset = None, iid = None, output = None):
+        super(CalculationVasp, self).__init__(inset, iid, output)
         self.len_units = 'Angstrom'
 
 
@@ -2199,8 +2208,12 @@ class CalculationVasp(Calculation):
         else:
             path_to_outcar  = self.path["output"]
         
-        path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
-        path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
+        if 'OUTCAR' in path_to_outcar:
+            path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
+            path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
+        else:
+            path_to_contcar = ''
+            path_to_xml     = ''
 
 
         if self.calc_method  and not set(self.calc_method  ).isdisjoint(  ['u_ramping', 'afm_ordering']):
@@ -2218,9 +2231,7 @@ class CalculationVasp(Calculation):
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
         # print_and_log('read_results() path to outcar', path_to_outcar)
-        outcar_exist   = False
 
-        contcar_exist   = False
 
 
 
@@ -2231,7 +2242,7 @@ class CalculationVasp(Calculation):
 
 
  
-        self.natom = self.init.natom
+        # self.natom = self.init.natom
 
         """Copy from server """
         if 'o' in load:
@@ -2255,13 +2266,20 @@ class CalculationVasp(Calculation):
 
 
 
-        # print(path_to_outcar)
+        # print(path_to_contcar)
 
         if os.path.exists(path_to_contcar):
             contcar_exist   = True
+        else:
+            contcar_exist   = False
+
 
         if os.path.exists(path_to_outcar):
             outcar_exist   = True
+        else:
+            outcar_exist   = False
+
+
 
         """Start reading """
         if outcar_exist:
@@ -2327,8 +2345,8 @@ class CalculationVasp(Calculation):
             except:
                 self.end = Structure()
 
-            if not hasattr(self.end, "natom"): 
-                self.end.natom = self.natom
+            # if not hasattr(self.end, "natom"): 
+            #     self.end.natom = self.natom
             #Structure() #create structure object with end values after calculation
             #self.end.typat = self.typat
             #self.end.znucl = self.znucl
@@ -2345,21 +2363,10 @@ class CalculationVasp(Calculation):
             #which atoms to use
             magnetic_elements = header.MAGNETIC_ELEMENTS
             #Where magnetic elements?
-            try:
-                zlist = [int(self.init.znucl[t-1]) for t in self.init.typat] #in general it is better to read znucl and typat from outcar first
-            except:
-                zlist = []
-            # print zlist
-            # i_mag_start = None
-            # i_mag_end   = None
-            ifmaglist = [] #np.array() #[False]*len(zlist)
-            for i, z in enumerate(zlist): #
-                if z in magnetic_elements:
-                    ifmaglist.append(True)
-                else:
-                    ifmaglist.append(False)
 
-            ifmaglist = np.array(ifmaglist)
+            ifmaglist = [] #np.array() #[False]*len(zlist)
+
+
             # print ifmaglist
 
             # sys.exit()
@@ -2408,6 +2415,39 @@ class CalculationVasp(Calculation):
                     self.end.nznucl = [int(n) for n in line.split()[4:]]
                     self.end.ntypat = len(self.end.nznucl)
 
+                    self.end.natom  = sum(self.end.nznucl)
+
+                    #correction of bug; Take into account that VASP changes typat by sorting impurities of the same type.
+                    self.end.typat = []
+                    for i, nz in enumerate(self.end.nznucl):
+                        for j in range(nz):
+                            self.end.typat.append(i+1)
+                    #correction of bug
+
+
+
+                    # print(self.potcar_lines)
+                    elements = [t[1] for t in self.potcar_lines]
+                    self.end.znucl = [element_name_inv(el) for el in elements]
+                    # print (self.end.znucl)
+                    try:
+                        zlist = [int(self.end.znucl[t-1]) for t in self.end.typat] #
+                    except:
+                        zlist = []
+                    # print (zlist)
+                    # i_mag_start = None
+                    # i_mag_end   = None
+                    for i, z in enumerate(zlist): #
+                        if z in magnetic_elements:
+                            ifmaglist.append(True)
+                        else:
+                            ifmaglist.append(False)
+
+                    ifmaglist = np.array(ifmaglist)
+
+
+
+
 
 
                 if "TOO FEW BANDS" in line:
@@ -2442,7 +2482,7 @@ class CalculationVasp(Calculation):
                 if "POSITION" in line:
                     if not contcar_exist or out_type == 'dimer':
                         self.end.xcart = [] #clean xcart before filling
-                        for i in range(self.init.natom):
+                        for i in range(self.end.natom):
                             #print outcarlines[i_line+1+i].split()[0:3] 
                             xcart = np.asarray ( 
                                         [   float(x) for x in outcarlines[i_line+2+i].split()[0:3]   ] 
@@ -2476,7 +2516,7 @@ class CalculationVasp(Calculation):
                     forces = []
                     magnitudes = []
 
-                    for j in range(self.init.natom):
+                    for j in range(self.end.natom):
                         parts = outcarlines[i_line+j+2].split()
                         # print "parts", parts
                         x = float(parts[ff[0]])
@@ -2484,7 +2524,7 @@ class CalculationVasp(Calculation):
                         z = float(parts[ff[2]])
                         forces.append([x,y,z])
                         magnitudes.append(math.sqrt(x*x + y*y + z*z))
-                    average.append( red_prec( sum(magnitudes)/self.init.natom * 1000 ) )
+                    average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
                     imax = np.asarray(magnitudes).argmax()
                     maxforce.append( [imax, round(magnitudes[imax] * 1000)]  )
                     # mforce.append( round(magnitudes[imax] * 1000))
@@ -2619,10 +2659,11 @@ class CalculationVasp(Calculation):
 
                 if 'magnetization (x)' in line:
                     mags = []
-                    for j in range(self.init.natom):
+                    for j in range(self.end.natom):
                         mags.append( float(outcarlines[i_line+j+4].split()[4]) )
                     
                     tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
+                    # print(ifmaglist)
                     tot_mag_by_mag_atoms.append(np.array(mags)[ifmaglist])
                     # print tot_mag_by_atoms
                     # magnetic_elements
@@ -2693,17 +2734,13 @@ class CalculationVasp(Calculation):
 
             """Try to read xred from CONCAR and calculate xcart"""
 
-            #correction of bug; Take into account that VASP changes typat by sorting impurities of the same type.
-            self.end.typat = []
-            for i, nz in enumerate(self.end.nznucl):
-                for j in range(nz):
-                    self.end.typat.append(i+1)
-            #correction of bug
+
 
 
 
 
             #print contcar_exist
+            # print(contcar_exist)
             if contcar_exist:
                 with open(path_to_contcar, 'r') as contcar:
                     
@@ -2711,7 +2748,7 @@ class CalculationVasp(Calculation):
                         
                         if "Direct" in line:
                             self.end.xred = []
-                            for i in range(self.natom):
+                            for i in range(self.end.natom):
                                 xr = np.asarray ( [float(x) for x in contcar.readline().split()] )
                                 self.end.xred.append( xr )
                 # print(self.end.xred)
@@ -2822,7 +2859,7 @@ class CalculationVasp(Calculation):
             except:
                 tsm = ''
 
-            entrr = ("%.3f" % (   (self.energy_free - self.energy_sigma0)/self.init.natom * 1000    )   ).center(j[14]) #entropy due to the use of smearing
+            entrr = ("%.3f" % (   (self.energy_free - self.energy_sigma0)/self.end.natom * 1000    )   ).center(j[14]) #entropy due to the use of smearing
 
             try:
                 npar = ("%i" % (self.set.vasp_params["NPAR"])).center(j[16])
@@ -2836,7 +2873,7 @@ class CalculationVasp(Calculation):
             lens = ("%.2f;%.2f;%.2f" % (v[0],v[1],v[2] ) ).center(j[19])
             r1 = ("%.2f" % ( v[0] ) ).center(j[19])            
             vol = ("%.1f" % ( self.end.vol ) ).center(j[20])
-            nat = ("%i" % ( self.natom ) ).center(j[21])
+            nat = ("%i" % ( self.end.natom ) ).center(j[21])
             totd = ("%.0f" % (   max_tdrift/max_magnitude * 100      ) ).center(j[22])
             nsg = ("%s" % (     nsgroup     ) ).center(j[22])
             Uhu   = " {:3.1f} ".format(u_hubbard)
@@ -3037,8 +3074,13 @@ class CalculationVasp(Calculation):
 
 
         if out:
-            path_to_chg = 'file not found'
-            printlog('Charge file', path_to_chg, 'was not found')
+            printlog('Charge file', path_to_chg, 'was not found, trying scratch')
+            # printlog('Charge file', path_to_chg, 'was not found')
+            path_to_chg = '/scratch/amg/aksenov/'+path_to_chg
+            out = get_from_server(path_to_chg, self.dir, self.cluster_address)
+            if out:
+                printlog('Charge file', path_to_chg, 'was not found')
+                path_to_chg = 'file not found'
            
         return path_to_chg
 

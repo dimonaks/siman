@@ -23,10 +23,15 @@ def ortho_vec(rprim, ortho_sizes = None):
         if mul_matrix[i][i] == 0:
             mul_matrix[i][i] = 1
 
-
-
-
     return mul_matrix
+
+
+
+def mul_matrix(rprimd1, rprimd2):
+    """
+    Determines mul matrix needed to obtain rprimd2 from rprimd1
+    """
+
 
 
 

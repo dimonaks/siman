@@ -132,7 +132,7 @@ kB = 8.617e-5 # eV/K
 TRANSITION_ELEMENTS = [22, 23, 25, 26, 27, 28]
 ALKALI_ION_ELEMENTS = [3, 11, 19]
 MAGNETIC_ELEMENTS = [26, 27, 28]
-warnings = True
+warnings = '1'
 # EXCLUDE_NODES = False
 
 
