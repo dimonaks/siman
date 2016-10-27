@@ -72,7 +72,8 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
     xnew = np.linspace(0, path_length)
 
     # ynew = spline(mep_pos, eners, xnew )
-    spl = CubicSpline(mep_pos, eners, bc_type = 'natural' )
+    # spl = CubicSpline(mep_pos, eners, bc_type = 'natural' ) second-derivative zero
+    spl = CubicSpline(mep_pos, eners, bc_type = 'clamped' ) #first derivative zero
     ynew = spl(xnew)
 
     #minimum now is always zero,

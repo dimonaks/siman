@@ -643,9 +643,13 @@ class Calculation(object):
         file = filename+'.pickle'
         makedir(file)
         with open(file, 'wb') as f:
-            # Pickle the 'data' dictionary using the highest protocol available.
             pickle.dump(self, f, 2)
         return file
+
+    def deserialize(self, filename):
+        with open(filename, 'r') as f:
+            self = pickle.load(f)
+        printlog('Calculation object succesfully read from ', filename)
 
 class CalculationAbinit(Calculation):
     """docstring for CalculationAbinit"""
@@ -2230,7 +2234,7 @@ class CalculationVasp(Calculation):
                 self.associated_energies = [float(e) for e in energies_str.split()]
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
-        # print_and_log('read_results() path to outcar', path_to_outcar)
+        print_and_log('read_results() path to outcar', path_to_outcar, imp = 'n')
 
 
 
@@ -2427,7 +2431,8 @@ class CalculationVasp(Calculation):
 
 
                     # print(self.potcar_lines)
-                    elements = [t[1] for t in self.potcar_lines]
+                    elements = [t[1].split('_')[0] for t in self.potcar_lines]
+                    # printlog('I read ',elements, 'from outcar')
                     self.end.znucl = [element_name_inv(el) for el in elements]
                     # print (self.end.znucl)
                     try:

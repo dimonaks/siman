@@ -553,7 +553,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
     coord = 'direct', savefile = 'ov', show = None, comment = '', 
     input_geo_format = None, ifolder = None, input_geo_file = None, corenum = None,
-    calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, ise_new = None,
+    calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, cee_file = None,
+    ise_new = None,
     scale_region = None, n_scale_images = 7, id_from = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
     mul_matrix = None,
@@ -636,6 +637,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
         - cluster_home - override value of header.CLUSTERS
+
+
+        - cee_file (str) - name of file to be taken from cee database
 
     Comments:
         !Check To create folders and add calculations add_flag should have value 'add' 
@@ -741,12 +745,11 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         input_geo_format = 'vasp'
 
     elif input_geo_format == 'cee_database':
-        print_and_log("Taking structure "+it+" from CEE CREI database of Skoltech ...", imp = 'Y')
         
         if it_folder == None:
             print_and_log('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
 
-        get_structure_from_cee_database(it, it_folder, verlist[0]) #will transform it to vasp
+        get_structure_from_cee_database(it, it_folder, verlist[0], cee_file = cee_file) #will transform it to vasp
         input_geo_format = 'vasp'
 
 
@@ -2619,7 +2622,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         if analys_type == 'neb':
             path2mep_s = cl.dir+'/mep.eps'
             itise = cl.id[0]+'.'+cl.id[1]
-            name_without_ext = 'mep.'+itise
+            # print(cl.ldauu)
+            # sys.exit()
+            name_without_ext = 'mep.'+itise+'.U'+str(max(cl.ldauu))
             path2mep_l = cl.dir+name_without_ext+'.eps'
             if not os.path.exists(path2mep_l) or '2' in up:
                 ''
@@ -2755,6 +2760,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             results_dic['barrier'] = diff_barrier
             cl1.barrier = diff_barrier
             cl2.barrier = diff_barrier
+
 
             if 'mep' in show:
                 if 'mepp' in show:
@@ -2981,10 +2987,13 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
 
-def get_structure_from_cee_database(it, it_folder, ver, struct = 'exp'):
+def get_structure_from_cee_database(it, it_folder, ver, struct = 'exp', cee_file = None):
     """
     struct (str) - 'exp' - experimental structures
     """
+    it_base = it.split('.')[0]
+    print_and_log("Taking structure "+it_base+" from CEE CREI database of Skoltech ...", imp = 'Y')
+
     database_server = 'aksenov@10.30.100.28'
     database_path   = '/home/Data/CEStorage/'
 
@@ -2995,16 +3004,30 @@ def get_structure_from_cee_database(it, it_folder, ver, struct = 'exp'):
 
     makedir(local_folder)
 
-    out = get_from_server(database_path+it+'/'+templ, local_folder, addr = database_server)
+    out = get_from_server(os.path.join(database_path, it_base, templ), local_folder, addr = database_server)
 
     geofiles = glob.glob(local_folder+templ)
     printlog(out, 'The following files have been downloaded', geofiles  )
     
-    if len(geofiles) > 1:
-        printlog('Error! More than one file, check what you need')
 
+
+
+    if len(geofiles) > 1:
+        if cee_file:
+            for file in geofiles:
+                if cee_file in file :
+                    geofile_from_server = file
+
+        else:
+            printlog('Error! More than one file, check what you need using *cee_file* parameter')
+    else:
     
-    geofile_from_server = geofiles[0]
+        geofile_from_server = geofiles[0]
+    
+    printlog('You have chosen', geofile_from_server)
+
+
+
     local_poscar_file = local_folder+it+'.POSCAR-'+str(ver)
 
     cif2poscar(geofile_from_server, poscar_file = local_poscar_file)
@@ -3209,7 +3232,7 @@ def add_to_database(cl):
         # sf = SymmetryFinder(st_mp_prim)
         from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-        sf = SpacegroupAnalyzer(st_mp, symprec = 0.1)
+        sf = SpacegroupAnalyzer(st_mp, symprec = 0.01)
 
         st_mp_prim = sf.find_primitive()
         # st_mp_prim = sf.get_primitive_standard_structure()

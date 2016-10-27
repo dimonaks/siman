@@ -129,7 +129,7 @@ for i in (0,1,2):
 print ('diff between new volume and target volume', np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  ) - v_min)
 
 with  open('100.POSCAR', 'w') as f:
-    f.write('scaled to fitted using '+st.name+' '+st.filename+' :fit_tool.py\n')
+    f.write(st.name+' '+st.filename+' :fit_tool.py\n')
 
     f.write("{0:18.15f}\n".format(1.0))
     
