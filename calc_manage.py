@@ -3231,8 +3231,8 @@ def add_to_database(cl):
         # from pymatgen.symmetry.finder import SymmetryFinder
         # sf = SymmetryFinder(st_mp_prim)
         from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-
-        sf = SpacegroupAnalyzer(st_mp, symprec = 0.01)
+        symprec = 0.1
+        sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
 
         st_mp_prim = sf.find_primitive()
         # st_mp_prim = sf.get_primitive_standard_structure()
@@ -3248,11 +3248,14 @@ def add_to_database(cl):
         sg_after = st_mp_prim.get_space_group_info()
 
         if sg_before[0] != sg_after[0]:
-            printlog('Error! the space group was changed after primitive cell searching', sg_before, sg_after)
+            printlog('Attention! the space group was changed after primitive cell searching', sg_before, sg_after)
+            printlog('I will save supercell in cif and reduce symprec to 0.01')
+            st_mp_prim = st_mp
+            symprec = 0.01
 
         if st_mp_prim:
             from pymatgen.io.cif import CifWriter
-            cif = CifWriter(st_mp_prim, symprec = 0.1)
+            cif = CifWriter(st_mp_prim, symprec = symprec)
             cif_name =  name_str+'.cif'
             cif.write_file(sfolder+cif_name)
             printlog('Writing cif', cif_name)
