@@ -553,7 +553,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
     coord = 'direct', savefile = 'ov', show = None, comment = '', 
     input_geo_format = None, ifolder = None, input_geo_file = None, corenum = None,
-    calc_method = None, u_ramping_region = None, it_folder = None, mat_proj_id = None, cee_file = None,
+    calc_method = None, u_ramping_region = None, it_folder = None, 
+    mat_proj_cell = '',
+    mat_proj_id = None, cee_file = None,
     ise_new = None,
     scale_region = None, n_scale_images = 7, id_from = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
@@ -741,7 +743,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         if it_folder == None:
             print_and_log('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
         
-        mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, verlist[0], mat_proj_id)
+        mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, verlist[0], mat_proj_cell, mat_proj_id)
         input_geo_format = 'vasp'
 
     elif input_geo_format == 'cee_database':
@@ -2987,9 +2989,12 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
 
-def get_structure_from_cee_database(it, it_folder, ver, struct = 'exp', cee_file = None):
+def get_structure_from_cee_database(it, it_folder, ver, cee_struct_type = 'exp', cee_file = None):
     """
-    struct (str) - 'exp' - experimental structures
+    cee_struct_type (str) - 
+        'exp' - experimental structures
+        '' - all
+
     """
     it_base = it.split('.')[0]
     print_and_log("Taking structure "+it_base+" from CEE CREI database of Skoltech ...", imp = 'Y')
@@ -2999,6 +3004,8 @@ def get_structure_from_cee_database(it, it_folder, ver, struct = 'exp', cee_file
 
     if 'exp' in struct:
         templ = '*exp*.cif'
+    else:
+        templ = '*.cif'
 
     local_folder = it_folder+'/'+it+'/'
 
@@ -3042,7 +3049,7 @@ def get_structure_from_cee_database(it, it_folder, ver, struct = 'exp', cee_file
 
 
 
-def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_id = None):
+def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_cell = None, mat_proj_id = None):
     """
     Take structures from Mat. projects
 
@@ -3054,7 +3061,9 @@ def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_id = Non
         - it_folder - section folder in which the Poscar will be placed
         - ver       - version of structure defined by user
         - mat_proj_id (str) - the id can be provided explicitly
-    
+        - mat_proj_cell (str)- 
+                - 'conv' - conventional
+
     ###RETURN:
         - ?
         - ?
@@ -3090,6 +3099,14 @@ def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_id = Non
             # print m.get_data(groundstate_st_id, data_type='vasp', prop='hubbards')
         
         st_pmg =  m.get_structure_by_material_id(groundstate_st_id, final=True)
+        
+        if 'conv' in mat_proj_cell:
+            from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+            sf = SpacegroupAnalyzer(st_pmg, symprec = 0.01)
+            st_pmg = sf.get_conventional_standard_structure()
+
+        # print(st_pmg.lattice)
+        # sys.exit()
 
 
     add_des(struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)

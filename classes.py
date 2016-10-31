@@ -113,9 +113,9 @@ class Structure():
     def convert2pymatgen(self):
         return pymatgen.Structure(self.rprimd, self.get_elements(), self.xred)
 
-    def get_space_group_info(self):
+    def get_space_group_info(self, symprec = 0.01):
         p = self.convert2pymatgen()
-        return p.get_space_group_info()
+        return p.get_space_group_info(symprec)
 
 
 
