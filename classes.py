@@ -2254,7 +2254,7 @@ class CalculationVasp(Calculation):
             #reduce size of downloadable file by removing occupations: vasp 4 and 5
             command_reduce = """ssh {0:s} nbands=\`grep \\"NBANDS=\\" \{1:s} \| awk \\'{{print \$NF - 1}}\\'\`\; sed -i -e \\"/band No./,+\${{nbands}}d\\" \{1:s} """.format(
                 self.cluster_address, self.project_path_cluster+path_to_outcar )
-            runBash(command_reduce)
+            # runBash(command_reduce)
 
 
             files = [self.project_path_cluster+path_to_outcar, self.project_path_cluster+path_to_contcar]
