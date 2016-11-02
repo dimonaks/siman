@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*- 
+#Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import, print_function
 import itertools, os, copy, math, glob, re, shutil, sys, pickle
 
@@ -18,13 +19,13 @@ except:
     print('pymatgen is not avail')
 
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 #siman packages
 import header
 from header import print_and_log as printlog
-from header import print_and_log, runBash, red_prec
+from header import print_and_log, runBash, red_prec, plt
 from functions import (read_vectors, read_list, words, local_surrounding, 
     xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
     get_from_server, push_to_server, list2string, makedir)
@@ -647,10 +648,10 @@ class Calculation(object):
         return file
 
     def deserialize(self, filename):
-        with open(filename, 'r') as f:
+        with open(filename, 'rb') as f:
             self = pickle.load(f)
-        printlog('Calculation object succesfully read from ', filename)
-
+        # printlog('Calculation object succesfully read from ', filename)
+        return self
 class CalculationAbinit(Calculation):
     """docstring for CalculationAbinit"""
     pass
@@ -2137,7 +2138,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def calc_kspacings(self,ngkpt = []):
+    def calc_kspacings(self, ngkpt = [], sttype = 'init'):
         """Calculates reciprocal vectors and kspacing from ngkpt"""
         to_ang_local = header.to_ang
         try:
@@ -2146,18 +2147,27 @@ class CalculationVasp(Calculation):
                 #print "units angs"
         except AttributeError:
             print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n")
+        
+        if sttype == 'init':
+            st = self.init
+        if sttype == 'end':
+            st = self.end 
+
+
         #Determine reciprocal vectors
         if 1: #Already calculated during reading of structure
-            self.recip = []
-            vol = np.dot( self.init.rprimd[0], np.cross(self.init.rprimd[1], self.init.rprimd[2])  ); #volume
+            st.recip = []
+            vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  ); #volume
             #print vol
-            self.recip.append(   np.cross( self.init.rprimd[1], self.init.rprimd[2] )   )
-            self.recip.append(   np.cross( self.init.rprimd[2], self.init.rprimd[0] )   )
-            self.recip.append(   np.cross( self.init.rprimd[0], self.init.rprimd[1] )   )
+            st.recip.append(   np.cross( st.rprimd[1], st.rprimd[2] )   )
+            st.recip.append(   np.cross( st.rprimd[2], st.rprimd[0] )   )
+            st.recip.append(   np.cross( st.rprimd[0], st.rprimd[1] )   )
+            
             for i in 0,1,2:
-                self.recip[i] =  self.recip[i] * 2 * math.pi / vol;
+                st.recip[i] =  st.recip[i] * 2 * math.pi / vol;
         #print self.recip
         self.kspacing = []
+        st.kspacings = []
         if not ngkpt:
             ngkpt = self.set.ngkpt
         k = [0,0,0]
@@ -2165,8 +2175,9 @@ class CalculationVasp(Calculation):
             # print 'ngkpt are ', ngkpt
             # print 'recip are', self.recip
             for i in 0, 1, 2:
-                a = np.linalg.norm( self.recip[i] ) / ngkpt[i] / to_ang_local
+                a = np.linalg.norm( st.recip[i] ) / ngkpt[i] / to_ang_local
                 self.kspacing.append(red_prec(a))
+                st.kspacings.append(red_prec(a))
             k = self.kspacing
         #print "Spacings for %s is [%.2f, %.2f, %.2f]"%(self.set.ngkpt,k[0], k[1], k[2])
         return  k
@@ -2399,7 +2410,8 @@ class CalculationVasp(Calculation):
 
 
             self.potcar_lines = []
-
+            self.stress = None
+            self.intstress = None
             for line in outcarlines:
 
                 #Check bands
@@ -2558,7 +2570,7 @@ class CalculationVasp(Calculation):
                     #print self.vol      
 
                 if "generate k-points for:" in line: 
-                    self.set.ngkpt = tuple(  [int(n) for n in line.split()[3:]]  )
+                    self.ngkpt = tuple(  [int(n) for n in line.split()[3:]]  )
                     #print self.set.ngkpt
 
                   # Kohn-Sham hamiltonian: http://en.wikipedia.org/wiki/Kohn%E2%80%93Sham_equations
@@ -2598,8 +2610,10 @@ class CalculationVasp(Calculation):
 
                 if "energy without entropy =" in line:
                     e_sig0_prev = e_sig0
-                    e_sig0 = float(line.split()[7])
-
+                    try:
+                        e_sig0 = float(line.split()[7])
+                    except:
+                        e_sig0 = 0
 
 
                 if "free  energy   TOTEN  =" in line:
@@ -2654,12 +2668,17 @@ class CalculationVasp(Calculation):
 
                 if 'number of electron ' in line:
                     # print (line)
-                    self.mag_sum.append( [float(line.split()[5]), 0])
+                    try:
+                        self.mag_sum.append( [float(line.split()[5]), 0])
+                    except:
+                        pass
 
                 if 'augmentation part' in line:
                     # print (line)
-                    self.mag_sum[-1][1]= float(line.split()[4])
-
+                    try:
+                        self.mag_sum[-1][1]= float(line.split()[4])
+                    except:
+                        pass
 
 
                 if 'magnetization (x)' in line:
@@ -2845,7 +2864,7 @@ class CalculationVasp(Calculation):
             #nbands = ("%i" % (self.set.vasp_params["NBANDS"])    ).center(j[8])
             #added = ("%.0f" % ( (self.set.add_nbands - 1) * 100 )    ).center(j[15])
             try:
-                kmesh = ("%s" % (str(self.set.ngkpt) )    ).center(j[8])
+                kmesh = ("%s" % (str(self.ngkpt) )    ).center(j[8])
                 ks = self.calc_kspacings()
                 kspacing = ("[%.2f,%.2f,%.2f]" % ( ks[0], ks[1], ks[2] )    ).center(j[9])
                 ks1 = ("[%.2f]" % ( ks[0] )    ).center(j[9])
@@ -2856,9 +2875,15 @@ class CalculationVasp(Calculation):
                 ks1     = ''
 
             nkpt = ("%i" % ( self.NKPTS)     ).center(j[10])
-            istrs = ("[%5i,%5i,%5i] " % ( self.intstress[0],self.intstress[1],self.intstress[2]  )    ).center(j[11])
-            strs = ("%.0f,%.0f,%.0f " % ( self.stress[0],self.stress[1],self.stress[2]  )    ).center(j[11])   
-            eprs = ("%.0f" % (self.extpress)).center(j[12])
+            if self.stress:
+                istrs = ("[%5i,%5i,%5i] " % ( self.intstress[0],self.intstress[1],self.intstress[2]  )    ).center(j[11])
+                strs = ("%.0f,%.0f,%.0f " % ( self.stress[0],self.stress[1],self.stress[2]  )    ).center(j[11])   
+                eprs = ("%.0f" % (self.extpress)).center(j[12])
+            
+            else:
+                istrs = ''
+                strs  = ''
+                eprs =  ''
             try:
                 tsm = ("%.0f" % (self.set.tsmear*1000)).center(j[13])
             except:

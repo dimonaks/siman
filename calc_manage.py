@@ -1,7 +1,8 @@
-# from header import *
+#Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
 from operator import itemgetter
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -26,7 +27,7 @@ from header import print_and_log, runBash
 from classes import Calculation, CalculationVasp, Description
 from functions import list2string, gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance, local_surrounding
 from picture_functions import plot_mep
-
+from analysis import calc_redox
 
 
 
@@ -2508,6 +2509,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 magn1.append(cl.magn1)
                 magn2.append(cl.magn2)
             eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
+            # import inspect
+            
+            # print (inspect.getfile(EquationOfState))
+
             v0, e0, B = eos.fit()
             #print "c = ", clist[2]
             print_and_log( '''
@@ -2521,6 +2526,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             # plt.clf()
             # plt.close('all')
             if 'fit' in show:
+                mpl.rcParams.update({'font.size': 14})
+
                 eos.plot(savedpath, show = True)
             # plt.clf()
 
@@ -2554,69 +2561,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 print_and_log("Calculation ",bcl.id, 'is unfinished; return')
                 return {}, []
 
-
-            #normalize numbers of atoms by some element except Li, Na, K
-            iLi = None; jLi = None
-            # print cl.end.znucl
-            for i, z in enumerate(cl.end.znucl):
-                # print i, z
-                if z in [3, 11, 19]: 
-                    iLi = i
-                    # print 'iLi is found'
-                    continue
-                # print i, z
-
-                for j, zb in enumerate(bcl.end.znucl):
-                    if zb in [3, 11, 19]: 
-                        jLi = j
-                        continue
-
-                    if z == zb:
-                        # print "I use ", z, " to normalize"
-                        i_n = i
-                        j_n = j
-
-
-            # print "i, j",i, j
-            # print 'nznucl cl',  cl.end.nznucl
-            # print 'znucl cl',  cl.end.znucl
-            n  = cl.end.nznucl[i_n]
-            bn = bcl.end.nznucl[j_n]
-            if iLi != None:
-                nLi  = cl.end.nznucl[iLi]
-            else:
-                raise RuntimeError
-
-            if jLi != None:
-                bnLi  = bcl.end.nznucl[jLi]
-            else:
-                bnLi  = 0
-
-            # print n, bn, nLi
-
-            # print nLi/n
-
-            mul = 1. / (float(nLi) / n)             
-
-            # print mul
-
-
-            redox = -(  ( cl.energy_sigma0 / n - bcl.energy_sigma0 / bn ) * mul  -  energy_ref  )
-
-            dV = cl.end.vol / n - bcl.end.vol / bn 
-
-            vol_red = dV / (cl.end.vol/n) * 100 # %
-
-            final_outstring = ("{:} | {:.2f} eV \n".format(id[0]+'.'+id[1], redox  ))
+            results_dic = calc_redox(cl, bcl, energy_ref)
             
-            print_and_log( final_outstring )
-
-            results_dic = {'is':id[0], 'redox_pot':redox, 'id_is':id, 'id_ds':b_id, 
-            'kspacing':cl.set.vasp_params['KSPACING'], 'time':cl.time/3600.,
-            'mdstep':cl.mdstep, 'ecut':cl.set.vasp_params['ENCUT'], 'niter':cl.iterat/cl.mdstep,
-            'set_is':id[1], 'vol_red':vol_red }
-
-
 
 
 

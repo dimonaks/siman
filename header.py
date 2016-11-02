@@ -63,10 +63,10 @@ try:
 
 except:
     print('Some module is used separately; default_project_conf.py is used')
+    mpl.use('agg') #switch matplotlib on or off; for running script using ssh
     siman_run = False
     from default_project_conf import *
     history.append('separate run')
-    mpl.use('agg') #switch matplotlib on or off; for running script using ssh
 
 import matplotlib.pyplot as plt
 plt.rcParams['mathtext.fontset'] = "stix"
