@@ -252,7 +252,7 @@ def get_from_database(x1, x2, mat, inquiry_keys = None, silent = None, ssh_objec
 
 
     if len(x1s) == 0 or len(x2s) == 0:
-        print('No information in database for this inquire')
+        print('No information in database for this inquire:', x1, x2, mat, str(inquiry_keys) )
         return None, None
     
     key1 = x1s[0]

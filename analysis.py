@@ -9,8 +9,8 @@ def calc_redox(cl1, cl2, energy_ref = None):
     cl2 (Calculation) - structure with lower concentration
     energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
     """
-    cl1 = cl1
-    cl2 = cl2
+    if cl1 is None or cl2 is None:
+        return
 
     energy_ref_dict = {3:-1.9,  11:-1.31,  19:-1.02}
     z_alk_ions = [3, 11, 19]
@@ -78,7 +78,7 @@ def calc_redox(cl1, cl2, energy_ref = None):
     # final_outstring = ("{:} | {:.2f} eV \n1".format(cl1.id[0]+'.'+cl1.id[1], redox  ))
     final_outstring = ("{:30} | {:10.2f} eV | {:10.1f} %".format(cl1.name, redox, vol_red  ))
     
-    printlog( final_outstring )
+    printlog( final_outstring, end = '\n' )
 
     try:
         results_dic = {'is':cl1.id[0], 'redox_pot':redox, 'id_is':cl1.id, 'id_ds':cl2.id, 
