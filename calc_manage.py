@@ -3110,18 +3110,20 @@ def add_to_database(cl):
     """
     cl is Calculation which should be added to database
     """
+    join = os.path.join
 
     save_format = 'azh'
-    dbpath = header.PATH2DATABASE+'/'
+    dbpath = header.PATH2DATABASE
     it = cl.id[0]
-    sfolder = dbpath+header.struct_des[it].sfolder.split('/')[0]+'/'
+    material = header.struct_des[it].sfolder.split('/')[0]
+    sfolder = os.path.join(dbpath, material)
 
     name = []
 
     if 'azh' in save_format:
         #1. Single point calculation of total energy
         # print(sfolder)
-        makedir(sfolder+'dummy')
+        makedir( join( sfolder, 'dummy')  )
 
         #determine x for alkali ion from structure name
         parsed = re.findall(r'([A-Z][a-z]*)(\d*)', it)
@@ -3142,8 +3144,11 @@ def add_to_database(cl):
 
         cl.read_results()
         
-        # sfolder+=functional+'/'
-        # makedir(sfolder+'dummy')
+        if material in ['LiCoO2', 'LiTiO2', 'LiFePO4', 'NaFePO4', 'LiMnPO4', 
+        'LiNiO2', 'LiTiS2', 'LiMn2O4', 'LiVP2O7', 'LiVPO4F', 
+        'NaMnAsO4', 'Na2FePO4F', 'Na2FeVF7', 'KFeSO4F', 'NaLiCoPO4F', 'KVPO4F' ]: 
+            sfolder = join(sfolder, 'aks')
+            makedir( join(sfolder,'dummy') )
 
         cl.set.update()
 
@@ -3179,7 +3184,7 @@ def add_to_database(cl):
 
         outcar_name = name_str+'.out'
 
-        shutil.copyfile(cl.path["output"], sfolder+outcar_name)
+        shutil.copyfile(cl.path["output"], join(sfolder, outcar_name)  )
 
         write_xyz(cl.end, path = sfolder, filename =  name_str)
 
@@ -3205,8 +3210,8 @@ def add_to_database(cl):
         # st_mp_conv = sf.get_conventional_standard_structure()
         # print(st_mp_conv)
         # print(st_mp_conv.lattice.matrix)
-        print(st_mp_prim)
-        print(st_mp_prim.lattice)
+        # print(st_mp_prim)
+        # print(st_mp_prim.lattice)
 
         sg_after = st_mp_prim.get_space_group_info()
 
@@ -3220,7 +3225,7 @@ def add_to_database(cl):
             from pymatgen.io.cif import CifWriter
             cif = CifWriter(st_mp_prim, symprec = symprec)
             cif_name =  name_str+'.cif'
-            cif.write_file(sfolder+cif_name)
+            cif.write_file(  join(sfolder, cif_name)  )
             printlog('Writing cif', cif_name)
 
         if 0:
@@ -3238,29 +3243,30 @@ def add_to_database(cl):
             print(rprimd.round(2))
 
         #write chg
-        if 0:
-            path_to_chg = cl.get_chg_file('CHG')
-            makedir(sfolder+'bin/dummy')
-            print(path_to_chg)
-            gz = '.gz'
-            if gz not in path_to_chg:
-                gz = ''
-            shutil.copyfile(path_to_chg, sfolder+'bin/'+name_str+'.chg'+gz)
+        if 1:
+            path_to_chg = cl.get_chg_file('CHGCAR')
+            if path_to_chg:
+                makedir( join(sfolder,'bin','dummy') )
+                printlog('path to chgcar',path_to_chg)
+                gz = '.gz'
+                if gz not in path_to_chg:
+                    gz = ''
+                shutil.copyfile(path_to_chg, join( sfolder, 'bin', name_str+'.chg'+gz)  )
 
 
         #make dat
         #incars
-        makedir(sfolder+'dat/dummy')
-        incars = glob.glob(cl.dir+'/*INCAR*')
+        makedir(  join(sfolder, 'dat','dummy')  )
+        incars = glob.glob(  join(cl.dir, '*INCAR*')  )
         # print(incars)
         for inc in incars:
-            shutil.copy(inc, sfolder+'dat/')
+            shutil.copy(  inc, join(sfolder, 'dat')  )
 
 
         #kpoints
         import json
-        with open(sfolder+'dat/kpoints_for_kspacings.json', 'w') as fp:
-            json.dump(header.struct_des[it].ngkpt_dict_for_kspacings, fp)
+        with open(  join(sfolder, 'dat', 'kpoints_for_kspacings.json'), 'w') as fp:
+            json.dump(header.struct_des[it].ngkpt_dict_for_kspacings, fp,)
 
         # print(cl.set.toJSON())
 

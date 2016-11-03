@@ -3091,16 +3091,23 @@ class CalculationVasp(Calculation):
 
 
 
-    def get_chg_file(self, filetype = 'CHGCAR'):
+    def get_chg_file(self, filetype = 'CHGCAR', nametype = ''):
         #cl - object of CalculationVasp class
-        path_to_chg = self.path['output'].replace('OUTCAR',filetype)
+        #filetype (str) - 'CHG' or 'CHGCAR'
+        #nametype (str) - 'asoutcar', 
+        if nametype == 'asoutcar':
+            path_to_chg = self.path['output'].replace('OUTCAR',filetype)
+        else:
+            path_to_chg = os.path.join( os.path.dirname(self.path['output']), filetype)
+
+
 
         # print(path_to_chg)
-        # if not os.path.exists(path_to_chg): 
-        #     print_and_log( 'Charge file is downloading')
-        #     printlog( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_chg+" "+self.dir)+'\n' ) #CHG
-        #     print_and_log( path_to_chg, 'was downloaded')
-        out = get_from_server(path_to_chg, self.dir, self.cluster_address)
+
+        if os.path.exists(path_to_chg): 
+            out = None
+        else:
+            out = get_from_server(path_to_chg, self.dir, self.cluster_address)
 
 
         if out:
@@ -3110,7 +3117,7 @@ class CalculationVasp(Calculation):
             out = get_from_server(path_to_chg, self.dir, self.cluster_address)
             if out:
                 printlog('Charge file', path_to_chg, 'was not found')
-                path_to_chg = 'file not found'
+                path_to_chg = None
            
         return path_to_chg
 

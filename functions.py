@@ -674,9 +674,8 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
 
 
-    xyzfile = basepath+name+".xyz"
-    if not os.path.exists(os.path.dirname(xyzfile)):
-        os.makedirs(os.path.dirname(xyzfile))
+    xyzfile = os.path.join(basepath, name+".xyz")
+    makedir(xyzfile)
 
 
     """Processing section"""
