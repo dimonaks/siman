@@ -3053,6 +3053,9 @@ class CalculationVasp(Calculation):
                     # ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )
                 print_and_log('Spin 1:',end = '\n' )
                 print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'],  tablefmt='psql'),end = '\n' )
+                print(' & '.join(['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}']))
+                print_and_log(tabulate(occ_matrices[i_mag_at][0:l05], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".2f", tablefmt='latex'),end = '\n' )
+                # print(tabulate(a, tablefmt="latex", floatfmt=".2f"))
                 print_and_log('Spin 2:',end = '\n' )
                 print_and_log(tabulate(df[l05:],  tablefmt='psql') )
             self.occ_matrices = occ_matrices

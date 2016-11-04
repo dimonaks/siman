@@ -79,8 +79,9 @@ def calc_redox(cl1, cl2, energy_ref = None):
     final_outstring = ("{:30} | {:10.2f} eV | {:10.1f} %".format(cl1.name, redox, vol_red  ))
     
     printlog( final_outstring, end = '\n' )
-
     try:
+        cl1.set.update()
+
         results_dic = {'is':cl1.id[0], 'redox_pot':redox, 'id_is':cl1.id, 'id_ds':cl2.id, 
         'kspacing':cl1.set.kspacing, 'time':cl1.time/3600.,
         'mdstep':cl1.mdstep, 'ecut':cl1.set.ecut, 'niter':cl1.iterat/cl1.mdstep,
