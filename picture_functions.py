@@ -82,6 +82,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
     mi = min(xnew)
     ma = max(xnew)
     r = spl_der.roots()
+
+    print(r)
+
     r = r[ np.logical_and(mi<r, r<ma) ] # only roots inside the interval are interesting
 
 

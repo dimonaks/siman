@@ -1869,6 +1869,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         write_xyz(st, file_name = st.name+'_antisite_final')
 
         printlog('Atom ',i_alk+1,'and', i_tr+1,'were swapped')
+        printlog('The distanse between them is ', sur[3][0])
 
         #clear magmom
         st.magmom = [None]

@@ -2402,10 +2402,10 @@ class CalculationVasp(Calculation):
 
 
 
-            try:
-                spin_polarized = self.set.spin_polarized # again it will be better to determine this from outcar 
-            except:
-                spin_polarized = None
+            # try:
+            #     spin_polarized = self.set.spin_polarized # again it will be better to determine this from outcar 
+            # except:
+            #     spin_polarized = None
 
 
 
@@ -2464,7 +2464,13 @@ class CalculationVasp(Calculation):
 
 
 
-
+                if 'ISPIN' in line:
+                    if line.split()[2] == '2':
+                        spin_polarized = True
+                        self.spin_polarized = spin_polarized
+                    else:
+                        spin_polarized = False
+                        self.spin_polarized = False
 
 
                 if "TOO FEW BANDS" in line:
@@ -2700,7 +2706,7 @@ class CalculationVasp(Calculation):
                 if 'onsite density matrix' in line:
                     i_at = int( outcarlines[i_line-2].split()[2]  ) #starting from one
                     l_at = int( outcarlines[i_line-2].split()[8]  )
-                    # print (i_at)
+                    # print (spin_polarized)
                     spin1 = []
                     spin2 = []
                     nm = 2*l_at+1
@@ -3052,12 +3058,12 @@ class CalculationVasp(Calculation):
                 print_and_log( 'Occ. matrix for atom ', i_mag_at+1, end = '\n' )
                     # ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )
                 print_and_log('Spin 1:',end = '\n' )
-                print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'],  tablefmt='psql'),end = '\n' )
-                print(' & '.join(['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}']))
-                print_and_log(tabulate(occ_matrices[i_mag_at][0:l05], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".2f", tablefmt='latex'),end = '\n' )
+                print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".1f", tablefmt='psql'),end = '\n' )
+                # print(' & '.join(['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}']))
+                # print_and_log(tabulate(occ_matrices[i_mag_at][0:l05], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".2f", tablefmt='latex'),end = '\n' )
                 # print(tabulate(a, tablefmt="latex", floatfmt=".2f"))
                 print_and_log('Spin 2:',end = '\n' )
-                print_and_log(tabulate(df[l05:],  tablefmt='psql') )
+                print_and_log(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql') )
             self.occ_matrices = occ_matrices
 
             # sys.exit()
