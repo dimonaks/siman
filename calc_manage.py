@@ -552,7 +552,7 @@ def choose_cluster(cluster_name, cluster_home):
 
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
     up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
-    coord = 'direct', savefile = 'ov', show = None, comment = '', 
+    coord = 'direct', savefile = 'oc', show = None, comment = '', 
     input_geo_format = None, ifolder = None, input_geo_file = None, corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
     mat_proj_cell = '',
@@ -2148,6 +2148,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             if not hasattr(cl,'energy_sigma0'):
                 
                 #check if job in queue
+                job_in_queue = None
                 try:
                     if 'SLURM' in cl.schedule_system:
                         job_in_queue = cl.id[0]+'.'+cl.id[1] in runBash('ssh '+cl.cluster_address+""" squeue -o '%o' """)
@@ -2155,7 +2156,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                         # print(runBash('ssh '+header.CLUSTER_ADDRESS+""" squeue -o '%o' """))
                     
                     else:
-                        print_and_log('Error! I do not know how to check job status with chosen SCHEDULE_SYSTEM; Please teach me here! ')
+                        print_and_log('Attention! I do not know how to check job status with chosen SCHEDULE_SYSTEM; Please teach me here! ')
                 except:
                     printlog('Warning! cl.schedule_system')
                     job_in_queue = ''

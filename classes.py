@@ -1675,7 +1675,6 @@ class CalculationVasp(Calculation):
             """
             set_mod (str) - additional modification of names needed for *set_sequence* regime, should be '.setname'
             """
-
             if 'only_neb' in self.calc_method:
                 write = False
                 write_poscar = False
@@ -1761,7 +1760,8 @@ class CalculationVasp(Calculation):
 
                             f.write("cp CONTCAR POSCAR   #u-ramp preparation\n")                
 
-                    contcar_file = mv_files_according_versions('o', v, name_mod = name_mod, write = write, rm_chg_wav = '')
+            # print(savefile)
+                    contcar_file = mv_files_according_versions(savefile, v, name_mod = name_mod, write = write, rm_chg_wav = '')
                 
 
 
@@ -1775,9 +1775,9 @@ class CalculationVasp(Calculation):
                     rm_chg_wav = ''
 
                 if self.set.save_last_wave:
-                    save_last = 'vw'
+                    save_last = 'cw'
                 else:
-                    save_last = 'v'
+                    save_last = 'c'
 
 
                 mv_files_according_versions(savefile = save_last, v=v, name_mod = name_mod, rm_chg_wav = rm_chg_wav) #save more files for last U
@@ -1818,7 +1818,7 @@ class CalculationVasp(Calculation):
             else: #simple run
                 
                 if not savefile: 
-                    savefile = 'vcdox'
+                    savefile = 'vco'
 
                 if write: 
                         f.write("#Basic run:\n")  
@@ -2374,6 +2374,7 @@ class CalculationVasp(Calculation):
             self.mag_sum = [] #toatal mag summed by atoms, +augmentation
 
             tot_mag_by_atoms = [] #magnetic moments by atoms on each step
+            tot_chg_by_atoms = []
             tot_mag_by_mag_atoms = []
             #which atoms to use
             magnetic_elements = header.MAGNETIC_ELEMENTS
@@ -2686,6 +2687,13 @@ class CalculationVasp(Calculation):
                     except:
                         pass
 
+                if 'total charge ' in line:
+                    chg = []
+                    for j in range(self.end.natom):
+                        chg.append( float(outcarlines[i_line+j+4].split()[4]) )
+                    
+                    tot_chg_by_atoms.append(np.array(chg))#[ifmaglist])                    
+
 
                 if 'magnetization (x)' in line:
                     mags = []
@@ -2698,6 +2706,8 @@ class CalculationVasp(Calculation):
                     # print tot_mag_by_atoms
                     # magnetic_elements
                     # ifmaglist
+
+
 
                 if 'LDAUU' in line:
                     ldauu = line
@@ -3009,7 +3019,7 @@ class CalculationVasp(Calculation):
                 # for mag in tot_mag_by_atoms:
                 #     print ('  -', mag[numb].round(3) )
 
-                print ('last  step ', tot_mag_by_atoms[-1][numb].round(3) )
+                print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
                 # print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
 
                     # sys.exit()
@@ -3060,7 +3070,7 @@ class CalculationVasp(Calculation):
                 print_and_log('Spin 1:',end = '\n' )
                 print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".1f", tablefmt='psql'),end = '\n' )
                 # print(' & '.join(['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}']))
-                # print_and_log(tabulate(occ_matrices[i_mag_at][0:l05], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".2f", tablefmt='latex'),end = '\n' )
+                print_and_log(tabulate(occ_matrices[i_mag_at][l05:], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".1f", tablefmt='latex'),end = '\n' )
                 # print(tabulate(a, tablefmt="latex", floatfmt=".2f"))
                 print_and_log('Spin 2:',end = '\n' )
                 print_and_log(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql') )
@@ -3116,16 +3126,17 @@ class CalculationVasp(Calculation):
         if os.path.exists(path_to_chg): 
             out = None
         else:
-            out = get_from_server(path_to_chg, self.dir, self.cluster_address)
+            out = get_from_server(path_to_chg, os.path.dirname(path_to_chg), self.cluster_address)
 
 
         if out:
             printlog('Charge file', path_to_chg, 'was not found, trying scratch')
             # printlog('Charge file', path_to_chg, 'was not found')
-            path_to_chg = '/scratch/amg/aksenov/'+path_to_chg
-            out = get_from_server(path_to_chg, self.dir, self.cluster_address)
+            path_to_chg_scratch = '/scratch/amg/aksenov/'+path_to_chg
+
+            out = get_from_server(path_to_chg_scratch, os.path.dirname(path_to_chg), self.cluster_address)
             if out:
-                printlog('Charge file', path_to_chg, 'was not found')
+                printlog('Charge file', path_to_chg_scratch, 'was not found')
                 path_to_chg = None
            
         return path_to_chg
