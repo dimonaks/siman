@@ -1850,7 +1850,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
                         return i
 
 
-        i_alk = find_alkali_ion(st, 4)
+        i_alk = find_alkali_ion(st, 3)
         x_alk = st.xcart[i_alk]
 
 
