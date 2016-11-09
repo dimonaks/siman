@@ -1181,8 +1181,8 @@ class CalculationVasp(Calculation):
                 ns = len(spec_mom_is); 
                 number_of_ord = math.factorial(ns) / math.factorial(0.5 * ns)**2
                 if number_of_ord > 100:
-                    print_and_log('Attention! Number of orderings is more than 100 - no sense to check them; May be to check several random?', imp = 'y')
-                else:
+                    print_and_log('Attention! Number of orderings is more than 100 - I will check only first 100', imp = 'y')
+                # else:
 
                     ls = [0]*len(spec_mom_is)
                     # print ls
@@ -1192,21 +1192,27 @@ class CalculationVasp(Calculation):
                         """
                         Find recursivly all possible orderings
                         """
-                        for s in 1,-1:
-                            ls[i] = s
-                            if i < len(ls)-1:
-                                spin(ls, i+1)
-                            else:
-                                if sum(ls) == 0:
-                                    orderings.append(copy.deepcopy(ls) )            
+                        if len(orderings) < 100:
+
+                            for s in 1,-1:
+                                ls[i] = s
+                                if i < len(ls)-1:
+                                    spin(ls, i+1)
+                                else:
+                                    if sum(ls) == 0:
+                                        orderings.append(copy.deepcopy(ls) )            
                         return
 
                     spin(ls, 0)
 
                     mag_orderings = []
                     mag_orderings.append(magmom)
+                    printlog('Only first five orderings are checked !')
+
                     for j, order in enumerate(orderings):
                         # print order
+                        if j > 4:
+                            break
 
                         new_magmom = copy.deepcopy(magmom)
                         for i, s in zip(spec_mom_is, order):
@@ -3020,7 +3026,8 @@ class CalculationVasp(Calculation):
                 #     print ('  -', mag[numb].round(3) )
 
                 print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
-                # print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
+                if 'a' in show:
+                    print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
 
                     # sys.exit()
                 if len(alkali_ions) > 0:
