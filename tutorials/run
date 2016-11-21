@@ -1,0 +1,2 @@
+#!/bin/bash
+sbatch -p AMG /home/aksenov/topologic/Bi2Se3//Bi2Se3.static/Bi2Se3.static.run

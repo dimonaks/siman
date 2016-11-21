@@ -5,8 +5,8 @@ from operator import itemgetter
 
 
 import header
-from header import print_and_log, runBash
-from small_functions import is_list_like, is_string_like
+from header import print_and_log, printlog, runBash
+from small_functions import is_list_like, is_string_like, gunzip_file
 # from classes import res_loop
 # from header import *
 
@@ -55,51 +55,115 @@ def list2string(ilist):
 
 
 def push_to_server(files = None, to = None,  addr = None):
-    
+    """
+    if header.ssh_object then use paramiko
+    to (str)     - path to remote folder ! 
+    """
     if not is_list_like(files):
         files = [files]    
-    # print('push_to_server(): files are :',files)
+    
+    to = to.replace('\\', '/') # make sure is POSIX
+
+    # print('push_to_server(): files are :',files, 'to', to)
     files_str = ' '.join(np.array(files ))
     
+    if header.ssh_object:
+        for file in files:
+            # print(file, to)
+            header.ssh_object.put(file,  to+'/'+os.path.basename(file) )
+        out = ''
+    else:
+        out = runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
 
-    return runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
+    return out 
+
+
 
 def get_from_server(files = None, to = None,  addr = None, trygz = True):
     """
+    Download files using either rsync or paramiko (higher priority); 
+
+
+    files (list) - files on cluster to download 
+    to (str)     - path to local folder ! 
+
     The zip file is checked only for the first file in list *files*
+
     """
     if not is_list_like(files):
         files = [files]
     
+    files = [file.replace('\\', '/') for file in files] #make sure the path is POSIX
+
+
+
+
     files_str = ' :'.join(np.array(files ))
-    print_and_log('Trying to download', files_str, 'from server', imp = 'n')
+    printlog('Trying to download', files_str, 'from server', imp = 'n')
+    
     if not to:
         f = tempfile.NamedTemporaryFile() 
         to = f.name #system independent filename
         f.close()
 
-    out = runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
+
+    if header.ssh_object:
+        trygz = False
+        for file in files:
+            localfile = os.path.join(to, os.path.basename(file) )
+            header.ssh_object.get(file,  localfile  )
+            out = not os.path.exists(localfile)
+        
+
+    else:
+        out = runBash('rsync -uaz  '+addr+':'+files_str+ ' '+to)
     # print ('out === ',out)
     # print(out and trygz)
+
+
     if out and trygz:# and not os.path.exists(to_new):
-        to_new = to+'/'+os.path.basename(files[0])
 
         print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
         files[0]+='.gz'
-        to_new = to+'/'+os.path.basename(files[0])
+        to_new = os.path.join( to, os.path.basename(files[0])  )
 
-        # print (files[0])
-        out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+'; ')
-        runBash('gunzip -f '+to_new)
-        print(out)
+        if header.ssh_object:
+            header.ssh_object.get(files[0],  to_new  )
+            out = not os.path.exists(to_new)
+        else:
+            out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+'; ')
+        
+
+        # runBash('gunzip -f '+to_new)
+        gunzip_file(to_new)
+
+        # print(out)
+        
         if out:
             ''
-            # print_and_log('    No gz either!', imp = 'n')
-
+            printlog('    No gz either!', imp = 'n')
 
 
     return out
 
+
+def file_exists_on_server(file, addr):
+
+    file = file.replace('\\', '/') # make sure is POSIX
+
+
+    if header.ssh_object:
+        header.ssh_object.fexists(file)
+    else:
+        out = runBash('ssh '+addr+' ls '+file)
+
+
+def run_on_server(command, addr):
+    if header.ssh_object:
+        out = header.ssh_object.run(command)
+    else:
+        out = runBash('ssh '+addr+' '+command)    
+    return out
 
 
 def makedir(path):

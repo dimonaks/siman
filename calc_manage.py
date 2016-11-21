@@ -1,37 +1,46 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
 from operator import itemgetter
+import copy, traceback, datetime, sys, os, glob, shutil, re
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 
-try:
-    from pymatgen.matproj.rest import MPRester
-    from pymatgen.io.vasp.inputs import Poscar
-except:
-    print('pymatgen is not avail')
 
 try:
-    # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to siman library
+    # pmg config --add VASP_PSP_DIR $VASP_PSP_DIR MAPI_KEY $MAPI_KEY
+    from pymatgen.matproj.rest import MPRester
+    from pymatgen.io.vasp.inputs import Poscar
+    from pymatgen.io.cif import CifParser
+    pymatgen_flag = True 
+except:
+    print('pymatgen is not available')
+    pymatgen_flag = False 
+
+
+
+try:
+    # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library
     from ase.utils.eos import EquationOfState
 except:
     print('ase is not avail')
 
-
+import header
+from header import print_and_log, runBash, mpl, plt
 
 from small_functions import is_list_like
-import copy, traceback, datetime, sys, os, glob, shutil, re
-import header
-from header import print_and_log, runBash
 from classes import Calculation, CalculationVasp, Description
-from functions import list2string, gb_energy_volume, element_name_inv, write_xyz, makedir, get_from_server, scale_cell_uniformly, image_distance, local_surrounding
+from functions import (list2string, gb_energy_volume, element_name_inv, 
+     write_xyz, makedir, get_from_server, scale_cell_uniformly, 
+     image_distance, local_surrounding, file_exists_on_server, run_on_server, push_to_server)
 from picture_functions import plot_mep
 from analysis import calc_redox
 
-
+from set_functions import init_default_sets
 
 printlog = print_and_log
+
+init_default_sets()
+
 
 
 
@@ -214,13 +223,11 @@ def complete_run(close_run = True):
 
             f.write("mv run last_run\n")
 
-        
 
-        runBash('chmod +x run')
-        # print("rsync -zave ssh run "+header.cluster_address+":"+header.project_path_cluster +"\n")
-        printlog( runBash("rsync -zave ssh run "+header.cluster_address+":"+header.project_path_cluster) +"\n" )
-        print_and_log('run sent')
-        # clean_run(header.project_conf.SCHEDULE_SYSTEM)
+        
+        push_to_server('run',  header.cluster_home, header.cluster_address)
+        run_on_server('chmod +x run', header.cluster_address)
+        printlog('run sent')
     
     return
 
@@ -329,155 +336,188 @@ def update_des(struct_des, des_list):
 
 def cif2poscar(cif_file, poscar_file):
 
-    if header.CIF2CELL:
-        print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
+
+    if 0: #using cif2cell for conversion
+        if header.CIF2CELL:
+            print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
+            printlog('File',poscar_file, 'created.')
+
+            #check
+            if not os.path.exists(poscar_file):
+                print_and_log("Error! cif2cell failed")
+        else:
+            printlog('Error! cif2cell is not installed!')
+
+
+    if pymatgen_flag:
+        parser = CifParser(cif_file)
+        s = parser.get_structures(primitive=0)[0]
+        
+        Poscar(s).write_file(poscar_file)
         printlog('File',poscar_file, 'created.')
-
-        #check
-        if not os.path.exists(poscar_file):
-            print_and_log("Error! cif2cell failed")
+    
     else:
-        printlog('Error! cif2cell is not installed!')
+        printlog('Error! Support of cif files requires pymatgen; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
 
 
-def smart_structure_read(curver, inputset = '', cl = None, input_folder = None, input_geo_format = None, input_geo_file = None):
+
+
+def determine_file_format(input_geo_file):
+
+    supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif',} #format name:format specifier
+
+    if 'POSCAR' in input_geo_file:
+        input_geo_format = 'vasp'
+    elif 'cif' in input_geo_file:
+        input_geo_format = 'cif'
+    elif 'geo' in input_geo_file:
+        input_geo_format = 'abinit'
+    else:
+        printlog("Error! smart_structure_read(): File format is unknown, should be from ", supported_file_formats)
+
+    return input_geo_format
+
+
+
+def get_file_by_version(geofilelist, version):
+
     """
-    Wrapper for reading geometry files
-    Also copies geofile and OCCMATRIX
-    cl - Calculation() can be already created before the functions
-    returns Structure()
+    Find file with needed version from filelist according to certain rules
     """
     curv = None
-    if input_geo_file:
-        geofilelist = glob.glob(input_geo_file) 
-        print_and_log("You provided the following geo file explicitly ",str(geofilelist), 
-            'version of file does not matter, I use *curver*',curver, 'as a new version' )
-        curv = curver #
+    
+    matched_files = []
+
+    for input_geofile in geofilelist: 
         
-        if not input_geo_format:
-            if 'POSCAR' in input_geo_file:
-                input_geo_format = 'vasp'
+        input_geofile = os.path.normpath(input_geofile)
+
+        input_geo_format = determine_file_format(input_geofile)
+
+        if input_geo_format in ['abinit',]: #version determined from token 
+            # curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
+            
+            with open(input_geofile, 'r') as f:
+                for line in f:
+                    if 'version' in line:
+                        curv = int(line.split()[1])
 
 
+        elif input_geo_format == 'vasp': #from filename
+            if '-' in input_geofile:
+                curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+            # try: 
+            #     curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+            # except:
+            #     printlog('Error! Could not determine version of poscar file')
+
+        elif input_geo_format == 'cif': #from filename
+            curv = int(os.path.basename(input_geofile).split('.')[0] )
 
 
+        if curv == version:
+            matched_files.append(input_geofile)
+
+    if len(matched_files) > 1:
+        printlog('Error! Several files have same versions')
+    elif len(matched_files) == 0:
+        input_geofile = None
     else:
-        print_and_log("I am searching for geofiles in folder "+input_folder+"\n" )
+        input_geofile = matched_files[0]
+
+
+    return input_geofile
+
+
+
+
+
+def smart_structure_read(curver, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None):
+    """
+    Wrapper for reading geometry files
+    calcul (Calculation()) - object to which the path and version read
+
+    curver (int) - version of file to be read
+    input_geo_file (str) - explicitly provided input file, has higher priority
+    input_folder (str)   - folder with several input files, the names doesnot matter only versions
+    input_geo_format (str) - explicitly provided format of input file 
+
+
+
+    returns Structure()
+    """
+
+    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'cif':'*.cif'}
+
+
+
+    if input_geo_file:
+
+        printlog("You provided the following geo file explicitly ", input_geo_file, 
+            '; Version of file does not matter, I use *curver*=',curver, 'as a new version', imp = 'Y' )
         
-        search_templates = {}
+    elif input_folder:
 
-        search_templates['abinit'] = '*.geo*'
-        search_templates['vasp']   = '*POSCAR*'
-        search_templates['cif']    = '*.cif'
+        print_and_log("I am searching for geofiles in folder "+input_folder+"\n" )
 
-        # print (input_geo_format)
-        if input_geo_format:
-            geofilelist = glob.glob(input_folder+'/'+search_templates[input_geo_format]) #Find input_geofile
+        if input_geo_format: 
+            geofilelist = glob.glob(input_folder+'/'+search_templates[input_geo_format]) #Find input_geofile of specific format
         else:
-            for key in ['abinit', 'vasp', 'cif']:
-                geofilelist = glob.glob(input_folder+'/'+search_templates[key]) #Find input_geofile
-                if geofilelist:
-                    input_geo_format = key
-                    print_and_log(key,' format is detected. input files are ',geofilelist)
-                    
+            geofilelist = glob.glob(input_folder+'/*') 
 
-
-                    break
 
         geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
 
+        input_geo_file = get_file_by_version(geofilelist, curver)
 
-    #additional search in target folder if no files in root # !!!Add for Vasp also 
-    # if not geofilelist:
-    #     print_and_log("Attention! trying to find here "+input_folder+"/target\n" )
-    #     geofilelist = glob.glob(input_folder+'/target/*.geo*') #Find input_geofile            
-
-
-    for input_geofile in geofilelist: #quite stupid to have this loop here - much better to move this to upper function, and the loop will not be needed
-        
-        #print runBash("grep version "+str(input_geofile) )
-        input_geofile = os.path.normpath(input_geofile)
-        # print(curv)
-        if curv is None:
-            if input_geo_format in ['abinit',]:
-                curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
-
-            elif input_geo_format == 'vasp':
-                try: 
-                    curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
-                except:
-                    printlog('Error! Could not determine version of poscar file')
-
-            elif input_geo_format == 'cif': 
-                curv = int(os.path.basename(input_geofile).split('.')[0] )
-
-
-        if curv == curver:
-
-            if cl:
-
-                calc_geofile_path = os.path.normpath(cl.dir + input_geofile.split('/')[-1])
-                
-                if input_geofile != calc_geofile_path: # copy initial geo file and other files to calc folder
-
-                    makedir(calc_geofile_path)
-
-                    shutil.copyfile(input_geofile, calc_geofile_path)
-                    dir_1 = os.path.dirname(input_geofile)
-                    dir_2 = os.path.dirname(calc_geofile_path) 
-                    
-                    if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1:
-
-                        shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
-            else:
-                cl = CalculationVasp()
-
-
-            if input_geo_format == 'abinit':
-                cl.read_geometry(input_geofile)
-            
-            elif input_geo_format == 'vasp':
-                cl.read_poscar(input_geofile, version = curver)
-
-            elif input_geo_format == 'cif':
-                if header.project_conf.CIF2CELL:
-                    print_and_log( runBash("cif2cell "+input_geofile+"  -p vasp -o "+input_geofile.replace('.cif', '.POSCAR'))  )
-                    input_geofile = input_geofile.replace('.cif', '.POSCAR')
-                    
-                    #check
-                    if not os.path.exists(input_geofile):
-                        print_and_log("Error! Something wrong with conversion of cif2cell: \n")
-                        raise RuntimeError
-
-
-                    cl.read_poscar(input_geofile)
-                
-
-
-                else:
-                    print_and_log("Error! cif2cell is not available in your system")
-                    raise RuntimeError
-
-            
-            else:
-                print_and_log("Error! File format is unknown")
-
-                raise RuntimeError
-
-            
-
-            break
-        curv = None
+        if input_geo_file:
+            printlog('File ', input_geo_file, 'was found')
+        else:
+            printlog('Error! No input file with version ', curver, 'was found')
     
+    else:
+        printlog('Neither *input_geo_file* nor *input_folder* were provided')
 
 
+    input_geo_format = determine_file_format(input_geo_file)
+    printlog(input_geo_format,' format is detected')
 
-    if cl and cl.path["input_geo"] == None: 
-        print_and_log("Error! Could not find geofile in this list: "+ str(geofilelist)+  "\n")
-        raise NameError #
+
+    if calcul:
+        cl = calcul
+    else:
+        cl = CalculationVasp()
+
+
+    if input_geo_format   == 'abinit':
+        cl.read_geometry(input_geo_file)
+
+    
+    elif input_geo_format == 'vasp':
+        cl.read_poscar(input_geo_file, version = curver)
+
+
+    elif input_geo_format == 'cif':
+        
+        cif2poscar(input_geo_file, input_geo_file.replace('.cif', '.POSCAR'))
+        input_geo_file = input_geo_file.replace('.cif', '.POSCAR')
+        cl.read_poscar(input_geo_file)
+
+   
+    else:
+        print_and_log("Error! smart_structure_read(): File format is unknown")
+
+
+    if cl.path["input_geo"] == None: 
+        printlog("Error! Input file was not properly read for some reason")
     
 
     return cl.init
+
+
+
+
+
 
 
 
@@ -521,23 +561,38 @@ def choose_cluster(cluster_name, cluster_home):
 
 
     else:
-        printlog('Cluster', cluster_name, 'is not found, using default')
+        printlog('Cluster', cluster_name, 'is not found, using default', header.DEFAULT_CLUSTER)
         clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
 
 
     header.cluster_address = clust['address']
     header.CLUSTER_ADDRESS = clust['address']
-    if cluster_home is not None:
-        header.cluster_home    = cluster_home
-    else:
-        header.cluster_home    = clust['homepath']
     
+
+    if cluster_home is None:
+        header.cluster_home    = clust['homepath']
+    else:
+        header.cluster_home    = cluster_home
+    
+
+    #Determine cluster home using ssh
+    if header.ssh_object:
+        header.cluster_home = header.ssh_object.run('pwd')
+    else:
+        header.cluster_home = runBash('ssh '+header.cluster_address+' pwd')
+
+    printlog('The home folder on cluster is ', header.cluster_home)
+
+
+
+
     header.CLUSTER_PYTHONPATH    = clust['pythonpath']
     # header.SCHEDULE_SYSTEM    = clust['schedule']
     header.schedule_system    = clust['schedule']
     header.CORENUM    = clust['corenum']
     header.corenum    = clust['corenum']
-    header.project_path_cluster = header.cluster_home+'/'+header.PATH2PROJECT
+    header.project_path_cluster = os.path.join(header.cluster_home, header.PATH2PROJECT)
+
     try:
         header.vasp_command = clust['vasp_com']
     except:
@@ -563,7 +618,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     mul_matrix = None,
     ngkpt = None,
     cluster = None, cluster_home = None,
-    override = None
+    override = None,
+    ssh_object = None,
+    run = False,
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -644,6 +701,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         - cee_file (str) - name of file to be taken from cee database
 
+        - run (bool) - allows to complete and run
+
     Comments:
         !Check To create folders and add calculations add_flag should have value 'add' 
 
@@ -655,6 +714,10 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     """
 
     header.close_run = True
+
+    # init_default_sets() # now in the begining
+
+
 
 
     choose_cluster(cluster, cluster_home)
@@ -839,7 +902,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 st = calc[id_s].end
                 pname = str(id_s)
             else:
-                st = smart_structure_read(curver = v, inputset = inputset, cl = None, input_folder = struct_des[it].sfolder+'/'+it, 
+                st = smart_structure_read(curver = v, input_folder = struct_des[it].sfolder+'/'+it, 
                     input_geo_format = input_geo_format, input_geo_file = input_geo_file)
                 pname = st
 
@@ -1006,7 +1069,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
     if it not in struct_des:
         if not it_folder:
-            printlog('Error! Structure',it,'is not in struct_des, Please provide *itfolder*')
+            printlog('Error! Structure',it,'is not in struct_des, Please provide *it_folder*')
         else:
             add_des(struct_des, it, it_folder, 'auto add_des '  )
 
@@ -1143,6 +1206,12 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     if up not in ('up1','up2','up3'): 
         print_and_log("Warning! You are in the test mode, to add please change up to up1; "); 
         sys.exit()
+    
+    if run: #
+        complete_run() # for IPython notebook
+        printlog(run_on_server('./run', header.cluster_address) )
+
+
     return it
 
 
@@ -1223,10 +1292,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         calc[id].id = id 
         calc[id].name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
-        calc[id].dir = blockdir+"/"+ str(id[0]) +'.'+ str(id[1])+'/'
+        calc[id].dir = blockdir+'/'+ str(id[0]) +'.'+ str(id[1])+'/'
         
 
-        batch_script_filename = cl.dir+cl.id[0]+"."+cl.id[1]+'.run'        
+        batch_script_filename = cl.dir +  cl.id[0]+'.'+cl.id[1]+'.run'        
+
 
         # all additional properties:
         calc[id].calc_method = calc_method
@@ -1271,18 +1341,31 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             if id[2] == first_version:
                 write_batch_header(batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
-                    path_to_job = header.project_path_cluster+cl.dir, 
+                    path_to_job = header.project_path_cluster+'/'+cl.dir, 
                     job_name = cl.id[0]+"."+cl.id[1], number_cores = cl.corenum  )
 
 
 
 
                 
-        cl.init = smart_structure_read(curver = cl.id[2], inputset = inputset, cl = cl, input_folder = input_folder, 
+        cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
             input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
 
+        calc_geofile_path = os.path.join(cl.dir, os.path.basename(cl.path["input_geo"]) )
+       
+        if cl.path["input_geo"] != calc_geofile_path: # copy initial geo file and other files to calc folder
 
+            makedir(calc_geofile_path)
+
+            shutil.copyfile(cl.path["input_geo"] , calc_geofile_path)
+
+            #copy OCCMATRIX file as well             
+            dir_1 = os.path.dirname(cl.path["input_geo"] )
+            dir_2 = os.path.dirname(calc_geofile_path) 
+            if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1:
+                shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
+    
 
 
 
@@ -1350,25 +1433,28 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 calc[id].write_sge_script(mode = 'footer', schedule_system = schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )
                 
-                runBash('chmod +x '+batch_script_filename)
 
                 list_to_copy.extend( cl.make_incar() )
                 
                 list_to_copy.extend( cl.make_kpoints_file() )
-               
+                list_to_copy.append(batch_script_filename)
                 if header.copy_to_cluster_flag: 
                     cl.copy_to_cluster(list_to_copy, update)
 
-                    calc[id].make_run(schedule_system = schedule_system)
-
-
+                    batch_on_server = calc[id].project_path_cluster+'/'+batch_script_filename 
+                    calc[id].make_run(schedule_system, batch_on_server)
+                    printlog('Setting executable rights for batch script on server', batch_on_server)
+                    run_on_server('chmod +x '+batch_on_server, header.cluster_address)
 
 
         if status == "compl": 
             calc[id].state = '2. Can be completed but was reinitialized' #new behavior 30.08.2016
 
 
-        print_and_log("\nCalculation "+str(id)+" added or updated\n\n")
+        print_and_log("\nCalculation "+str(id)+" successfully created\n\n", imp = 'Y')
+
+
+
 
     return
 
@@ -2039,6 +2125,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     if not calc:
         calc = header.calc
 
+    # print('calc', calc)
+
+
     try:
         b_ver_shift = b_id[2] #add to version of base with respect to version of main
     except:
@@ -2058,8 +2147,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
-    if typconv == '': pass
-    else: setlist = varset[setlist[0]].conv[typconv] #
+    if typconv == '': 
+        pass
+    else: 
+        setlist = varset[setlist[0]].conv[typconv] #
 
 
     n = 'temp'; conv[n] = []
@@ -2115,11 +2206,12 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             id = (it,inputset,v)
             # print(id)
+            # print(calc, 'calc')
             if id not in calc:
-                id = (bytes(it, 'utf-8'), bytes(inputset, 'utf-8'), v) #try non-unicode for compatability with python2
-                if id not in calc:
-                    print_and_log('Key', id,  'not found!', imp = 'Y')
-                    continue #pass non existing calculations
+                # id = (bytes(it, 'utf-8'), bytes(inputset, 'utf-8'), v) #try non-unicode for compatability with python2
+                # if id not in calc:
+                printlog('Key', id,  'not found in calc!', imp = 'Y')
+                continue #pass non existing calculations
 
             cl = calc[id]
 
@@ -2162,7 +2254,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                     job_in_queue = ''
 
 
-                if not get_from_server(cl.dir+'/RUNNING', addr = cl.cluster_address, trygz = False): #if exist than '' is returned
+                if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster_address): 
+                    
                     cl.state = '3. Running'
                 
                 elif job_in_queue:
@@ -2296,7 +2389,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             final_outstring = outst2+outst + outst_end     
             # print ([final_outstring])         
-            print_and_log( final_outstring, end = '\n')
+            print_and_log( final_outstring, end = '\n',  imp = 'Y')
 
         emin = 0
         

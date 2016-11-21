@@ -12,7 +12,8 @@ DEFAULT_CLUSTER = 'cee'
 PATH2PROJECT = '' # path to project on cluster relative to home folder
 
 
-CLUSTERS['cee'] = {'address':'aksenov@10.30.16.62',
+CLUSTERS['cee'] = {
+'address':'aksenov@10.30.16.62',
 'homepath':'/home/aksenov/',
 'schedule':'SLURM',
 'corenum':16,
@@ -20,7 +21,8 @@ CLUSTERS['cee'] = {'address':'aksenov@10.30.16.62',
 'vasp_com':'prun /opt/vasp/bin/vasp5.4.1MPI',
 }
 
-CLUSTERS['skol'] = {'address':'Dmitry.Aksenov@10.30.17.10',
+CLUSTERS['skol'] = {
+'address':'Dmitry.Aksenov@10.30.17.10',
 'homepath':'/home/Dmitry.Aksenov/',
 'schedule':'PBS',
 'corenum':16,
@@ -31,8 +33,9 @@ CLUSTERS['skol'] = {'address':'Dmitry.Aksenov@10.30.17.10',
 
 
 """Local constants"""
-path_to_potentials = '/home/aksenov/scientific_projects/PAW_PBE_VASP'
-pmgkey = "AWqKPyV8EmTRlf1t"
+PATH2POTENTIALS = '/home/aksenov/scientific_projects/PAW_PBE_VASP'
+
+pmgkey = "AWqKPyV8EmTRlf1t" #MAPI_KEY
 
 path_to_paper        = '/home/aksenov/Research/CEStorage/aksenov_report/'
 PATH2DATABASE        = '/home/aksenov/Data/CEStorage/_aksenov'

@@ -1,38 +1,24 @@
 # -*- coding: utf-8 -*-
+#Copyright Aksyonov D.A
+
 from __future__ import division, unicode_literals, absolute_import, print_function
 
 """
 Siman - management of VASP calculations
 Author: Aksyonov D.A.
 TODO:
-1. Use our makedir() function
-
 
 """
 
 import os, subprocess, sys, shelve
-# import numpy as np
-# import copy
-# import datetime
-# import shutil
-# import traceback
-# import glob
-# from operator import itemgetter
-# import sys
-# from math import exp
-# import optparse
-# import re
-# import colorsys
-# import pandas as pd
+
 import matplotlib as mpl
-# import scipy
 
 
 """Global matplotlib control"""
 # size = 22 #for one coloumn figures
 size = 16 #for DOS
 # size = 16 #for two coloumn figures
-# mpl.rc('font',family='Times New Roman')
 mpl.rc('font',family='Serif')
 # mpl.rc('xtick', labelsize= size) 
 # mpl.rc('ytick', labelsize= size) 
@@ -40,19 +26,12 @@ mpl.rc('font',family='Serif')
 # mpl.rc('legend', fontsize= size) 
 # mpl.rc('Axes.annotate', fontsize= size) #does not work
 mpl.rcParams.update({'font.size': size})
+mpl.rcParams.update({'mathtext.fontset': "stix"})
+# plt.rcParams['mathtext.fontset'] = "stix"
 
-
-
-
-
-"""
-TODO
-
-"""
 #paths to libraries needed by siman
-sys.path.append('/home/dim/Simulation_wrapper/ase') #
+# sys.path.append('/home/dim/Simulation_wrapper/ase') #
 
-# sys.path.append('../../Simulation_wrapper/')
 
 history = []
 
@@ -60,6 +39,10 @@ try:
     from project_conf import *
     import project_conf
     siman_run = True
+    log = open('log','a')
+    warnings = 'neyY'
+    warnings = 'Y'
+
 
 except:
     print('Some module is used separately; default_project_conf.py is used')
@@ -67,21 +50,11 @@ except:
     siman_run = False
     from default_project_conf import *
     history.append('separate run')
+    warnings = 'Y'
+
 
 import matplotlib.pyplot as plt
-plt.rcParams['mathtext.fontset'] = "stix"
-# import matplotlib.gridspec as gridspec
 
-
-
-# print 'header, geo_folder = ', geo_folder
-
-
-#Global variables
-final_vasp_clean     = True 
-copy_to_cluster_flag = True
-close_run = False # alows to control close run file automatically after each add_loop
-first_run = True  # needed to write header of run script
 
 calc_database = 'only_calc.gdbm3'
 
@@ -105,11 +78,24 @@ class CalcDict(dict):
         return val
 
     def __contains__(self, key):
-        with shelve.open(calc_database, protocol = 3) as d:
-            # print('checking if key',key, 'is in db:', str(key) in d)
-            # print(self)
-            return str(key) in d
 
+        if dict.__contains__(self, key):
+            return True
+        
+        else:
+            with shelve.open(calc_database, protocol = 3) as d:
+                # print('checking if key',key, 'is in db:', str(key) in d)
+                # print(self)
+                return str(key) in d
+
+
+
+#Global variables
+final_vasp_clean     = True 
+copy_to_cluster_flag = True
+close_run = False # alows to control close run file automatically after each add_loop
+first_run = True  # needed to write header of run script
+ssh_object = None # paramiko ssh_object
 
 calc = CalcDict()
 conv = {};
@@ -119,9 +105,10 @@ struct_des = {};
 
 
 
-if siman_run:
-    log = open('log','a')
-#history = open('log','a')
+
+
+
+
 #Constants
 to_ang = 0.52917721092
 to_eV = 27.21138386
@@ -132,7 +119,6 @@ kB = 8.617e-5 # eV/K
 TRANSITION_ELEMENTS = [22, 23, 25, 26, 27, 28]
 ALKALI_ION_ELEMENTS = [3, 11, 19]
 MAGNETIC_ELEMENTS = [26, 27, 28]
-warnings = '1'
 # EXCLUDE_NODES = False
 
 
@@ -151,7 +137,7 @@ def print_and_log(*logstrings, **argdic):
     """
     end = '\n\n'# no argument for end, make one separate line
     
-    debug_level  = ''
+    debug_level  = 'e' #empty
     for key in argdic:
         if 'imp' in key:
             debug_level = argdic[key]
@@ -177,14 +163,18 @@ def print_and_log(*logstrings, **argdic):
         mystring+='\n\n\n'
     
 
-
-    if warnings:
-        ''
-        # print(debug_level)
-        if 'n' in debug_level and 'n' not in warnings:
-            pass
-        else:
+    for level in 'neyY':
+        # print(level, debug_level)
+        if level in warnings and level in debug_level:
             print (mystring,  end = "")
+
+    # if warnings:
+    #     ''
+    #     # print(debug_level)
+    #     if 'n' in debug_level and 'n' not in warnings:
+    #         pass
+    #     else:
+    #         print (mystring,  end = "")
 
     if siman_run:
         log.write(mystring)

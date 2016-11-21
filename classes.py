@@ -15,6 +15,9 @@ except:
 
 try:
     import pymatgen
+    from pymatgen.io.cif import CifWriter
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
 except:
     print('pymatgen is not avail')
 
@@ -24,11 +27,12 @@ import numpy as np
 
 #siman packages
 import header
-from header import print_and_log as printlog
-from header import print_and_log, runBash, red_prec, plt
+from header import printlog, print_and_log, runBash, red_prec, plt
+
+from small_functions import cat_files, grep_file
 from functions import (read_vectors, read_list, words, local_surrounding, 
     xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server, list2string, makedir)
+    get_from_server, push_to_server, run_on_server, list2string, makedir)
 
 
 
@@ -305,6 +309,30 @@ class Structure():
     #         sumx+=x
     #     sumx/=len(self.xcart)
     #     return sumx
+    def write_cif(self, filename):
+        symprec = 0.1
+        st_mp = self.convert2pymatgen()
+        sg_before =  st_mp.get_space_group_info() 
+
+        sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
+
+        st_mp_prim = sf.find_primitive()
+
+        sg_after = st_mp_prim.get_space_group_info()
+
+        if sg_before[0] != sg_after[0]:
+            printlog('Attention! the space group was changed after primitive cell searching', sg_before, sg_after)
+            printlog('I will save supercell in cif and reduce symprec to 0.01')
+            st_mp_prim = st_mp
+            symprec = 0.01
+
+
+        cif = CifWriter(st_mp_prim, symprec = symprec)
+        cif_name =  filename+'.cif'
+        cif.write_file( cif_name  )
+        printlog('Writing cif', cif_name, imp = 'n')
+
+
 
 
 class Calculation(object):
@@ -714,7 +742,7 @@ class CalculationVasp(Calculation):
 
             self.des = name
             # st.name = self.name
-
+            # print(f.readline())
             mul = float( f.readline() )
             # print 'mul', mul
 
@@ -725,7 +753,21 @@ class CalculationVasp(Calculation):
                 st.rprimd.append( np.asarray([float(vec[0])*mul, float(vec[1])*mul, float(vec[2])*mul]) )
 
             st.nznucl = []
-            for z in f.readline().split():
+
+            ilist = f.readline().split() #nznucl of elements?
+            try:
+                int(ilist[0])
+                vasp5 = False
+            except:
+                vasp5 = True
+
+            if vasp5:
+                # for el in ilist:
+                #     st.els.append(el)
+                ilist = f.readline().split()
+
+            
+            for z in ilist:
                 st.nznucl.append( int(z)  )
 
             type_of_coordinates = f.readline()
@@ -895,7 +937,7 @@ class CalculationVasp(Calculation):
             printlog('check_kpoints(): I added ',N,'as a k-grid for',kspacing,'in struct_des of', it)
 
 
-        print_and_log("check_kpoints(): Kpoint   mesh is: ", N)
+        print_and_log("check_kpoints(): Kpoint   mesh is: ", N, imp = 'Y')
 
 
         if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') or  kspacing not in struct_des[it].ngkpt_dict_for_kspacings:
@@ -911,7 +953,7 @@ class CalculationVasp(Calculation):
             # sys.exit()
 
         else:
-            print_and_log("check_kpoints(): The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2) )
+            print_and_log("check_kpoints(): The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2), imp = 'Y')
         return N_from_kspacing
 
 
@@ -1021,29 +1063,32 @@ class CalculationVasp(Calculation):
     def add_potcar(self):
         """Should be run for the first calculation only"""
         #Add POTCAR
-        #try:
-        #    shutil.copy2(self.set.potdir[0]+'/POTCAR',self.dir)
-        #except IOError:
-        #    runBash("gunzip "+self.set.potdir[0]+"/POTCAR.Z")
 
-        path_to_potcar = self.dir+'/POTCAR'
-        potcar_files   = ""
+        path_to_potcar = os.path.join(self.dir, 'POTCAR')
+        potcar_files   = []
 
         if self.set.potdir:
+            
             for z in self.init.znucl:
-                potcar_files += header.path_to_potentials+'/'+self.set.potdir[ int(z) ]+"/POTCAR "
+                
+                potcar_files.append(os.path.join(header.PATH2POTENTIALS, self.set.potdir[ int(z) ], 'POTCAR') )
 
-            runBash("cat "+potcar_files+" >"+path_to_potcar)
+            printlog("POTCAR files:", potcar_files)        
+            # print(path_to_potcar)            
+            cat_files(potcar_files, path_to_potcar)
 
-            print_and_log( "POTCAR files: "+potcar_files+"\n")        
+        
+
+
         elif self.set.path_to_potcar:
             printlog('Attention! set.path_to_potcar is used !', self.set.path_to_potcar)
             shutil.copyfile(self.set.path_to_potcar, path_to_potcar)
             printlog('POTCAR was copied to', path_to_potcar)
             path_to_potcar = self.set.path_to_potcar
 
+
         else:
-            printlog('Attention! set.potdir dictionary is empty; POTCAR was not created!')
+            printlog('Error! set.potdir and set.path_to_potcar are empty; no POTCAR was not created!')
             path_to_potcar = None
         
         self.path['potcar'] = path_to_potcar
@@ -1411,30 +1456,26 @@ class CalculationVasp(Calculation):
 
     def copy_to_cluster(self,list_to_copy, update):
         d = self.dir
-        list_to_copy.append(d+'POTCAR')
-        list_to_copy.extend( glob.glob(d+'/*POSCAR*') )
-        list_to_copy.extend( glob.glob(d+'/*.run*') )
+        list_to_copy.append( os.path.join(d, 'POTCAR')  )
+        list_to_copy.extend( glob.glob(   os.path.join(d, '*POSCAR*')  ) )
+        # list_to_copy.extend( glob.glob(   os.path.join(d, '*.run*'  )  ) )
 
         if 'OCCEXT' in self.set.vasp_params and self.set.vasp_params['OCCEXT'] == 1:
-            list_to_copy.append(d+'OCCMATRIX')
-
-
-        string_of_paths = list2string(list_to_copy)
+            list_to_copy.append(  os.path.join(d, 'OCCMATRIX')   )
 
         
         if "up" in update: #Copy to server
-            print_and_log("Files to copy: "+string_of_paths+"\n")
+            printlog('Files to copy:', list_to_copy)
 
-            # temp_dir = os.path.dirname(project_path_cluster+self.dir)
-            # print('self.dir',self.dir)
-            runBash('ssh '+ self.cluster_address+' "mkdir -p '+self.project_path_cluster+self.dir+'"') #create directory
-            # printlog( runBash("rsync -zave ssh "+string_of_paths+" "+self.cluster_address+":"+self.project_path_cluster+self.dir)+"\n" )
-        
-            push_to_server(string_of_paths,  self.project_path_cluster+self.dir, self.cluster_address)
+            command = ' mkdir -p {:}'.format( os.path.join(self.project_path_cluster, self.dir)  )
+
+            run_on_server(command, self.cluster_address)
+
+            push_to_server(list_to_copy,  os.path.join(self.project_path_cluster, self.dir), self.cluster_address)
 
 
-        #print "End make---------------------------------------------\n\n"
         return
+
 
 
     def write_sge_script(self, input_geofile = "header", version = 1, option = None, 
@@ -2110,30 +2151,31 @@ class CalculationVasp(Calculation):
 
 
 
-    def make_run(self, schedule_system = None):
+    def make_run(self, schedule_system, run_name):
         """Generate run file
 
         INPUT:
             schedule_system - 
         """
-        run_name = self.dir+self.id[0]+"."+self.id[1]+'.run'
 
         with open('run','a') as f:
+
             if schedule_system == 'SGE':
                 #'qsub -pe 'mpi*' NCORES -l CLUSTER_TAG script.parallel.sh' for mpi-jobs which should run on CLUSTER_TAG (cmmd or cmdft)
                 #IMPORTANT: NCORES must be a multiple of 8(24) on cmdft(cmmd). 
                 f.write("qsub -pe 'mpi*' "+str(header.corenum)+" "+header.queue+" "+run_name+"\n") #str(self.set.np) #-l cmmd
                 f.write('sleep 5\n')
                 # runBash('chmod +x run')
-            if schedule_system == 'PBS':
+            elif schedule_system == 'PBS':
                 f.write("cd "+self.dir+"\n")
-                f.write("qsub "+self.id[0]+"."+self.id[1]+'.run'+"\n") 
+                f.write("qsub "+run_name.split('/')[-1]+"\n") 
                 f.write("cd -\n")
                 f.write('sleep 5\n')                        
             
-            if schedule_system == 'SLURM':
+            elif schedule_system == 'SLURM':
                 f.write("sbatch -p AMG " + run_name+"\n") 
-
+            else:
+                printlog('Error! Unknown schedule_system', schedule_system)
                 
 
 
@@ -2221,10 +2263,13 @@ class CalculationVasp(Calculation):
         """
 
         # print (choose_outcar, hasattr(self, 'associated_outcars'), self.associated_outcars)
+        join = os.path.join
+        dirname = os.path.dirname
+
         if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar:
             # print ('associated outcars = ',self.associated_outcars)
 
-            path_to_outcar = os.path.dirname(self.path["output"])+ '/'+ self.associated_outcars[choose_outcar-1]
+            path_to_outcar = join( dirname(self.path["output"]), self.associated_outcars[choose_outcar-1] )
 
         else:
             path_to_outcar  = self.path["output"]
@@ -2238,17 +2283,21 @@ class CalculationVasp(Calculation):
 
 
         if self.calc_method  and not set(self.calc_method  ).isdisjoint(  ['u_ramping', 'afm_ordering']):
+            '' 
             # print self.associated_outcars
             # lor = self.associated_outcars[-1]
             # path_to_outcar  = self.dir + lor
             # path_to_contcar = self.dir + lor.replace('OUTCAR', 'CONTCAR')
             # path_to_xml     = self.dir + lor.replace('OUTCAR', 'vasprun.xml')         
             # print 'sdf', path_to_outcar, path_to_contcar, path_to_xml
-            energies_str = runBash("ssh "+self.cluster_address+" cat "+self.dir+"ENERGIES")
+
+            # energies_str = runBash("ssh "+self.cluster_address+" cat "+self.dir+"ENERGIES")
+            
             # print "ssh "+self.cluster_address+" cat "+self.dir+"ENERGIES"
             # print (  energies_str )
-            if not 'cat' in energies_str:
-                self.associated_energies = [float(e) for e in energies_str.split()]
+            # if not 'cat' in energies_str:
+            #     self.associated_energies = [float(e) for e in energies_str.split()]
+            
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
         print_and_log('read_results() path to outcar', path_to_outcar, imp = 'n')
@@ -2266,22 +2315,25 @@ class CalculationVasp(Calculation):
         # self.natom = self.init.natom
 
         """Copy from server """
+
+
         if 'o' in load:
 
             #reduce size of downloadable file by removing occupations: vasp 4 and 5
             command_reduce = """ssh {0:s} nbands=\`grep \\"NBANDS=\\" \{1:s} \| awk \\'{{print \$NF - 1}}\\'\`\; sed -i -e \\"/band No./,+\${{nbands}}d\\" \{1:s} """.format(
-                self.cluster_address, self.project_path_cluster+path_to_outcar )
+                self.cluster_address, join(self.project_path_cluster, path_to_outcar) )
             # runBash(command_reduce)
 
 
-            files = [self.project_path_cluster+path_to_outcar, self.project_path_cluster+path_to_contcar]
-            get_from_server(files = files, to = os.path.dirname(path_to_outcar)+'/',  addr = self.cluster_address)
+            files = [ self.project_path_cluster+'/'+path_to_outcar, self.project_path_cluster+'/'+path_to_contcar ]
+
+            get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
 
 
 
         if 'x' in load:
 
-            get_from_server(files = self.project_path_cluster+path_to_xml, to = os.path.dirname(path_to_outcar)+'/',  
+            get_from_server(files = join(self.project_path_cluster, path_to_xml), to = os.path.dirname(path_to_outcar),  
                 addr = self.cluster_address)
 
 
@@ -2304,48 +2356,44 @@ class CalculationVasp(Calculation):
 
         """Start reading """
         if outcar_exist:
-            s = runBash("grep 'General timing' "+path_to_outcar)
-            # print (s)
+            # out = runBash("grep 'General timing' "+path_to_outcar)
+            out = grep_file('General timing', path_to_outcar, reverse = True)
+            # print (type(out), out)
+            # print('G' in out)
         else:
-            s = '2. no OUTCAR'
-            self.state = s
+            out = '2. no OUTCAR'
+            self.state = out
         
-        if "g" in s:
+        if 'G' in out:
             self.state = "4. Calculation completed."
         else: 
             if '2' in self.state:
                 ''
                 # self.state = '2. '+self.state
             else:
-                self.state = s
-
-            
+                self.state = out
 
             outst = self.state
 
 
+
+
         if "4" in self.state:
 
-            #war = runBash('grep "NPAR = approx SQRT( number of cores)" '+path_to_outcar) #remove warinig
             nw = runBash('sed -n "/NPAR = approx SQRT( number of cores)/=" '+path_to_outcar) #remove warinig
-                    # print runBash("sed '/from  /, /to  /d' "+path_to_outcar)
-                    #print "sed -e '15,34d' "+path_to_outcar
-            #print 'grep "NPAR = approx SQRT( number of cores)" '+path_to_outcar
-            #print nw
             tmp = path_to_outcar+".tmp"
-            # print ([nw])
             if nw:
                 nw = int(nw)
-                #remove warning
                 runBash("sed '"+str(nw-11)+","+str(nw+8)+"d' "+path_to_outcar+">"+tmp+";mv "+tmp+" "+path_to_outcar)
-                pass
+
 
             with open(path_to_outcar, 'r') as outcar:
                 
                 printlog("Start reading from "+ path_to_outcar, imp = 'n')
-                
-
                 outcarlines = outcar.readlines()
+
+
+
 
             re_lengths = re.compile("length of vectors")
             re_eltime = re.compile("Elapsed time")
@@ -3087,7 +3135,10 @@ class CalculationVasp(Calculation):
 
 
             printlog("Reading of results completed\n\n", imp = 'n')
+            self.end.write_cif(os.path.join(self.dir,self.name))
             
+
+
             if   out_type == 'gbe'  : outst = outst_gbe
             elif out_type == 'e_imp': outst = outst_imp
             elif out_type == 'e_seg': outst = outst_seg            
@@ -3095,12 +3146,17 @@ class CalculationVasp(Calculation):
             elif 'ecut' in out_type : outst = outst_ecut
             elif 'kp' in out_type   : outst = outst_kp
             elif 'ts' in out_type   : outst = outst_ts
+            elif not header.siman_run:
+                outst_simple = d.join([etot, lens, strs, Nmd])
+                # print("Bi2Se3.static.1               |  -20.1543  |    10.27;10.27;10.27    | -680,-680,-657 |   1,13, 13   |    ")
+                printlog("name                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
+                outst = outst_simple
             else: 
                 outst = outst_cathode
             #else: print_and_log("Uknown type of outstring\n")
 
 
-
+            #save cif file
 
 
         else:

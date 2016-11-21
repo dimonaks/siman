@@ -614,3 +614,43 @@ def make_sets_for_conv(isefrom,conv,list_of_parameters,varset):
 
 
     return
+
+
+
+def init_default_sets():
+    """
+    Pre-defined sets for Vasp
+    """
+    setname = 'static'
+    varset = header.varset
+    if setname not in varset: #init only once
+        s = InputSet(setname) #default starting set without relaxation
+        s.kpoints_file = True
+        s.add_nbands = 1.25
+        s.vasp_params = {
+            'NELM'      : 50,
+            'IBRION'    : 1,
+            'KGAMMA'    : ".TRUE.",
+            'ENCUT'     : 441.0,
+            'EDIFFG'    : 0,
+            'SIGMA'     : 0.2,
+            'NELMIN'    : 4,
+            'ISTART'    : 0,
+            'LSCALU'    : ".FALSE.",
+            'MAXMIX'    : 40,
+            'NSIM'      : 4,
+            'ISIF'      : 2,
+            'EDIFF'     : 6e-06,
+            'ENAUG'     : 776.16,
+            'NSW'       : 0,
+            'LPLANE'    : ".TRUE.",
+            'LREAL'     : "Auto",
+            'ISMEAR'    : 2,
+            'NPAR'      : 1,
+            'ALGO'      : "Normal",
+            'PREC'      : "Normal",
+            'KSPACING'  : 0.235,
+            }
+        s.update()
+        header.varset[setname] = copy.deepcopy(s)
+    return
