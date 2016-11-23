@@ -546,9 +546,9 @@ class Calculation(object):
         # print (os.path.exists(geofile))
         if geo_exists:
             if override:
-                print_and_log("Warning! File "+geofile+" was replaced\n"); 
+                print_and_log("Warning! File "+geofile+" was replaced"); 
             else: 
-                print_and_log("Error! File "+geofile+" exists. To replace it set parameter override\n"); 
+                print_and_log("Error! File "+geofile+" exists. To replace it set parameter override"); 
                 return False
                 #raise RuntimeError
         # print "geofile name, classes:",  geofile

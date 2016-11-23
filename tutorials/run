@@ -1,2 +1,5 @@
 #!/bin/bash
 sbatch -p AMG /home/aksenov/topologic/Bi2Se3//Bi2Se3.static/Bi2Se3.static.run
+sbatch -p AMG /home/aksenov/topologic/Bi2Se3//Bi2Se3.su.static/Bi2Se3.su.static.run
+squeue
+mv run last_run

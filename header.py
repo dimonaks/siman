@@ -50,7 +50,7 @@ except:
     siman_run = False
     from default_project_conf import *
     history.append('separate run')
-    warnings = 'Y'
+    warnings = 'yY'
 
 
 import matplotlib.pyplot as plt
@@ -159,13 +159,15 @@ def print_and_log(*logstrings, **argdic):
     mystring+=end
 
 
-    if 'Error' in mystring or 'Warning' in mystring:
+    if 'Error' in mystring:# or 'Warning' in mystring:
         mystring+='\n\n\n'
     
+    if 'Warning' in mystring or 'Attention' in mystring:
+        debug_level = 'Y'
 
     for level in 'neyY':
         # print(level, debug_level)
-        if level in warnings and level in debug_level:
+        if (level in warnings and level in debug_level):
             print (mystring,  end = "")
 
     # if warnings:

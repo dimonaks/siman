@@ -544,9 +544,9 @@ def inherit_ngkpt(it_to, it_from, inputset):
 
     if ks in k_dict1:
         k_dict2[ks] = k_dict1[ks]
-        printlog('inherit_ngkpt(): the k-grid from', it_from, 'was inherited to', it_to)
+        printlog('inherit_ngkpt(): the k-grid from', it_from, 'was inherited to', it_to, imp = 'Y')
     else:
-        printlog('no ngkpt for k-spacing', ks, 'in ngkpt_dict_for_kspacings of', it_from, 'ngkpt will determined from inputset k-spacing')
+        printlog('no ngkpt for k-spacing', ks, 'in ngkpt_dict_for_kspacings of', it_from, 'ngkpt will determined from inputset k-spacing', imp = 'Y')
     return
 
 
@@ -701,7 +701,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         - cee_file (str) - name of file to be taken from cee database
 
-        - run (bool) - allows to complete and run
+        - run (bool) - complete the run file copy to server and run
 
     Comments:
         !Check To create folders and add calculations add_flag should have value 'add' 
@@ -867,7 +867,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         v = verlist[0]
 
         # if up != 'up3':
-        print_and_log('Preparing   uniform_scale  calculation ... ')
+        print_and_log('Preparing   uniform_scale  calculation ... ', imp = 'Y')
 
         if len(verlist) > 1:
             print_and_log('Error! Currently   uniform_scale  is allowed only for one version')
@@ -907,7 +907,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 pname = st
 
             write_xyz(st, file_name = st.name+'_used_for_scaling')
-            printlog('Scale_region is', scale_region)
+            printlog('Scale_region is', scale_region, imp = 'y')
             sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
             
 
@@ -950,7 +950,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             fitted_v100_id = cl_temp.id
             verlist = verlist_new
 
-            print_and_log(len(sts), 'uniform images have been created.')
+            print_and_log(len(sts), 'uniform images have been created.', imp = 'y')
         
 
 
@@ -1114,7 +1114,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 calc_method = calc_method, u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                corenum = corenum
+                corenum = corenum,
+                run = run
                 )
             
             prevcalcver = v
@@ -1209,7 +1210,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     
     if run: #
         complete_run() # for IPython notebook
-        printlog(run_on_server('./run', header.cluster_address) )
+        printlog(run_on_server('./run', header.CLUSTER_ADDRESS), imp= 'Y' )
+        printlog('To read results use ', hstring, '; possible options for show: fo, en, mag, occ', imp = 'Y')
 
 
     return it
@@ -1229,7 +1231,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     calc, varset, update = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, schedule_system = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None, output_files_names = None, corenum = 1):
+    mat_proj_st_id = None, output_files_names = None, corenum = 1, run = None):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
@@ -1280,7 +1282,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     if "up" in update:
 
         if status in ["exist","compl"]: 
-            print_and_log("You asked to update existing calculation with id "+ str(id)+" Warning! I update creating new class \n" )         
+            print_and_log("You asked to update existing calculation with id "+ str(id)+"; results are overwritten" )         
 
         if status == 'compl' and inherit_option == 'continue':
             print_and_log(id, 'is completed, I will make its copy in self.prev[]', imp = 'Y' )         
@@ -1442,9 +1444,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     cl.copy_to_cluster(list_to_copy, update)
 
                     batch_on_server = calc[id].project_path_cluster+'/'+batch_script_filename 
-                    calc[id].make_run(schedule_system, batch_on_server)
+
                     printlog('Setting executable rights for batch script on server', batch_on_server)
                     run_on_server('chmod +x '+batch_on_server, header.cluster_address)
+
+                    if header.siman_run or run: #for IPython should be only for run = 1 
+                        calc[id].make_run(schedule_system, batch_on_server)
+
 
 
         if status == "compl": 
