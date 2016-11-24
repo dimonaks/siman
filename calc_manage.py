@@ -599,7 +599,7 @@ def choose_cluster(cluster_name, cluster_home):
     header.schedule_system    = clust['schedule']
     header.CORENUM    = clust['corenum']
     header.corenum    = clust['corenum']
-    header.project_path_cluster = os.path.join(header.cluster_home, header.PATH2PROJECT)
+    header.project_path_cluster = header.cluster_home +'/'+ header.PATH2PROJECT
 
     try:
         header.vasp_command = clust['vasp_com']
@@ -1733,7 +1733,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
         #create OCCMATRIX 
         print_and_log('I create OCCMATRIX in ', it_new_folder)
-        with open(it_new_folder+'/OCCMATRIX', 'w') as f:
+        with open(it_new_folder+'/OCCMATRIX', 'w', newline = '') as f:
             numat = len(occs)
             f.write(str(numat)+'  #num of atoms to be specified\n')
             
