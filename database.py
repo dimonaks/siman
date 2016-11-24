@@ -39,8 +39,8 @@ def read_database(scratch = False):
     # databasefile = 'calc.s' #was used with python2
     # databasefile = 'calc.gdbm'
     databasefile3 = 'calc.gdbm3'
-    if header.RAMDISK:
-        databasefile3 = header.RAMDISK+databasefile3
+    # if header.RAMDISK:
+    #     databasefile3 = header.RAMDISK+databasefile3
 
 
 
@@ -59,8 +59,8 @@ def read_database(scratch = False):
     try:
         # calc              = d[calc_key]; 
         # calc              = {}; 
-        conv              = d[conv_key]; 
-        varset            = d[varset_key]; 
+        header.conv       = d[conv_key]; 
+        header.varset     = d[varset_key]; 
         header.history    = d[history_key]
         header.struct_des = d[struct_des_key]
 
@@ -72,13 +72,13 @@ def read_database(scratch = False):
         
 
 
-        try: conv = d[conv_key] #dictionary of convergence lists
+        try: header.conv = d[conv_key] #dictionary of convergence lists
         except KeyError:
             printlog( "There is no dictionary of convergence lists. I create new"); conv = {}   
         
 
 
-        try: varset = d[varset_key] 
+        try: header.varset = d[varset_key] 
         except KeyError:
             printlog( "There is no dictionary of inputsets. I create new");  varset = {} 
         
@@ -99,10 +99,10 @@ def read_database(scratch = False):
     d.close()
     #print history
 
-    return conv, varset, sys.getsizeof(d)
+    return header.conv, header.varset, sys.getsizeof(d)
 
 
-def write_database(calc, conv, varset, size_on_start = None):
+def write_database(calc = None, conv = None, varset = None, size_on_start = None):
     """
     The function writes main dictionaries to database file calc.s
     Also creates copy of calc.s
@@ -122,8 +122,8 @@ def write_database(calc, conv, varset, size_on_start = None):
     # runBash("cp calc.s calc_copy.s") #create copy before writing
     databasefile3 = 'calc.gdbm3'
 
-    if header.RAMDISK:
-        databasefile3 = header.RAMDISK+databasefile3
+    # if header.RAMDISK:
+    #     databasefile3 = header.RAMDISK+databasefile3
 
     # shutil.copyfile(databasefile3, 'calc_copy.gdbm3')
     if 0:
@@ -158,15 +158,15 @@ def write_database(calc, conv, varset, size_on_start = None):
 
         d = shelve.Shelf(dbm.open(databasefile3, 'n'), protocol = 3) #Write dbm database for python3
         # d[calc_key]       = calc
-        d[conv_key]       = conv
-        d[varset_key]     = varset
+        d[conv_key]       = header.conv
+        d[varset_key]     = header.varset
         d[history_key]    = header.history
         d[struct_des_key] = header.struct_des 
         d.close()   
 
         with shelve.Shelf(dbm.open(header.calc_database, 'w'), protocol = 3) as d:
-            for key in calc:
-                d[str(key)] = calc[key]
+            for key in header.calc:
+                d[str(key)] = header.calc[key]
         
         # with dbm.open(header.calc_database, 'w') as d:
         #     d.reorganize()

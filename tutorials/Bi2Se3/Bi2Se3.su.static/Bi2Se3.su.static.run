@@ -11,6 +11,8 @@ export OMP_NUM_THREADS=1
 module add prun/1.0
 module add intel/16.0.2.181
 module add impi/5.1.3.181
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/aksenov/tools/lib64:/home/aksenov/tools/atlas
+export PATH=$PATH:/home/aksenov/tools
 touch RUNNING
 #Basic run:
 cp 1.POSCAR POSCAR
@@ -73,7 +75,7 @@ gzip -f 7.CHGCAR
 
 
 #Starting fitting tool 
-~/tools/fit_tool.py 1.OUTCAR 2.OUTCAR 3.OUTCAR 4.OUTCAR 5.OUTCAR 6.OUTCAR 7.OUTCAR
+/home/aksenov/tools/fit_tool.py 1.OUTCAR 2.OUTCAR 3.OUTCAR 4.OUTCAR 5.OUTCAR 6.OUTCAR 7.OUTCAR
 cp 100.POSCAR POSCAR 
 prun /opt/vasp/bin/vasp5.4.1MPI >Bi2Se3.su.static.100.fitted.log
 sleep 20

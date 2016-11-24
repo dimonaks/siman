@@ -1983,7 +1983,7 @@ class CalculationVasp(Calculation):
                 else:
                     
                     if run_tool_flag:
-                        f.write('~/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
+                        f.write('/home/aksenov/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
 
 
                 if nim+1 < 10: 
@@ -2014,7 +2014,7 @@ class CalculationVasp(Calculation):
 
                 if final_analysis_flag:
                     f.write('export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ \n')
-                    f.write('~/tools/vts/nebresults.pl  \n')
+                    f.write('/home/aksenov/tools/vts/nebresults.pl  \n')
                     f.write('find . -name WAVECAR -delete\n')
                     f.write('find . -name PROCAR -delete\n')
                 # for n in range
@@ -2031,7 +2031,7 @@ class CalculationVasp(Calculation):
                     f.write("\n\n#Starting fitting tool \n")
                     outputs = [ os.path.basename(out) for out in output_files_names ]
                     # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
-                    f.write('~/tools/fit_tool.py '+list2string(outputs)+'\n' )
+                    f.write('/home/aksenov/tools/fit_tool.py '+list2string(outputs)+'\n' )
                     f.write('cp 100.POSCAR POSCAR \n')
                 
                 if 'u_ramping' in self.calc_method:
@@ -3149,7 +3149,10 @@ class CalculationVasp(Calculation):
             elif not header.siman_run:
                 outst_simple = d.join([etot, lens, strs, Nmd])
                 # print("Bi2Se3.static.1               |  -20.1543  |    10.27;10.27;10.27    | -680,-680,-657 |   1,13, 13   |    ")
-                printlog("name                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
+                if header.show_head:
+                    printlog("name                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
+                    header.show_head = False
+                
                 outst = outst_simple
             else: 
                 outst = outst_cathode

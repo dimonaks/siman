@@ -97,7 +97,7 @@ def write_batch_header(batch_script_filename = None,
         if schedule_system == 'SLURM':
             if '~' in path_to_job:
                 print_and_log('Error! For slurm std err and out you need full paths')
-                raise RuntimeError
+
             f.write("#!/bin/bash   \n")
             f.write("#SBATCH -J "+job_name+"\n")
             f.write("#SBATCH -t 250:00:00 \n")
@@ -119,9 +119,12 @@ def write_batch_header(batch_script_filename = None,
             f.write("module add prun/1.0\n")
             f.write("module add intel/16.0.2.181\n")
             f.write("module add impi/5.1.3.181\n")
-            if header.siman_run: #only for me
-                f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/tools/lib64:~/tools/atlas\n")
-                f.write("export PATH=$PATH:~/tools\n")
+            
+            # if header.siman_run: #only for me
+            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/aksenov/tools/lib64:/home/aksenov/tools/atlas\n")
+            f.write("export PATH=$PATH:/home/aksenov/tools\n")
+            
+
             f.write("touch RUNNING\n")
 
 
@@ -521,12 +524,17 @@ def smart_structure_read(curver, calcul = None, input_folder = None, input_geo_f
 
 
 
-def name_mod_supercell(ortho):
+def name_mod_supercell(ortho, mul_matrix):
 
-    if len(set(ortho))==1:
-        mod = '.s'+str(ortho[0])
+    if ortho:
+
+        if len(set(ortho))==1:
+            mod = '.s'+str(ortho[0])
+        else:
+            mod =  '.s'+list2string(ortho).replace(' ','')
     else:
-        mod =  '.s'+list2string(ortho).replace(' ','')
+        mod = '.s'+str(mul_matrix[0][0])+str(mul_matrix[1][1])+str(mul_matrix[2][2])
+
     return mod
 
 
@@ -984,7 +992,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             it_new = it+'.ifo' #full inheritence + triggering OMC from some other source        
 
         elif inherit_option == 'supercell':
-           mod = name_mod_supercell(ortho)
+           mod = name_mod_supercell(ortho, mul_matrix)
            it_new = it+mod
 
         elif inherit_option == 'antisite':
@@ -1211,7 +1219,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     if run: #
         complete_run() # for IPython notebook
         printlog(run_on_server('./run', header.CLUSTER_ADDRESS), imp= 'Y' )
-        printlog('To read results use ', hstring, '; possible options for show: fo, en, mag, occ', imp = 'Y')
+        printlog('To read results use ', hstring, '; possible options for show: fit, fo, fop, en, mag, magp, smag, maga, occ, occ1', imp = 'Y')
 
 
     return it
@@ -2120,6 +2128,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
     """Setup"""
+
+
     if not is_list_like(verlist):
         verlist = [verlist]
 
@@ -2149,6 +2159,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
     name_field_length = 30
 
+    header.show_head = 1 # head before the string of read_results()
 
 
 
@@ -2620,7 +2631,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             v0 = {0} A^3
             a0 = {1} A
             E0 = {2} eV
-            B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B)  )
+            B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
+
             savedpath = 'figs/'+cl.name+'.eps'
             cl.B = B*160.218
             # plt.close()
@@ -2630,6 +2642,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 mpl.rcParams.update({'font.size': 14})
 
                 eos.plot(savedpath, show = True)
+                printlog('fit results are saved in ',savedpath, imp = 'y')
+
             # plt.clf()
 
             if push2archive:
