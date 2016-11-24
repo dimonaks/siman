@@ -1348,7 +1348,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 #                 printlog( runBash("mkdir -p "+calc[id].dir) )         #Create directory if it does not exist
                 os.makedirs(calc[id].dir)
 #                 printlog( runBash("ssh "+calc[id].cluster_address+" ' mkdir -p "+calc[id].dir+" ' ") )
-                run_on_server("mkdir -p "+calc[id].dir, addr = calc[id].cluster_addres)
+                run_on_server("mkdir -p "+calc[id].dir, addr = calc[id].cluster_address)
             if id[2] == first_version:
                 write_batch_header(batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
