@@ -2637,7 +2637,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 E0 = {2} eV
                 B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
 
-                savedpath = 'figs/'+cl.name+'.eps'
+                savedpath = 'figs/'+cl.name+'.png'
                 makedir(savedpath)
 
 
