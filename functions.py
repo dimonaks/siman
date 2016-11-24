@@ -159,6 +159,7 @@ def file_exists_on_server(file, addr):
 
 
 def run_on_server(command, addr):
+    command = command.replace('\\', '/') # make sure is POSIX
     if header.ssh_object:
         out = header.ssh_object.run(command)
     else:
