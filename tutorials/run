@@ -1,1 +1,4 @@
 #!/bin/bash
+sbatch -p AMG /home/aksenov/topologic/Bi2Se3//Bi2Se3.ion_relax/Bi2Se3.ion_relax.run
+squeue
+mv run last_run

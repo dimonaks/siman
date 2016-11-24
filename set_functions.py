@@ -100,7 +100,7 @@ siman_keys = [
 'set_sequence'# sequence of sets
 ]
 
-def read_vasp_sets(varset, user_vasp_sets, override_global = False):
+def read_vasp_sets(user_vasp_sets, override_global = False):
     """
     Read user sets and add them to project database
     Now for VASP
@@ -117,6 +117,10 @@ def read_vasp_sets(varset, user_vasp_sets, override_global = False):
     # varset['9'].printme()
     # print varset['9ml'].history
     # print varset['9'].history
+
+    varset = header.varset
+
+
     vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
     bfolder = '' #by default no blockfolder
     for l in user_vasp_sets:
@@ -183,7 +187,7 @@ def read_vasp_sets(varset, user_vasp_sets, override_global = False):
 
 
 
-
+        header.varset = varset
 
     return varset
 
@@ -258,9 +262,9 @@ class InputSet():
     def printme(self):
         for key in self.vasp_params:
             if self.vasp_params[key] == None: continue
-            print_and_log( "{:30s} = {:s} ".format("s.vasp_params['"+key+"']", str(self.vasp_params[key]) ) )
+            print_and_log( "{:30s} = {:s} ".format("s.vasp_params['"+key+"']", str(self.vasp_params[key]) ), imp = 'Y', end = '\n' )
 
-        print_and_log('POTDIR:', self.potdir)
+        print_and_log('POTDIR:', self.potdir, imp = 'Y', end = '\n' )
 
     def update(self):
         #deprecated, but still can be usefull
