@@ -573,7 +573,7 @@ class Calculation(object):
 
         # print (st.magmom)
         # sys.exit()
-        with open(self.path["input_geo"],"w") as f:
+        with open(self.path["input_geo"],"w", newline = '') as f:
             f.write("des "+description+"\n")
             f.write("len_units "+self.len_units+"\n")
             
@@ -1014,7 +1014,7 @@ class CalculationVasp(Calculation):
 
         elnames = [element_name_inv(z) for z in znucl]
 
-        with open(path+'/'+name_of_output_file,'w') as f:
+        with open(path+'/'+name_of_output_file,'w', newline = '') as f:
             """Writes structure (POSCAR) in VASP format """
             f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; ' + self.name)
             
@@ -1325,7 +1325,7 @@ class CalculationVasp(Calculation):
             vp = curset.vasp_params
             
 
-            with open(incar_filename,'w') as f:
+            with open(incar_filename,'w', newline = '') as f:
                 if 'SYSTEM' in vp and vp['SYSTEM']:
                     # print(vp['SYSTEM'])
                     f.write('SYSTEM = '+str(vp['SYSTEM'])+'\n')
@@ -1419,7 +1419,7 @@ class CalculationVasp(Calculation):
 
 
 
-                with open(self.dir+"KPOINTS",'w') as f:
+                with open(self.dir+"KPOINTS",'w', newline = '') as f:
 
                     f.write("Automatic Mesh\n") #Comment
                     f.write("0 \n")#Number of points; 0-Auto
@@ -1498,7 +1498,7 @@ class CalculationVasp(Calculation):
         # print 'Starting write_sge()', input_geofile
         varset = header.varset
         
-        f = open(batch_script_filename,'a') #
+        f = open(batch_script_filename,'a', newline = '') #
 
         # print(savefile)
         # sys.exit()
@@ -2159,7 +2159,7 @@ class CalculationVasp(Calculation):
             schedule_system - 
         """
 
-        with open('run','a') as f:
+        with open('run','a', newline = '') as f:
 
             if schedule_system == 'SGE':
                 #'qsub -pe 'mpi*' NCORES -l CLUSTER_TAG script.parallel.sh' for mpi-jobs which should run on CLUSTER_TAG (cmmd or cmdft)
