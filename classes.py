@@ -17,9 +17,10 @@ try:
     import pymatgen
     from pymatgen.io.cif import CifWriter
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-
+    pymatgen_flag = True
 except:
     print('pymatgen is not avail')
+    pymatgen_flag = False
 
 import numpy as np
 # import matplotlib.pyplot as plt
@@ -2379,12 +2380,12 @@ class CalculationVasp(Calculation):
 
 
         if "4" in self.state:
-
-            nw = runBash('sed -n "/NPAR = approx SQRT( number of cores)/=" '+path_to_outcar) #remove warinig
-            tmp = path_to_outcar+".tmp"
-            if nw:
-                nw = int(nw)
-                runBash("sed '"+str(nw-11)+","+str(nw+8)+"d' "+path_to_outcar+">"+tmp+";mv "+tmp+" "+path_to_outcar)
+            if 0: #please use this only for linux or create cross-platform way
+                nw = runBash('sed -n "/NPAR = approx SQRT( number of cores)/=" '+path_to_outcar) #remove warinig
+                tmp = path_to_outcar+".tmp"
+                if nw:
+                    nw = int(nw)
+                    runBash("sed '"+str(nw-11)+","+str(nw+8)+"d' "+path_to_outcar+">"+tmp+";mv "+tmp+" "+path_to_outcar)
 
 
             with open(path_to_outcar, 'r') as outcar:
@@ -3135,7 +3136,9 @@ class CalculationVasp(Calculation):
 
 
             printlog("Reading of results completed\n\n", imp = 'n')
-            self.end.write_cif(os.path.join(self.dir,self.name))
+            
+            if pymatgen_flag:
+                self.end.write_cif(os.path.join(self.dir,self.name))
             
 
 
