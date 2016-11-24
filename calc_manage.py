@@ -21,8 +21,10 @@ except:
 try:
     # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library
     from ase.utils.eos import EquationOfState
+    ase_flag = True
 except:
-    print('ase is not avail')
+    print('ase is not avail; run   pip install ase')
+    ase_flag = False
 
 import header
 from header import print_and_log, runBash, mpl, plt
@@ -2621,30 +2623,35 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 vlist.append(cl.end.vol)
                 magn1.append(cl.magn1)
                 magn2.append(cl.magn2)
-            eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
-            # import inspect
-            
-            # print (inspect.getfile(EquationOfState))
+            if ase_flag:
+                eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
+                # import inspect
 
-            v0, e0, B = eos.fit()
-            #print "c = ", clist[2]
-            print_and_log( '''
-            v0 = {0} A^3
-            a0 = {1} A
-            E0 = {2} eV
-            B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
+                # print (inspect.getfile(EquationOfState))
 
-            savedpath = 'figs/'+cl.name+'.eps'
-            cl.B = B*160.218
-            # plt.close()
-            # plt.clf()
-            # plt.close('all')
-            if 'fit' in show:
-                mpl.rcParams.update({'font.size': 14})
+                v0, e0, B = eos.fit()
+                #print "c = ", clist[2]
+                print_and_log( '''
+                v0 = {0} A^3
+                a0 = {1} A
+                E0 = {2} eV
+                B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
 
-                eos.plot(savedpath, show = True)
-                printlog('fit results are saved in ',savedpath, imp = 'y')
+                savedpath = 'figs/'+cl.name+'.eps'
+                makedir(savedpath)
 
+
+                cl.B = B*160.218
+                # plt.close()
+                # plt.clf()
+                # plt.close('all')
+                if 'fit' in show:
+                    mpl.rcParams.update({'font.size': 14})
+
+                    eos.plot(savedpath, show = True)
+                    printlog('fit results are saved in ',savedpath, imp = 'y')
+                else:
+                    printlog('To use fitting install ase: pip install ase')
             # plt.clf()
 
             if push2archive:
