@@ -60,7 +60,7 @@ def write_batch_header(batch_script_filename = None,
     self-explanatory)
     path_to_job (str) - absolute path to job folder 
     """
-    with open(batch_script_filename,'w') as f:
+    with open(batch_script_filename,'w', newline = '') as f:
 
 
         if schedule_system == 'SGE':
@@ -172,7 +172,7 @@ def push_figure_to_archive(local_figure_path, caption, figlabel = None, autocomp
 
 
     # print (tex_text)
-    with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+') as f:
+    with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+', newline = '') as f:
         f.seek(0)
         a = f.read()
         # print (a)
@@ -196,7 +196,7 @@ def prepare_run():
         schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
     """
     schedule_system = header.schedule_system
-    with open('run','w') as f:
+    with open('run','w', newline = '') as f:
     
         if schedule_system == 'SGE':
             f.write("#!/bin/tcsh\n")
@@ -217,7 +217,7 @@ def complete_run(close_run = True):
     
     if close_run:
 
-        with open('run','a') as f:
+        with open('run','a', newline = '') as f:
             if header.schedule_system == "PBS":
                 f.write("qstat\n")
                 f.write("sleep 2\n")
@@ -2943,7 +2943,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
         os.chdir(work_path)
         #create conf 
         confname = new_id[0]+'.conf'
-        with open(confname, 'w') as f:
+        with open(confname, 'w', newline = '') as f:
             f.write("DIM = 1 1 1\n")
             f.write("ATOM_NAME = ")
             for z in from_st.znucl:
@@ -3006,7 +3006,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
             #create conf 
             confname = new_id[0]+'_mesh.conf'
-            with open(confname, 'w') as f:
+            with open(confname, 'w', newline = '') as f:
                 f.write("DIM = 1 1 1\n")
                 f.write("ATOM_NAME = ")
                 for z in new_cl.end.znucl:
@@ -3381,7 +3381,7 @@ def add_to_database(cl):
 
         #kpoints
         import json
-        with open(  join(sfolder, 'dat', 'kpoints_for_kspacings.json'), 'w') as fp:
+        with open(  join(sfolder, 'dat', 'kpoints_for_kspacings.json'), 'w', newline = '') as fp:
             json.dump(header.struct_des[it].ngkpt_dict_for_kspacings, fp,)
 
         # print(cl.set.toJSON())
