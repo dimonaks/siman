@@ -426,20 +426,21 @@ class Calculation(object):
             #sys.exit()
             self.useable = 0
             #Read total number of atoms
-            #Programm nznucl, since We will have more impurity atoms of different types
-            command="""grep -w -m 1 "natom " """+filename
-            s1=runBash(command)
+#             #Programm nznucl, since We will have more impurity atoms of different types
+#             command="""grep -w -m 1 "natom " """+filename
+#             s1=runBash(command)
+            self.natom = read_list("natom", 1, int, gen_words)[0]
             # print command
             # print s1
-            self.natom_str = s1
-            if s1=='':
-                self.natom = 0
-                print_and_log( """Warning! In filename """+filename+""" not found natom! set to zero.
-                It is very likely that other parameters was not 
-                found too, Calculation completely unusable!!!""")
-                raise RuntimeError
-            else:
-                self.natom=int(s1.split()[1]) 
+#             self.natom_str = s1
+#             if s1=='':
+#                 self.natom = 0
+#                 print_and_log( """Warning! In filename """+filename+""" not found natom! set to zero.
+#                 It is very likely that other parameters was not 
+#                 found too, Calculation completely unusable!!!""")
+#                 raise RuntimeError
+#             else:
+#                 self.natom=int(s1.split()[1]) 
 
             self.acell = read_list("acell", 3, float, gen_words)
             self.rprim = read_vectors("rprim", 3, gen_words)
