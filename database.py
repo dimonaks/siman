@@ -7,6 +7,8 @@ import header
 from header import runBash, print_and_log, printlog
 from classes import CalculationVasp
 from functions import makedir
+from set_functions import init_default_sets
+
 
 """
 Module contains utilities for project database management
@@ -98,6 +100,8 @@ def read_database(scratch = False):
 
     d.close()
     #print history
+    init_default_sets()
+
 
     return header.conv, header.varset, sys.getsizeof(d)
 

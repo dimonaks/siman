@@ -120,7 +120,6 @@ def read_vasp_sets(user_vasp_sets, override_global = False):
 
     varset = header.varset
 
-
     vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
     bfolder = '' #by default no blockfolder
     for l in user_vasp_sets:
@@ -625,8 +624,9 @@ def init_default_sets():
     """
     Pre-defined sets for Vasp
     """
-    setname = 'static'
     varset = header.varset
+
+    setname = 'static'
     if setname not in varset: #init only once
         s = InputSet(setname) #default starting set without relaxation
         s.kpoints_file = True
@@ -657,4 +657,30 @@ def init_default_sets():
             }
         s.update()
         header.varset[setname] = copy.deepcopy(s)
+    
+
+
+    setname = 'opt'
+    if setname not in varset: #init only once
+        s = InputSet(setname) 
+        s.kpoints_file = True
+        s.add_nbands = 1.25
+        s.vasp_params = {
+            'IBRION'    : 1,
+            'KGAMMA'    : ".TRUE.",
+            'ENCUT'     : 150,
+            'EDIFFG'    : -0.01,
+            'SIGMA'     : 0.2,
+            'ISIF'      : 2,
+            'EDIFF'     : 1e-05,
+            'NSW'       : 20,
+            'ISMEAR'    : 2,
+            'KSPACING'  : 0.2,
+            }
+        s.update()
+        header.varset[setname] = copy.deepcopy(s)
+    # print(header.varset[setname], setname)
+
+
+
     return

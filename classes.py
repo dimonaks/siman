@@ -2976,7 +2976,11 @@ class CalculationVasp(Calculation):
             r1 = ("%.2f" % ( v[0] ) ).center(j[19])            
             vol = ("%.1f" % ( self.end.vol ) ).center(j[20])
             nat = ("%i" % ( self.end.natom ) ).center(j[21])
-            totd = ("%.0f" % (   max_tdrift/max_magnitude * 100      ) ).center(j[22])
+            try:
+                totd = ("%.0f" % (   max_tdrift/max_magnitude * 100      ) ).center(j[22])
+            except:
+                totd = ''
+
             nsg = ("%s" % (     nsgroup     ) ).center(j[22])
             Uhu   = " {:3.1f} ".format(u_hubbard)
             ed    = ' {:3.0f}'.format( e_diff)

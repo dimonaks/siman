@@ -616,7 +616,8 @@ def choose_cluster(cluster_name, cluster_home):
 
 
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
-    up = 'up1', typconv="", from_geoise = '', inherit_option = None, 
+    up = 'up1', typconv="", from_geoise = '', inherit_option = None,
+    i_atom_to_remove = None, 
     coord = 'direct', savefile = 'oc', show = None, comment = '', 
     input_geo_format = None, ifolder = None, input_geo_file = None, corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
@@ -1000,6 +1001,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         elif inherit_option == 'antisite':
             it_new = it+'.as'
 
+        elif inherit_option == 'make_vacancy':
+            it_new = it+'.vac'
 
 
 
@@ -1020,7 +1023,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 # print(mul_
 
                 inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, 
-                    it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, 
+                    it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, i_atom_to_remove = i_atom_to_remove,
                     ortho = ortho, mul_matrix = mul_matrix, override =override)
         
             if inherit_option in inh_opt_ngkpt:
@@ -1862,7 +1865,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
         print_and_log('Warning! Please check inherit_type == "make_vacancy", typat can be wrong  if more than one element present in the system\n ',
             'Use del_atoms() method ')
-        raise RuntimeError
+        # raise RuntimeError
 
         des = 'Atom '+str(i_atom_to_remove)+' removed from  '+cl_base.name
         # new.des = des + struct_des[it_new].des
