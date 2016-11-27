@@ -661,13 +661,12 @@ def init_default_sets():
 
 
     setname = 'opt'
-    if setname not in varset: #init only once
+    if setname  in varset: #init only once
         s = InputSet(setname) 
         s.kpoints_file = True
         s.add_nbands = 1.25
         s.vasp_params = {
             'IBRION'    : 1,
-            'KGAMMA'    : ".TRUE.",
             'ENCUT'     : 150,
             'EDIFFG'    : -0.01,
             'SIGMA'     : 0.2,

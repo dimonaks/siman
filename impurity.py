@@ -1,7 +1,8 @@
 from __future__ import division, unicode_literals, absolute_import 
 
-from header import *
+from header import print_and_log, geo_folder,runBash
 import header
+
 from classes import CalculationVasp, Structure
 from set_functions import InputSet
 from functions import image_distance, xred2xcart, xcart2xred, write_xyz, replic, return_atoms_to_cell, element_name_inv
@@ -9,7 +10,8 @@ import ctypes
 #from ctypes import *
 from ctypes import cdll
 from ctypes import c_float, byref
-
+import numpy as np
+import traceback, os, datetime, glob, copy
 # import os
 # print os.getcwd()
 
@@ -349,7 +351,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
 
 
         if write_geo and os.path.exists(new.path["input_geo"]) and not override:
-            print_and_log("add: File '"+new.path["input_geo"]+"' already exists; continue\n");
+            print_and_log("add: File '"+new.path["input_geo"]+"' already exists; continue\n", imp = 'Y');
             return new
 
         #new.init = return_atoms_to_cell(new.init)
@@ -389,7 +391,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
 
             if put_exactly_to:
                 pores_xred = [np.array(put_exactly_to),]
-                print_and_log( 'Inmpurity just put in ', pores_xred)
+                print_and_log( 'Inmpurity just put in ', pores_xred, imp = 'Y')
             else:
                 pores = find_pores(new.init, r_mat, r_pore, step, fine, prec,  addtype, new.gbpos, find_close_to, check_pore_vol) #octahedral
                 pores_xred = pores.xred
@@ -576,7 +578,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
             igl = input_geofile.split("/")
             #new.name = igl[-3]+'/'+igl[-3] #+input_geofile
             new.name = struct_des[it_new].sfolder+"/"+it_new+"/"+it_new
-            print_and_log( "New path and part of name of file is ", new.name)
+            print_and_log( "New path and part of name of file is ", new.name, imp = 'Y')
             #return
             new.des = 'Obtained from '+input_geofile+' by adding '+impurity_type+' impurity '
             #new.init.xred   = new.xred

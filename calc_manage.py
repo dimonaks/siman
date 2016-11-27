@@ -2425,7 +2425,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         results_dic = {} #if some part fill this list it will be returned instead of final_outstring
 
         if id not in calc or '4' not in calc[id].state:
-            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []')
+            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []', imp = 'Y')
             return {}, []
         
 
@@ -2684,7 +2684,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         elif analys_type == 'redox_pot':
             
             if '4' not in bcl.state:
-                print_and_log("Calculation ",bcl.id, 'is unfinished; return')
+                print_and_log("Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
                 return {}, []
 
             results_dic = calc_redox(cl, bcl, energy_ref)
