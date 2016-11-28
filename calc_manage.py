@@ -1105,7 +1105,6 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             else: 
                 input_folder = header.geo_folder+struct_des[it].sfolder+"/"+it
 
-
         prevcalcver = None #version of previous calculation in verlist
 
         for v in verlist:
@@ -1314,6 +1313,14 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         # all additional properties:
+
+        if hasattr(calc[id].set, 'savefile'):
+            for s in calc[id].set.savefile:
+                if s not in savefile:
+                    savefile+=s
+
+
+
         calc[id].calc_method = calc_method
 
 

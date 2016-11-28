@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 
 import header
 from header import print_and_log
-from functions import write_xyz, replic
+from functions import write_xyz, replic, makedir
 
 
 def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
@@ -200,6 +200,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
         plt.tight_layout()
         path2saved = ''
         if image_name:
+            makedir(image_name)
+
             try:
                 path_to_images
             except:
@@ -219,15 +221,17 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
 
             plt.savefig(path2saved, dpi = dpi, format=fig_format)
+            plt.savefig(str(image_name)+'.png', dpi = 300)
             print_and_log("Image saved to ", path2saved)
 
-            plt.clf()
-            plt.close('all')
+
         elif show is None:
             show = True
+        # print_and_log(show)
         if show:
             plt.show()
-
+        plt.clf()
+        plt.close('all')
 
 
     return path2saved

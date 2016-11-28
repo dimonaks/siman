@@ -1,7 +1,10 @@
-from six import string_types
 
+from six import string_types
 from collections import Iterable
 import shutil, gzip
+
+from header import printlog
+
 
 def is_list_like(obj): 
 	return not isinstance(obj, string_types) and isinstance(obj, Iterable)
@@ -47,6 +50,7 @@ def grep_file(string, file, reverse = False):
     return str(out.strip() )
 
 def gunzip_file(filename):
+    printlog('unzipping file', filename)
     with open(filename.replace('.gz', ''), 'wb') as f_out:
         with gzip.open(filename, 'rb') as f_in:
             shutil.copyfileobj(f_in, f_out)

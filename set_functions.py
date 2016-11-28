@@ -97,7 +97,8 @@ siman_keys = [
 'u_ramping_nstep', #number of u ramping steps
 'magnetic_moments',
 'afm_ordering',
-'set_sequence'# sequence of sets
+'set_sequence',# sequence of sets
+'savefile', #additional keys pointing which files should be saved
 ]
 
 def read_vasp_sets(user_vasp_sets, override_global = False):

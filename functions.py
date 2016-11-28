@@ -1,3 +1,4 @@
+
 from __future__ import division, unicode_literals, absolute_import 
 import os, tempfile, copy
 import numpy as np
@@ -126,6 +127,7 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
         print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
         files[0]+='.gz'
         to_new = os.path.join( to, os.path.basename(files[0])  )
+        printlog('copying to ', to_new)
 
         if header.ssh_object:
             header.ssh_object.get(files[0],  to_new  )
