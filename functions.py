@@ -109,11 +109,14 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
 
 
     if header.ssh_object:
-        trygz = False
         for file in files:
             localfile = os.path.join(to, os.path.basename(file) )
-            header.ssh_object.get(file,  localfile  )
-            out = not os.path.exists(localfile)
+            
+            try:
+                header.ssh_object.get(file,  localfile  )
+            except FileNotFoundError:
+                out = 'not found'
+            # out = not os.path.exists(localfile)
         
 
     else:
@@ -121,7 +124,7 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
     # print ('out === ',out)
     # print(out and trygz)
 
-
+    printlog(out, trygz)
     if out and trygz:# and not os.path.exists(to_new):
 
         print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')

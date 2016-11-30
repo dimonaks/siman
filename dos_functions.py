@@ -116,7 +116,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 
 
-def plot_dos(cl1, cl2 = None, dostype = None, iatom = -1, orbitals = ('s'), up = None, neighbors = 6, show = 1, path = 'dos', xlim = (None, None), ylim = (None,None) ):
+def plot_dos(cl1, cl2 = None, dostype = None, iatom = 0, orbitals = ('s'), up = None, neighbors = 6, show = 1, path = 'dos', xlim = (None, None), ylim = (None,None) ):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -128,7 +128,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = -1, orbitals = ('s'), up =
     up - 'up2' allows to download the file once again
 
 
-    iatom (int) - number of atom to plot DOS by default it is assumed that the last atom is used
+    iatom (int) - number of atom starting from 1 to plot DOS by default it is assumed that the last atom is used
     iatom ([float]*3) - cartesian coordinates of point around which atoms will be found
     show (bool) - whether to show the dos 
     path (str)  - path to folder with images
@@ -141,7 +141,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = -1, orbitals = ('s'), up =
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
 
     """
-
+    iatom -= 1
 
 
 
@@ -160,6 +160,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = -1, orbitals = ('s'), up =
         printlog(cl.name, 'e_fermi', cl.efermi, imp = 'Y')
      
         DOSCAR = cl.get_file('DOSCAR', update = up); 
+        printlog('DOSCAR file is ', DOSCAR)
 
         dos.append( VaspDos(DOSCAR, cl.efermi) )
     
@@ -277,7 +278,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = -1, orbitals = ('s'), up =
             else:
                 args[orb] = (d1.energy, smoother(d1.site_dos(iX, i_orb[orb]), nsmooth), color[orb])
 
-        image_name = os.path.join(path, cl1.name+'.'+orb+'.'+el+str(iX))
+        image_name = os.path.join(path, cl1.name+'.'+''.join(orbitals)+'.'+el+str(iX))
 
         fit_and_plot(show = show, image_name = image_name, figsize = (4,6), xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", 
         # title = cl1.name.split('.')[0]+'; V='+str(round(cl1.vol) )+' $\AA^3$; Impurity: '+el,

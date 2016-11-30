@@ -3224,8 +3224,9 @@ class CalculationVasp(Calculation):
         #cl - object of CalculationVasp class
         # filename - standart Vasp file name
         path_to_file = self.path['output'].replace('OUTCAR', filename)
-        
-        if not os.path.exists(path_to_file) or update: 
+
+        if (not os.path.exists(path_to_file)) or update: 
+
             get_from_server(self.project_path_cluster+'/'+path_to_file, os.path.dirname(path_to_file), self.cluster_address)
 
 
