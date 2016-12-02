@@ -526,7 +526,7 @@ def smart_structure_read(curver, calcul = None, input_folder = None, input_geo_f
 
 
 
-def name_mod_supercell(ortho, mul_matrix):
+def name_mod_supercell(ortho = None, mul_matrix = None):
 
     if ortho:
 
