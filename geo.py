@@ -32,14 +32,18 @@ def ortho_vec_old(rprim, ortho_sizes = None):
 def ortho_vec(rprim, ortho_sizes = None):
     """
     Function returns mul_mat - 3 vectors of integer numbers (ndarray)
-    By calculating np.dot(mul_matrix, st.rprimd) you will get rprim of orthogonal supercell (actually as close as possible to it) 
+    By calculating np.dot(mul_matrix, rprim) you will get rprim of orthogonal supercell (actually as close as possible to it) 
     """
 
     vec_new = np.diag(ortho_sizes)
 
-    # vec_new = list( np.dot(mul_matrix_float, st.rprimd  )    )
 
     mul_matrix_float = np.dot( vec_new,  np.linalg.inv(rprim) )
+
+    # ortho_test = np.dot(mul_matrix_float, rprim )
+
+    # print(ortho_test)
+    # print(mul_matrix_float)
 
     mul_matrix = np.array(mul_matrix_float)
     mul_matrix = mul_matrix.round(0)
@@ -59,15 +63,15 @@ def ortho_vec(rprim, ortho_sizes = None):
 
 
 
-def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 1e-7): 
+def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01): 
     """ 
     st (Structure) -  
     mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 
 
 
-    bound = 1e-7 # to overcome numerical errors
-    mp    = 2    # include additionall atoms before cutting supecell
-    test_overlap - quite slow
+    bound (float) - shift (A) allows to correctly account atoms on boundaries
+    mp    (int)  include additionall atoms before cutting supecell
+    test_overlap (bool) - check if atoms are overlapping -  quite slow
     """ 
     sc = copy.deepcopy(st) 
 
@@ -77,7 +81,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 1e-7)
     st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  )
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
     sc_natom = sc.vol/st.vol*st.natom # test
-    printlog('The supercell contains', sc_natom, 'atoms', imp = 'y', end = '\n')
+    printlog('The supercell should contain', sc_natom, 'atoms', imp = 'y', end = '\n')
     sc.xcart = []
     sc.typat = []
     sc.xred  = []
@@ -86,29 +90,35 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 1e-7)
     ma = np.max(mul_matrix, axis = 0)
     mi[mi>0] = 0  # 
 
+    # print(mi, ma)
+
+
+    # find bound values
+    lengths = np.linalg.norm(sc.rprimd, axis = 1)
+    bounds = bound/lengths # in reduced coordinates
+
 
     for uvw in itertools.product(*[range(*z) for z in zip(mi-mp, ma+mp)]): #loop over all ness uvw
-
+        # print(uvw)
         xcart_mul = st.xcart + np.dot(uvw, st.rprimd) # coordinates of basis for each uvw
+        # print(xcart_mul)
         xred_mul  = xcart2xred(xcart_mul, sc.rprimd)
         
         for xr, xc,  t in zip(xred_mul, xcart_mul, st.typat):
             
-            if all([0-bound <= r < 1-bound for r in xr]): #only that in sc.rprimd box are needed
+            if all([0-b <= r < 1-b for r, b in zip(xr, bounds)]): #only that in sc.rprimd box are needed
                 sc.xcart.append( xc )
                 sc.xred.append ( xr )
                 sc.typat.append( t  )
     
 
-
     sc.natom = len(sc.xcart)
     sc.magmom = [None]
-    # nznucl&
-    # print np.array(sc.xred).round(5)
+
 
     if abs(sc.natom - sc_natom)>1e-5: #test 1, number of atoms
-        printlog('Error! Supercell contains wrong number of atoms:', sc_natom, 'instead of', sc.natom , 
-            'try to increase *mp* or even play with *bound*')
+        printlog('Error! Supercell contains wrong number of atoms:', sc.natom  , 'instead of', sc_natom, 
+            'try to increase *mp* of change *bound* ')
 
     else:
         printlog('Number of atoms ... OK')

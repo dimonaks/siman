@@ -810,7 +810,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     # asdegf
 
     """Writing section"""   
-    print_and_log("Writing xyz:"+xyzfile, imp = 'y')
+    # print_and_log("Writing xyz: "+xyzfile, imp = 'y')
 
     #analyze imp_positions
     if imp_sub_positions == None:
@@ -868,7 +868,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
 
     # os._exit(1)
-    # printlog('File', xyzfile, 'was written', imp = 'y')
+    printlog('File', xyzfile, 'was written', imp = 'y')
 
 
     if jmol:
