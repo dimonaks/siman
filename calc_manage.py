@@ -1814,7 +1814,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     elif inherit_type == "remove_atoms":
         """
-        
+        remove all atoms of type *atoms_to_remove*
         """
         des = 'All atoms of type ' + str(atoms_to_remove)+' removed from the final state of '+cl_base.name
         
@@ -1842,27 +1842,6 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         st.name = it_new+'_from_'+new.name
         override = True
 
-        # sys.exit()
-     
-        # st_copy = copy.deepcopy(st)
-        # st.typat = []
-        # st.xred = []
-        # st.xcart = []
-        # st.ntypat = 1
-        # st.znucl = st.znucl[0:1]
-        # for i, t in enumerate(st_copy.typat):
-        #     if t == 1:
-        #         st.typat.append(t)
-        #         st.xred.append(st_copy.xred[i])
-        #         st.xcart.append(st_copy.xcart[i])
-        # st.natom = len(st.xred)
-        
-
-
-
-        # new.init = new.end #just for sure
-        # new.write_geometry("end",des)        
-        # write_xyz(new.end)
 
 
 

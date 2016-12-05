@@ -37,7 +37,7 @@ def ortho_vec(rprim, ortho_sizes = None):
 
     vec_new = np.diag(ortho_sizes)
 
-
+    # print(rprim)
     mul_matrix_float = np.dot( vec_new,  np.linalg.inv(rprim) )
 
     # ortho_test = np.dot(mul_matrix_float, rprim )
@@ -133,3 +133,35 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
 
 
     return sc
+
+
+
+
+
+def determine_symmetry_positions(st, element):
+    """
+    determine non-equivalent positions for atoms of *element*
+
+    element (str) - name of element, for example Li
+    """
+
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+
+    stp = st.convert2pymatgen()
+
+    spg = SpacegroupAnalyzer(stp)
+
+
+    info = spg.get_symmetry_dataset()
+
+    positions = {}
+    for i, (el, pos) in enumerate(zip(st.get_elements(), info['equivalent_atoms'])):
+        
+        if el in element and pos not in positions:
+            positions[pos] = []
+
+        if el in element:
+            positions[pos].append(i)
+
+    print(positions)
