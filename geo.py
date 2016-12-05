@@ -81,7 +81,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
     st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  )
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
     sc_natom = sc.vol/st.vol*st.natom # test
-    printlog('The supercell should contain', sc_natom, 'atoms', imp = 'y', end = '\n')
+    printlog('The supercell should contain', sc_natom, 'atoms ... ', imp = 'y', end = ' ')
     sc.xcart = []
     sc.typat = []
     sc.xred  = []
@@ -121,7 +121,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
             'try to increase *mp* of change *bound* ')
 
     else:
-        printlog('Number of atoms ... OK')
+        printlog('OK', imp = 'y')
     
     if test_overlap: #test 2: overlapping of atoms
         enx = list(enumerate(sc.xcart))
