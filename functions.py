@@ -810,7 +810,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     # asdegf
 
     """Writing section"""   
-    print_and_log("Writing xyz "+xyzfile+" \n")
+    print_and_log("Writing xyz:"+xyzfile, imp = 'y')
 
     #analyze imp_positions
     if imp_sub_positions == None:
@@ -838,7 +838,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
     with open(xyzfile,'w') as f:
         for i in range(repeat):
-            f.write(str(natom + len(imp_positions)-nsub)+"\n")
+            f.write(str(natom + len(imp_positions)-nsub + 3)+"\n") #+3 vectors
             f.write(name+"\n")
 
             if imp_positions: 
@@ -868,7 +868,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
 
     # os._exit(1)
-
+    # printlog('File', xyzfile, 'was written', imp = 'y')
 
 
     if jmol:

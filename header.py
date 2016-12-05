@@ -154,7 +154,8 @@ def print_and_log(*logstrings, **argdic):
     if len(mystring.splitlines()) == 1:
         mystring = '-- '+mystring
     else:
-        mystring = '    '+mystring.replace('\n', '\n    ') 
+        ''
+        # mystring = '    '+mystring.replace('\n', '\n    ') 
     
     mystring+=end
 

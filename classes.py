@@ -33,7 +33,7 @@ from header import printlog, print_and_log, runBash, red_prec, plt
 from small_functions import cat_files, grep_file
 from functions import (read_vectors, read_list, words, local_surrounding, 
     xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server, run_on_server, list2string, makedir)
+    get_from_server, push_to_server, run_on_server, list2string, makedir, write_xyz)
 
 
 
@@ -332,6 +332,12 @@ class Structure():
         cif_name =  filename+'.cif'
         cif.write_file( cif_name  )
         printlog('Writing cif', cif_name, imp = 'n')
+
+
+    def write_xyz(self, *args, **kwargs):
+        #see description for write_xyz()
+        return write_xyz(*args, **kwargs)
+
 
 
 

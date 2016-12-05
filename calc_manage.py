@@ -437,7 +437,7 @@ def get_file_by_version(geofilelist, version):
 
 
 
-def smart_structure_read(curver, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None):
+def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None):
     """
     Wrapper for reading geometry files
     calcul (Calculation()) - object to which the path and version read
