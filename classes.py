@@ -181,7 +181,7 @@ class Structure():
 
         return st
 
-    def del_atoms(self, iat):
+    def del_atom(self, iat):
         """
         Now can delete only one atom with number iat (int), starting from 0. 
         Takes care of magmom, ntypat, typat, znucl, nznucl, xred and natom
@@ -189,7 +189,7 @@ class Structure():
         """
 
 
-        print_and_log('Warning! Method del_atoms() was not carefully tested ')
+        # print_and_log('Warning! Method del_atoms() was not carefully tested ')
         st = copy.deepcopy(self)
 
 
@@ -743,14 +743,22 @@ class CalculationVasp(Calculation):
             self.version = ver
 
 
+        elements_list = []
 
         self.init = Structure()
         st = self.init
+        
+        st.name = os.path.basename(filename).replace('POSCAR', '').replace('CONTCAR', '')
+        if '.' in st.name[-1]:
+            st.name = st.name[0:-1]
+
+
         with open(filename,'r') as f:
             name = f.readline().strip()
             # print self.name, "self.name"
 
             self.des = name
+
             # st.name = self.name
             # print(f.readline())
             mul = float( f.readline() )
@@ -772,8 +780,9 @@ class CalculationVasp(Calculation):
                 vasp5 = True
 
             if vasp5:
-                # for el in ilist:
-                #     st.els.append(el)
+                for el in ilist:
+                    elements_list.append(el)
+
                 ilist = f.readline().split()
 
             
@@ -785,7 +794,6 @@ class CalculationVasp(Calculation):
             st.xred = []
 
 
-            elements_list = []
 
             if "Car" in type_of_coordinates:
                 # print "Warning! may be obsolete!!! and incorrect"

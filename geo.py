@@ -140,9 +140,11 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
 
 def determine_symmetry_positions(st, element):
     """
-    determine non-equivalent positions for atoms of *element*
+    determine non-equivalent positions for atoms of type *element*
 
     element (str) - name of element, for example Li
+
+    return dictionary of atom numbers for each non-equivalent position
     """
 
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -151,7 +153,6 @@ def determine_symmetry_positions(st, element):
     stp = st.convert2pymatgen()
 
     spg = SpacegroupAnalyzer(stp)
-
 
     info = spg.get_symmetry_dataset()
 
@@ -165,5 +166,63 @@ def determine_symmetry_positions(st, element):
             positions[pos].append(i)
 
 
-    printlog('I found ', len(positions), 'non-eqiu')
-    print(positions)
+    printlog('I found ', len(positions), 'non-eqivalent positions for', element, ':',positions.keys(), imp = 'y')
+    # print(positions)
+    return positions
+
+
+
+def remove_atoms(st, atoms_to_remove):
+    """
+    remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*
+    st (Structure)
+    atoms_to_remove (list) - list of str or int
+
+    """
+    st = copy.deepcopy(st)
+    numbers = list(range(st.natom))
+
+
+    atom_exsist = True
+
+    while atom_exsist:
+
+        for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
+            # print(i)
+            
+            if el in atoms_to_remove or n in atoms_to_remove:
+                # print(n)
+                # atoms_to_remove.remove(i)
+                st = st.del_atom(i)
+                del numbers[i]
+
+                break
+        else:
+            atom_exsist = False
+
+    return st
+
+
+def create_deintercalated_structures(st, element, iconf = None):
+
+    """
+    returns deintercalated structures
+    """
+    positions = determine_symmetry_positions(st, element)
+    sts = []
+
+
+    for pos in positions:
+        # print(pos, positions[pos])
+        # print(st.get_elements())
+        st1 = remove_atoms(st, atoms_to_remove = positions[pos])
+        st1.name += '.'+element+str(pos)+'del'
+        # print(st1.get_elements())
+
+        sts.append(st1)
+
+
+
+    return sts
+
+

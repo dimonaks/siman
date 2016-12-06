@@ -36,8 +36,12 @@ from functions import (list2string, gb_energy_volume, element_name_inv,
      image_distance, local_surrounding, file_exists_on_server, run_on_server, push_to_server)
 from picture_functions import plot_mep
 from analysis import calc_redox
+from geo import remove_atoms
+
 
 from set_functions import init_default_sets
+
+
 
 printlog = print_and_log
 
@@ -1501,7 +1505,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     id_from = None,
-    atom_new = None, atom_to_replace = None,  id_base_st_type = 'end', atoms_to_remove = None, i_atom_to_remove = None, id_from_st_type = 'end',
+    atom_new = None, atom_to_replace = None,  
+    id_base_st_type = 'end', 
+    atoms_to_remove = None, i_atom_to_remove = None, 
+    id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
     it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, override = None
     ):
@@ -1518,7 +1525,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             'full_nomag'  - full except magmom which are set to None
             r2r3          - use r2 and r3 from id_from
             r1r2r3        - use r1, r2 and r3 from id_from
-            remove_atoms  - removes atoms of type *atoms_to_remove (list of str)*
+            remove_atoms  - removes atoms specified with *atoms_to_remove* (list of element names or list of atom numbers)
             replace_atoms - atoms of type 'atom_to_replace' in 'id_base' will be replaced by 'atom_new' type.
             make_vacancy  - produce vacancy by removing 'i_atom_to_remove' starting from 0
             occ           - take occ from *id_from* and create file OCCMATRIX for 
@@ -1674,33 +1681,25 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     if inherit_type == "r2r3":
         des = ' Partly inherited from the final state of '+cl_base.name+'; r2 and r3 from '+calc_from_name
-        # new.des = struct_des[it_new].des + des
         st.rprimd[1] = st_from.rprimd[1].copy()
         st.rprimd[2] = st_from.rprimd[2].copy()       
-        # new.write_geometry("end",des)
 
     elif inherit_type == "r1r2r3":
         des = ' Partly inherited from the final state of '+cl_base.name+'; r1, r2, r3 from '+calc_from_name
-        # new.des = struct_des[it_new].des + des
         st.rprimd = copy.deepcopy( st_from.rprimd )
         new.hex_a = calc_from.hex_a
         new.hex_c = calc_from.hex_c
         st.xcart = xred2xcart(new.end.xred, new.end.rprimd) #calculate new xcart from xred, because rprimd was changed
-        # new.write_geometry("end",des)
 
 
     elif inherit_type == "full":
         print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
         des = 'Fully inherited from the final state of '+cl_base.name
-        # new.des = des + struct_des[it_new].des
-        # new.write_geometry("end",des)
 
     elif inherit_type == "full_nomag":
         # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
         des = 'Fully inherited from the final state of '+cl_base.name+'; "magmom" set to [None]'
-        # new.des = des + struct_des[it_new].des
         st.magmom = [None]
-        # new.write_geometry("end",des)
 
     elif inherit_type == "occ":
         des = 'Fully inherited from the final state of '+cl_base.name+'; occupation matrix is taken from '+calc_from_name
@@ -1805,39 +1804,20 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
     elif inherit_type == "atom_shift":
         des = 'obtainded from final state of '+cl_base.name+' by shifting atom '+ str(atom_to_shift) +' by '+ str(shift_vector)
-        # new.des = des + struct_des[it_new].des
         
         st.xcart[atom_to_shift-1] += np.asarray(shift_vector) 
         st.xred = xcart2xred(new.end.xcart, new.end.rprimd)
-        # new.write_geometry("end",des)
-        # write_xyz(new.end)
 
 
 
     elif inherit_type == "remove_atoms":
         """
-        remove all atoms of type *atoms_to_remove*
+        remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*
         """
+
         des = 'All atoms of type ' + str(atoms_to_remove)+' removed from the final state of '+cl_base.name
         
-        atoms = [ element_name_inv(st.znucl[t-1])    for t in st.typat ]
-
-        # print (atoms)
-        atom_exsist = True
-        
-        while atom_exsist:
-            atoms = [ element_name_inv(st.znucl[t-1])    for t in st.typat ]
-
-            for i, at in enumerate(atoms):
-                
-                if at in atoms_to_remove:
-                    
-                    st = st.del_atoms(i)
-
-                    break
-            else:
-                atom_exsist = False
-            # print (atoms)
+        st = remove_atoms(st, atoms_to_remove)
 
         new.init = st
         new.end  = st
@@ -1852,13 +1832,11 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
         print_and_log('Warning! Please check inherit_type == "make_vacancy", typat can be wrong  if more than one element present in the system\n ',
-            'Use del_atoms() method ')
+            'Use del_atom() method ')
         # raise RuntimeError
 
         des = 'Atom '+str(i_atom_to_remove)+' removed from  '+cl_base.name
-        # new.des = des + struct_des[it_new].des
 
-        # st = new.end
         del st.typat[i_atom_to_remove]
         del st.xcart[i_atom_to_remove]
         del st.xred[i_atom_to_remove]
@@ -1926,8 +1904,6 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         ' by simple replacing of '+atom_to_replace+' by '+atom_new
 
         override = 1
-        # new.des = des #+ struct_des[it_new].des
-        # write_xyz(st)
 
     elif inherit_type == "antisite":
         #1. Find first alkali ion
