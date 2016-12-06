@@ -164,4 +164,6 @@ def determine_symmetry_positions(st, element):
         if el in element:
             positions[pos].append(i)
 
+
+    printlog('I found ', len(positions), 'non-eqiu')
     print(positions)

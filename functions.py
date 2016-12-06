@@ -177,9 +177,11 @@ def makedir(path):
     *path* - path to some file 
     Make dirname(path) directory if it does not exist
     """
-    if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-        print_and_log("Directory "+os.path.dirname(path)+" was created\n")
+    dirname = os.path.dirname(path)
+
+    if dirname and not os.path.exists(dirname):
+        os.makedirs(dirname)
+        print_and_log("Directory", dirname, " was created", imp = 'y')
     return
 
 
@@ -931,13 +933,12 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     return
 
 
-def write_lammps(cl, state, filepath = ''):
-    """Writes structure in lammps format """
-    if state == 'end':
-        st = cl.end
-    elif state == 'init':
-        st = cl.init
-    
+def write_lammps(st, filename = '', charges = None):
+    """Writes structure in lammps format 
+
+    charges (list of float) - list of charges for each atom type
+    """
+
     rprimd = st.rprimd
     xcart  = st.xcart
     xred   = st.xred
@@ -948,35 +949,53 @@ def write_lammps(cl, state, filepath = ''):
     natom = st.natom
 
     if natom != len(xred) != len(xcart) != len(typat) or len(znucl) != max(typat): 
-        print_and_log( "Error! write_xyz: check your arrays.\n\n"    )
+        print_and_log( "Error! write_xyz: check your structure"    )
     
-    if name == '': name = 'noname'
+    if name == '': 
+        name = 'noname'
     if xcart == [] or len(xcart) != len(xred):
         print_and_log( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n", imp = 'y')
         xcart = xred2xcart(xred, rprimd)
         #print xcart[1]
 
-    if not filepath:
-        filepath = 'lammps/'+name+".lammps"
-    if not os.path.exists(os.path.dirname(filepath)):
-        os.makedirs(os.path.dirname(filepath))
+    if not filename:
+        filename = 'lammps/'+name
+
+    filename+='.inp'
+
+    makedir(filename)
+
+
 
     """Write lammps structure file;  """
-    if 0:
+    if 1:
         """ My version; valid only for octahedral cells""" 
-        with open(filepath+'','w') as f:
+        printlog( "Warining! write_lammps(): this func supports only orthogonal cells", imp = 'Y')
+
+        with open(filename+'','w') as f:
             f.write("Lammps format "+name+'\n')
             f.write(str(natom)+" atoms\n")
             f.write(str(ntypat)+" atom types\n")
-            f.write("0 "+str(rprimd[0][0])+" xlo xhi\n")
-            f.write("0 "+str(rprimd[1][1])+" ylo yhi\n")
-            f.write("0 "+str(rprimd[2][2])+" zlo zhi\n")
-            f.write("0.000000    0.000000    0.000000   xy xz yz\n")
+            f.write("{:10.8f}  {:10.8f}  xlo xhi\n".format(0, rprimd[0][0]))
+            f.write("{:10.8f}  {:10.8f}  ylo yhi\n".format(0, rprimd[1][1]))
+            f.write("{:10.8f}  {:10.8f}  zlo zhi\n".format(0, rprimd[2][2]))
+            f.write("0.00000000  0.00000000  0.00000000  xy xz yz\n")
             f.write("\nAtoms\n\n")
 
             for i, x in enumerate(xcart):
-                f.write("{0:d} {1:d} {2:f} {3:f} {4:f}\n".format(i+1, typat[i], x[0], x[1], x[2] ))
+                f.write("{0:8d} {1:2d}".format(i+1, typat[i]))
+                if charges:
+                    f.write(" {:6.3f}".format(charges[typat[i]-1] ) )
+                f.write(" {:12.6f}  {:12.6f}  {:12.6f}\n".format(x[0], x[1], x[2] ))
+            
+
+
             f.write("\n")
+    
+        printlog('File', filename, 'was written', imp = 'y')
+
+
+
     else:
         """Write poscar and convert from poscar to lammps using external script; Valid for arbitary cells"""
         cl.write_structure('POSCAR', 'dir', path = 'voronoi_analysis/', state = state)
@@ -984,40 +1003,40 @@ def write_lammps(cl, state, filepath = ''):
     
 
 
+    if 0:
+        """Write lammps.in file """
+        with open('voronoi_analysis/voronoi.in','w') as f:
+            f.write("""units           metal
+                    atom_style atomic
+                    boundary        p p p\n""")
+            f.write("read_data   /home/aksenov/programs/Simulation_wrapper/siman1/voronoi_analysis/structure.lammps\n")
+    #         f.write('lattice   custom 1 ')
+    #         for i, a in enumerate(rprimd):
+    #             f.write(' a'+str(i+1))
+    #             for x in a:
+    #                 f.write(' '+str(x))
+            
+    #         f.write(' &\n')
+    #         for x in xred:
+    #             f.write(' basis {0:f} {1:f} {2:f}&\n '.format(x[0], x[1], x[2]) )
+    #         f.write("""\n
+    # region 1 prism 0 1 0 1 0 1  1 0 0
+    # create_box 1 prism
+    # create_atoms 1 prism""")
 
-    """Write lammps.in file """
-    with open('voronoi_analysis/voronoi.in','w') as f:
-        f.write("""units           metal
-                atom_style atomic
-                boundary        p p p\n""")
-        f.write("read_data   /home/aksenov/programs/Simulation_wrapper/siman1/voronoi_analysis/structure.lammps\n")
-#         f.write('lattice   custom 1 ')
-#         for i, a in enumerate(rprimd):
-#             f.write(' a'+str(i+1))
-#             for x in a:
-#                 f.write(' '+str(x))
-        
-#         f.write(' &\n')
-#         for x in xred:
-#             f.write(' basis {0:f} {1:f} {2:f}&\n '.format(x[0], x[1], x[2]) )
-#         f.write("""\n
-# region 1 prism 0 1 0 1 0 1  1 0 0
-# create_box 1 prism
-# create_atoms 1 prism""")
-
-        for i in range(ntypat):
-            f.write('\nmass '+str(i+1)+' '+str(int(znucl[i]))+'\n')
-        
-        f.write('pair_style      lj/cut 2.0\n')
-        for i in range(ntypat):
-            for j in range(i, ntypat):
-                f.write('pair_coeff      '+str(i+1)+' '+str(j+1)+' 0.0 1.0\n')
+            for i in range(ntypat):
+                f.write('\nmass '+str(i+1)+' '+str(int(znucl[i]))+'\n')
+            
+            f.write('pair_style      lj/cut 2.0\n')
+            for i in range(ntypat):
+                for j in range(i, ntypat):
+                    f.write('pair_coeff      '+str(i+1)+' '+str(j+1)+' 0.0 1.0\n')
 
 
-        f.write("""compute v1 all voronoi/atom
-                dump    d1 all custom 1 /home/aksenov/programs/Simulation_wrapper/siman1/voronoi_analysis/dump.voro id type x y z c_v1[1] c_v1[2]
-                run 0
-                uncompute v1\n""")
+            f.write("""compute v1 all voronoi/atom
+                    dump    d1 all custom 1 /home/aksenov/programs/Simulation_wrapper/siman1/voronoi_analysis/dump.voro id type x y z c_v1[1] c_v1[2]
+                    run 0
+                    uncompute v1\n""")
 
     return
 

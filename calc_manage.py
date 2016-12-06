@@ -818,7 +818,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         if it_folder == None:
             print_and_log('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
         
-        mat_proj_st_id, input_geo_file = get_structure_from_matproj(struct_des, it, it_folder, verlist[0], mat_proj_cell, mat_proj_id)
+        st = get_structure_from_matproj(it, it_folder, verlist[0], mat_proj_cell, mat_proj_id)
+        mat_proj_st_id = st.mat_proj_st_id
+        input_geo_file = st.input_geo_file
         input_geo_format = 'vasp'
 
     elif input_geo_format == 'cee_database':
@@ -3107,7 +3109,7 @@ def get_structure_from_cee_database(it, it_folder, ver, cee_struct_type = 'exp',
 
 
 
-def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_cell = None, mat_proj_id = None):
+def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj_cell = '', mat_proj_id = None):
     """
     Take structures from Mat. projects
 
@@ -3166,14 +3168,24 @@ def get_structure_from_matproj(struct_des, it, it_folder, ver, mat_proj_cell = N
         # print(st_pmg.lattice)
         # sys.exit()
 
+    if it:
+        add_des(header.struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
+        path2poscar = it_folder+'/'+it+'/'+groundstate_st_id+".POSCAR-"+str(ver)
+        makedir(path2poscar)
+    else:
+        path2poscar = groundstate_st_id+".POSCAR"
 
-    add_des(struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
-    path2poscar = it_folder+'/'+it+'/'+groundstate_st_id+".POSCAR-"+str(ver)
-    makedir(path2poscar)
-    Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True, )
-    print_and_log("File "+path2poscar+" was written\n")
     
-    return groundstate_st_id, path2poscar
+    Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True, )
+    print_and_log('Structure', groundstate_st_id, 'downloaded from materialsproject.org\n',
+        'File '+path2poscar+" was written", imp = 'y')
+
+    st = smart_structure_read(input_geo_file = path2poscar)
+    st.groundstate_st_id = groundstate_st_id
+    st.input_geo_file    = path2poscar
+
+
+    return st
 
     #pymatgen drafts, can be useful
 
