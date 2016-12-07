@@ -166,7 +166,7 @@ def determine_symmetry_positions(st, element):
             positions[pos].append(i)
 
 
-    printlog('I found ', len(positions), 'non-eqivalent positions for', element, ':',positions.keys(), imp = 'y')
+    printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y')
     # print(positions)
     return positions
 
@@ -199,30 +199,37 @@ def remove_atoms(st, atoms_to_remove):
                 break
         else:
             atom_exsist = False
+    printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
 
+    # print(st.get_elements())
     return st
 
 
-def create_deintercalated_structures(st, element, iconf = None):
+def create_deintercalated_structure(st, element, del_pos = 1):
 
     """
     returns deintercalated structures
+
+    del_pos(int) - number of position starting from 1
     """
     positions = determine_symmetry_positions(st, element)
-    sts = []
+    position_list = sorted(list(positions.keys()))
+    printlog('Choose from the following list using *del_pos*:', end = '\n', imp = 'y')
+    
+    for i, pos in enumerate(position_list):
+        printlog('     ', i+1,'--->' , pos, end = '\n', imp = 'y')
 
+    pos = position_list[ del_pos - 1 ]
 
-    for pos in positions:
-        # print(pos, positions[pos])
-        # print(st.get_elements())
-        st1 = remove_atoms(st, atoms_to_remove = positions[pos])
-        st1.name += '.'+element+str(pos)+'del'
-        # print(st1.get_elements())
+    printlog('You have chosen position:', pos, imp = 'y')
 
-        sts.append(st1)
+    # print(st.get_elements())
 
+    st1 = remove_atoms(st, atoms_to_remove = positions[pos])
+    st1.name += '.'+element+str(pos)+'del'
+    # print(st1.get_elements())
+    # sys.exit()
 
-
-    return sts
+    return st1
 
 

@@ -36,7 +36,7 @@ from functions import (list2string, gb_energy_volume, element_name_inv,
      image_distance, local_surrounding, file_exists_on_server, run_on_server, push_to_server)
 from picture_functions import plot_mep
 from analysis import calc_redox
-from geo import remove_atoms
+from geo import remove_atoms, create_deintercalated_structure
 
 
 from set_functions import init_default_sets
@@ -421,7 +421,12 @@ def get_file_by_version(geofilelist, version):
             #     printlog('Error! Could not determine version of poscar file')
 
         elif input_geo_format == 'cif': #from filename
-            curv = int(os.path.basename(input_geofile).split('.')[0] )
+            printlog('I found cif file ', input_geofile)
+            try:
+                curv = int(os.path.basename(input_geofile).split('.')[0] )
+            except:
+                curv = None
+                printlog('Failed to determine version, skipping')
 
 
         if curv == version:
@@ -1507,7 +1512,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     id_from = None,
     atom_new = None, atom_to_replace = None,  
     id_base_st_type = 'end', 
-    atoms_to_remove = None, i_atom_to_remove = None, 
+    atoms_to_remove = None, del_pos = None,
+    i_atom_to_remove = None, 
     id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
     it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, override = None
@@ -1526,6 +1532,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             r2r3          - use r2 and r3 from id_from
             r1r2r3        - use r1, r2 and r3 from id_from
             remove_atoms  - removes atoms specified with *atoms_to_remove* (list of element names or list of atom numbers)
+                del_pos (int) - choose specific position if several positions exist for the same ion
+
             replace_atoms - atoms of type 'atom_to_replace' in 'id_base' will be replaced by 'atom_new' type.
             make_vacancy  - produce vacancy by removing 'i_atom_to_remove' starting from 0
             occ           - take occ from *id_from* and create file OCCMATRIX for 
@@ -1581,7 +1589,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     struct_des = header.struct_des
     # override  = False
     if type(id_base) == str: #use function below for other formats
-        print_and_log('Reading id_base\n')
+        printlog('Reading id_base from file', id_base)
         cl_base = CalculationVasp()
         cl_base.read_geometry(id_base)
         cl_base.id = ('from_file', 'from_file', cl_base.version)
@@ -1596,10 +1604,16 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             ''
             valid_calc = False
             cl_base = calc[id_base]
+            printlog('Taking id_base from calc:', id_base)
+        
+
         else:
 
             cl_temp = CalculationVasp()
-            cl_temp.init = smart_structure_read( curver = id_base[2], input_folder = struct_des[id_base[0]].sfolder+'/'+id_base[0] )
+            input_folder = struct_des[id_base[0]].sfolder+'/'+id_base[0]
+            printlog('Searching for id_base', id_base, 'in ',input_folder)
+
+            cl_temp.init = smart_structure_read( curver = id_base[2], input_folder = input_folder)
             cl_temp.end = copy.deepcopy(cl_temp.init)
             cl_temp.name = id_base[0]+'from_file'
             cl_temp.id = ('temp','temp',id_base[2])
@@ -1659,7 +1673,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
     elif id_base_st_type == 'end':
         st = new.end
 
-
+    # print(st.typat)
 
 
     #path to new calc
@@ -1816,13 +1830,28 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         """
 
         des = 'All atoms of type ' + str(atoms_to_remove)+' removed from the final state of '+cl_base.name
-        
-        st = remove_atoms(st, atoms_to_remove)
+
+
+        if del_pos:
+            if len(atoms_to_remove) > 1 and not is_string_like(atoms_to_remove[0]):
+                printlog('Error! When *del_pos* is given,  *atoms_to_remove* should be list with one element, but it is', atoms_to_remove)
+
+            st = create_deintercalated_structure(st, atoms_to_remove[0], del_pos = del_pos)
+        else:        
+            st = remove_atoms(st, atoms_to_remove)
+
+
+
 
         new.init = st
         new.end  = st
         st.name = it_new+'_from_'+new.name
         override = True
+
+
+
+
+
 
 
 
