@@ -1485,9 +1485,9 @@ class CalculationVasp(Calculation):
         if "up" in update: #Copy to server
             printlog('Files to copy:', list_to_copy)
 
-            command = ' mkdir -p {:}'.format( os.path.join(self.project_path_cluster, self.dir)  )
+            # command = ' mkdir -p {:}'.format( os.path.join(self.project_path_cluster, self.dir)  )
 
-            run_on_server(command, self.cluster_address)
+            # run_on_server(command, self.cluster_address)
 
             push_to_server(list_to_copy,  os.path.join(self.project_path_cluster, self.dir), self.cluster_address)
 
@@ -2006,7 +2006,9 @@ class CalculationVasp(Calculation):
                 else:
                     
                     if run_tool_flag:
-                        f.write('/home/aksenov/tools/vts/nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
+                        f.write('export PATH=$PATH:'+header.project_path_cluster+'/tools/vts/\n')
+
+                        f.write('nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
 
 
                 if nim+1 < 10: 
@@ -2036,8 +2038,8 @@ class CalculationVasp(Calculation):
                     contcar_file = 'CONTCAR'
 
                 if final_analysis_flag:
-                    f.write('export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ \n')
-                    f.write('/home/aksenov/tools/vts/nebresults.pl  \n')
+                    f.write('export PATH=$PATH:'+header.project_path_cluster+'/tools/gnuplot/bin/ \n')
+                    f.write(header.project_path_cluster+'/tools/vts/nebresults.pl  \n')
                     f.write('find . -name WAVECAR -delete\n')
                     f.write('find . -name PROCAR -delete\n')
                 # for n in range
@@ -3129,7 +3131,7 @@ class CalculationVasp(Calculation):
                 # print (df)
                 if chosen_ion:
                     print_and_log('Distances (A) from alkali ion #',chosen_ion[0]+1,' to transition atoms:', 
-                        ',  '.join([ '({:}<->{:}): {:.2f}'.format(chosen_ion[0]+1, iat, d) for d, iat in zip(  dist, numb+1  )  ])  )
+                        ',  '.join([ '({:}<->{:}): {:.2f}'.format(chosen_ion[0]+1, iat, d) for d, iat in zip(  dist, numb+1  )  ]), imp = 'Y'  )
                 
                 show_occ_for_atoms = [int(n) for n in re.findall(r'\d+', show)]
                 # print (show_occ_for_atom)
@@ -3147,15 +3149,15 @@ class CalculationVasp(Calculation):
 
                 df = pd.DataFrame(occ_matrices[i_mag_at]).round(5)
 
-                print_and_log( 'Occ. matrix for atom ', i_mag_at+1, end = '\n' )
+                print_and_log( 'Occ. matrix for atom ', i_mag_at+1, end = '\n', imp = 'Y'  )
                     # ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )
-                print_and_log('Spin 1:',end = '\n' )
-                print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".1f", tablefmt='psql'),end = '\n' )
+                print_and_log('Spin 1:',end = '\n', imp = 'Y'  )
+                print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".1f", tablefmt='psql'),end = '\n', imp = 'Y'  )
                 # print(' & '.join(['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}']))
-                print_and_log(tabulate(occ_matrices[i_mag_at][l05:], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".1f", tablefmt='latex'),end = '\n' )
+                # print_and_log(tabulate(occ_matrices[i_mag_at][l05:], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".1f", tablefmt='latex'),end = '\n' )
                 # print(tabulate(a, tablefmt="latex", floatfmt=".2f"))
-                print_and_log('Spin 2:',end = '\n' )
-                print_and_log(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql') )
+                print_and_log('Spin 2:',end = '\n', imp = 'Y'  )
+                print_and_log(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql'), imp = 'Y'  )
             self.occ_matrices = occ_matrices
 
             # sys.exit()

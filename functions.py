@@ -55,6 +55,16 @@ def list2string(ilist):
     return ' '.join(np.array(ilist).astype(str))
 
 
+def run_on_server(command, addr):
+    command = command.replace('\\', '/') # make sure is POSIX
+    if header.ssh_object:
+        out = header.ssh_object.run(command)
+    else:
+        out = runBash('ssh '+addr+' '+command)    
+    return out
+
+
+
 def push_to_server(files = None, to = None,  addr = None):
     """
     if header.ssh_object then use paramiko
@@ -65,9 +75,15 @@ def push_to_server(files = None, to = None,  addr = None):
     
     to = to.replace('\\', '/') # make sure is POSIX
 
-    # print('push_to_server(): files are :',files, 'to', to)
     files_str = ' '.join(np.array(files ))
+
+    printlog('push_to_server(): uploading files ', files, 'to', addr, to)
     
+    command = ' mkdir -p {:}'.format( to )
+
+    run_on_server(command, addr)
+
+
     if header.ssh_object:
         for file in files:
             # print(file, to)
@@ -75,6 +91,10 @@ def push_to_server(files = None, to = None,  addr = None):
         out = ''
     else:
         out = runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
+    
+    printlog(out)
+
+
 
     return out 
 
@@ -114,6 +134,7 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
             
             try:
                 header.ssh_object.get(file,  localfile  )
+                out = ''
             except FileNotFoundError:
                 out = 'not found'
             # out = not os.path.exists(localfile)
@@ -124,7 +145,7 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
     # print ('out === ',out)
     # print(out and trygz)
 
-    printlog(out, trygz)
+    printlog('Download result is ', out, 'trygz is ', trygz)
     if out and trygz:# and not os.path.exists(to_new):
 
         print_and_log('File', files[0], 'does not exist, trying gz', imp = 'n')
@@ -133,20 +154,25 @@ def get_from_server(files = None, to = None,  addr = None, trygz = True):
         printlog('copying to ', to_new)
 
         if header.ssh_object:
-            header.ssh_object.get(files[0],  to_new  )
-            out = not os.path.exists(to_new)
+            try:
+                header.ssh_object.get(files[0],  to_new  )
+                out = ''
+            except FileNotFoundError:
+                out = 'not found'
+            # out = not os.path.exists(to_new)
         else:
             out = runBash('rsync -uaz  '+addr+':'+files[0]+ ' '+to+'; ')
         
 
         # runBash('gunzip -f '+to_new)
-        gunzip_file(to_new)
 
         # print(out)
         
         if out:
             ''
             printlog('    No gz either!', imp = 'n')
+        else:
+            gunzip_file(to_new)
 
 
     return out
@@ -156,19 +182,13 @@ def file_exists_on_server(file, addr):
 
     file = file.replace('\\', '/') # make sure is POSIX
 
-
+    printlog('Checking existence of file on server ', addr, file)
     if header.ssh_object:
-        header.ssh_object.fexists(file)
+        out = header.ssh_object.fexists(file)
     else:
         out = runBash('ssh '+addr+' ls '+file)
 
-
-def run_on_server(command, addr):
-    command = command.replace('\\', '/') # make sure is POSIX
-    if header.ssh_object:
-        out = header.ssh_object.run(command)
-    else:
-        out = runBash('ssh '+addr+' '+command)    
+    printlog('File exist? ', out)
     return out
 
 

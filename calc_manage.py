@@ -551,21 +551,29 @@ def name_mod_supercell(ortho = None, mul_matrix = None):
 
 
 def inherit_ngkpt(it_to, it_from, inputset):
+    """
+    inherit ngkpt from it_from to it_to
+
+    """
+    
     struct_des = header.struct_des
-    ks = inputset.vasp_params['KSPACING']
+    
+    if it_to and it_from:
+        ks = inputset.vasp_params['KSPACING']
 
-    for it in [it_to, it_from]:
-        if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings' ):
-            struct_des[it].ngkpt_dict_for_kspacings = {}
+        for it in [it_to, it_from]: #just create ngkpt_dict_for_kspacings property
+            if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings' ):
+                struct_des[it].ngkpt_dict_for_kspacings = {}
 
-    k_dict1 = struct_des[it_from].ngkpt_dict_for_kspacings
-    k_dict2 = struct_des[it_to].ngkpt_dict_for_kspacings
+        k_dict1 = struct_des[it_from].ngkpt_dict_for_kspacings
+        k_dict2 = struct_des[it_to].ngkpt_dict_for_kspacings
 
-    if ks in k_dict1:
-        k_dict2[ks] = k_dict1[ks]
-        printlog('inherit_ngkpt(): the k-grid from', it_from, 'was inherited to', it_to, imp = 'Y')
-    else:
-        printlog('no ngkpt for k-spacing', ks, 'in ngkpt_dict_for_kspacings of', it_from, 'ngkpt will determined from inputset k-spacing', imp = 'Y')
+        if ks in k_dict1:
+            k_dict2[ks] = k_dict1[ks]
+            printlog('inherit_ngkpt(): the k-grid from', it_from, 'was inherited to', it_to, imp = 'Y')
+        else:
+            printlog('no ngkpt for k-spacing', ks, 'in ngkpt_dict_for_kspacings of', it_from, 'ngkpt will determined from inputset k-spacing', imp = 'Y')
+    
     return
 
 
@@ -1234,7 +1242,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     if run: #
         complete_run() # for IPython notebook
         printlog(run_on_server('./run', header.CLUSTER_ADDRESS), imp= 'Y' )
-        printlog('To read results use ', hstring, '; possible options for show: fit, fo, fop, en, mag, magp, smag, maga, occ, occ1', imp = 'Y')
+        printlog('To read results use ', hstring, '; possible options for show: fit, fo, fop, en, mag, magp, smag, maga, occ, occ1, mep, mepp', imp = 'Y')
 
 
     return it
