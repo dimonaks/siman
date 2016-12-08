@@ -3,3 +3,7 @@
 *.o
 *~
 .DS_Store
+POTCAR
+*OUTCAR*
+*CHGCAR*
+
