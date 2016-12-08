@@ -2038,8 +2038,8 @@ class CalculationVasp(Calculation):
                     contcar_file = 'CONTCAR'
 
                 if final_analysis_flag:
-                    f.write('export PATH=$PATH:'+header.project_path_cluster+'/tools/gnuplot/bin/ \n')
-                    f.write(header.project_path_cluster+'/tools/vts/nebresults.pl  \n')
+                    f.write('export PATH=$PATH:'+header.cluster_home+'/tools/gnuplot/bin/ \n')
+                    f.write(header.cluster_home+'/tools/vts/nebresults.pl  \n')
                     f.write('find . -name WAVECAR -delete\n')
                     f.write('find . -name PROCAR -delete\n')
                 # for n in range
@@ -2354,6 +2354,8 @@ class CalculationVasp(Calculation):
 
             get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
 
+
+        # sys.exit()
 
 
         if 'x' in load:
@@ -2917,7 +2919,8 @@ class CalculationVasp(Calculation):
                 self.ldauu = ldauu
                 u_hubbard = ( next((u for u in ldauu if u), 0) )
                 # print ( np.unique(ldauu)  )
-
+            else:
+                self.ldauu = [0]
 
             #Check if energy is converged relative to relaxation
             e_diff_md = self.energy_sigma0

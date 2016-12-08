@@ -598,10 +598,10 @@ def add_neb(starting_calc = None, st = None,
     if upload_vts:
         siman_dir = os.path.dirname(__file__)
         # print(upload_vts)
-        push_to_server([siman_dir+'/cluster_tools/nebmake.pl', siman_dir+'/cluster_tools/Vasp.pm'], to = header.project_path_cluster+'/tools/vts',  addr = header.cluster_address)
+        push_to_server([siman_dir+'/cluster_tools/nebmake.pl', siman_dir+'/cluster_tools/Vasp.pm'], to = header.cluster_home+'/tools/vts',  addr = header.cluster_address)
     
     else:
-        print_and_log('Please be sure that vtsttools are at',header.cluster_address, header.project_path_cluster+'/tools/vts/', imp = 'Y')
+        print_and_log('Please be sure that vtsttools are at',header.cluster_address, header.cluster_home+'/tools/vts/', imp = 'Y')
 
 
     return it_new 

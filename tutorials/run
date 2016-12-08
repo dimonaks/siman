@@ -1,4 +1,1 @@
 #!/bin/bash
-sbatch -p AMG /home/aksenov/neb/LiFePO4/neb//LiFePO4.n3Li1v1.ion_relax/LiFePO4.n3Li1v1.ion_relax.run
-squeue
-mv run last_run

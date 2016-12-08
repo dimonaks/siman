@@ -48,8 +48,8 @@ cp 2.OUTCAR 04/OUTCAR
 sed -i.bak '/IMAGES/c\IMAGES = 3' INCAR
 prun /opt/vasp/bin/vasp5.4.1MPI >LiFePO4.n3Li1v1.ion_relax.2.n_3.log
 sleep 20
-export PATH=$PATH:/home/aksenov/neb/tools/gnuplot/bin/ 
-/home/aksenov/neb/tools/vts/nebresults.pl  
+export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ 
+/home/aksenov/tools/vts/nebresults.pl  
 find . -name WAVECAR -delete
 find . -name PROCAR -delete
 rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml

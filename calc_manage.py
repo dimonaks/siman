@@ -2695,7 +2695,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         # if cl.calc_method and ('neb' in cl.calc_method or 'only_neb' in cl.calc_method):
         if analys_type == 'neb':
-            path2mep_s = cl.dir+'/mep.eps'
+            path2mep_s = cl.project_path_cluster+'/'+cl.dir+'/mep.eps'
             itise = cl.id[0]+'.'+cl.id[1]
             # print(cl.ldauu)
             # sys.exit()
@@ -2703,8 +2703,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             path2mep_l = cl.dir+name_without_ext+'.eps'
             if not os.path.exists(path2mep_l) or '2' in up:
                 ''
-                get_from_server(files = path2mep_s, to = path2mep_l, addr = cl.cluster_address, )
-                get_from_server(files = cl.dir+'/movie.xyz', to = cl.dir+'/movie.xyz', addr = cl.cluster_address, )
+                get_from_server(files = path2mep_s, to_file = path2mep_l, addr = cl.cluster_address, )
+                get_from_server(files = cl.project_path_cluster+'/'+cl.dir+'/movie.xyz', to_file = cl.dir+'/movie.xyz', addr = cl.cluster_address, )
             
 
 
