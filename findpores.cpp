@@ -114,6 +114,10 @@ void findpores( int check_pore_vol, \
     db x1s, x2s, x3s, x1a, x2a, x3a, diff;
     prec = prec*prec;
     int npoints;
+
+    #pragma omp parallel
+    {
+    #pragma omp for schedule(dynamic, 100)
     for( auto &x1 : steps1 ) 
         for( auto &x2 : steps2 )
             for( auto &x3 : steps3 ) {
@@ -231,6 +235,10 @@ void findpores( int check_pore_vol, \
                     i_pores+=1; 
                 }
             }
+
+    }
+
+
     ntot = i_tot;
     npores = i_pores;
     //cout <<"Initial number of atoms = " << natom_init   << endl;
