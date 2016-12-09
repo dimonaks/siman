@@ -749,8 +749,12 @@ class CalculationVasp(Calculation):
         st = self.init
         
         st.name = os.path.basename(filename).replace('POSCAR', '').replace('CONTCAR', '')
-        if '.' in st.name[-1]:
-            st.name = st.name[0:-1]
+        
+        try:
+            if '.' in st.name[-1]:
+                st.name = st.name[0:-1]
+        except:
+            pass
 
 
         with open(filename,'r') as f:
@@ -794,36 +798,27 @@ class CalculationVasp(Calculation):
             st.xred = []
 
 
+            coordinates = []
 
-            if "Car" in type_of_coordinates:
-                # print "Warning! may be obsolete!!! and incorrect"
-                # f.write("Cartesian\n")
-                # for xcart in zxcart:
-                #     for x in xcart:
-                #         f.write(str(x[0]*to_ang)+" "+str(x[1]*to_ang)+" "+str(x[2]*to_ang))
-                #         f.write("\n")
-                raise RuntimeError
+            for nz in st.nznucl:
+
+                for i in range(nz):
+                    vec = f.readline().split()
+                    coordinates.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
+
+                    if len(vec) == 4: # elements may be added by pymatgen
+                        # print_and_log("Probably elements names are added at the end of coordinates, trying to read them")
+                        if vec[3] not in elements_list:
+                            elements_list.append(vec[3])
+                    
+            if "Car" in type_of_coordinates or 'car' in type_of_coordinates:
+                st.xcart  = coordinates
+                st.xred = xred2xcart(st.xcart, st.rprimd)
                 
             elif "dir" in type_of_coordinates or 'Dir' in type_of_coordinates:
-                for nz in st.nznucl:
-
-                    for i in range(nz):
-                        vec = f.readline().split()
-                        st.xred.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
-
-
-
-
-                        if len(vec) == 4: # elements may be added by pymatgen
-                            # print_and_log("Probably elements names are added at the end of coordinates, trying to read them")
-                            if vec[3] not in elements_list:
-                                elements_list.append(vec[3])
-                        
-
-
-
-
+                st.xred  = coordinates
                 st.xcart = xred2xcart(st.xred, st.rprimd)
+
 
             elif 'None' in type_of_coordinates:
                 pass

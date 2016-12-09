@@ -166,8 +166,8 @@ def determine_symmetry_positions(st, element):
             positions[pos].append(i)
 
 
-    printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y')
-    # print(positions)
+    printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y', end = '\n')
+    printlog('Atom numbers: ', positions, imp = 'y')
     return positions
 
 
