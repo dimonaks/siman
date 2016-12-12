@@ -10,6 +10,7 @@ def calc_redox(cl1, cl2, energy_ref = None):
     energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
     """
     if cl1 is None or cl2 is None:
+        printlog('cl1 or cl2 is none; return')
         return
 
     energy_ref_dict = {3:-1.9,  11:-1.31,  19:-1.02}
@@ -78,7 +79,7 @@ def calc_redox(cl1, cl2, energy_ref = None):
     # final_outstring = ("{:} | {:.2f} eV \n1".format(cl1.id[0]+'.'+cl1.id[1], redox  ))
     final_outstring = ("{:30} | {:10.2f} eV | {:10.1f} %".format(cl1.name, redox, vol_red  ))
     
-    printlog( final_outstring, end = '\n' )
+    printlog( final_outstring, end = '\n', imp = 'y' )
     try:
         cl1.set.update()
 

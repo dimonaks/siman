@@ -813,7 +813,7 @@ class CalculationVasp(Calculation):
                     
             if "Car" in type_of_coordinates or 'car' in type_of_coordinates:
                 st.xcart  = coordinates
-                st.xred = xred2xcart(st.xcart, st.rprimd)
+                st.xred = xcart2xred(st.xcart, st.rprimd)
                 
             elif "dir" in type_of_coordinates or 'Dir' in type_of_coordinates:
                 st.xred  = coordinates
