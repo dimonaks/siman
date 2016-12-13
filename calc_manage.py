@@ -1991,6 +1991,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
         #2. Find closest transition metal
+
+        
         sur = local_surrounding(x_alk, st, n_neighbours = 1, 
             control = 'atoms', only_elements = header.TRANSITION_ELEMENTS, periodic  = True)
 
