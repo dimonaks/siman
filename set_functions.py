@@ -99,6 +99,7 @@ siman_keys = [
 'afm_ordering',
 'set_sequence',# sequence of sets
 'savefile', #additional keys pointing which files should be saved
+'k_band_structure', # list, first position is number of points, then high-symmetry k-points in the form ['G', 0, 0, 0] in reciprocal space for calculating band structure 
 ]
 
 def read_vasp_sets(user_vasp_sets, override_global = False):

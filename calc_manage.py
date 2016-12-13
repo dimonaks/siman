@@ -750,6 +750,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
     choose_cluster(cluster, cluster_home)
     
+    if run:
+        prepare_run()
+
     if header.first_run and header.copy_to_cluster_flag:
         prepare_run()
         header.first_run = False
@@ -1062,6 +1065,10 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
+
+
+
+
         it = it_new
 
 
@@ -1232,6 +1239,19 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
         # print (fitted_v100_id, calc[fitted_v100_id].associated_outcars)
         # sys.exit()
+
+    if ise_new and hasattr(varset[ise_new], 'k_band_structure') and varset[ise_new].k_band_structure: #copy chgcar
+        printlog('Coping CHGCAR for band structure', imp = 'y')
+        copy_file = header.project_path_cluster + '/' + calc[id_base].path["charge"]+'.gz'
+        copy_to   = header.project_path_cluster + '/' + calc[id].dir + '/'
+        basename = os.path.basename(copy_file)
+        # print(copy_file, copy_to)
+        command = 'cp '+copy_file + ' ' + copy_to +'/CHGCAR.gz' '; gunzip -f '+ copy_to+ '/CHGCAR.gz'
+        printlog(command, imp = 'y')
+        run_on_server(command, addr = header.cluster_address)
+
+
+
 
 
 
@@ -1457,6 +1477,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 name_mod = ''
                 calc[id].path["output"] = calc[id].dir+str(version)+name_mod+".OUTCAR" #set path to output
             
+            #paths to other files
+            calc[id].path["charge"] = calc[id].path["output"].replace('OUTCAR', 'CHGCAR')
+
+
+
             output_files_names.append( calc[id].path["output"] )
 
 
@@ -1701,6 +1726,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
 
+
     if inherit_type == "r2r3":
         des = ' Partly inherited from the final state of '+cl_base.name+'; r2 and r3 from '+calc_from_name
         st.rprimd[1] = st_from.rprimd[1].copy()
@@ -1715,8 +1741,11 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
     elif inherit_type == "full":
-        print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
+        # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
         des = 'Fully inherited from the final state of '+cl_base.name
+
+
+
 
     elif inherit_type == "full_nomag":
         # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
@@ -1990,11 +2019,13 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
 
     else:
-        print_and_log("Error! Unknown type of Calculation inheritance"); raise RuntimeError
+        print_and_log("Error! Unknown type of Calculation inheritance")
 
 
 
     
+
+
 
 
     #auto addition of description
@@ -2159,7 +2190,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     if '2' in up:
         loadflag = 'o'
     else:
-        loadflag = ''
+        loadflag = up
 
     # if choose_outcar:
 

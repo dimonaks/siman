@@ -60,7 +60,7 @@ def run_on_server(command, addr):
     if header.ssh_object:
         out = header.ssh_object.run(command)
     else:
-        out = runBash('ssh '+addr+' '+command)    
+        out = runBash('ssh '+addr+' "'+command+'"')    
     return out
 
 

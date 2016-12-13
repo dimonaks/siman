@@ -4,3 +4,28 @@ add_des("Bi2Se3", "Bi2Se3", "auto add_des ")    #on 2016-11-24)
 add_des("Bi2Se3.su", "Bi2Se3", "uniform_scale: scaled "images" for Bi2Se3.['static'].1")    #on 2016-11-24)
 res_loop('Bi2Se3.su', ['static'], [1, 2, 3, 4, 5, 6, 7], show = 'fo'  )     # , on 2016-11-24  
 res_loop('Bi2Se3', ['dos'], [1], show = 'fo'  )     # , on 2016-11-30  
+res_loop('Bi2Se3.rho', ['static'], [1], show = 'fo'  )     # , on 2016-12-13  
+add_des("Bi2Se3.rho", "Bi2Se3", "auto add_des ")    #on 2016-12-13)
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+add_des("Bi2Se3.rho.if", "Bi2Se3", "auto Fully inherited from the final state of Bi2Se3.rho.static.1")    #on 2016-12-13)
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+res_loop('Bi2Se3.rho', ['dos'], [1], show = 'fo'  )     # , on 2016-12-13  
+inherit_icalc(it_new = 'Bi2Se3.rho.if', ver_new = 1, id_base = ('Bi2Se3.rho', 'static', 1), id_from = None)   # on 2016-12-13
+res_loop('Bi2Se3.rho.if', ['band'], [1], show = 'fo'  )     # , on 2016-12-13  
+res_loop('Bi2Se3.rho', ['dos'], [1], show = 'fo'  )     # , on 2016-12-13  

@@ -1392,16 +1392,34 @@ class CalculationVasp(Calculation):
         #Generate KPOINTS
         kspacing = self.set.vasp_params['KSPACING']
 
+        filename = os.path.join(self.dir, "KPOINTS")
 
-
-
-
-        d = self.dir
         it = self.id[0]
-        if self.set.kpoints_file:
+
+
+
+        if hasattr(self.set, 'k_band_structure') and self.set.k_band_structure:
+            k = self.set.k_band_structure
+            printlog('Writing k-points file for band structure calculation.', imp = 'y')
+            
+            with open(filename, 'w', newline = '') as f:
+                f.write('k-points along high symmetry lines\n')
+                f.write('{:} ! intersections\n'.format(k[0]))
+                f.write('Line-mode\n')
+                f.write('rec\n') # now only reciprocal are supported
+                ps= k[1]
+                for pn in k[2:]:
+                    # pn  = next(k)
+                    f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n'.format(ps[1], ps[2], ps[3], ps[0]) ) 
+                    f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n\n'.format(pn[1], pn[2], pn[3], pn[0]) ) 
+                    ps = pn
+
+
+
+
+
+        elif self.set.kpoints_file:
             if self.set.kpoints_file == True:
-
-
 
                 print_and_log( "You said to generate KPOINTS file.\n")
                 self.calc_kspacings()
@@ -1431,7 +1449,7 @@ class CalculationVasp(Calculation):
 
 
 
-                with open(self.dir+"KPOINTS",'w', newline = '') as f:
+                with open(filename,'w', newline = '') as f:
 
                     f.write("Automatic Mesh\n") #Comment
                     f.write("0 \n")#Number of points; 0-Auto
@@ -1446,25 +1464,17 @@ class CalculationVasp(Calculation):
             
             else:
                 # print()
-                shutil.copyfile(self.set.kpoints_file, self.dir+"KPOINTS")
+                shutil.copyfile(self.set.kpoints_file, filename)
                 print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
 
 
-            filename = d+"KPOINTS"
 
         else:
             print_and_log( "This set is without KPOINTS file.\n")
             filename = ''
 
-            # list_to_copy = [d+"INCAR",d+"POTCAR"]
 
-            #N = []
-            #for i in 0, 1, 2:
-                #N.append( math.ceil( (np.linalg.norm(self.recip[i]) / to_ang) / self.set.vasp_params['KSPACING']) )
-            #print "Vector length is:", (np.linalg.norm(self.rprimd[0]), "Bohr"
-            #print_and_log("Kpoint   mesh is: "+str(N) )
-            #print_and_log("The actual k-spacings is "+str(self.calc_kspacings(N) ) )
-        #Copy section
+
         return [filename]
 
     def copy_to_cluster(self,list_to_copy, update):
@@ -2352,7 +2362,7 @@ class CalculationVasp(Calculation):
 
         # sys.exit()
 
-
+        # print(load)
         if 'x' in load:
 
             get_from_server(files = join(self.project_path_cluster, path_to_xml), to = os.path.dirname(path_to_outcar),  

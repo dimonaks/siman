@@ -1,1 +1,4 @@
 #!/bin/bash
+sbatch -p AMG /home/aksenov/topologic/Bi2Se3//Bi2Se3.rho.dos/Bi2Se3.rho.dos.run
+squeue
+mv run last_run

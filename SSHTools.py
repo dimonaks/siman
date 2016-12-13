@@ -26,6 +26,7 @@ class SSHTools:
 	def run( self, command, noerror=False, printout=False ):
 		if printout:
 			print("command:",command)
+		# print("command:",command)
 		self.ssh.connect(self.host,username=self.user,pkey=self.pkey,port=self.port)
 		stdin,stdout,stderr = self.ssh.exec_command(command)
 		out=stdout.readlines()
