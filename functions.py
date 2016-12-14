@@ -49,7 +49,7 @@ def calc_k_point_mesh(rprimd, kspacing):
         printlog('{:13s} |    {:26s}'.format(str(ngkpt), str(np.array(calc_kspacings(ngkpt, rprimd) ).round(2))), end = '\n', imp = 'y'  )
 
 
-    return N
+    return N_opt
 
 
 def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_calc_name = None, ):
