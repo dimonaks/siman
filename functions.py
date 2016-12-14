@@ -24,8 +24,8 @@ def calc_k_point_mesh(rprimd, kspacing):
     """
     N = []
     recip = calc_recip_vectors(rprimd)
-    print(recip)
-    
+    # print(recip)
+
 
     for i in 0, 1, 2:
         n = (np.linalg.norm(recip[i])) / kspacing
@@ -40,9 +40,9 @@ def calc_k_point_mesh(rprimd, kspacing):
 
 
 
-    printlog('I recommend k-point mesh:', N_opt, 'with k-spacings:', np.array( calc_kspacings(N_opt, rprimd) ).round(2), ':', end = '\n', imp = 'y' )
+    printlog('I recommend k-point mesh:', N_opt, 'with k-spacings:', np.array( calc_kspacings(N_opt, rprimd) ).round(2), end = '\n', imp = 'y' )
     printlog('Other options are:', end = '\n', imp = 'y' )
-    printlog('{:13s} |    {:20s}'.format('Mesh', 'kspacings'), end = '\n', imp = 'y'  )
+    printlog('{:13s} |    {:20s}'.format('Mesh', 'k-spacings'), end = '\n', imp = 'y'  )
 
     for ngkpt in itertools.product( *[(n-1, n, n+1) for n in N_opt] ):
         
