@@ -36,7 +36,7 @@ from functions import (list2string, gb_energy_volume, element_name_inv,
      image_distance, local_surrounding, file_exists_on_server, run_on_server, push_to_server)
 from picture_functions import plot_mep
 from analysis import calc_redox
-from geo import remove_atoms, create_deintercalated_structure
+from geo import remove_atoms, create_deintercalated_structure, create_antisite_defect
 
 
 from set_functions import init_default_sets
@@ -1983,47 +1983,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         override = 1
 
     elif inherit_type == "antisite":
-        #1. Find first alkali ion
-        def find_alkali_ion(st, j_need = 1):
-            #currently return the number of found alk ion of *j_need* occurence 
-            elements = st.get_elements_z()
-            # print (elements)
-            j = 0
-            for i, el in enumerate(elements):
-                if el in header.ALKALI_ION_ELEMENTS:
-                    # print (i,el)
-                    j+=1
-                    if j == j_need:
-                        return i
 
-
-        i_alk = find_alkali_ion(st, 3)
-        x_alk = st.xcart[i_alk]
-
-
-        #2. Find closest transition metal
-
-
-        sur = local_surrounding(x_alk, st, n_neighbours = 1, 
-            control = 'atoms', only_elements = header.TRANSITION_ELEMENTS, periodic  = True)
-
-        i_tr = sur[2][0]
-        x_tr = st.xcart[i_tr]
-        
-        #3. Swap atoms
-        write_xyz(st, file_name = st.name+'_antisite_start')
-        st = st.mov_atoms(i_alk, x_tr)
-        st = st.mov_atoms(i_tr,  x_alk)
-
-        write_xyz(st, file_name = st.name+'_antisite_final')
-
-        printlog('Atom ',i_alk+1,'and', i_tr+1,'were swapped')
-        printlog('The distanse between them is ', sur[3][0])
-
-        #clear magmom
-        st.magmom = [None]
-
-
+        st = create_antisite_defect(st)
 
         des = 'Fully inherited from the '+ id_base_st_type +' state of '+cl_base.name+\
         ' by simple swapping of '+str(i_alk)+' and '+str(x_alk)

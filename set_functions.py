@@ -66,6 +66,7 @@ vasp_other_keys = [
 'NEDOS',
 'LAECHG',
 'LSORBIT',
+'SAXIS',
 'ISPIN',
 'NBANDS',
 'PSTRESS',

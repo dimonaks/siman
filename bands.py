@@ -61,7 +61,8 @@ def plot_bands(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, None)
 
 
     # density of states
-    dosrun = Vasprun(vasprun_dos)
+    # dosrun = Vasprun(vasprun_dos)
+    dosrun = Vasprun(vasprun_bands)
     spd_dos = dosrun.complete_dos.get_spd_dos()
 
     # bands

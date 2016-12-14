@@ -1131,6 +1131,10 @@ class CalculationVasp(Calculation):
                     tve += self.init.zval[i] * self.init.nznucl[i]
                 self.nbands = int ( round ( math.ceil(tve / 2.) * curset.add_nbands ) )
                 vp['NBANDS'] = self.nbands
+
+            if 'LSORBIT' in vp:
+                printlog('SOC calculation detected; increasing number of bands by two', imp = 'Y')
+                vp['NBANDS']*=2
         else:
             printlog('Attention! No path_to_potcar! skipping NBANDS calculation')
 
@@ -2322,7 +2326,7 @@ class CalculationVasp(Calculation):
 
 
         if not os.path.exists(path_to_outcar):
-            load = 'o'
+            load = load+'o'
 
 
  

@@ -306,3 +306,56 @@ def create_deintercalated_structure(st, element, del_pos = 1):
     return st1
 
 
+
+
+
+
+def create_antisite_defect(st, cation_positions = None):
+    """
+    exchange cation and transition metal
+    st (Structure)
+
+    cation_positions (list of numpy arrays) - reduced coordinates of deintercalated cation positions
+
+    """
+
+    #1. Find first alkali ion
+    def find_alkali_ion(st, j_need = 1):
+        # return the number of found alk ion of *j_need* occurrence 
+        elements = st.get_elements_z()
+        # print (elements)
+        j = 0
+        for i, el in enumerate(elements):
+            if el in header.ALKALI_ION_ELEMENTS:
+                # print (i,el)
+                j+=1
+                if j == j_need:
+                    return i
+
+
+    i_alk = find_alkali_ion(st, 3)
+    x_alk = st.xcart[i_alk]
+
+
+    #2. Find closest transition metal
+    sur = local_surrounding(x_alk, st, n_neighbours = 1, 
+        control = 'atoms', only_elements = header.TRANSITION_ELEMENTS, periodic  = True)
+
+    i_tr = sur[2][0]
+    x_tr = st.xcart[i_tr]
+
+
+    
+    #3. Swap atoms
+    write_xyz(st, file_name = st.name+'_antisite_start')
+    st = st.mov_atoms(i_alk, x_tr)
+    st = st.mov_atoms(i_tr,  x_alk)
+
+    write_xyz(st, file_name = st.name+'_antisite_final')
+
+    printlog('Atom ',i_alk+1,'and', i_tr+1,'were swapped')
+    printlog('The distance between them is ', sur[3][0])
+
+    st.magmom = [None]
+
+    return st
