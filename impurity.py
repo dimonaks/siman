@@ -1,19 +1,20 @@
 from __future__ import division, unicode_literals, absolute_import 
 
-from header import print_and_log, geo_folder,runBash
-import header
 
-from classes import CalculationVasp, Structure
-from set_functions import InputSet
-from functions import image_distance, xred2xcart, xcart2xred, write_xyz, replic, return_atoms_to_cell, element_name_inv
 import ctypes
 #from ctypes import *
 from ctypes import cdll
 from ctypes import c_float, byref
 import numpy as np
 import traceback, os, datetime, glob, copy
-# import os
-# print os.getcwd()
+
+
+from header import print_and_log, geo_folder, runBash
+import header
+from classes import CalculationVasp, Structure
+from set_functions import InputSet
+from functions import image_distance, write_xyz, replic, return_atoms_to_cell, element_name_inv
+from geo import xred2xcart, xcart2xred
 
 lib = cdll.LoadLibrary(os.path.dirname(__file__)+'/libfindpores.so')
 

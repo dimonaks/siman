@@ -1,6 +1,6 @@
 
 from __future__ import division, unicode_literals, absolute_import 
-import os, tempfile, copy
+import os, tempfile, copy, math, itertools, sys
 import numpy as np
 from operator import itemgetter
 
@@ -8,14 +8,48 @@ from operator import itemgetter
 import header
 from header import print_and_log, printlog, runBash
 from small_functions import is_list_like, is_string_like, gunzip_file
-# from classes import res_loop
-# from header import *
+
+from geo import calc_recip_vectors, calc_kspacings, xcart2xred, xred2xcart
 
 
 
+def calc_k_point_mesh(rprimd, kspacing):
+    """
+    rprimd (list of lists 3x3 of floats) - vectors of cell (Angstroms)
+    kspacing (float) - required spacing between k-points in reciprocal space (A-1); paramter KSPACING in VASP
+
+    the provided optimal k-mesh has the smallest sum of squared deviations of kspacings
+
+    returns k-point mesh (list of int)
+    """
+    N = []
+    recip = calc_recip_vectors(rprimd)
+    print(recip)
+    
+
+    for i in 0, 1, 2:
+        n = (np.linalg.norm(recip[i])) / kspacing
+        N.append( math.ceil(n) )
+
+    N_options = [ng for ng in itertools.product( *[(n-1, n, n+1) for n in N] ) ]
+
+    errors = [  np.sum( np.square( np.array(calc_kspacings(N, rprimd) ) - kspacing ) ) for N in N_options] # sum of squared deviation from kspacing for each option
+    i_min = np.argmin(errors)
+
+    N_opt = N_options[i_min] # k-mesh with smallest error
 
 
 
+    printlog('I recommend k-point mesh:', N_opt, 'with k-spacings:', np.array( calc_kspacings(N_opt, rprimd) ).round(2), ':', end = '\n', imp = 'y' )
+    printlog('Other options are:', end = '\n', imp = 'y' )
+    printlog('{:13s} |    {:20s}'.format('Mesh', 'kspacings'), end = '\n', imp = 'y'  )
+
+    for ngkpt in itertools.product( *[(n-1, n, n+1) for n in N_opt] ):
+        
+        printlog('{:13s} |    {:26s}'.format(str(ngkpt), str(np.array(calc_kspacings(ngkpt, rprimd) ).round(2))), end = '\n', imp = 'y'  )
+
+
+    return N
 
 
 def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_calc_name = None, ):
@@ -518,35 +552,6 @@ def element_name_inv(el):
 
 
 
-def xcart2xred(xcart, rprimd):
-    """Convert from cartesian coordinates xcart to
-        dimensionless reduced coordinates 
-        Input: xcart - list of numpy arrays, rprimd - list of numpy arrays
-        Output: xred - list of numpy arrays"""
-    xred = []
-    gprimd = np.asarray( np.matrix(rprimd).I.T ) #Transpose of the inverse matrix of rprimd
-    #print gprimd
-    for xc in xcart:
-        xred.append(  np.dot( gprimd , xc)  ) #dot product
-    #print xred
-    return xred
-
-def xred2xcart(xred, rprimd):
-    """Convert from dimensionless reduced coordinates to
-    cartesian coordinates xcart;
-        Input: xred - list of numpy arrays, rprimd - list of numpy arrays
-        Output: xcart - list of numpy arrays"""
-    xcart = []
-    #print "rprimd ", rprimd
-    for xr in xred:
-        #for j in 0,1,2:
-        #    print xr[0] * rprimd[0][j] + xr[1] * rprimd[1][j] + xr[2] * rprimd[2][j],
-        #print ""
-        #print np.dot( xr, rprimd)
-        xcart.append(  np.dot( xr, rprimd)  ) #dot product
-
-    #print xred
-    return xcart
 
 def return_atoms_to_cell(st):
 

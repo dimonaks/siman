@@ -6,6 +6,12 @@ import shutil, gzip
 from header import printlog
 
 
+def red_prec(value, precision = 100.):
+    a = value * precision
+    return round(a)/1./precision
+
+
+
 def is_list_like(obj): 
 	return not isinstance(obj, string_types) and isinstance(obj, Iterable)
 

@@ -6,7 +6,13 @@ from __future__ import division, unicode_literals, absolute_import, print_functi
 """
 Siman - management of VASP calculations
 Author: Aksyonov D.A.
+
+
+!Internal units are Angstroms!
+Bohrs should be converted during reading!
+
 TODO:
+
 
 """
 
@@ -217,12 +223,6 @@ Need: import subprocess
 
     return out  #This is the stdout from the shell command
 
-
-
-
-def red_prec(value, precision = 100.):
-    a = value * precision
-    return round(a)/1./precision
 
 
 

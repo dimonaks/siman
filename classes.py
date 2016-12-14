@@ -28,13 +28,13 @@ import numpy as np
 
 #siman packages
 import header
-from header import printlog, print_and_log, runBash, red_prec, plt
+from header import printlog, print_and_log, runBash, plt
 
-from small_functions import cat_files, grep_file
+from small_functions import cat_files, grep_file, red_prec
 from functions import (read_vectors, read_list, words, local_surrounding, 
-    xred2xcart, xcart2xred, element_name_inv, calculate_voronoi,
+     element_name_inv, calculate_voronoi,
     get_from_server, push_to_server, run_on_server, list2string, makedir, write_xyz, write_lammps)
-
+from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred
 
 
 
@@ -456,16 +456,11 @@ class Calculation(object):
             self.rprimd = copy.deepcopy( self.rprim )
             for i in 0,1,2:
                 self.rprimd[i] = self.rprim[i] * self.acell[i]         #Calculate rprimd
-            #Determine reciprocal vectors
-            self.recip = []
+            
             self.vol = np.dot( self.rprimd[0], np.cross(self.rprimd[1], self.rprimd[2])  ); #volume
-            #print vol
-            self.recip.append(   np.cross( self.rprimd[1], self.rprimd[2] )   )
-            self.recip.append(   np.cross( self.rprimd[2], self.rprimd[0] )   )
-            self.recip.append(   np.cross( self.rprimd[0], self.rprimd[1] )   )
-            for i in 0,1,2:
-                self.recip[i] =  self.recip[i] * 2 * math.pi / self.vol;
-            #print self.recip
+                      
+            self.recip = calc_recip_vectors(self.rprimd) #Determine reciprocal vectors
+
 
             self.ntypat = read_list("ntypat", 1, int, gen_words)[0]
             self.typat = read_list("typat", self.natom, int, gen_words)
@@ -921,6 +916,7 @@ class CalculationVasp(Calculation):
         elif kspacing in ngkpt_dict:
             N = ngkpt_dict[kspacing]
             printlog('check_kpoints(): k-points will be used from *ngkpt_dict* of',it, N)
+        
         elif self.set.ngkpt:
             N = self.set.ngkpt
             printlog('check_kpoints(): k-points will be used from set.ngkpt of',self.set.ise)
@@ -954,12 +950,12 @@ class CalculationVasp(Calculation):
 
 
         if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') or  kspacing not in struct_des[it].ngkpt_dict_for_kspacings:
-            print_and_log('Several other options instead of automatically determined ngkpt = ',N,np.array(self.calc_kspacings(N) ).round(2), ':', end = '\n' )
-            print_and_log('ngkpt              |    actual kspacings       ', end = '\n' )
+            print_and_log('Several other options instead of automatically determined ngkpt = ',N,np.array(self.calc_kspacings(N) ).round(2), ':', end = '\n', imp = 'y')
+            print_and_log('ngkpt              |    actual kspacings       ', end = '\n', imp = 'y' )
             
 
             for ngkpt in itertools.product([N[0]-1, N[0], N[0]+1], [N[1]-1, N[1], N[1]+1], [N[2]-1, N[2], N[2]+1]):
-                print_and_log(ngkpt, np.array(self.calc_kspacings(ngkpt) ).round(2), end = '\n' )
+                print_and_log(ngkpt, np.array(self.calc_kspacings(ngkpt) ).round(2), end = '\n', imp = 'y' )
 
             # user_ngkpt = input('Provide ngkpt:')
             # print(user_ngkpt)
@@ -2216,48 +2212,36 @@ class CalculationVasp(Calculation):
 
 
 
-    def calc_kspacings(self, ngkpt = [], sttype = 'init'):
+    def calc_kspacings(self, ngkpt = None, sttype = 'init'):
         """Calculates reciprocal vectors and kspacing from ngkpt"""
-        to_ang_local = header.to_ang
-        try:
-            if "Ang" in self.len_units:
-                to_ang_local = 1
-                #print "units angs"
-        except AttributeError:
-            print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n")
+        # to_ang_local = header.to_ang
+        # try:
+        #     if "Ang" in self.len_units:
+        #         to_ang_local = 1
+        #         #print "units angs"
+        # except AttributeError:
+        #     print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n")
         
+
         if sttype == 'init':
             st = self.init
         if sttype == 'end':
             st = self.end 
 
 
-        #Determine reciprocal vectors
-        if 1: #Already calculated during reading of structure
-            st.recip = []
-            vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  ); #volume
-            #print vol
-            st.recip.append(   np.cross( st.rprimd[1], st.rprimd[2] )   )
-            st.recip.append(   np.cross( st.rprimd[2], st.rprimd[0] )   )
-            st.recip.append(   np.cross( st.rprimd[0], st.rprimd[1] )   )
-            
-            for i in 0,1,2:
-                st.recip[i] =  st.recip[i] * 2 * math.pi / vol;
-        #print self.recip
         self.kspacing = []
         st.kspacings = []
+
         if not ngkpt:
             ngkpt = self.set.ngkpt
+
         k = [0,0,0]
+
         if ngkpt:
-            # print 'ngkpt are ', ngkpt
-            # print 'recip are', self.recip
-            for i in 0, 1, 2:
-                a = np.linalg.norm( st.recip[i] ) / ngkpt[i] / to_ang_local
-                self.kspacing.append(red_prec(a))
-                st.kspacings.append(red_prec(a))
-            k = self.kspacing
-        #print "Spacings for %s is [%.2f, %.2f, %.2f]"%(self.set.ngkpt,k[0], k[1], k[2])
+            k = calc_kspacings(ngkpt, st.rprimd)
+            self.kspacing = copy.deepcopy(k)
+            st.kspacing   = copy.deepcopy(k)
+
         return  k
 
 

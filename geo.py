@@ -1,12 +1,85 @@
 
-import sys,copy,itertools
+import sys, copy, itertools, math
 import numpy as np
 
 from header import printlog
 
-from functions import xcart2xred
+from small_functions import red_prec
 # sys.path.append('/home/aksenov/Simulation_wrapper/') 
 # sys.path.append('/home/aksenov/Simulation_wrapper/savelyev') 
+
+
+def calc_recip_vectors(rprimd):
+    #Determine reciprocal vectors 
+    #physics" definition
+    recip = []
+    vol = np.dot( rprimd[0], np.cross(rprimd[1], rprimd[2])  ); #volume
+    #print vol
+    recip.append(   np.cross( rprimd[1], rprimd[2] )   )
+    recip.append(   np.cross( rprimd[2], rprimd[0] )   )
+    recip.append(   np.cross( rprimd[0], rprimd[1] )   )
+    for i in 0,1,2:
+        recip[i] =  recip[i] * 2 * math.pi / vol;
+    return recip
+
+
+
+def calc_kspacings(ngkpt, rprimd):
+    """Calculate kspacing from ngkpt and rprimd (A)
+        ngkpt (list of int) - k-point mesh
+
+    """
+    kspacing = []
+
+    recip = calc_recip_vectors(rprimd)
+
+    for i in 0, 1, 2:
+        a = np.linalg.norm( recip[i] ) / ngkpt[i]
+        kspacing.append(red_prec(a))
+
+    return  kspacing
+
+
+
+
+
+def xcart2xred(xcart, rprimd):
+    """Convert from cartesian coordinates xcart to
+        dimensionless reduced coordinates 
+        Input: xcart - list of numpy arrays, rprimd - list of numpy arrays
+        Output: xred - list of numpy arrays"""
+    xred = []
+    gprimd = np.asarray( np.matrix(rprimd).I.T ) #Transpose of the inverse matrix of rprimd
+    #print gprimd
+    for xc in xcart:
+        xred.append(  np.dot( gprimd , xc)  ) #dot product
+    #print xred
+    return xred
+
+def xred2xcart(xred, rprimd):
+    """Convert from dimensionless reduced coordinates to
+    cartesian coordinates xcart;
+        Input: xred - list of numpy arrays, rprimd - list of numpy arrays
+        Output: xcart - list of numpy arrays"""
+    xcart = []
+    #print "rprimd ", rprimd
+    for xr in xred:
+        #for j in 0,1,2:
+        #    print xr[0] * rprimd[0][j] + xr[1] * rprimd[1][j] + xr[2] * rprimd[2][j],
+        #print ""
+        #print np.dot( xr, rprimd)
+        xcart.append(  np.dot( xr, rprimd)  ) #dot product
+
+    #print xred
+    return xcart
+
+
+
+
+
+
+
+
 
 
 def ortho_vec_old(rprim, ortho_sizes = None):

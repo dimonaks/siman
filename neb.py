@@ -8,12 +8,12 @@ from operator import itemgetter
 from header import print_and_log, printlog
 import header
 from calc_manage import add_loop, res_loop, add_des, inherit_ngkpt
-from functions import local_surrounding, write_xyz, replic, return_atoms_to_cell, xcart2xred, xred2xcart, push_to_server
+from functions import local_surrounding, write_xyz, replic, return_atoms_to_cell, push_to_server
 from small_functions import is_list_like
 from classes import CalculationVasp
 from impurity import find_pores
 from tabulate import tabulate
-
+from geo import xcart2xred, xred2xcart
 
 def add_neb(starting_calc = None, st = None, 
     it_new = None, ise_new = None, i_atom_to_move = None, 
