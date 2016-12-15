@@ -27,7 +27,8 @@ import matplotlib.pyplot as plt
 
 import header
 from header import print_and_log
-from functions import write_xyz, replic, makedir
+from functions import write_xyz, makedir
+from geo import replic
 
 
 def plot_mep(atom_pos, mep_energies, image_name = None, show = None):

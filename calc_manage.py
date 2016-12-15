@@ -33,10 +33,10 @@ from small_functions import is_list_like
 from classes import Calculation, CalculationVasp, Description
 from functions import (list2string, gb_energy_volume, element_name_inv, 
      write_xyz, makedir, get_from_server, scale_cell_uniformly, 
-     image_distance, local_surrounding, file_exists_on_server, run_on_server, push_to_server)
+     image_distance, file_exists_on_server, run_on_server, push_to_server)
 from picture_functions import plot_mep
 from analysis import calc_redox
-from geo import remove_atoms, create_deintercalated_structure, create_antisite_defect
+from geo import remove_atoms, create_deintercalated_structure, create_antisite_defect, local_surrounding
 
 
 from set_functions import init_default_sets
@@ -375,7 +375,7 @@ def determine_file_format(input_geo_file):
 
     supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif',} #format name:format specifier
 
-    if 'POSCAR' in input_geo_file:
+    if 'POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file:
         input_geo_format = 'vasp'
     elif 'cif' in input_geo_file:
         input_geo_format = 'cif'

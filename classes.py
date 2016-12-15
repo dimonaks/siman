@@ -31,10 +31,10 @@ import header
 from header import printlog, print_and_log, runBash, plt
 
 from small_functions import cat_files, grep_file, red_prec
-from functions import (read_vectors, read_list, words, local_surrounding, 
+from functions import (read_vectors, read_list, words,
      element_name_inv, calculate_voronoi,
     get_from_server, push_to_server, run_on_server, list2string, makedir, write_xyz, write_lammps)
-from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred
+from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding
 
 
 
@@ -100,7 +100,6 @@ class Structure():
 
 
 
-
     def xcart2xred(self,):
         self.xred = xcart2xred(self.xcart, self.rprimd)
 
@@ -124,6 +123,20 @@ class Structure():
         return p.get_space_group_info(symprec)
 
 
+    # def __str__(self):
+    #     # print(self.convert2pymatgen())
+    #     return 
+
+
+    def get_element_xred(self, element):
+        """
+        Get xred of *element* first occurance
+        """
+        i = self.get_elements().index(element)
+        return self.xred[i]
+
+
+
 
     def add_atoms(self, atoms_xcart, element = 'Pu'):
         """
@@ -135,21 +148,21 @@ class Structure():
         Returns Structure()
         """
 
-        # print_and_log('Warning! Method add_atoms() was not carefully tested ')
-        print_and_log('self.add_atoms(): adding atom ', element)
+        printlog('self.add_atoms(): adding atom ', element, imp = 'y')
 
         st = copy.deepcopy(self)
 
-        # print type(atoms_xcart)
-
-        st.xcart.extend(atoms_xcart)
-        st.xcart2xred()
         natom_to_add = len(atoms_xcart)
-        # print natom_to_add
 
         st.natom+=natom_to_add
+
         el_z_to_add = element_name_inv(element)
-        # print 'el_z_to_add', el_z_to_add
+
+        if hasattr(st, 'magmom') and any(st.magmom):
+            magmom_flag = True
+        else:
+            magmom_flag = False
+
 
         if el_z_to_add not in st.znucl:
             
@@ -158,28 +171,86 @@ class Structure():
             st.nznucl.append(natom_to_add)            
 
             st.ntypat+=1
+
             typ = max(st.typat)+1
         
+            st.xcart.extend(atoms_xcart)
+            
+            st.typat.extend( [typ]*natom_to_add )
+
+            if magmom_flag:
+                st.magmom.extend( [0.6]*natom_to_add  )
+
+
         else:
             i = st.znucl.index(el_z_to_add)
-            # print i
+            
             st.nznucl[i]+=natom_to_add
+            
             typ = i+1
-            # print typ
-            # print st.znucl
-            # print st.nznucl
-
-        # sys.exit()
 
 
+            for j, t in enumerate(st.typat):
+                if t == typ:
+                    j_ins = j+1 # place to insert
 
-        st.typat.extend( [typ]*natom_to_add )
 
-        if hasattr(st, 'magmom') and any(st.magmom):
-            st.magmom.extend( [0.6]*natom_to_add  )
 
+
+            st.xcart[j_ins:j_ins] = atoms_xcart
+            
+            st.typat[j_ins:j_ins] = [typ]*natom_to_add
+
+            if magmom_flag:
+                st.magmom[j_ins:j_ins] =  [0.6]*natom_to_add 
+
+
+        st.xcart2xred()
 
         return st
+
+
+
+    def reorder(st, ):
+        """
+        
+        !UNFINISHED
+        Group and order atoms by typat; consistent with VASP
+
+        """
+        ''
+        # st = copy.deepcopy(st)
+        # zxred  = [[] for i in st.znucl]
+        # zxcart = [[] for i in st.znucl]
+        # ztypat = [[] for i in st.znucl]
+        # zmagmom= [[] for i in st.znucl]
+        # for t, xr, xc in zip(st.typat, st.xred, st.xcart):
+        #     # print "t ", t, xr
+        #     zxred[ t-1].append(xr)
+        #     zxcart[t-1].append(xc)
+        #     ztypat[t-1].append(t)
+        
+        # st.nznucl = [len(xred) for xred in zxred]
+
+        # xred, xcart, typat = [], [], []
+        # for i in range(ntypat):
+        #     xred.append()
+
+        # if hasattr(st, 'magmom') and any(st.magmom):
+        #     magmom_flag = True
+        #     magmom = st.magmom
+        # else:
+        #     magmom_flag = False
+        #     magmom = [0]*st.natom
+
+        # #probably better use sort?
+        # a = zip(st.typat, st.xred, st.xcart, magmom)
+
+        return st
+
+
+
+
 
     def del_atom(self, iat):
         """
@@ -310,6 +381,132 @@ class Structure():
     #         sumx+=x
     #     sumx/=len(self.xcart)
     #     return sumx
+
+    def return_atoms_to_cell(self):
+
+
+        st = copy.deepcopy(self)
+        bob = 0; upb = 1;
+        n = 0 
+        # print st.xred
+        for xr in st.xred:
+            for j in 0,1,2:
+                if xr[j]  < bob:  xr[j] = xr[j] - int(xr[j]) + 1 #allows to account that xr can be more than 2
+                if xr[j]  > upb:  xr[j] = xr[j] - int(xr[j])
+        n+=1
+        # zmin = 100
+        # for xr in st.xred:
+        #     if xr[2]<zmin: zmin = xr[2]
+        # if zmin < 0:
+        #     for xr in st.xred:
+        #         xr[2] = xr[2]-zmin
+
+
+
+        st.xcart = xred2xcart(st.xred, st.rprimd)
+
+        print_and_log(str(n)+" atoms were returned to cell.\n")
+        #print st.xred
+        return st
+
+
+
+    def shift_atoms(self, vector_red):
+
+        st = copy.deepcopy(self)
+        vec = np.array(vector_red)
+        for xr in st.xred:
+            xr+=vec
+
+        st.xred2xcart()
+
+        return st
+
+
+
+
+
+
+    def write_poscar(self, filename, coord_type = 'dir', vasp5 = False):
+        st = self
+        to_ang = 1
+        rprimd = st.rprimd
+        xred   = st.xred
+        xcart  = st.xcart
+        typat = st.typat  
+        znucl = st.znucl
+       
+        # print 
+        """1. Generate correct nznucl and zxred and zxcart"""
+        zxred  = [[] for i in znucl]
+        zxcart = [[] for i in znucl]
+        # nznucl = []
+        if len(typat) != len(xred) or len(xred) != len(xcart):
+            raise RuntimeError
+        for t, xr, xc in zip(typat, xred, xcart):
+            # print "t ", t, xr
+            zxred[ t-1].append(xr)
+            zxcart[t-1].append(xc)
+        
+        nznucl = [len(xred) for xred in zxred]
+
+
+        elnames = [element_name_inv(z) for z in znucl]
+
+
+
+        with open(filename,'w', newline = '') as f:
+            """Writes structure (POSCAR) in VASP format """
+            f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; ' + self.name)
+            
+            f.write("\n{:18.15f}\n".format(1.0))
+            
+            for i in 0, 1, 2:
+                f.write('{:10.6f} {:10.6f} {:10.6f}'.format(rprimd[i][0]*to_ang,rprimd[i][1]*to_ang,rprimd[i][2]*to_ang) )
+                f.write("\n")
+
+            if vasp5:
+                for el in elnames:
+                    f.write(el+' ')
+                f.write('\n')
+
+
+            for n in nznucl:    
+                f.write(str(n)+' ')
+
+            f.write('\n')
+
+            if "car" in coord_type:
+                print_and_log("Warning! may be obsolete!!! and incorrect", imp = 'Y')
+                f.write("Cartesian\n")
+                for xcart in zxcart:
+                    for x in xcart:
+                        f.write(str(x[0]*to_ang)+" "+str(x[1]*to_ang)+" "+str(x[2]*to_ang))
+                        f.write("\n")
+
+                
+                if hasattr(self.init, 'vel'):
+                    print_and_log("I write to POSCAR velocity as well")
+                    f.write("Cartesian\n")
+                    for v in self.init.vel:
+                        f.write( '  {:18.16f}  {:18.16f}  {:18.16f}\n'.format(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )
+
+            elif "dir" in coord_type:
+                f.write("Direct\n")
+                for xred in zxred:
+                    for x in xred:
+                        f.write("  {:18.16f}  {:18.16f}  {:18.16f}\n".format(x[0], x[1], x[2]) )
+            elif 'None' in coord_type:
+                pass
+
+            else:
+                print_and_log("Error! The type of coordinates should be 'car' or 'dir' ")
+                raise NameError
+        f.close()
+        print_and_log( "POSCAR was generated\n")
+
+
+
     def write_cif(self, filename):
         symprec = 0.1
         st_mp = self.convert2pymatgen()
@@ -974,17 +1171,18 @@ class CalculationVasp(Calculation):
            state - 'init' or 'end' 
         """
         #units
-        try:
-            if "ang" in self.len_units or "Ang" in self.len_units: 
-                global to_ang; to_ang = 1.0; print_and_log("Conversion multiplier to_ang is "+str(to_ang) )
-        except AttributeError:
-            pass
+        # try:
+        #     if "ang" in self.len_units or "Ang" in self.len_units: 
+        #         global to_ang; to_ang = 1.0; print_and_log("Conversion multiplier to_ang is "+str(to_ang) )
+        # except AttributeError:
+        #     pass
 
         if option == 'inherit_xred' and 'car' in type_of_coordinates: raise RuntimeError 
 
         if option == 'inherit_xred' and prevcalcver: type_of_coordinates = 'None' # do not write xred or xcart if they will be transfered on cluster
         
-        if path == None: path = self.dir
+        if path == None: 
+            path = self.dir
         
         if state == 'init':
             st  = self.init
@@ -993,78 +1191,14 @@ class CalculationVasp(Calculation):
         else: 
             raise RuntimeError 
         
-        rprimd = st.rprimd
-        xred   = st.xred
-        xcart  = st.xcart
-        typat = st.typat  
-        znucl = st.znucl
+        filename = os.path.join(path, name_of_output_file)
 
-        
-        # print 
-        """1. Generate correct nznucl and zxred and zxcart"""
-        zxred  = [[] for i in znucl]
-        zxcart = [[] for i in znucl]
-        # nznucl = []
-        if len(typat) != len(xred) or len(xred) != len(xcart):
-            raise RuntimeError
-        for t, xr, xc in zip(typat, xred, xcart):
-            # print "t ", t, xr
-            zxred[ t-1].append(xr)
-            zxcart[t-1].append(xc)
-        
-        nznucl = [len(xred) for xred in zxred]
+        makedir(filename)
 
-        # print znucl, typat
-        # print zxred
-        # print nznucl
-        if not os.path.exists(path):
-            printlog( runBash("mkdir -p "+path) )
+        st.write_poscar(filename, coord_type = type_of_coordinates)
 
-        elnames = [element_name_inv(z) for z in znucl]
 
-        with open(path+'/'+name_of_output_file,'w', newline = '') as f:
-            """Writes structure (POSCAR) in VASP format """
-            f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; ' + self.name)
-            
-            f.write("\n{:18.15f}\n".format(1.0))
-            
-            for i in 0, 1, 2:
-                f.write('{:10.6f} {:10.6f} {:10.6f}'.format(rprimd[i][0]*to_ang,rprimd[i][1]*to_ang,rprimd[i][2]*to_ang) )
-                f.write("\n")
 
-            for n in nznucl:    
-                f.write(str(n)+' ')
-
-            f.write('\n')
-
-            if "car" in type_of_coordinates:
-                print_and_log("Warning! may be obsolete!!! and incorrect", imp = 'Y')
-                f.write("Cartesian\n")
-                for xcart in zxcart:
-                    for x in xcart:
-                        f.write(str(x[0]*to_ang)+" "+str(x[1]*to_ang)+" "+str(x[2]*to_ang))
-                        f.write("\n")
-
-                
-                if hasattr(self.init, 'vel'):
-                    print_and_log("I write to POSCAR velocity as well")
-                    f.write("Cartesian\n")
-                    for v in self.init.vel:
-                        f.write( '  {:18.16f}  {:18.16f}  {:18.16f}\n'.format(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )
-
-            elif "dir" in type_of_coordinates:
-                f.write("Direct\n")
-                for xred in zxred:
-                    for x in xred:
-                        f.write("  {:18.16f}  {:18.16f}  {:18.16f}\n".format(x[0], x[1], x[2]) )
-            elif 'None' in type_of_coordinates:
-                pass
-
-            else:
-                print_and_log("Error! The type of coordinates should be 'car' or 'dir' ")
-                raise NameError
-        f.close()
-        print_and_log( "POSCAR was generated\n")
         return
 
 
@@ -1132,7 +1266,8 @@ class CalculationVasp(Calculation):
                 self.nbands = int ( round ( math.ceil(tve / 2.) * curset.add_nbands ) )
                 vp['NBANDS'] = self.nbands
 
-            if 'LSORBIT' in vp:
+            if 'LSORBIT' in vp and vp['LSORBIT']:
+                # print (vp)
                 printlog('SOC calculation detected; increasing number of bands by two', imp = 'Y')
                 vp['NBANDS']*=2
         else:
