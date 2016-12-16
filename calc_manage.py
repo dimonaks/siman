@@ -36,7 +36,7 @@ from functions import (list2string, gb_energy_volume, element_name_inv,
      image_distance, file_exists_on_server, run_on_server, push_to_server)
 from picture_functions import plot_mep
 from analysis import calc_redox
-from geo import remove_atoms, create_deintercalated_structure, create_antisite_defect, local_surrounding
+from geo import remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding
 
 
 from set_functions import init_default_sets
@@ -634,7 +634,7 @@ def choose_cluster(cluster_name, cluster_home):
 
 def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None, 
     up = 'up1', typconv="", from_geoise = '', inherit_option = None,
-    i_atom_to_remove = None, 
+    i_atom_to_remove = None, confdic = None,
     coord = 'direct', savefile = 'oc', show = None, comment = '', 
     input_geo_format = None, ifolder = None, input_geo_file = None, corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
@@ -690,6 +690,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
         #inherit flags:
+        confdic (dict) - to pass parameters to inherit_icalc
+
         - inherit_option (str):
             - 'continue'     - copy last contcar to poscar, outcar to prev.outcar and run again; on the next launch prev.outcar
                 will be rewritten, please improve the code to save all previous outcars 
@@ -967,7 +969,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             cl_temp.version = 100
             cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
             cl_temp.id = (it_new, inputset, 100)
-            cl_temp.state = '2. separatly prepared'
+            cl_temp.state = '2. separately prepared'
             blockdir = struct_des[it_new].sfolder+"/"+varset[inputset].blockfolder #calculation folder
             # iid = cl_temp.id          
             cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
@@ -1005,7 +1007,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     #inherit option
     inh_opt_ngkpt = ['full', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
     inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
-    if inherit_option in inh_opt_ngkpt+inh_opt_other:
+    # if inherit_option in inh_opt_ngkpt+inh_opt_other:
+    if inherit_option:
         if inherit_option == 'full':
             it_new = it+'.if'
 
@@ -1020,8 +1023,12 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
            mod = name_mod_supercell(ortho, mul_matrix)
            it_new = it+mod
 
-        elif inherit_option == 'antisite':
-            it_new = it+'.as'
+        elif 'antisite' in inherit_option:
+            suf = inherit_option.split('.')[-1]
+            it_new = it+'.'+suf
+            # print (it_new)
+            # sys.exit()
+
 
         elif inherit_option == 'make_vacancy':
             it_new = it+'.vac'
@@ -1044,7 +1051,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
                 # print(mul_
 
-                inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, 
+                inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, confdic = confdic,
                     it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, i_atom_to_remove = i_atom_to_remove,
                     ortho = ortho, mul_matrix = mul_matrix, override =override)
         
@@ -1553,7 +1560,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
-    id_from = None,
+    id_from = None, confdic = None,
     atom_new = None, atom_to_replace = None,  
     id_base_st_type = 'end', 
     atoms_to_remove = None, del_pos = None,
@@ -1568,6 +1575,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         it_new, ver_new - name of new structure,
         id_base - new structure will be based on the final structure of this calculation;     (can be either Calculation() object or path to geo file)
         id_from - can be additionally used to adopt for example rprimd from id_from to it_new; (can be either Calculation() object or path to geo file)
+
+        confdic (dict) - to pass more parameters
+
 
         
         inherit_type = '':
@@ -1586,7 +1596,11 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
             supercell - create orthogonal supercel using *ortho* list [a,b,c] or *mul_matrix* (3x3) ( higher priority)
             antisite  - create anitsite defect:
                         curent implimintation takes the first alkali cation and the closest to it transition metal and swap them
-
+                confdic
+                    - st_from
+                    - cation
+                    - trans
+                    - mode 
 
 
 
@@ -1982,14 +1996,24 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 
         override = 1
 
-    elif inherit_type == "antisite":
 
-        st = create_antisite_defect(st)
 
-        des = 'Fully inherited from the '+ id_base_st_type +' state of '+cl_base.name+\
-        ' by simple swapping of '+str(i_alk)+' and '+str(x_alk)
+    elif 'antisite' in inherit_type:
+
+        if 'as' in inherit_type:
+            st = create_antisite_defect(st)
+            des = 'Fully inherited from the '+ id_base_st_type +' state of '+cl_base.name+\
+            ' by simple swapping of alkali and transition atoms'
+
+        elif 'a' in inherit_type:
+            st = create_antisite_defect2(st, st_from = confdic['st_from'], cation = confdic['cation'], trans = confdic['trans'], mode = confdic['mode'])
+            des = 'create_antisite_defect2 '
+
         override = True
-        # sys.exit()
+
+
+
+
 
 
     else:

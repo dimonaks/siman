@@ -461,7 +461,7 @@ def determine_symmetry_positions(st, element):
 
     element (str) - name of element, for example Li
 
-    return dictionary of atom numbers for each non-equivalent position
+    return list of lists -  atom numbers for each non-equivalent position
     """
 
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -485,7 +485,11 @@ def determine_symmetry_positions(st, element):
 
     printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y', end = '\n')
     printlog('Atom numbers: ', positions, imp = 'y')
-    return positions
+    
+    sorted_keys = sorted(list(positions.keys()))
+    pos_lists = [positions[key] for key in sorted_keys ]
+
+    return pos_lists
 
 
 
@@ -530,19 +534,20 @@ def create_deintercalated_structure(st, element, del_pos = 1):
     del_pos(int) - number of position starting from 1
     """
     positions = determine_symmetry_positions(st, element)
-    position_list = sorted(list(positions.keys()))
+    # position_list = sorted(list(positions.keys()))
     printlog('Choose from the following list using *del_pos*:', end = '\n', imp = 'y')
     
-    for i, pos in enumerate(position_list):
-        printlog('     ', i+1,'--->' , pos, end = '\n', imp = 'y')
+    for i, pos in enumerate(positions):
+        printlog('     ', i+1,'--->' , pos[0], end = '\n', imp = 'y')
 
-    pos = position_list[ del_pos - 1 ]
+    # pos = position_list[ del_pos - 1 ]
+    pos = positions[ del_pos - 1 ]
 
-    printlog('You have chosen position:', pos, imp = 'y')
+    printlog('You have chosen position:', pos[0], imp = 'y')
 
     # print(st.get_elements())
 
-    st1 = remove_atoms(st, atoms_to_remove = positions[pos])
+    st1 = remove_atoms(st, atoms_to_remove = pos)
     st1.name += '.'+element+str(pos)+'del'
     # print(st1.get_elements())
     # sys.exit()
@@ -607,19 +612,35 @@ def create_antisite_defect(st, cation_positions = None):
 
 
 
-def create_antisite_defect2(st, cation_xred = None, cation = None, transition_numbers = None,  mode = None):
+def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans_pos = 1,  mode = None):
     """
     exchange cation and transition metal
-    st (Structure)
+    st_base (Structure) - basic structure in which defects are created
+    st_from (Structure) - structure from which the positions of *cation* are chosen;  st_from should be consistent with st_base 
+    cation (str) - element, position of which is extracted from st_from and added to st_base
 
-    cation_positions (list of numpy arrays) - reduced coordinates of deintercalated cation positions
-    transition_positions (list of numpy arrays) - reduced coordinates 
-    
+    trans (str) - element name transition metal for exchange
+    trans_pos (int) - number of non-equiv position of trans starting from 1
+
     mode - 
-        'add_alk' - add alkali cation
-        'mov_trs' - mov trans to alkali pos
-        'add_swp' - add alk and swap with trans
+        'add_alk' or 'a1' - add alkali cation
+        'mov_trs' or 'a2' - mov trans to alkali pos
+        'add_swp' or 'a3' - add alk and swap with trans
     """
+
+    printlog('create_antisite_defect2(): mode = ', mode, imp = 'y')
+
+
+    st = st_base
+
+    cation_xred = st_from.get_element_xred(cation)
+    printlog('For cation ', cation, 'reduced coordinates:',cation_xred, ' were chosen', imp = 'y')
+
+
+    positions = determine_symmetry_positions(st_from, trans)
+    printlog('Transition atom ', trans, 'has ', len(positions), 'non-equiv positions', imp = 'y')
+    transition_numbers = positions[trans_pos -1]
+
 
 
     #1. Insert cation
@@ -644,11 +665,11 @@ def create_antisite_defect2(st, cation_xred = None, cation = None, transition_nu
     st_s.write_xyz(filename = st.name+'_swapped')
 
 
-    if 'add_alk' in mode:
+    if 'add_alk' in mode or 'a1' in mode:
         st = st_i
-    elif 'mov_trs' in mode:
+    elif 'mov_trs' in mode or 'a2' in mode:
         st = st_m
-    elif 'add_swp' in mode:
+    elif 'add_swp' in mode or 'a3' in mode:
         st = st_s
 
     st.magmom = [None]
