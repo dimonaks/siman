@@ -25,8 +25,8 @@ except:
 
 from header import printlog
 from picture_functions import fit_and_plot
-from functions import local_surrounding, element_name_inv
-
+from functions import element_name_inv
+from geo import local_surrounding
 
 
 

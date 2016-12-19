@@ -1881,7 +1881,7 @@ class CalculationVasp(Calculation):
 
  
         def write_body(v = None, savefile = None, set_mod = '', copy_poscar_flag = True,
-            final_analysis_flag = True, penult_set_name = None):
+            final_analysis_flag = True, penult_set_name = None, curset = None):
             """
             set_mod (str) - additional modification of names needed for *set_sequence* regime, should be '.setname'
             """
@@ -1984,7 +1984,7 @@ class CalculationVasp(Calculation):
                 else:
                     rm_chg_wav = ''
 
-                if self.set.save_last_wave:
+                if curset.save_last_wave:
                     save_last = 'cw'
                 else:
                     save_last = 'c'
@@ -2042,7 +2042,14 @@ class CalculationVasp(Calculation):
 
                 run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
 
-                contcar_file = mv_files_according_versions(savefile, v, write = write, name_mod = name_mod, rm_chg_wav = 'w')
+                if final_analysis_flag:
+                    rm_chg_wav = 'w' #The wavcar is removed for the sake of harddrive space
+                
+                else:
+                    rm_chg_wav = ''
+
+
+                contcar_file = mv_files_according_versions(savefile, v, write = write, name_mod = name_mod, rm_chg_wav = rm_chg_wav)
 
                 self.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
@@ -2277,7 +2284,7 @@ class CalculationVasp(Calculation):
                 
                 contcar_file = write_body( v = str(version), savefile = savefile, 
                     set_mod = set_mod, copy_poscar_flag = copy_poscar_flag, 
-                    final_analysis_flag = final_analysis_flag, penult_set_name = penult_set_name)
+                    final_analysis_flag = final_analysis_flag, penult_set_name = penult_set_name, curset = curset)
 
                 
 

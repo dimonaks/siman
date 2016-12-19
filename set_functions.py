@@ -91,6 +91,11 @@ vasp_other_keys = [
 'MAXMIX',
 'OCCDIR1',
 'OCCEXT',
+'LHFCALC',
+'HFSCREEN',
+'TIME',
+'PRECFOCK',
+'NKRED',
 ]
 
 siman_keys = [

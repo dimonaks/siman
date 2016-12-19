@@ -133,16 +133,9 @@ def add_neb(starting_calc = None, st = None,
 
     atoms_to_move = []
 
-    for i, typ, x in zip(range(st.natom), st.typat, st.xcart): #try to find automatically
-        if st.znucl[typ-1] == 3: #Li
-            atoms_to_move.append([i, 'Li', x])
-
-        if st.znucl[typ-1] == 11: #
-            atoms_to_move.append([i, 'Na', x])
-
-        if st.znucl[typ-1] == 19: #
-            atoms_to_move.append([i, 'K', x])
-
+    for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): #try to find automatically
+        if typ in ['Li', 'Na', 'K', 'Rb']:
+            atoms_to_move.append([i, typ, x])
 
 
 

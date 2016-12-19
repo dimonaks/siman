@@ -1008,7 +1008,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     inh_opt_ngkpt = ['full', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
     inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
     # if inherit_option in inh_opt_ngkpt+inh_opt_other:
-    if inherit_option:
+    if inherit_option and not 'inherit_xred' in inherit_option:
         if inherit_option == 'full':
             it_new = it+'.if'
 
@@ -3224,6 +3224,7 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
 
     st = smart_structure_read(input_geo_file = path2poscar)
     st.groundstate_st_id = groundstate_st_id
+    st.mat_proj_st_id    = groundstate_st_id
     st.input_geo_file    = path2poscar
 
 
