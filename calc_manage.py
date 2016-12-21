@@ -636,7 +636,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     up = 'up1', typconv="", from_geoise = '', inherit_option = None,
     i_atom_to_remove = None, confdic = None,
     coord = 'direct', savefile = 'oc', show = None, comment = '', 
-    input_geo_format = None, ifolder = None, input_geo_file = None, corenum = None,
+    input_geo_format = None, ifolder = None, input_geo_file = None, input_st = None,
+    corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
     mat_proj_cell = '',
     mat_proj_id = None, cee_file = None,
@@ -681,6 +682,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         - ifolder - explicit path to folder where to search for input geo file.
 
         - input_geo_file - explicit file name of input file
+
+        - input_st - see in add_calculation()
 
         - it_folder - section folder (sfolder) used in struct_des; here needed with input_geo_format = mat_proj
 
@@ -933,7 +936,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
             id_s = (it,inputset,v)
-            if id_s in calc:
+            if input_st:
+                st = input_st
+            elif id_s in calc:
                 st = calc[id_s].end
                 pname = str(id_s)
             else:
@@ -1171,7 +1176,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
                 corenum = corenum,
-                run = run
+                run = run, input_st = input_st,
                 )
             
             prevcalcver = v
@@ -1300,7 +1305,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     calc, varset, update = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, schedule_system = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None, output_files_names = None, corenum = 1, run = None):
+    mat_proj_st_id = None, output_files_names = None, corenum = 1, run = None, input_st = None):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
@@ -1310,6 +1315,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     output_files_names - the list is updated on every call
 
     if inherit_option == 'continue' the previous completed calculation is saved in cl.prev list
+
+    input_st (Structure) - Structure object can be provided instead of input_folder and input_geo_file, has highest priority
 
     """
     struct_des = header.struct_des
@@ -1426,30 +1433,33 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
+        if input_st:
+            cl.init  = input_st
 
-                
-        cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
-            input_geo_format = input_geo_format, input_geo_file = input_geo_file)
+        else:
+            cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
+                input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
+        if cl.path["input_geo"]:
 
-        calc_geofile_path = os.path.join(cl.dir, os.path.basename(cl.path["input_geo"]) )
+            calc_geofile_path = os.path.join(cl.dir, os.path.basename(cl.path["input_geo"]) )
        
-        if cl.path["input_geo"] != calc_geofile_path: # copy initial geo file and other files to calc folder
+            if cl.path["input_geo"] != calc_geofile_path: # copy initial geo file and other files to calc folder
 
-            makedir(calc_geofile_path)
+                makedir(calc_geofile_path)
 
-            shutil.copyfile(cl.path["input_geo"] , calc_geofile_path)
+                shutil.copyfile(cl.path["input_geo"] , calc_geofile_path)
 
-            #copy OCCMATRIX file as well             
-            dir_1 = os.path.dirname(cl.path["input_geo"] )
-            dir_2 = os.path.dirname(calc_geofile_path) 
-            if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1:
-                shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
+                #copy OCCMATRIX file as well             
+                dir_1 = os.path.dirname(cl.path["input_geo"] )
+                dir_2 = cl.dir
+                if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1:
+                    shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
     
 
 
-
-        calc[id].des += ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
+        # if cl.des:
+        cl.des = ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
 
 
         setlist = [cl.set]                                                                                                    

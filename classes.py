@@ -252,6 +252,9 @@ class Structure():
 
 
 
+
+
+
     def del_atom(self, iat):
         """
         Now can delete only one atom with number iat (int), starting from 0. 
@@ -360,6 +363,69 @@ class Structure():
 
 
         return st
+
+
+    def get_numbers(self, element):
+
+        return [i for i, el in enumerate(self.get_elements()) if el == element]
+
+
+    def remove_atoms(self, atoms_to_remove):
+        """
+        remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*
+        st (Structure)
+        atoms_to_remove (list) - list of element names or numbers
+
+        """
+        st = copy.deepcopy(self)
+
+        numbers = list(range(st.natom))
+
+
+        atom_exsist = True
+
+        while atom_exsist:
+
+            for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
+                # print(i)
+                
+                if el in atoms_to_remove or n in atoms_to_remove:
+                    # print(n)
+                    # atoms_to_remove.remove(i)
+                    st = st.del_atom(i)
+                    del numbers[i]
+
+                    break
+            else:
+                atom_exsist = False
+        printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
+
+        # print(st.get_elements())
+        return st
+
+
+    def remove_part(self, element, new_conc):
+        """
+        element to remove
+        new_conc <1 - new concentration of element atoms (part of unity)
+        """
+        st = copy.deepcopy(self)
+
+
+        numb = self.get_numbers(element)
+
+        nat_el = int(np.ceil((len(numb)*new_conc)))
+        printlog('New number of ', element, 'atoms is ', nat_el, imp = 'y')
+
+        del_num = numb[nat_el:len(numb)]
+
+
+
+        return st.remove_atoms(del_num)
+
+
+
+
 
 
     def find_atom_num_by_xcart(self, x_tar, prec = 1e-10):
@@ -538,7 +604,10 @@ class Structure():
     def write_lammps(self, *args, **kwargs):
         return write_lammps(self, *args, **kwargs)
 
-
+    def jmol(self):
+        # self.write_poscar('CONTCAR', vasp5 = 1)
+        self.write_xyz(filename = 'temp')
+        runBash('jmol xyz/temp.xyz')
 
 
 class Calculation(object):
@@ -3086,6 +3155,7 @@ class CalculationVasp(Calculation):
             d = "|"
             name = ("%s.%s.%s" % (self.id[0],self.id[1], str(self.id[2]) )).ljust(j[0])
             etot = ("%.4f" % ( self.energy_sigma0 )).center(j[1])
+            etot1 = ("%.4f" % ( self.energy_sigma0/self.end.natom )).center(j[1])
             # print self.a
             a = ("%.4f" %      ( self.a )      ).center(j[2])
             c = ("%.4f" %      ( self.c )      ).center(j[3])
@@ -3166,7 +3236,7 @@ class CalculationVasp(Calculation):
             outst_gbe = voro+etot+               d+vol+d+kspacing+d+strs+d+eprs+d+nat+d+time+d+Nmd+d+War+d+nsg+"\\\\" # For comparing gb energies and volume
             outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
             
-            outst_cathode = d.join([etot, lens, vol,nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
+            outst_cathode = d.join([etot, etot1, lens, vol,nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
             # print self.end.xred[-1]
             #print outstring_kp_ec
             # print show

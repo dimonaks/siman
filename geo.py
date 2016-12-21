@@ -497,33 +497,15 @@ def remove_atoms(st, atoms_to_remove):
     """
     remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*
     st (Structure)
-    atoms_to_remove (list) - list of str or int
+    atoms_to_remove (list) - list of element names or numbers
 
     """
-    st = copy.deepcopy(st)
-    numbers = list(range(st.natom))
+    st = st.remove_atoms(atoms_to_remove)
 
-
-    atom_exsist = True
-
-    while atom_exsist:
-
-        for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
-            # print(i)
-            
-            if el in atoms_to_remove or n in atoms_to_remove:
-                # print(n)
-                # atoms_to_remove.remove(i)
-                st = st.del_atom(i)
-                del numbers[i]
-
-                break
-        else:
-            atom_exsist = False
-    printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
-
-    # print(st.get_elements())
     return st
+
+
+
 
 
 def create_deintercalated_structure(st, element, del_pos = 1):
