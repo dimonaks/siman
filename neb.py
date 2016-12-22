@@ -13,7 +13,7 @@ from small_functions import is_list_like
 from classes import CalculationVasp
 from impurity import find_pores
 from tabulate import tabulate
-from geo import xcart2xred, xred2xcart, local_surrounding, replic
+from geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
 
 def add_neb(starting_calc = None, st = None, 
     it_new = None, ise_new = None, i_atom_to_move = None, 
@@ -23,6 +23,7 @@ def add_neb(starting_calc = None, st = None,
     calc_method = ['neb'], 
     inherit_option  = None, mag_config = None, i_void_start = None, i_void_final = None, 
     atom_to_insert = None,
+    atom_to_move   = None,
     replicate = None,
     it_new_folder = None,
     inherit_magmom = False,
@@ -51,8 +52,9 @@ def add_neb(starting_calc = None, st = None,
         - i_atom_to_move (int) - number of atom for moving;
         - *mag_config* (int ) - choose magnetic configuration - allows to obtain different localizations of electron
         - *replicate* (tuple 3*int) - replicate cell along rprimd
-        - i_void_start,  i_void_final (int) - number of voids from the suggested lists
+        - i_void_start,  i_void_final (int) - position numbers of voids (or atoms) from the suggested lists
         - atom_to_insert  (str) - element name of atom to insert
+        - atom_to_move (str) - element name of atom to move
         - it_new_folder  (str) - section folder
         - inherit_option (str) - passed only to add_loop
         - inherit_magmom (bool) - if True than magmom from starting_calc is used, else from set
@@ -132,10 +134,12 @@ def add_neb(starting_calc = None, st = None,
     """1. Choose  atom (or insert) for moving """
 
     atoms_to_move = []
-
+    atoms_to_move_types = []
     for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): #try to find automatically
         if typ in ['Li', 'Na', 'K', 'Rb']:
             atoms_to_move.append([i, typ, x])
+            if typ not in atoms_to_move_types:
+                atoms_to_move_types.append(typ)
 
 
 
@@ -149,7 +153,7 @@ def add_neb(starting_calc = None, st = None,
 
 
     elif not atoms_to_move:
-        print_and_log('No atoms to move found, you probably gave me intercalated structure', important = 'y')
+        print_and_log('No atoms to move found, you probably gave me deintercalated structure', important = 'y')
         print_and_log('Searching for voids', important = 'y')
         st_pores = find_pores(st, r_matrix = 0.5, r_impurity = r_impurity, fine = 1, calctype = 'all_pores')
 
@@ -216,32 +220,48 @@ def add_neb(starting_calc = None, st = None,
 
     else:
 
-        print_and_log('I have found', len(atoms_to_move), ' anion atoms', important = 'n')
-        print_and_log( 'Sums of bond lengths around these atoms:',)
-        sums = []
-        for a in atoms_to_move:
-            summ = local_surrounding(a[2], st, n_neighbours = 6, control = 'sum', periodic  = True)
-            sums.append(summ)
-            # print( summ, end = '')
+        #my method of determining unique sites
+        # print_and_log('I have found', len(atoms_to_move), ' anion atoms', imp = 'y')
+        # print_and_log( 'Sums of bond lengths around these atoms:', imp = 'y')
+        # sums = []
+        # for a in atoms_to_move:
+        #     summ = local_surrounding(a[2], st, n_neighbours = 6, control = 'sum', periodic  = True)
+        #     sums.append(summ)
+        # print_and_log('\nAmong them only',len(set(sums)), 'unique' , imp = 'y')
+        # print_and_log('Choosing the first' , imp = 'y')
+
+        # print (atoms_to_move)
+        if not atom_to_move:
+            atom_to_move = atoms_to_move_types[0] # taking first found element
+            if len(atoms_to_move_types) > 1:
+                printlog('Error! More than one type of atoms available for moving detected', atoms_to_move_types,
+                    'please specify needed atom with *atoms_to_move*')
+
+
+
+        numbers = determine_symmetry_positions(st, atom_to_move)
+
+
+
+        type_atom_to_move = atom_to_move #atoms_to_move[0][1]
+
+        if len(numbers)>0:
+            printlog('Please choose position using *i_void_start* :', [i+1 for i in range(len(numbers))],imp = 'y' )
+            i_m = numbers[i_void_start-1][0]
+            printlog('Position',i_void_start,'chosen, atom:', i_m+1, type_atom_to_move, imp = 'y' )
         
-        print_and_log('\nAmong them only',len(set(sums)), 'unique' , important = 'n')
+        else:
+            i_m = numbers[0][0]
+
         
-        # if 
-        print_and_log('Choosing the first' , important = 'n')
-
-        type_atom_to_move = atoms_to_move[0][1]
-        i_atom_to_move = atoms_to_move[0][0]+1
-        el_num_suffix =  type_atom_to_move +str(i_atom_to_move)
-
-
-
-        i_m = i_atom_to_move-1
         x_m = st.xcart[i_m]
+
+        el_num_suffix =  type_atom_to_move +str(i_m+1)
+
 
         #highlight the moving atom for user for double-check
         # st_new = st.change_atom_z(i_m, new_z = 100)
         # search_type = 'vacancy_creation'
-
 
 
 
@@ -327,16 +347,18 @@ def add_neb(starting_calc = None, st = None,
     elif search_type == 'vacancy_creation':
         #Create vacancy by removing some neibouring atom of the same type 
         
-        print_and_log('You have chosen vacancy_creation mode of add_neb tool', important = 'Y')
+
+
+        print_and_log('You have chosen vacancy_creation mode of add_neb tool', imp= 'Y')
 
         print_and_log( 'Type of atom to move = ', type_atom_to_move, imp = 'y')
         # print 'List of left atoms = ', np.array(st.leave_only(type_atom_to_move).xcart)
-        sur = local_surrounding(x_m, st.leave_only(type_atom_to_move) , n_neighbours = 4, control = 'atoms', 
-            periodic  = False)
+        sur = local_surrounding(x_m, st.leave_only(type_atom_to_move) , n_neighbours = 6, control = 'atoms', 
+            periodic  = False) #exclude the atom itself
         # print 'xcart of moving atom', x_m
         # print 'Local surround = ', sur
         # print 'len', len(sur[0])
-        if len(sur[0]) < 3:
+        if 0 and len(sur[0]) < 3: #not used anymore
             
             # print 'rprimd = \n',np.array(st.rprimd)
             # print 'r lengths = \n',( [np.linalg.norm(r) for r in st.rprimd] )
@@ -354,18 +376,24 @@ def add_neb(starting_calc = None, st = None,
             # print 'Local surround = ', sur
             # sys.exit()
 
-
+        # print(sur)
         print_and_log(
-        'I can suggest you '+str (len(sur[0]) )+' end positions. The distances to them are : '+str(np.round(sur[3], 2) )+' A\n ',
-        'They are all', type_atom_to_move, 'atoms', important = 'y')
+        'I can suggest you '+str (len(sur[0][1:]) )+' end positions. The distances to them are : ',np.round(sur[3][1:], 2), ' A\n ',
+        'They are all', type_atom_to_move, 'atoms, use *i_void_final* to choose required: 1, 2, 3 ..', imp = 'y')
 
-        print_and_log('Choosing the closest position as end', important = 'n')
-        neb_config = 1 #cause the first item in sur is moving atom itself
-        x_del = sur[0][neb_config]
+        
+
+        if not i_void_final:
+            i_void_final = 1 #since zero is itself
+
+        print_and_log('Choosing position ', i_void_final, 'with distance', round(sur[3][i_void_final], 2), 'A', imp = 'y')
+
+        x_del = sur[0][i_void_final]
         i_del = st.find_atom_num_by_xcart(x_del)
+        name_suffix += el_num_suffix+'v'+str(i_void_final)
 
 
-        print_and_log('Making vacancy at end position for starting configuration', important = 'n')
+        print_and_log('Making vacancy at end position for starting configuration', imp = 'y')
         print_and_log( 'number of atom to delete = ', i_del)
         # print st.magmom
         st1 = st.del_atom(i_del)
@@ -378,10 +406,6 @@ def add_neb(starting_calc = None, st = None,
         st2 = st2.del_atom(i_del) # these two steps provide the same order
 
 
-
-
-
-        name_suffix += el_num_suffix+'v'+str(neb_config)
 
         write_xyz(st1, file_name = st1.name+'_start')# replications = (2,2,2))
         write_xyz(st2, file_name = st2.name+'_end')# replications = (2,2,2))

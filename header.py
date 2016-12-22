@@ -205,18 +205,27 @@ printlog = print_and_log
 
 
 
-def runBash(cmd, env = None):
+def runBash(cmd, env = None, detached = False):
     """Input - string; Executes Bash commands and returns stdout
 Need: import subprocess
     """
+    if detached:
+        stdout = None
+        stderr = None
+    else:
+        stdout = subprocess.PIPE
+        stderr = subprocess.STDOUT
+
     my_env = os.environ.copy()
     # my_env["PATH"] = "/opt/local/bin:/opt/local/sbin:" + my_env["PATH"]
-    p = subprocess.Popen(cmd, executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr = subprocess.STDOUT, env = my_env)
-    out = p.stdout.read().strip()
+    p = subprocess.Popen(cmd, executable='/bin/bash', shell=True, stdout=stdout, stderr = stderr, stdin = None, env = my_env)
     # print (cmd)
     # print 'Bash output is\n'+out
     # print ( str(out, 'utf-8') ) 
+    out = ''
     try:
+        out = p.stdout.read().strip()
+
         out = str(out, 'utf-8')
     except:
         pass

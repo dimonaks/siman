@@ -607,7 +607,7 @@ class Structure():
     def jmol(self):
         # self.write_poscar('CONTCAR', vasp5 = 1)
         self.write_xyz(filename = 'temp')
-        runBash('jmol xyz/temp.xyz')
+        runBash('sleep 1; jmol xyz/temp.xyz', detached = True)
 
 
 class Calculation(object):

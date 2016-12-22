@@ -938,13 +938,14 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             id_s = (it,inputset,v)
             if input_st:
                 st = input_st
+                pname = st.name
             elif id_s in calc:
                 st = calc[id_s].end
                 pname = str(id_s)
             else:
                 st = smart_structure_read(curver = v, input_folder = struct_des[it].sfolder+'/'+it, 
                     input_geo_format = input_geo_format, input_geo_file = input_geo_file)
-                pname = st
+                pname = st.name
 
             write_xyz(st, file_name = st.name+'_used_for_scaling')
             printlog('Scale_region is', scale_region, imp = 'y')
