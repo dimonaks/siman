@@ -1154,13 +1154,16 @@ class CalculationVasp(Calculation):
         Attention: the order should be the same as in make_kpoints_file
         """
         struct_des = header.struct_des
-        to_ang_local = header.to_ang
-        try:
-            if "Ang" in self.len_units:
-                to_ang_local = 1
-                #print "units angs"
-        except AttributeError:
-            print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n") 
+        # to_ang_local = header.to_ang
+        to_ang_local = 1
+        
+        # try:
+        #     if "Ang" in self.len_units:
+        #         to_ang_local = 1
+        #         #print "units angs"
+        # except AttributeError:
+        #     print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n") 
+        
         N_from_kspacing = []
         it = self.id[0]
 
