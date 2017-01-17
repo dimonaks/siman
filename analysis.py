@@ -77,7 +77,7 @@ def calc_redox(cl1, cl2, energy_ref = None):
     vol_red = dV / (cl1.end.vol/n1) * 100 # %
 
     # final_outstring = ("{:} | {:.2f} eV \n1".format(cl1.id[0]+'.'+cl1.id[1], redox  ))
-    final_outstring = ("{:30} | {:10.2f} eV | {:10.1f} %".format(cl1.name, redox, vol_red  ))
+    final_outstring = ("{:30} | {:10.2f} V | {:10.1f} %".format(cl1.name, redox, vol_red  ))
     
     printlog( final_outstring, end = '\n', imp = 'y' )
     try:

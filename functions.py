@@ -398,7 +398,10 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 
         f.write('load "'+xyzfile+'"\n')
 
-        f.write('select all \ncpk 250 \nwireframe 0.3\n') #250
+        f.write('select all \n') #250
+        if 0:
+           f.write('cpk 250 \nwireframe 0.3\n') 
+
         f.write('background white \nselect Ti* \ncolor [20,120,250] \nselect C* \ncolor [80,80,80]\n cpk 100\n')
         f.write('set perspectivedepth off\n')
         
@@ -462,10 +465,12 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
         
         # f.write('write image 2800 2800 png "'+pngfile+'"')
         f.write('write image 1800 1800 png "'+pngfile+'"')
-    print_and_log( runBash(header.path_to_jmol+' -ions '+scriptfile) )
+    
+    print_and_log( runBash(header.PATH2JMOL+' -ions '+scriptfile) )
     # print runBash('convert '+pngfile+' -shave 0x5% -trim '+pngfile) #cut by 5% from up and down (shave) and that trim left background
     print_and_log( pngfile )
     print_and_log( runBash('convert '+pngfile+' -trim '+pngfile)  ) # trim background
+    printlog('png file by Jmol',pngfile, 'was written', imp = 'y' )
     return
 
 
@@ -483,7 +488,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     gbpos2 - position of grain boundary in A
     gbwidth - atoms aroung gbpos2 will be colored differently
 
-    imp_positions - type and xcart coordinates additionally to be added to structure; to visulaze all impurity positions: for jmol
+    imp_positions - (x1,x2,x3, element, label)- xcart and element name coordinates additionally to be added to structure; to visulaze all impurity positions: for jmol, additional key 's', 'i' can be added after element
     imp_sub_positions - list of atom numbers; the typat of these atoms is changed: not used now
 
     specialcommand - any command at the end of script
@@ -611,7 +616,9 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
         imp_sub_positions = []
     nsub = 0
     for pos in imp_positions:
-        if 's' not in pos[4]: continue # skip interstitial positions
+        # if len(pos) > 4:
+        #     if 's' not in pos[4]: continue # skip interstitial positions
+        
         xs = np.asarray([pos[0],pos[1],pos[2]])
         nsub+=1
         # print xs

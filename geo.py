@@ -10,6 +10,16 @@ from small_functions import red_prec
 # sys.path.append('/home/aksenov/Simulation_wrapper/') 
 # sys.path.append('/home/aksenov/Simulation_wrapper/savelyev') 
 
+def find_moving_atom(st1, st2):
+    """
+    find moving atom
+
+    return number of atom which moves between two cell
+    """
+    diffv = np.array(st1.xcart) - np.array(st2.xcart)
+    diffn = np.linalg.norm(diffv, axis = 1)
+
+    return np.argmax(diffn) # number of atom moving along the path
 
 def calc_recip_vectors(rprimd):
     #Determine reciprocal vectors 

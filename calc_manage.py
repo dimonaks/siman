@@ -36,7 +36,7 @@ from functions import (list2string, gb_energy_volume, element_name_inv,
      image_distance, file_exists_on_server, run_on_server, push_to_server)
 from picture_functions import plot_mep
 from analysis import calc_redox
-from geo import remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding
+from geo import remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 
 
 from set_functions import init_default_sets
@@ -2813,19 +2813,13 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
             
-            #find moving atom
-            def find_moving_atom():
-                """
-                return number of atom which moves between two cell
-                """
-                return
+
 
             cl1 = calc[cl.id[0], cl.id[1], 1]
             cl2 = calc[cl.id[0], cl.id[1], 2]
             
-            diffv = np.array(cl1.init.xcart) - np.array(cl2.init.xcart)
-            diffn = np.linalg.norm(diffv, axis = 1)
-            atom_num = np.argmax(diffn) # number of atom moving along the path
+
+            atom_num = find_moving_atom(cl1.init, cl2.init)
 
             #prepare lists
             ni = cl.set.vasp_params['IMAGES']
