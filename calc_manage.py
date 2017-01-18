@@ -2876,7 +2876,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                     show_flag = True
                 else:
                     show_flag = False
-                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.png', show = show_flag)
+                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag)
 
             if push2archive:
                 path2saved, _ = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')

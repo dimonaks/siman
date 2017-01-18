@@ -95,7 +95,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
 
 
     path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, ynew, 'b-'), xlim = (-0.05, None  ),
-    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, show = show)
+    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, show = show, fig_format = 'eps')
 
 
     return path2saved, diff_barrier
