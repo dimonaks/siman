@@ -370,12 +370,12 @@ class Structure():
         return [i for i, el in enumerate(self.get_elements()) if el == element]
 
 
-    def remove_atoms(self, atoms_to_remove):
+    def remove_atoms(self, atoms_to_remove, from_one = 0):
         """
-        remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*
+        remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*, starting from 0
         st (Structure)
         atoms_to_remove (list) - list of element names or numbers
-
+        from_one (int)- if 1 the numbers of atoms in provided list are starting from one
         """
         st = copy.deepcopy(self)
 
@@ -388,8 +388,8 @@ class Structure():
 
             for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
                 # print(i)
-                
-                if el in atoms_to_remove or n in atoms_to_remove:
+
+                if el in atoms_to_remove or n+from_one in atoms_to_remove:
                     # print(n)
                     # atoms_to_remove.remove(i)
                     st = st.del_atom(i)

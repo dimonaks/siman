@@ -52,34 +52,6 @@ def calc_k_point_mesh(rprimd, kspacing):
     return N_opt
 
 
-def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_calc_name = None, ):
-    """
-    Scale uniformly rprimd and xcart of structure() object *st* from *scale_region[0]* to *scale_region[1]*  (%) using *n_scale_images* images.
-    *parent_calc_name* is added to st.des
-    Return:
-    list of scaled Structure() objects
-    
-    TODO: Take care of vol, recip and so on - the best is to create some method st.actual() that update all information 
-    """
-    # print scale_region
-    scales = np.linspace(scale_region[0], scale_region[1], n_scale_images)
-    # print scales
-    scaled_sts = []
-    for j, s in enumerate(scales):
-        st_s = copy.deepcopy(st)
-        for i in (0,1,2):
-            st_s.rprimd[i] *= (1 + s/100.)
-        # print st_s.rprimd
-
-        st_s.xred2xcart()
-        st_s.des = 'obtained from '+str(parent_calc_name)+' by uniform scaling by '+str(s)+' %'
-        st_s.name = str(j+1)
-        scaled_sts.append(st_s)
-        # print st_s.rprimd
-
-    # plt.plot([np.linalg.norm(st.rprimd) for st in scaled_sts])
-    # plt.show()
-    return scaled_sts
 
 
 

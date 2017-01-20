@@ -32,11 +32,11 @@ from header import print_and_log, runBash, mpl, plt
 from small_functions import is_list_like
 from classes import Calculation, CalculationVasp, Description
 from functions import (list2string, gb_energy_volume, element_name_inv, 
-     write_xyz, makedir, get_from_server, scale_cell_uniformly, 
+     write_xyz, makedir, get_from_server, 
      image_distance, file_exists_on_server, run_on_server, push_to_server)
 from picture_functions import plot_mep
 from analysis import calc_redox
-from geo import remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
+from geo import scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 
 
 from set_functions import init_default_sets
@@ -720,6 +720,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             - 'u_ramping'    - realizes U ramping approach #Phys Rev B 82, 195128
             - 'afm_ordering' - 
             - 'uniform_scale' - creates uniformly scaled copies of the provided calculations
+            - 'scale' - arbitrary scale according to mul_matrix
             using *scale_region* and *n_scale_images* (see *scale_cell_uniformly()*)
             The copies are available as versions from 1 to *n_scale_images* and
             suffix .su appended to *it* name
@@ -896,19 +897,25 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-    scale_flag = False
-    if calc_method and 'uniform_scale' in calc_method:
-        scale_flag = True
+    u_scale_flag = False
+    if calc_method and 'scale' in calc_method:
+
+        if 'uniform_scale' in calc_method:
+            u_scale_flag = True
+
+            it_new = it+'.su' #scale uniformly 
+        else:
+            it_new = it+'.sm' #scale according to mul_matrix
+        
 
 
-        it_new = it+'.su'
         v = verlist[0]
 
         # if up != 'up3':
-        print_and_log('Preparing   uniform_scale  calculation ... ', imp = 'Y')
+        print_and_log('Preparing   scale  calculation ... ', imp = 'Y')
 
         if len(verlist) > 1:
-            print_and_log('Error! Currently   uniform_scale  is allowed only for one version')
+            print_and_log('Error! Currently   scale  is allowed only for one version')
             raise RuntimeError
         
 
@@ -919,7 +926,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             else:
                 section_folder = struct_des[it].sfolder
 
-            add_des(struct_des, it_new, section_folder, 'uniform_scale: scaled "images" for '+it+'.'+str(setlist)+'.'+str(v)   )
+            add_des(struct_des, it_new, section_folder, 'scale: scaled "images" for '+it+'.'+str(setlist)+'.'+str(v)   )
 
 
 
@@ -949,9 +956,13 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
             write_xyz(st, file_name = st.name+'_used_for_scaling')
             printlog('Scale_region is', scale_region, imp = 'y')
-            sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
             
+            if 'uniform_scale' in calc_method:
 
+                sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
+            
+            else:
+                sts = scale_cell_by_matrix(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname, mul_matrix = mul_matrix)
 
             if ise_new:
                 inputset = ise_new
@@ -971,27 +982,28 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
                     description = s.des, override = True)
                 write_xyz(s)
                 verlist_new.append(ver_new)
-            #make version 100
-            cl_temp.version = 100
-            cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
-            cl_temp.id = (it_new, inputset, 100)
-            cl_temp.state = '2. separately prepared'
-            blockdir = struct_des[it_new].sfolder+"/"+varset[inputset].blockfolder #calculation folder
-            # iid = cl_temp.id          
-            cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
-            cl_temp.dir = blockdir+"/"+ str(cl_temp.id[0]) +'.'+ str(cl_temp.id[1])+'/'
-            cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
             
-            # cl_temp.associated_outcars
+            if 'uniform_scale' in calc_method:
+                #make version 100
+                cl_temp.version = 100
+                cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
+                cl_temp.id = (it_new, inputset, 100)
+                cl_temp.state = '2. separately prepared'
+                blockdir = struct_des[it_new].sfolder+"/"+varset[inputset].blockfolder #calculation folder
+                # iid = cl_temp.id          
+                cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
+                cl_temp.dir = blockdir+"/"+ str(cl_temp.id[0]) +'.'+ str(cl_temp.id[1])+'/'
+                cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
+                cl_temp.cluster_address      = header.cluster_address
+                cl_temp.project_path_cluster = header.project_path_cluster
+                calc[cl_temp.id] = cl_temp
+                # cl_temp.init = None
+                fitted_v100_id = cl_temp.id
 
-            cl_temp.cluster_address      = header.cluster_address
-            cl_temp.project_path_cluster = header.project_path_cluster
-            calc[cl_temp.id] = cl_temp
-            # cl_temp.init = None
-            fitted_v100_id = cl_temp.id
+
             verlist = verlist_new
 
-            print_and_log(len(sts), 'uniform images have been created.', imp = 'y')
+            print_and_log(len(sts), 'scale images have been created.', imp = 'y')
         
 
 
@@ -1251,7 +1263,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
 
-    if scale_flag:
+    if u_scale_flag:
         #modify output names for fitted version 100, since it is created manually above and 
         #by add_calculation; for u-ramping names are different
         cl = calc[it, setlist[0], 1]
