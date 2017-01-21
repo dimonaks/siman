@@ -2,11 +2,13 @@
 import sys, copy, itertools, math
 from operator import itemgetter
 
+
 import numpy as np
 
+import header
 from header import printlog
-
 from small_functions import red_prec
+from inout import write_xyz
 # sys.path.append('/home/aksenov/Simulation_wrapper/') 
 # sys.path.append('/home/aksenov/Simulation_wrapper/savelyev') 
 
@@ -737,3 +739,44 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
     st.magmom = [None]
 
     return st
+
+
+
+def calc_k_point_mesh(rprimd, kspacing):
+    """
+    rprimd (list of lists 3x3 of floats) - vectors of cell (Angstroms)
+    kspacing (float) - required spacing between k-points in reciprocal space (A-1); paramter KSPACING in VASP
+
+    the provided optimal k-mesh has the smallest sum of squared deviations of kspacings
+
+    returns k-point mesh (list of int)
+    """
+    N = []
+    recip = calc_recip_vectors(rprimd)
+    # print(recip)
+
+
+    for i in 0, 1, 2:
+        n = (np.linalg.norm(recip[i])) / kspacing
+        N.append( math.ceil(n) )
+
+    N_options = [ng for ng in itertools.product( *[(n-1, n, n+1) for n in N] ) ]
+
+    errors = [  np.sum( np.square( np.array(calc_kspacings(N, rprimd) ) - kspacing ) ) for N in N_options] # sum of squared deviation from kspacing for each option
+    i_min = np.argmin(errors)
+
+    N_opt = N_options[i_min] # k-mesh with smallest error
+
+
+
+    printlog('I recommend k-point mesh:', N_opt, 'with k-spacings:', np.array( calc_kspacings(N_opt, rprimd) ).round(2), end = '\n', imp = 'y' )
+    printlog('Other options are:', end = '\n', imp = 'y' )
+    printlog('{:13s} |    {:20s}'.format('Mesh', 'k-spacings'), end = '\n', imp = 'y'  )
+
+    for ngkpt in itertools.product( *[(n-1, n, n+1) for n in N_opt] ):
+        
+        printlog('{:13s} |    {:26s}'.format(str(ngkpt), str(np.array(calc_kspacings(ngkpt, rprimd) ).round(2))), end = '\n', imp = 'y'  )
+
+
+    return N_opt
+

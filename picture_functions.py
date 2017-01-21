@@ -27,7 +27,9 @@ import matplotlib.pyplot as plt
 
 import header
 from header import print_and_log
-from functions import write_xyz, makedir
+from inout import write_xyz, makedir
+
+
 from geo import replic
 
 

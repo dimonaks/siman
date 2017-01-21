@@ -13,7 +13,10 @@ from header import print_and_log, geo_folder, runBash
 import header
 from classes import CalculationVasp, Structure
 from set_functions import InputSet
-from functions import image_distance, write_xyz, return_atoms_to_cell, element_name_inv
+from functions import image_distance, return_atoms_to_cell, element_name_inv
+from inout import write_xyz
+
+
 from geo import xred2xcart, xcart2xred, replic
 
 lib = cdll.LoadLibrary(os.path.dirname(__file__)+'/libfindpores.so')

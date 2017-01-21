@@ -33,7 +33,9 @@ from header import printlog, print_and_log, runBash, plt
 from small_functions import cat_files, grep_file, red_prec
 from functions import (read_vectors, read_list, words,
      element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server, run_on_server, list2string, makedir, write_xyz, write_lammps)
+    get_from_server, push_to_server, run_on_server, list2string)
+from inout import write_xyz, makedir, write_lammps
+
 from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding
 
 
@@ -1483,7 +1485,9 @@ class CalculationVasp(Calculation):
                         for i, s in zip(spec_mom_is, order):
                             # print i
                             new_magmom[i] = s * magmom[i]
-                        print_and_log(j, new_magmom, imp = 'y')
+                        
+                        # print_and_log(j, new_magmom, imp = 'y')
+                        
                         mag_orderings.append(new_magmom)
 
                     # print orderings

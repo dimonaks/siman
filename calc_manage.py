@@ -31,9 +31,11 @@ from header import print_and_log, runBash, mpl, plt
 
 from small_functions import is_list_like
 from classes import Calculation, CalculationVasp, Description
-from functions import (list2string, gb_energy_volume, element_name_inv, 
-     write_xyz, makedir, get_from_server, 
+from functions import (list2string, gb_energy_volume, element_name_inv 
+     , get_from_server, 
      image_distance, file_exists_on_server, run_on_server, push_to_server)
+from inout import write_xyz, makedir
+
 from picture_functions import plot_mep
 from analysis import calc_redox
 from geo import scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
@@ -396,6 +398,7 @@ def get_file_by_version(geofilelist, version):
     curv = None
     
     matched_files = []
+    # print(geofilelist)
 
     for input_geofile in geofilelist: 
         
@@ -433,7 +436,7 @@ def get_file_by_version(geofilelist, version):
             matched_files.append(input_geofile)
 
     if len(matched_files) > 1:
-        printlog('Error! Several files have same versions')
+        printlog('get_file_by_version(): Error! Several files have same versions:', matched_files)
     elif len(matched_files) == 0:
         input_geofile = None
     else:
@@ -898,8 +901,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
 
 
     u_scale_flag = False
-    if calc_method and 'scale' in calc_method:
-
+    # print(calc_method)
+    if calc_method and 'scale' in calc_method or 'uniform_scale' in calc_method:
+        # print('sdfsdf')
         if 'uniform_scale' in calc_method:
             u_scale_flag = True
 
@@ -946,6 +950,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             if input_st:
                 st = input_st
                 pname = st.name
+                input_st = None
             elif id_s in calc:
                 st = calc[id_s].end
                 pname = str(id_s)
@@ -1448,7 +1453,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         if input_st:
             cl.init  = input_st
-
+            # sys.exit()
         else:
             cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
                 input_geo_format = input_geo_format, input_geo_file = input_geo_file)

@@ -8,7 +8,9 @@ from operator import itemgetter
 from header import print_and_log, printlog
 import header
 from calc_manage import add_loop, res_loop, add_des, inherit_ngkpt
-from functions import  write_xyz, return_atoms_to_cell, push_to_server
+from functions import  return_atoms_to_cell, push_to_server
+from inout import write_xyz
+
 from small_functions import is_list_like
 from classes import CalculationVasp
 from impurity import find_pores
