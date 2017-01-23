@@ -1,4 +1,6 @@
-
+#Copyright Aksyonov D.A
+from __future__ import division, unicode_literals, absolute_import 
+import os
 from six import string_types
 from collections import Iterable
 import shutil, gzip
@@ -61,4 +63,18 @@ def gunzip_file(filename):
         with gzip.open(filename, 'rb') as f_in:
             shutil.copyfileobj(f_in, f_out)
 
+    return
+
+
+
+def makedir(path):
+    """
+    *path* - path to some file 
+    Make dirname(path) directory if it does not exist
+    """
+    dirname = os.path.dirname(path)
+
+    if dirname and not os.path.exists(dirname):
+        os.makedirs(dirname)
+        printlog("Directory", dirname, " was created", imp = 'y')
     return

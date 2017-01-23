@@ -6,7 +6,7 @@ import shelve, sys, datetime, shutil, tempfile, os, json
 import header
 from header import runBash, print_and_log, printlog
 from classes import CalculationVasp
-from inout import makedir
+from small_functions import makedir
 from set_functions import init_default_sets
 
 

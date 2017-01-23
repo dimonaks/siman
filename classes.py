@@ -34,8 +34,8 @@ from small_functions import cat_files, grep_file, red_prec
 from functions import (read_vectors, read_list, words,
      element_name_inv, calculate_voronoi,
     get_from_server, push_to_server, run_on_server, list2string)
-from inout import write_xyz, makedir, write_lammps
-
+from inout import write_xyz, write_lammps
+from small_functions import makedir
 from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding
 
 
@@ -404,6 +404,40 @@ class Structure():
 
         # print(st.get_elements())
         return st
+
+    def replace_atoms(self, atoms_to_replace, el_new):
+        """
+
+        """
+        st = copy.deepcopy(self)
+
+        numbers = list(range(st.natom))
+
+
+        atom_exsist = True
+
+        while atom_exsist:
+
+
+            for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
+                # print(i)
+
+                if n in atoms_to_replace:
+                    xcart = st.xcart[i]
+                    st = st.add_atoms([xcart], element = el_new)
+                    st = st.del_atom(i)
+                    del numbers[i]
+
+                    break
+            else:
+                atom_exsist = False
+        # printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
+
+        # print(st.get_elements())
+        return st
+
+
+
 
 
     def remove_part(self, element, new_conc):

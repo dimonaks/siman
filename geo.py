@@ -587,8 +587,16 @@ def remove_atoms(st, atoms_to_remove):
     return st
 
 
-
-
+def remove_one_atom(st, element, del_pos):
+    """
+    removes one atom of element type from position del_pos
+    """
+    positions = determine_symmetry_positions(st, element)
+    pos = positions[ del_pos - 1 ]
+    i_del = pos[0]
+    st = st.del_atom(i_del) # remove just the first atoms
+    st.name += '.'+element+str(i_del)+'del'
+    return st
 
 def create_deintercalated_structure(st, element, del_pos = 1):
 
@@ -618,6 +626,34 @@ def create_deintercalated_structure(st, element, del_pos = 1):
 
     return st1
 
+
+def create_replaced_structure(st, el1, el2, rep_pos = 1):
+
+    """
+    returns deintercalated structures
+
+    del_pos(int) - number of position starting from 1
+    """
+    positions = determine_symmetry_positions(st, el1)
+    # position_list = sorted(list(positions.keys()))
+    printlog('Choose from the following list using *del_pos*:', end = '\n', imp = 'y')
+    
+    for i, pos in enumerate(positions):
+        printlog('     ', i+1,'--->' , pos[0], end = '\n', imp = 'y')
+
+    # pos = position_list[ del_pos - 1 ]
+    pos = positions[ rep_pos - 1 ]
+
+    printlog('You have chosen position:', pos[0], imp = 'y')
+
+    # print(st.get_elements())
+
+    st1 = st.replace_atoms(atoms_to_replace = pos, el_new = el2)
+    st1.name += '.'+el1+str(pos)+el2+'rep'
+    # print(st1.get_elements())
+    # sys.exit()
+
+    return st1
 
 
 

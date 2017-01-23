@@ -27,8 +27,8 @@ import matplotlib.pyplot as plt
 
 import header
 from header import print_and_log
-from inout import write_xyz, makedir
-
+from inout import write_xyz
+from small_functions import makedir
 
 from geo import replic
 
@@ -225,7 +225,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
             plt.savefig(path2saved, dpi = dpi, format=fig_format)
             plt.savefig(str(image_name)+'.png', dpi = 300)
-            print_and_log("Image saved to ", path2saved)
+            print_and_log("Image saved to ", path2saved, imp = 'y')
 
 
         elif show is None:

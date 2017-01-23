@@ -29,12 +29,12 @@ except:
 import header
 from header import print_and_log, runBash, mpl, plt
 
-from small_functions import is_list_like
+from small_functions import is_list_like, makedir
 from classes import Calculation, CalculationVasp, Description
 from functions import (list2string, gb_energy_volume, element_name_inv 
      , get_from_server, 
      image_distance, file_exists_on_server, run_on_server, push_to_server)
-from inout import write_xyz, makedir
+from inout import write_xyz
 
 from picture_functions import plot_mep
 from analysis import calc_redox
@@ -558,10 +558,11 @@ def inherit_ngkpt(it_to, it_from, inputset):
     inherit ngkpt from it_from to it_to
 
     """
+    # print(it_to, it_from)
     
     struct_des = header.struct_des
     
-    if it_to and it_from:
+    if it_to and it_from and it_from in struct_des:
         ks = inputset.vasp_params['KSPACING']
 
         for it in [it_to, it_from]: #just create ngkpt_dict_for_kspacings property
@@ -2119,7 +2120,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     calc_method = None, u_ramping_region = None, input_geo_file = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None):
+    alkali_ion_number = None, cluster = None, ret = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -2169,6 +2170,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         - push2archive (bool) - if True produced images are copied to header.project_conf.path_to_images
         - description_for_archive - caption for images
 
+        ret (str) - return some more information in results_dic
+            'energies' - just list of full energies
 
 
         - ise_new - dummy
@@ -2240,6 +2243,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     #print calc[b_id]
 
     result_list = []
+    energies = []
 
 
     emin = 0
@@ -2378,6 +2382,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             outst2 = ("%s"%calc[id].name).ljust(name_field_length)
             outst2+='|'
             outst_end = '' 
+
+            energies.append(cl.energy_sigma0)
+
+
             
             if   b_id :
 
@@ -2481,6 +2489,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         """Aditional analysis, plotting"""
         results_dic = {} #if some part fill this list it will be returned instead of final_outstring
+        if ret == 'energies':
+            results_dic[ret] = energies
+
+
 
         if id not in calc or '4' not in calc[id].state:
             print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []', imp = 'Y')

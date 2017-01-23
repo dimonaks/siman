@@ -3,18 +3,8 @@ from __future__ import division, unicode_literals, absolute_import
 import os
 from header import printlog
 from functions import element_name_inv
+from small_functions import makedir
 
-def makedir(path):
-    """
-    *path* - path to some file 
-    Make dirname(path) directory if it does not exist
-    """
-    dirname = os.path.dirname(path)
-
-    if dirname and not os.path.exists(dirname):
-        os.makedirs(dirname)
-        print_and_log("Directory", dirname, " was created", imp = 'y')
-    return
 
 
 
