@@ -1787,15 +1787,16 @@ class CalculationVasp(Calculation):
 
                         f.write('grep -A '+str(self.init.natom)+ ' "Direct" '+precont+' >> '+input_geofile+ ' \n')
 
-                if option == 'continue': #test for the case of sequence set
-                    ''
-                    precont = str(curver)+name_mod_prev+'.CONTCAR ' #previous contcar
-                    preout  = str(curver)+name_mod_prev+'.OUTCAR ' #previous outcar
-                    f.write("cp "+precont+" POSCAR  # inherit_option = continue\n")
-                    f.write("cp "+preout+'prev.'+preout+" # inherit_option = continue\n")
-                    f.write('mv CHGCAR prev.CHGCAR   # inherit_option = continue\n')
-                else:
-                    if copy_poscar_flag:
+                if copy_poscar_flag: # only for first set 
+                    if option == 'continue': #test for the case of sequence set - OK
+                        ''
+                        precont = str(curver)+name_mod_prev+'.CONTCAR ' #previous contcar
+                        preout  = str(curver)+name_mod_prev+'.OUTCAR ' #previous outcar
+                        f.write("cp "+precont+" POSCAR  # inherit_option = continue\n")
+                        f.write("cp "+preout+'prev.'+preout+" # inherit_option = continue\n")
+                        f.write('mv CHGCAR prev.CHGCAR   # inherit_option = continue\n')
+                    
+                    else:
                         f.write("cp "+input_geofile+" POSCAR\n")
         
 
@@ -2384,7 +2385,7 @@ class CalculationVasp(Calculation):
 
 
             if k == 0: # additional control of prepare_input routine and footer
-                copy_poscar_flag = True # the flag as also used to detect first set
+                copy_poscar_flag = True # the flag is also used to detect first set
                 run_tool_flag = True
             else:
                 copy_poscar_flag = False

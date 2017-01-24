@@ -55,7 +55,7 @@ def scale_cell_by_matrix(st, scale_region = (-4,4), n_scale_images = 7, parent_c
     """
     scales = np.linspace(scale_region[0], scale_region[1], n_scale_images)
 
-    printlog('Scales are', scales)
+    printlog('Scales are', scales, imp = 'y')
     # print(np.asarray(st.rprimd))
 
     scaled_sts = []
@@ -587,7 +587,7 @@ def remove_atoms(st, atoms_to_remove):
     return st
 
 
-def remove_one_atom(st, element, del_pos):
+def remove_one_atom(st, element, del_pos = 1):
     """
     removes one atom of element type from position del_pos
     """

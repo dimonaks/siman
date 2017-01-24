@@ -977,7 +977,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
             cl_temp = CalculationVasp(varset[inputset], id_s)
 
             for i, s in enumerate(sts):
-                ver_new = i+1
+                ver_new = i+v
                 s.name = it_new+'.'+s.name
                 cl_temp.init = s
                 cl_temp.version = ver_new
@@ -1032,7 +1032,8 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     inh_opt_ngkpt = ['full', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
     inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
     # if inherit_option in inh_opt_ngkpt+inh_opt_other:
-    if inherit_option and not 'inherit_xred' in inherit_option:
+    omit_inh_opt = ['inherit_xred', 'continue']
+    if inherit_option and inherit_option not in omit_inh_opt:
         if inherit_option == 'full':
             it_new = it+'.if'
 

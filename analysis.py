@@ -1,6 +1,6 @@
 from __future__ import division, unicode_literals, absolute_import 
 from header import printlog
-
+from functions import element_name_inv
 
 def calc_redox(cl1, cl2, energy_ref = None):
     """
@@ -60,6 +60,7 @@ def calc_redox(cl1, cl2, energy_ref = None):
     for z in z_alk_ions:
         mul = (nz1_dict[z] / n1 - nz2_dict[z] / n2)
         if abs(mul) > 0: #only change of concentration of one ion type is allowed; the first found is used
+            printlog('Change of concentration detected for ', element_name_inv(z))
             if not energy_ref: #take energy ref from dict
                 energy_ref = energy_ref_dict[ z ]
             break
