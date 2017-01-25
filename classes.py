@@ -3134,6 +3134,8 @@ class CalculationVasp(Calculation):
             nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
             #print "Stress:", self.stress
             v = self.vlength
+            self.end.vlength = self.vlength
+
             s = self.stress
             yznormal = np.cross(self.init.rprimd[1], self.init.rprimd[2])
             #print yznormal

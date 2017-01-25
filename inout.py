@@ -1,11 +1,109 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
 import os
-from header import printlog
+import header
+from header import printlog, runBash
 from functions import element_name_inv
 from small_functions import makedir
 
 
+def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = False, orientation = None,
+    axis = False, bonds = True, rprimd = None, shift = None, rotate = None,
+    label = None, high_contrast = None, specialcommand = None,
+    boundbox = 2):
+    """
+    atomselection - string in gmol format with number of atoms to be nrotateSelected
+    topview - additional top view, requires two models in xyz
+    orientation - additional rotation
+    axis - add axes
+    rotate - rotation of all atoms around view axis in degrees
+    """
+    if not scriptfile:
+        scriptfile = os.getcwd()+'/'+'temporary_jmol_script'
+    with open(scriptfile,'w') as f:
+        f.write('set frank off\n') #no jmol label
+        if bonds:
+            f.write('set autobond on\n')
+
+        else:
+            f.write('set autobond off\n set bonds off\n')
+
+        f.write('load "'+xyzfile+'"\n')
+
+        f.write('select all \n') #250
+        if 0:
+           f.write('cpk 250 \nwireframe 0.3\n') 
+
+        f.write('background white \nselect Ti* \ncolor [20,120,250] \nselect C* \ncolor [80,80,80]\n cpk 100\n')
+        f.write('set perspectivedepth off\n')
+        
+
+
+
+
+        if boundbox:
+            f.write('set boundbox ' +str(boundbox)+ ' \n')
+
+
+
+        # f.write('set specular 85\n set specpower 85\n set diffuse 85\n')
+        if high_contrast: #allows to make better view for black and white printing 
+            f.write('set ambient 10 \nset specular 95\n set specpower 95\n set diffuse 95\n')
+
+
+
+        
+        if axis:
+            f.write('set axes 10 \naxes scale 2.5 \n')
+            f.write('axes labels "X" "Y" "Z" "" \n')
+            f.write('color  axes  red \n')
+            f.write('font axes 26 \n')
+
+
+        if orientation:
+            f.write(orientation+'\n')
+
+
+        if atomselection:
+            f.write('select '+atomselection+'\n')
+            f.write('color purple    \n')
+
+        if topview:
+            f.write('select * /2  \ntranslateSelected 0 '+str(-rprimd[1][1]*shift)+' 0\nrotateSelected X 90\n')
+        
+            f.write('wireframe 0.1\ncpk 150\nmodel 0\n#zoom 60\n')
+
+
+
+        if label:
+            j = 1
+            name_old = ''
+            for i, el in enumerate(label):
+                name  = el[0]+el[1]
+                if name != name_old: j = 1
+                label = str(j)+el[1]
+                # print "label",label
+                f.write('select '+el[0]+str(i+1)+'\ncpk 200\nset labeloffset 0 0\nset labelfront\ncolor label black\nlabel '+label+'\n font label 24 bold \n')
+                j+=1
+                name_old = name
+
+
+        if rotate:
+            f.write('rotate z '+str(rotate)+'\n')
+
+        if specialcommand:
+            f.write(specialcommand)
+
+        
+        # f.write('write image 2800 2800 png "'+pngfile+'"')
+        f.write('write image 1800 1800 png "'+pngfile+'"')
+    
+    printlog( runBash(header.PATH2JMOL+' -ions '+scriptfile) )
+    # print runBash('convert '+pngfile+' -shave 0x5% -trim '+pngfile) #cut by 5% from up and down (shave) and that trim left background
+    printlog( pngfile )
+    printlog( runBash('convert '+pngfile+' -trim '+pngfile)  ) # trim background
+    printlog('png file by Jmol',pngfile, 'was written', imp = 'y' )
+    return
 
 
 def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 1 , 
@@ -281,12 +379,12 @@ def write_lammps(st, filename = '', charges = None):
     natom = st.natom
 
     if natom != len(xred) != len(xcart) != len(typat) or len(znucl) != max(typat): 
-        print_and_log( "Error! write_xyz: check your structure"    )
+        printlog( "Error! write_xyz: check your structure"    )
     
     if name == '': 
         name = 'noname'
     if xcart == [] or len(xcart) != len(xred):
-        print_and_log( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n", imp = 'y')
+        printlog( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n", imp = 'y')
         xcart = xred2xcart(xred, rprimd)
         #print xcart[1]
 
