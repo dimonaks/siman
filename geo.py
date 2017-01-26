@@ -62,7 +62,11 @@ def scale_cell_by_matrix(st, scale_region = (-4,4), n_scale_images = 7, parent_c
     for j, s in enumerate(scales):
         st_s = copy.deepcopy(st)
         # print(s)
-        st_s.rprimd = np.dot(s/100*np.asarray(mul_matrix)+np.identity(3), st_s.rprimd)
+        mul_matrix_f = s*(np.asarray(mul_matrix)-np.identity(3))+np.identity(3)
+        st_s.rprimd = np.dot(mul_matrix_f, st_s.rprimd)
+        # st_s.rprimd = np.dot(s/100*np.asarray(mul_matrix)+np.identity(3), st_s.rprimd)
+        print(mul_matrix_f)
+        print(np.asarray(st_s.rprimd))
 
 
 

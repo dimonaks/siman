@@ -645,7 +645,7 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
     mat_proj_cell = '',
     mat_proj_id = None, cee_file = None,
-    ise_new = None,
+    ise_new = None, it_suffix = None,
     scale_region = None, n_scale_images = 7, id_from = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
     mul_matrix = None,
@@ -912,6 +912,9 @@ def add_loop(it, setlist, verlist, calc = None, conv = None, varset = None,
         else:
             it_new = it+'.sm' #scale according to mul_matrix
         
+        if it_suffix:
+            it_new = it+'.'+it_suffix
+
 
 
         v = verlist[0]
@@ -2154,6 +2157,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
         - show - (str), allows to show additional information:
             - mag - magnetic moments on magnetic atoms
+              maga
                 *alkali_ion_number* (int) - number of atom around which to sort mag moments 
             - en  - convergence of total energy vs max force
             - mep - neb path

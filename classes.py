@@ -3311,8 +3311,8 @@ class CalculationVasp(Calculation):
                     plt.show()
 
             if 'smag' in show:
-                # printlog('{:s}'.format([round(m) for m in self.mag_sum]) )
-                printlog(np.array(self.mag_sum).round(2) )
+                # printlog('{:s}'.format([round(m) for m in self.mag_sum]), imp = 'Y' )
+                printlog(np.array(self.mag_sum).round(2), imp = 'Y' )
 
             if 'mag' in show or 'occ' in show:
                 st = self.end
