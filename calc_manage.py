@@ -2305,6 +2305,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             cl = calc[id]
 
+            if 'path' in show:
+                printlog(cl.path['output'], imp = 'Y')
+                sys.exit()
+
 
             if not hasattr(cl,'version'):
                 calc[id].version = v
@@ -2362,7 +2366,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
                 # sys.exit()
 
-                print_and_log( cl.name, 'has state = ,',cl.state,'; I will continue; outcar file renamed to _unfinished; path=', cl.dir)
+                printlog( cl.name, 'has state = ,',cl.state,'; I will continue; outcar file renamed to _unfinished; path=', cl.dir)
+                # print
                 outcar = cl.path['output']
                 outunf = outcar+"_unfinished"
                 runBash("mv "+outcar+" "+outunf)
@@ -2500,7 +2505,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
         if id not in calc or '4' not in calc[id].state:
-            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []', imp = 'Y')
+            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',cl.dir, imp = 'Y')
             return {}, []
         
 
