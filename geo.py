@@ -25,6 +25,8 @@ def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_c
     """
     # print scale_region
     scales = np.linspace(scale_region[0], scale_region[1], n_scale_images)
+    printlog('Scales are', scales, imp = 'y')
+    
     # print scales
     scaled_sts = []
     for j, s in enumerate(scales):
