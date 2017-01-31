@@ -2637,8 +2637,11 @@ class CalculationVasp(Calculation):
             out = '2. no OUTCAR'
             self.state = out
         
+
+        # print(out)
         if 'G' in out:
             self.state = "4. Calculation completed."
+            # print(self.state)
         else: 
             if '2' in self.state:
                 ''
@@ -3450,6 +3453,8 @@ class CalculationVasp(Calculation):
             ''
             # print_and_log('OUTCAR not finished for', self.id)
             # raise RuntimeError
+        # print(self.state)
+
 
         return outst
 

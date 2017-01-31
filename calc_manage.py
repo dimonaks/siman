@@ -2307,7 +2307,8 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             if 'path' in show:
                 printlog(cl.path['output'], imp = 'Y')
-                sys.exit()
+                # sys.exit()
+                return
 
 
             if not hasattr(cl,'version'):
@@ -2373,6 +2374,9 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 runBash("mv "+outcar+" "+outunf)
 
                 continue
+
+            # print(cl.state)
+
 
             e = calc[id].energy_sigma0
             n_m = calc[id].end.nznucl[0] # number of matrix atoms
@@ -2945,6 +2949,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
+    # print(cl.state)
 
     if results_dic:
         return results_dic, result_list

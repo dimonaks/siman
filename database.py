@@ -129,7 +129,7 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
     # if header.RAMDISK:
     #     databasefile3 = header.RAMDISK+databasefile3
 
-    # shutil.copyfile(databasefile3, 'calc_copy.gdbm3')
+    shutil.copyfile(databasefile3, 'calc_copy.gdbm3')
     if 0:
         d = shelve.open('calc.s', protocol=1) #Write database of calculations
         d[calc_key]       = calc
