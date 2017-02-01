@@ -136,6 +136,13 @@ class Structure():
         """
         i = self.get_elements().index(element)
         return self.xred[i]
+    
+    def get_element_xcart(self, element):
+        """
+        Get xred of *element* first occurance
+        """
+        i = self.get_elements().index(element)
+        return self.xcart[i]
 
 
 
@@ -3303,6 +3310,18 @@ class CalculationVasp(Calculation):
                     plt.ylabel('Max. force on atom (meV/$\AA$)')
                     plt.show()
             
+            if 'sur' in show:
+                if 'Na' in self.end.get_elements():
+                    xc = self.end.get_element_xcart('Na')
+                    sumNaO = local_surrounding(xc, self, 6, periodic = True, only_elements = [8, 9])
+                    print('summ Na-O',sumNaO )
+
+                if 'Li' in self.end.get_elements():
+                    xc = self.end.get_element_xcart('Li')
+                    sumLiO = local_surrounding(xc, self, 6, periodic = True, only_elements = [8, 9])
+                    print('summ Li-O',sumLiO)
+
+
             if 'en' in show:
                     maxf = [m[1] for m in maxforce ]
                     plt.plot(maxf, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , )

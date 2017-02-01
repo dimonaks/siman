@@ -26,7 +26,7 @@ def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_c
     # print scale_region
     scales = np.linspace(scale_region[0], scale_region[1], n_scale_images)
     printlog('Scales are', scales, imp = 'y')
-    
+
     # print scales
     scaled_sts = []
     for j, s in enumerate(scales):
@@ -303,7 +303,10 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     - st - structure with xcart list of coordinates of all atoms in system
     - n_neighbours - number of needed closest neighbours
 
-    - control - type of output; sum - sum of distances, av - av distance, list - list of distances; 
+    - control - type of output; 
+              sum - sum of distances, 
+              av - av distance, 
+              list - list of distances; 
               av_dev - average deviation, maximum deviation from average distance in mA.
               atoms  - coordinates of neighbours
 
