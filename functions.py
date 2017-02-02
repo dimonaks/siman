@@ -12,7 +12,23 @@ from small_functions import is_list_like, is_string_like, gunzip_file, makedir
 
 
 
-
+def smoother(x, n, mul = 1):
+    #mul - additionally multiplies values
+     x_smooth = []
+     L = len(x)
+     store = np.zeros((n,1),float)
+     for u in range(L-n):
+          for v in range(n):
+               store[v] = x[u+v]
+          av = float(sum(store)) / n
+          x_smooth.append(av*mul)
+     
+     for u in range(L-n,L):
+          for v in range(L-u-1):
+               store[v] = x[u+v]
+          av = float(sum(store)) / n
+          x_smooth.append(av*mul)
+     return x_smooth
 
 
 

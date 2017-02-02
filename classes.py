@@ -33,7 +33,7 @@ from header import printlog, print_and_log, runBash, plt
 from small_functions import cat_files, grep_file, red_prec
 from functions import (read_vectors, read_list, words,
      element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server, run_on_server, list2string)
+    get_from_server, push_to_server, run_on_server, list2string, smoother)
 from inout import write_xyz, write_lammps
 from small_functions import makedir
 from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding
@@ -3072,6 +3072,27 @@ class CalculationVasp(Calculation):
                     # print (np.array(spin1) )
 
 
+                if 'freq' in show:
+
+                    if 'Eigenvectors and eigenvalues of the dynamical matrix' in line:
+                        freq = []
+
+                        i = 0
+                        while 'ELASTIC MODULI CONTR FROM IONIC RELAXATION' not in line:
+                            i+=1
+                            line = outcarlines[i_line+i]
+                            if 'f  =' in line:
+                                freq.append(float(line.split()[3]) ) #THz
+                                # print(line)
+
+
+
+
+
+
+
+
+
                 i_line += 1
             # sys.exit()
             #Check total drift
@@ -3433,6 +3454,50 @@ class CalculationVasp(Calculation):
                 print_and_log('Spin 2:',end = '\n', imp = 'Y'  )
                 print_and_log(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql'), imp = 'Y'  )
             self.occ_matrices = occ_matrices
+
+
+            if 'freq' in show:
+                dos = [1]*len(freq)
+                # from scipy.ndimage.filters import gaussian_filter
+                from scipy.signal import butter, lfilter, freqz
+                # blurred = gaussian_filter(freq, sigma=7)
+                fmin = min(freq)
+                fmax = max(freq)
+                fw   = fmax-fmin
+
+                finefreq = np.linspace(fmin, fmax, 1000)
+                dos = [0]*1000
+
+                # for i in range(1000):
+                # print(fw)
+                for f in freq:
+                    # print(f)
+                    i = int( np.round( (f-fmin)/ fw * 999 ,0) )
+                    dos[i] = 1
+                    # print(i, finefreq[i], f)
+                
+
+                def butter_lowpass(cutoff, fs, order=5):
+                    nyq = 0.5 * fs
+                    normal_cutoff = cutoff / nyq
+                    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+                    return b, a
+
+                def butter_lowpass_filter(data, cutoff, fs, order=5):
+                    b, a = butter_lowpass(cutoff, fs, order=order)
+                    y = lfilter(b, a, data)
+                    return y
+
+                order = 6
+                fs = 30.0       # sample rate, Hz
+                cutoff = 3.667  # desired cutoff frequency of the filter, Hz
+
+                y = butter_lowpass_filter(finefreq, cutoff, fs, order)
+
+                plt.plot(finefreq, smoother(smoother(dos,50), 50), '-') 
+                plt.savefig('figs/'+str(self.id)+'.eps')
+                # plt.show()
+                plt.clf()
 
             # sys.exit()
 

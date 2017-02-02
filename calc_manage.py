@@ -2124,7 +2124,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
     calc_method = None, u_ramping_region = None, input_geo_file = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None, ret = None):
+    alkali_ion_number = None, cluster = None, ret = None, override = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -2183,6 +2183,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         - inherit_option - dummy
         - savefile - dummy
         - cluster - dummy
+        -override - dummy
 
     RETURN:
         (results_dic,    result_list)
