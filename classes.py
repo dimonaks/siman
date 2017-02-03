@@ -686,6 +686,9 @@ class Calculation(object):
             self.name = str(iid[0])+'.'+str(iid[1])+'.'+str(iid[2])
         else:
             self.id = ('0','0',0)
+    
+    def get_path(self,):
+        print( os.path.dirname(os.getcwd()+'/'+self.path['output']))
 
 
     def read_geometry(self, filename = None):
@@ -3560,21 +3563,22 @@ class CalculationVasp(Calculation):
 
 
         # print(path_to_chg)
+        # print(self.cluster_address)
 
         if os.path.exists(path_to_chg): 
             out = None
         else:
-            out = get_from_server(path_to_chg, os.path.dirname(path_to_chg), self.cluster_address)
+            out = get_from_server(path_to_chg, os.path.dirname(path_to_chg), addr = self.cluster_address)
 
 
         if out:
-            printlog('Charge file', path_to_chg, 'was not found, trying scratch')
+            printlog('Charge file', path_to_chg, 'was not found, trying scratch', imp = 'Y')
             # printlog('Charge file', path_to_chg, 'was not found')
             path_to_chg_scratch = '/scratch/amg/aksenov/'+path_to_chg
 
-            out = get_from_server(path_to_chg_scratch, os.path.dirname(path_to_chg), self.cluster_address)
+            out = get_from_server(path_to_chg_scratch, os.path.dirname(path_to_chg), addr = self.cluster_address)
             if out:
-                printlog('Charge file', path_to_chg_scratch, 'was not found')
+                printlog('Charge file', path_to_chg_scratch, 'was not found', imp = 'Y')
                 path_to_chg = None
            
         return path_to_chg

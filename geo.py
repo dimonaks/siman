@@ -636,12 +636,13 @@ def create_deintercalated_structure(st, element, del_pos = 1):
     return st1
 
 
-def create_replaced_structure(st, el1, el2, rep_pos = 1):
+def create_replaced_structure(st, el1, el2, rep_pos = 1, only_one = False):
 
     """
     returns deintercalated structures
 
-    del_pos(int) - number of position starting from 1
+    rep_pos(int) - number of position starting from 1
+    only_one - replace only one first atom
     """
     positions = determine_symmetry_positions(st, el1)
     # position_list = sorted(list(positions.keys()))
@@ -656,6 +657,9 @@ def create_replaced_structure(st, el1, el2, rep_pos = 1):
     printlog('You have chosen position:', pos[0], imp = 'y')
 
     # print(st.get_elements())
+    if only_one:
+        pos = pos[0:1]
+
 
     st1 = st.replace_atoms(atoms_to_replace = pos, el_new = el2)
     st1.name += '.'+el1+str(pos)+el2+'rep'
