@@ -2507,6 +2507,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
         if ret == 'energies':
             results_dic[ret] = energies
 
+        cl = calc[id]
 
 
         if id not in calc or '4' not in calc[id].state:
@@ -2514,7 +2515,6 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             return {}, []
         
 
-        cl = calc[id]
         if b_id: 
             bcl = calc[b_id]
 
