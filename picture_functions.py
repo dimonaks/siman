@@ -107,14 +107,14 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
 
 def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name = None, show = None,
     xlim = None, ylim = None, title = None, figsize = None,
-    xlog = False,ylog = False, scatter = False, legend = False, markersize = 10,  linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
+    xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
     **data):
     """Should be used in two below sections!
     Creates one plot with two dependecies and fit them;
     return minimum fitted value of x2 and corresponding value of y2; 
     if name == "" image will not be plotted
     power - the power of polynom
-
+    ncol - number of legend coluns
 
     fig_format - format of saved file.
     dpi    - resolution of saved file
@@ -197,7 +197,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
 
         if legend: 
-            plt.legend(loc = legend, scatterpoints = scatterpoints)
+            plt.legend(loc = legend, scatterpoints = scatterpoints, ncol = ncol)
 
 
         plt.tight_layout()

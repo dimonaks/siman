@@ -3335,19 +3335,23 @@ class CalculationVasp(Calculation):
                     plt.show()
             
             if 'sur' in show:
+                self.sumAO = {}
                 if 'Na' in self.end.get_elements():
                     xc = self.end.get_element_xcart('Na')
-                    sumNaO = local_surrounding(xc, self, 6, periodic = True, only_elements = [8, 9])
-                    print('summ Na-O',sumNaO )
-
+                    sumAO = local_surrounding(xc, self.end, 6, periodic = True, only_elements = [8, 9])
+                    print('summ Na-O',sumAO )
+                    self.sumAO['Na-O'] = sumAO 
                 if 'Li' in self.end.get_elements():
                     xc = self.end.get_element_xcart('Li')
-                    sumLiO = local_surrounding(xc, self, 6, periodic = True, only_elements = [8, 9])
-                    print('summ Li-O',sumLiO)
+                    sumAO = local_surrounding(xc, self.end, 6, periodic = True, only_elements = [8, 9])
+                    print('summ Li-O',sumAO)
+                    self.sumAO['Li-O'] = sumAO 
+
 
 
             if 'en' in show:
                     maxf = [m[1] for m in maxforce ]
+                    # print(maxf)
                     plt.plot(maxf, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , )
                     # plt.xlabel('MD step')
                     # plt.ylabel('Energy per cell (eV')
