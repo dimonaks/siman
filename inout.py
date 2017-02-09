@@ -4,7 +4,8 @@ import os
 import header
 from header import printlog, runBash
 from functions import element_name_inv
-from small_functions import makedir
+from small_functions import makedir, is_list_like
+from geo import local_surrounding
 
 
 def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = False, orientation = None,
@@ -109,7 +110,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 1 , 
     imp_positions = [], specialcommand = None, analysis = None, show_around = None, replications = None, nnumber = 6, topview = True,
     filename = None, file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
-    include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None, show_around_x = None,
+    include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None, show_around_x = None, only_elements = None,
     ):
     """Writes st structure in xyz format in the folder xyz/path
 
@@ -128,6 +129,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
         nnumber - number of neighbours to show
         show_around - choose atom number around which to show
         show_around_x - show atoms around point, has higher priority
+        only_elements - see local_surrounding
 
     replications - list of replications, (2,2,2) 
 
@@ -184,36 +186,40 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
         lxcart = []
         ltypat = []
         i=0
-        for t, x in zip(typat, xcart):
-            
-            condition = False
-            # print show_around, 'show'
-            if show_around:
-                # print i, condition
-                condition = (i + 1 == show_around)
-                # print i, condition
 
-            else:
-                condition = (t > 1) # compat with prev behav
-            
-            # print 'se', condition
 
-            if condition: 
-                # lxcart.append(x)
-                # ltypat.append(t)
-                # print x, ' x'
-                x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True)
-                # print x_t[1]
-                lxcart+=x_t[0]
-                ltypat+=x_t[1]
-            i+=1
-        
-        if show_around_x:
+        if is_list_like(show_around_x):
             x = show_around_x
-            x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True)
-            # print x_t[1]
+            x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True, only_elements = only_elements)
+            # print('write_xyz: local_surround:', x_t)
             lxcart+=x_t[0]
             ltypat+=x_t[1]            
+        else:
+
+            for t, x in zip(typat, xcart):
+                
+                condition = False
+                # print show_around, 'show'
+                if show_around:
+                    # print i, condition
+                    condition = (i + 1 == show_around)
+                    # print i, condition
+
+                else:
+                    condition = (t > 1) # compat with prev behav
+                
+                # print 'se', condition
+
+                if condition: 
+                    # lxcart.append(x)
+                    # ltypat.append(t)
+                    # print x, ' x'
+                    x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True, only_elements = only_elements)
+                    # print x_t[1]
+                    lxcart+=x_t[0]
+                    ltypat+=x_t[1]
+                i+=1
+        
 
 
         xcart = lxcart

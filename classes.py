@@ -142,6 +142,7 @@ class Structure():
         Get xred of *element* first occurance
         """
         i = self.get_elements().index(element)
+        
         return self.xcart[i]
 
 
@@ -3336,17 +3337,28 @@ class CalculationVasp(Calculation):
             
             if 'sur' in show:
                 self.sumAO = {}
-                if 'Na' in self.end.get_elements():
-                    xc = self.end.get_element_xcart('Na')
-                    sumAO = local_surrounding(xc, self.end, 6, periodic = True, only_elements = [8, 9])
-                    print('summ Na-O',sumAO )
-                    self.sumAO['Na-O'] = sumAO 
-                if 'Li' in self.end.get_elements():
-                    xc = self.end.get_element_xcart('Li')
-                    sumAO = local_surrounding(xc, self.end, 6, periodic = True, only_elements = [8, 9])
-                    print('summ Li-O',sumAO)
-                    self.sumAO['Li-O'] = sumAO 
+                for el in 'Li', 'Na', 'Fe', 'O':
+                    if el in self.end.get_elements():
+                        xc = self.end.get_element_xcart(el)
+                        # sumAO = local_surrounding(xc, self.end, 6, periodic = True, only_elements = [8, 9], control = 'av_dev')[0]
+                        if el == 'O':
+                            neib = 6
+                        else:
+                            neib = 6
+                        sumAO = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [8, 9], control = 'av')#[0]
+                        print(el+'-O',sumAO )
+                        self.sumAO[el+'-O'] = sumAO
+                        if self.id[2] in [1,12]:
+                            self.end.write_xyz(show_around_x = xc, nnumber = neib, filename = self.end.name+'_'+el+'-OF'+str(neib), analysis = 'imp_surrounding', only_elements = [8, 9])
 
+                        if el in ['Li', 'Na']:
+                            neib = 2
+                            sumAO = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [26,], control = 'av')#[0]
+                            if self.id[2] in [1,12]:
+                                self.end.write_xyz(show_around_x = xc, nnumber = neib, filename = self.end.name+'_'+el+'-Fe'+str(neib), analysis = 'imp_surrounding', only_elements = [26])
+                            
+                            print(el+'-Fe',sumAO )
+                            self.sumAO[el+'-Fe'] = sumAO
 
 
             if 'en' in show:
@@ -3564,7 +3576,7 @@ class CalculationVasp(Calculation):
         else:
             path_to_chg = os.path.join( os.path.dirname(self.path['output']), filetype)
 
-
+        self.path['chgcar'] = path_to_chg
 
         # print(path_to_chg)
         # print(self.cluster_address)
@@ -3581,6 +3593,7 @@ class CalculationVasp(Calculation):
             path_to_chg_scratch = '/scratch/amg/aksenov/'+path_to_chg
 
             out = get_from_server(path_to_chg_scratch, os.path.dirname(path_to_chg), addr = self.cluster_address)
+            
             if out:
                 printlog('Charge file', path_to_chg_scratch, 'was not found', imp = 'Y')
                 path_to_chg = None

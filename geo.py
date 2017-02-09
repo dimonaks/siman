@@ -8,7 +8,6 @@ import numpy as np
 import header
 from header import printlog
 from small_functions import red_prec
-from inout import write_xyz
 # sys.path.append('/home/aksenov/Simulation_wrapper/') 
 # sys.path.append('/home/aksenov/Simulation_wrapper/savelyev') 
 
@@ -307,7 +306,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
               sum - sum of distances, 
               av - av distance, 
               list - list of distances; 
-              av_dev - average deviation, maximum deviation from average distance in mA.
+              av_dev - return (average deviation, maximum deviation) from average distance in mA.
               atoms  - coordinates of neighbours
 
     - periodic - if True, then cell is additionaly replicated; needed for small cells
@@ -330,17 +329,21 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     #print len(xcart)
     zlist = [int(st.znucl[t-1]) for t in st.typat]
     
-    # if only_elements:
-    #     dlist = [np.linalg.norm(x_central - x) for x, z in zip(xcart, zlist) if z in only_elements]
-    # else:
-    dlist = [np.linalg.norm(x_central - x) for x in xcart ]# if all (x != x_central)] # list of all distances
 
-    dlist_unsort = copy.deepcopy(dlist)
+    dlist_unsort = [np.linalg.norm(x_central - x) for x in xcart ]# if all (x != x_central)] # list of all distances
+
+    if only_elements:
+        dlist = [np.linalg.norm(x_central - x) for x, z in zip(xcart, zlist) if z in only_elements]
+    else:
+        dlist = copy.deepcopy(dlist_unsort)
     dlist.sort()
-    # write_xyz(st  )
-    # print dlist
-    dlistnn = dlist[1:n_neighbours+1] #without first impurity which is x_central
-    # print dlistnn
+
+    if abs(dlist[0]) < 0.01:
+        dlistnn = dlist[1:n_neighbours+1] #without first impurity which is x_central
+    else:
+        dlistnn = dlist[:n_neighbours]
+
+    # print('dlistnn', dlistnn)
     # os._exit(1)
 
     if control == 'list':
@@ -369,16 +372,18 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
             numbers = range(natom)
         temp = list(zip(dlist_unsort, xcart, typat, numbers, zlist) )
         
+        temp.sort(key = itemgetter(0))
+
+
         if only_elements:
-            # print temp[4]
-            temp = [t for t in temp if t[4] in only_elements]
+
+            temp = temp[0:1]+[t for t in temp if t[4] in only_elements] #including central; included two times if only elements are and central are the same
 
         if only_numbers:
-            temp = [t for t in temp if t[3] in only_numbers]
+            temp = temp[0:1]+[t for t in temp if t[3] in only_numbers]
 
 
 
-        temp.sort(key = itemgetter(0))
         temp2 = list( zip(*temp) )
         dlist       = temp2[0][:n_neighbours+1]
         xcart_local = temp2[1][:n_neighbours+1]
@@ -710,11 +715,11 @@ def create_antisite_defect(st, cation_positions = None):
 
     
     #3. Swap atoms
-    write_xyz(st, file_name = st.name+'_antisite_start')
+    st.write_xyz(file_name = st.name+'_antisite_start')
     st = st.mov_atoms(i_alk, x_tr)
     st = st.mov_atoms(i_tr,  x_alk)
 
-    write_xyz(st, file_name = st.name+'_antisite_final')
+    st.write_xyz(file_name = st.name+'_antisite_final')
 
     printlog('Atom ',i_alk+1,'and', i_tr+1,'were swapped')
     printlog('The distance between them is ', sur[3][0])
