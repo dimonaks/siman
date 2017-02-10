@@ -81,6 +81,8 @@ class CalcDict(dict):
                 # print(val)
                 except:
                     val = None
+        
+
         return val
 
     def __contains__(self, key):
