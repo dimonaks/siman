@@ -3435,7 +3435,8 @@ class CalculationVasp(Calculation):
                     plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
                     plt.show()
                     plt.clf()
-
+            if 'chg' in show:
+                self.tot_chg_by_atoms = tot_chg_by_atoms[-1] #save for last step only
 
 
 
@@ -3473,6 +3474,7 @@ class CalculationVasp(Calculation):
                 print_and_log('Spin 2:',end = '\n', imp = 'Y'  )
                 print_and_log(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql'), imp = 'Y'  )
             self.occ_matrices = occ_matrices
+            
 
 
             if 'freq' in show:
