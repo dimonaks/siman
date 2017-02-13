@@ -511,13 +511,16 @@ def log_history(hstring):
 
 
 
-def latex_table(table, caption, label, header = None, fullpage = '', filename = None, writetype = 'w', header0 = None, size = None ):
+def latex_table(table, caption, label, header = None, fullpage = '', filename = None, writetype = 'w', header0 = None, size = None,
+    replace = None ):
     """
     If header is not provided, table[0] is used as a header
 
     header0 - additional header0 befor main header for complex tables
     
     path_to_paper should be provided
+
+    replace - list of tuples for replacements
 
     """
     def myprint(string):
@@ -529,7 +532,8 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
 
     if filename:
-        path = path_to_paper+'/tab/'
+        # path = path_to_paper+'/tab/'
+        path = ''
         f = open(path+filename, writetype)
         print_and_log("Saving table to "+path+filename+'\n')
 
@@ -562,7 +566,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         myprint(header+'\\\\')
         tabbeg = 0
     else:
-        myprint(table[0]+'\\\\')
+        myprint(table[0]+' \\\\')
         tabbeg = 1
 
 
@@ -573,11 +577,24 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
             r = r.replace('-','--')
         else:
             r = r.replace(' -','--') #to save beautiful columns 
+        r+=' '
+        if '-- ' in r:
+            r = r.replace('-- ',' - ')
+        
+        for rep in replace:
+            # if rep[0] in r:
+
+            r = r.replace(*rep)
+
+
 
         if 'hline' in r: 
             myprint(r)
         else:
             myprint(r + '\\\\')
+
+
+
 
     myprint('\\hline')
     myprint('\\end{tabular}')

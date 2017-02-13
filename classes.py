@@ -36,7 +36,7 @@ from functions import (read_vectors, read_list, words,
     get_from_server, push_to_server, run_on_server, list2string, smoother)
 from inout import write_xyz, write_lammps
 from small_functions import makedir
-from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding
+from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
 
 
 
@@ -3337,28 +3337,38 @@ class CalculationVasp(Calculation):
             
             if 'sur' in show:
                 self.sumAO = {}
+                self.devAO = {}
                 for el in 'Li', 'Na', 'Fe', 'O':
                     if el in self.end.get_elements():
-                        xc = self.end.get_element_xcart(el)
-                        # sumAO = local_surrounding(xc, self.end, 6, periodic = True, only_elements = [8, 9], control = 'av_dev')[0]
-                        if el == 'O':
-                            neib = 6
-                        else:
-                            neib = 6
-                        sumAO = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [8, 9], control = 'av')#[0]
-                        print(el+'-O',sumAO )
-                        self.sumAO[el+'-O'] = sumAO
-                        if self.id[2] in [1,12]:
-                            self.end.write_xyz(show_around_x = xc, nnumber = neib, filename = self.end.name+'_'+el+'-OF'+str(neib), analysis = 'imp_surrounding', only_elements = [8, 9])
+                        pos  = determine_symmetry_positions(self.end, el)
+                        # print(pos)
+                        # sys.exit()
+                        # xc = self.end.xcart[pos[0][0]]
+                        for ps in pos:
+                            print('position', ps[0])
+                            xc = self.end.xcart[ps[0]]
 
-                        if el in ['Li', 'Na']:
-                            neib = 2
-                            sumAO = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [26,], control = 'av')#[0]
+                            if el == 'O':
+                                neib = 6
+                            else:
+                                neib = 6
+                            sumAO = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [8, 9], control = 'av')#[0]
+                            self.devAO[el+'-O'] = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [8, 9], control = 'av_dev')[0]
+                            print('d_av '+el+'-O:',sumAO )
+                            print('dev_av '+el+'-O:',self.devAO[el+'-O'] )
+
+                            self.sumAO[el+'-O'] = sumAO
                             if self.id[2] in [1,12]:
-                                self.end.write_xyz(show_around_x = xc, nnumber = neib, filename = self.end.name+'_'+el+'-Fe'+str(neib), analysis = 'imp_surrounding', only_elements = [26])
-                            
-                            print(el+'-Fe',sumAO )
-                            self.sumAO[el+'-Fe'] = sumAO
+                                self.end.write_xyz(show_around_x = xc, nnumber = neib, filename = self.end.name+'_'+el+'-OF'+str(neib), analysis = 'imp_surrounding', only_elements = [8, 9])
+
+                            if el in ['Li', 'Na']:
+                                neib = 2
+                                sumAO = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [26,], control = 'av')#[0]
+                                if self.id[2] in [1,12]:
+                                    self.end.write_xyz(show_around_x = xc, nnumber = neib, filename = self.end.name+'_'+el+'-Fe'+str(neib), analysis = 'imp_surrounding', only_elements = [26])
+                                
+                                print(el+'-Fe',sumAO )
+                                self.sumAO[el+'-Fe'] = sumAO
 
 
             if 'en' in show:
