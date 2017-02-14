@@ -3619,7 +3619,7 @@ class CalculationVasp(Calculation):
 
         if (not os.path.exists(path_to_file)) or update: 
 
-            get_from_server(self.project_path_cluster+'/'+path_to_file, os.path.dirname(path_to_file), self.cluster_address)
+            get_from_server(self.project_path_cluster+'/'+path_to_file, to = os.path.dirname(path_to_file), addr = self.cluster_address)
 
 
             # printlog( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_file+" "+self.dir)+'\n' ) #CHG

@@ -141,6 +141,7 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
                 out = 'file not found'
 
         else:
+            # print(addr,file,to_file)
             out = runBash('rsync -uaz  '+addr+':'+file+ ' '+to_file)
 
         if out:
