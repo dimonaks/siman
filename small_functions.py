@@ -1,11 +1,17 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
-import os
+import os, math
+import numpy as np
 from six import string_types
 from collections import Iterable
 import shutil, gzip
 
 from header import printlog
+
+
+def angle(v1, v2):
+  return math.acos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))) / math.pi * 180
+
 
 
 def red_prec(value, precision = 100.):

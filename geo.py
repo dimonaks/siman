@@ -68,7 +68,9 @@ def scale_cell_by_matrix(st, scale_region = (-4,4), n_scale_images = 7, parent_c
         # st_s.rprimd = np.dot(s/100*np.asarray(mul_matrix)+np.identity(3), st_s.rprimd)
         print(mul_matrix_f)
         print(np.asarray(st_s.rprimd))
+        alpha, beta, gamma = st_s.get_angles()
 
+        print(alpha, beta, gamma)    
 
 
         st_s.xred2xcart()

@@ -2,6 +2,7 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import, print_function
 import itertools, os, copy, math, glob, re, shutil, sys, pickle
+from small_functions import angle
 
 #additional packages
 try:
@@ -124,6 +125,12 @@ class Structure():
         p = self.convert2pymatgen()
         return p.get_space_group_info(symprec)
 
+    def get_angles(self):
+        R = self.rprimd
+        alpha = angle(R[1], R[2])
+        beta  = angle(R[0], R[2])
+        gamma = angle(R[0], R[1])
+        return alpha, beta, gamma
 
     # def __str__(self):
     #     # print(self.convert2pymatgen())
