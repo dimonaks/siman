@@ -2654,7 +2654,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
             print_and_log ("name %s_template          acell  %.5f  %.5f  %.5f # fit parameters are &%.5f &%.5f &%i &%i"  % (fit_hex(0.00002,0.00003,4000,6000, it, inputset, verlist, calc) )  )    
 
-        elif analys_type == 'fit_a':
+        elif 'fit_a' in analys_type:
             """Fit equation of state for bulk systems.
 
             The following equation is used::
@@ -2704,15 +2704,23 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
             etotlist  = []
             magn1 = []
             magn2 = []
+            alphas= []
             for id in conv[n]:
                 cl = calc[id]
+                st = cl.end
                 alist.append(cl.end.rprimd[0][0])
                 etotlist.append(cl.energy_sigma0)
                 vlist.append(cl.end.vol)
                 magn1.append(cl.magn1)
                 magn2.append(cl.magn2)
+                alpha, beta, gamma = st.get_angles()
+                alphas.append(alpha)
+
             if ase_flag:
-                eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
+                if 'angle' in analys_type:
+                    eos = EquationOfState(alphas, etotlist, eos = 'sjeos')
+                else:
+                    eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
                 # import inspect
 
                 # print (inspect.getfile(EquationOfState))
@@ -2747,6 +2755,7 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
 
 
 
+        # elif analys_type == 'fit_angle':
 
 
 
