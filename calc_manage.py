@@ -36,7 +36,7 @@ from functions import (list2string, gb_energy_volume, element_name_inv
      image_distance, file_exists_on_server, run_on_server, push_to_server)
 from inout import write_xyz
 
-from picture_functions import plot_mep
+from picture_functions import plot_mep, fit_and_plot
 from analysis import calc_redox
 from geo import scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 
@@ -2715,6 +2715,10 @@ def res_loop(it, setlist, verlist,  calc = None, conv = {}, varset = {}, analys_
                 magn2.append(cl.magn2)
                 alpha, beta, gamma = st.get_angles()
                 alphas.append(alpha)
+                print('alpha, energy: {:4.2f}, {:6.3f}'.format(alpha, cl.energy_sigma0))
+            
+            fit_and_plot(U1 = (alphas, etotlist, 'o-r'), 
+                image_name = 'figs/angle', ylabel = 'Total energy, eV', xlabel = 'Angle, deg', xlim = (89, 92.6))
 
             if ase_flag:
                 if 'angle' in analys_type:
