@@ -2,7 +2,7 @@ from __future__ import division, unicode_literals, absolute_import
 from header import printlog
 from functions import element_name_inv
 
-def calc_redox(cl1, cl2, energy_ref = None):
+def calc_redox(cl1, cl2, energy_ref = None, value = 0):
     """
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
@@ -78,7 +78,7 @@ def calc_redox(cl1, cl2, energy_ref = None):
     vol_red = dV / (cl1.end.vol/n1) * 100 # %
 
     # final_outstring = ("{:} | {:.2f} eV \n1".format(cl1.id[0]+'.'+cl1.id[1], redox  ))
-    final_outstring = ("{:30} | {:30} | {:10.2f} V | {:10.1f} %".format(cl1.name,cl2.name, redox, vol_red  ))
+    final_outstring = ("{:45} | {:30} | {:10.2f} V | {:10.1f} % | {:6.2f}| {:6.2f}| {:6.0f}| {:6.0f} | {:3.0f}".format(cl1.name,cl2.name, redox, vol_red, cl1.energy_sigma0, cl2.energy_sigma0, cl1.maxforce, cl2.maxforce, value ))
     
     printlog( final_outstring, end = '\n', imp = 'y' )
     try:

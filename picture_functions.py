@@ -107,7 +107,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
 
 def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name = None, show = None,
     xlim = None, ylim = None, title = None, figsize = None,
-    xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
+    xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  
+    linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
+    ver_lines = None,
     **data):
     """Should be used in two below sections!
     Creates one plot with two dependecies and fit them;
@@ -118,8 +120,9 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
     fig_format - format of saved file.
     dpi    - resolution of saved file
-
+    ver_lines - list of vertical lines (x, type)
     data - each entry should be (X, Y, 'r-')
+
     """
 
     # print data
@@ -158,7 +161,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
 
 
-        if hor: plt.axhline(color = 'k') #horizontal line
+        if hor: 
+            plt.axhline(color = 'k') #horizontal line
 
         plt.axvline(color='k')
         if xlim: 
@@ -185,6 +189,13 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
                 # y_min  = fit_func2(x_min)
                 slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(data[key][0], data[key][1])
                 # print 'R^2 = ', r_value**2, key
+
+        if ver_lines:
+            for line in ver_lines:
+                plt.axvline(**line)
+
+
+
 
 
         if xlog: plt.xscale('log')

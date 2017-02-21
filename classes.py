@@ -3363,6 +3363,11 @@ class CalculationVasp(Calculation):
                             self.devAO[el+'-O'] = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [8, 9], control = 'av_dev')[0]
                             print('d_av '+el+'-O:',sumAO )
                             print('dev_av '+el+'-O:',self.devAO[el+'-O'] )
+                            AO = local_surrounding(xc, self.end, neib, periodic = True, only_elements = [8, 9], control = 'mavm')
+                            print('d_min, d_avex, d_max: {:4.2f}, {:4.2f}, {:4.2f}'.format(*AO))
+
+
+
 
                             self.sumAO[el+'-O'] = sumAO
                             if self.id[2] in [1,12]:
@@ -3381,7 +3386,7 @@ class CalculationVasp(Calculation):
             if 'en' in show:
                     maxf = [m[1] for m in maxforce ]
                     # print(maxf)
-                    plt.plot(maxf, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , )
+                    plt.plot(maxf, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
                     # plt.xlabel('MD step')
                     # plt.ylabel('Energy per cell (eV')
                     plt.xlabel('Max. force on atom (meV/$\AA$)')

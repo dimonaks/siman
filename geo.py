@@ -358,6 +358,11 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         n_neighbours = float(n_neighbours)
         dav = sum(dlistnn)/n_neighbours
         output = round(dav, 2)
+
+    elif control == 'mavm': #min, av, max
+        dsort = sorted(dlistnn)
+        output = (dsort[0], sum(dsort[1:-1])/(n_neighbours-2), dsort[-1] ) #min, av excluding min and max, max
+
        
     elif control == 'av_dev':
         n_neighbours = float(n_neighbours)
