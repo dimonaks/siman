@@ -332,6 +332,14 @@ class Structure():
 
         return st
 
+    def swap_atoms(self, iat1, iat2):
+        st = copy.deepcopy(self)
+        x1 = st.xcart[iat1]
+        st.xcart[iat1] = st.xcart[iat2]
+        st.xcart[iat2] = x1
+        st.xcart2xred()
+        return st
+
 
     def leave_only(self, atom_type = None):
         #Remove all atoms except *atom_type*(str, mendeleev element name)
@@ -3640,30 +3648,65 @@ class CalculationVasp(Calculation):
         return path_to_file
 
 
+    def bader(self):
+        chgcar = self.path['chgcar']
+        acf = self.dir+'/ACF.dat'
+        printlog('Bader should be installed', imp = 'Y')
+        if not os.path.isfile(acf):
+            cwd = os.getcwd()
+            os.chdir(self.dir)
+            print(runBash('bader ' + os.path.basename(chgcar) ) )
+            os.chdir(cwd)
+
+        else:
+            charges = []
+            with open(acf, 'r') as f:
+                for line in f:
+                    try:
+                        charges.append(round(float(line.split()[4]), 3))
+                    except:
+                        pass
+            print(dict(zip(charges, self.end.get_elements())))
+
+
+
     def bader_analysis(self):
         #Make bader on server
         #assumes that bader is installed
+
         v = str(self.version)
-        path = header.project_path_cluster+self.dir
+        path = self.project_path_cluster+self.dir
+        
+        # print()
         CHG     = path+v+".CHG"
         AECCAR0 = path+v+".AECCAR0"
         AECCAR2 = path+v+".AECCAR2"
         CHGCAR_sum = path+v+".CHGCAR_sum"
         baderlog =  path+v+".bader.log"
+
         command1 = "cd "+path+"; ~/utils/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
         "mv CHGCAR_sum "+CHGCAR_sum+";"
+
         command2 = \
         "cd "+path+"; ~/utils/bader "+CHG+" -ref "+CHGCAR_sum+" > "+\
         v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat;"
         # print "ssh "+cluster_address+" '"+command1+"'"
+
+
+
         
         if runBash("ssh "+self.cluster_address+" '[ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ;' """): #true if file not exists
             print_and_log(  CHGCAR_sum, "not exist. try to calculate it ", imp = 'Y')
             printlog( runBash("ssh "+self.cluster_address+" '"+command1+"'")+'\n' ) 
+
         
         if runBash("ssh "+self.cluster_address+" '[ -e "+   baderlog       +""" ] || echo "NO"     ;' """): #true if file not exists
             print_and_log(  baderlog, "not exist. try to calculate Bader ", imp = 'Y')
             printlog( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n' ) 
+        
+
+
+
         ACF = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
         # print ACF
         ACF = ACF.splitlines()[2:] #list of lines with charges for each atom
@@ -3691,3 +3734,17 @@ class CalculationVasp(Calculation):
         print_and_log( "Sum of mat and imp charges:", sum(mat_partial_chg)+imp_partial_chg, imp = 'Y' )
 
         return path_to_chg
+
+
+
+    def run(self, ise, run = None):
+        """
+        Wrapper for add_loop (in development)
+        By default inherit self.end
+        ise - new ise
+
+        TODO:
+        if ise is not provided continue in the same folder under the same name
+        """
+        from calc_manage import add_loop
+        add_loop(*self.id, ise_new = ise, inherit_option = 'full', override = 1, run  = run)

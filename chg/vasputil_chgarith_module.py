@@ -13,7 +13,7 @@ import sys
 sys.path.append('/home/aksenov/Simulation_wrapper/ase')
 from ase.calculators.vasp import VaspChargeDensity
 import ase.calculators.vasp
-print(ase.calculators.vasp.__file__) 
+# print(ase.calculators.vasp.__file__) 
 
 
 

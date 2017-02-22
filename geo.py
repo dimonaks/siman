@@ -2,7 +2,7 @@
 import sys, copy, itertools, math
 from operator import itemgetter
 
-
+from tabulate import tabulate
 import numpy as np
 
 import header
@@ -11,6 +11,33 @@ from small_functions import red_prec
 # sys.path.append('/home/aksenov/Simulation_wrapper/') 
 # sys.path.append('/home/aksenov/Simulation_wrapper/savelyev') 
 
+
+
+def image_distance(x1, x2, r, order = 1, sort_flag = True):
+    """
+    Calculate smallest distance and the next smallest distance between two atoms 
+    correctly treating periodic boundary conditions and oblique cells.
+    x1, x2 - vector[3] xcart coordinates of two atoms
+    r - rprimd of cell
+    order - the order of periodic images which are accounted in the calcualtion of distances between atoms.
+    for cubic cells, order = 1 always provide correct result.
+    For highly oblique cell you should test and find the needed value of 'order' after which results are the same.
+    sort_flag (bool) - use False if you do not need sorting of distances 
+    return d1, d2 - the smallest and next smallest distances between atoms
+
+    """
+    d = [] # list of distances between 1st atom and images of 2nd atom
+    for i in range(-order, order+1):
+        for j in range(-order, order+1):
+            for k in range(-order, order+1):
+                x2i = x2 + (r[0] * i + r[1] * j + r[2] * k) #determine coordinates of image of atom 2 in corresponding image cells
+                d.append(   np.linalg.norm(x1 - x2i)   )
+    
+    if sort_flag:
+        d.sort()
+    #print d
+    # assert d[0] == min(d)
+    return d[0], d[1] #, math.sqrt(dxl[0]**2 + dxl[1]**2 + dxl[2]**2)
 
 
 def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_calc_name = None, ):
@@ -800,6 +827,73 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
     st.magmom = [None]
 
     return st
+
+
+
+def create_antisite_defect3(st, el1, el2):
+    """
+    Looks for all unique antisites for el1 and el2
+    
+    Todo
+    #check that distances through  PBC are two small
+    """
+    tol = 0.1 #tolerance for distinguishing antisites within one group
+    max_sep = 4 # maximum separation of antisite
+
+    r = st.rprimd
+    pos1 = determine_symmetry_positions(st, el1)
+    pos2 = determine_symmetry_positions(st, el2)
+
+    anti = {}
+
+    for eqv_atoms1 in pos1:
+        for eqv_atoms2 in pos2:
+            uniq1 = eqv_atoms1[0]
+            uniq2 = eqv_atoms2[0]
+            lab = (uniq1, uniq2)
+            if lab not in anti:
+                anti[lab] = []
+
+            for at1 in eqv_atoms1:
+                for at2 in eqv_atoms2:
+                    x1 = st.xcart[at1]
+                    x2 = st.xcart[at2]
+                    d = image_distance(x1, x2, r)[0]
+                    
+                    if d > max_sep:
+                        continue # skip larger than asked
+
+                    for tup in anti[lab]:
+                        if abs(d-tup[2]) < tol:  #antisite already included 
+                            break
+                    else:
+                        anti[lab].append([at1, at2, round(d,3)])
+                        # print(lab, at1, at2, d)
+    
+    structures = []
+    table = []
+    printlog('List of antisites:', imp  = 'y')
+    for i, k in enumerate(anti):
+        anti[k].sort(key=itemgetter(2))
+        # print([k]+anti[k])
+        for a in anti[k]:
+            table.append([i, k]+[a[0]+1,a[1]+1,a[2]])
+            # st_as = copy.deepcopy(st)
+            st_as = st.swap_atoms(a[0], a[1])
+            suf = 'as'+str(a[0])+'-'+str(a[1])
+            # st_as.name+='_as_'+str(k)+'_with_atoms_'+str(a[0]+1)+'_and_'+str(a[1]+1)+'_swapped'
+            st_as.name+='_'+suf
+            structures.append(st_as)
+            st_as.write_xyz()
+    st.write_xyz()
+
+
+    # print(anti)
+
+    printlog( tabulate(table, headers = ['No.', 'Antisite type', 'at1', 'at2', 'Separation, A'], tablefmt='psql'), imp = 'Y' )
+
+
+
 
 
 
