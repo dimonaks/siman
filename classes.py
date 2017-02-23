@@ -34,7 +34,7 @@ from header import printlog, print_and_log, runBash, plt
 from small_functions import cat_files, grep_file, red_prec
 from functions import (read_vectors, read_list, words,
      element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server, run_on_server, list2string, smoother)
+    get_from_server, push_to_server, run_on_server, list2string, smoother, file_exists_on_server)
 from inout import write_xyz, write_lammps
 from small_functions import makedir
 from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
@@ -2601,15 +2601,10 @@ class CalculationVasp(Calculation):
 
 
 
-
-
-
         if not os.path.exists(path_to_outcar):
             load = load+'o'
 
 
- 
-        # self.natom = self.init.natom
 
         """Copy from server """
 
@@ -2621,15 +2616,12 @@ class CalculationVasp(Calculation):
                 self.cluster_address, join(self.project_path_cluster, path_to_outcar) )
             # runBash(command_reduce)
 
-
             files = [ self.project_path_cluster+'/'+path_to_outcar, self.project_path_cluster+'/'+path_to_contcar ]
 
             get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
 
 
-        # sys.exit()
 
-        # print(load)
         if 'x' in load:
 
             get_from_server(files = join(self.project_path_cluster, path_to_xml), to = os.path.dirname(path_to_outcar),  
@@ -2637,8 +2629,6 @@ class CalculationVasp(Calculation):
 
 
 
-
-        # print(path_to_contcar)
 
         if os.path.exists(path_to_contcar):
             contcar_exist   = True
@@ -2655,27 +2645,14 @@ class CalculationVasp(Calculation):
 
         """Start reading """
         if outcar_exist:
-            # out = runBash("grep 'General timing' "+path_to_outcar)
             out = grep_file('General timing', path_to_outcar, reverse = True)
-            # print (type(out), out)
-            # print('G' in out)
+            if not out:
+                self.state = '5. Broken outcar'
+
         else:
-            out = '2. no OUTCAR'
-            self.state = out
+            self.state = '2. no OUTCAR'
         
-
-        # print(out)
-        if 'G' in out:
-            self.state = "4. Calculation completed."
-            # print(self.state)
-        else: 
-            if '2' in self.state:
-                ''
-                # self.state = '2. '+self.state
-            else:
-                self.state = out
-
-            outst = self.state
+        outst = self.state
 
 
 
@@ -3584,11 +3561,11 @@ class CalculationVasp(Calculation):
 
 
         else:
-            # print_and_log("Still no OUTCAR for mystery reason for", self.id)
-            ''
-            # print_and_log('OUTCAR not finished for', self.id)
-            # raise RuntimeError
-        # print(self.state)
+            # if not hasattr(cl,'energy_sigma0'):
+            cl = self
+            os.rename(cl.path['output'], outcar+"_unfinished") 
+            printlog(cl.id, 'is unfinished, continue:', cl.dir, imp = 'y')
+                # continue
 
 
         return outst
@@ -3736,15 +3713,68 @@ class CalculationVasp(Calculation):
         return path_to_chg
 
 
+    def check_job_state(self):
+        #check if job in queue or Running
 
-    def run(self, ise, run = None):
+        
+        cl = self
+        # print(cl.schedule_system)
+
+        if 'SLURM' in cl.schedule_system:
+            job_in_queue = cl.id[0]+'.'+cl.id[1] in runBash('ssh '+cl.cluster_address+""" squeue -o '%o' """)
+
+        else:
+            print_and_log('Attention! I do not know how to check job status with chosen SCHEDULE_SYSTEM; Please teach me here! ', imp = 'y')
+            job_in_queue = ''
+
+
+        if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster_address) and job_in_queue: 
+            
+            cl.state = '3. Running'
+
+        elif job_in_queue:
+            
+            cl.state = '3. In queue'
+   
+        else:
+            cl.state = '2. Unknown'
+
+        return cl.state 
+
+
+
+
+    def res(self,):
+        from calc_manage import res_loop
+        res_loop(*self.id)
+
+    def run(self, ise, run = None, iopt = None):
         """
         Wrapper for add_loop (in development)
         By default inherit self.end
         ise - new ise
 
+        iopt - inherit_option
+
         TODO:
         if ise is not provided continue in the same folder under the same name
         """
+
         from calc_manage import add_loop
-        add_loop(*self.id, ise_new = ise, inherit_option = 'full', override = 1, run  = run)
+
+        if not iopt:
+            iopt = 'full'
+
+
+
+        if self.id[1] != ise:
+            try:
+                cl_son = header.calc[self.id_son]
+                cl_son.res()
+
+            except:
+                it_new = add_loop(*self.id, ise_new = ise, inherit_option = iopt, override = 1, run  = run)
+                self.id_son = (it_new, ise, self.id[2])
+
+
+        return

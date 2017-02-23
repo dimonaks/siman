@@ -830,15 +830,15 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
 
 
 
-def create_antisite_defect3(st, el1, el2):
+def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4):
     """
     Looks for all unique antisites for el1 and el2
     
     Todo
     #check that distances through  PBC are two small
     """
-    tol = 0.1 #tolerance for distinguishing antisites within one group
-    max_sep = 4 # maximum separation of antisite
+    # tol = 0.1 #tolerance for distinguishing antisites within one group
+    # max_sep = 4 # maximum separation of antisite
 
     r = st.rprimd
     pos1 = determine_symmetry_positions(st, el1)
@@ -883,6 +883,7 @@ def create_antisite_defect3(st, el1, el2):
             suf = 'as'+str(a[0])+'-'+str(a[1])
             # st_as.name+='_as_'+str(k)+'_with_atoms_'+str(a[0]+1)+'_and_'+str(a[1]+1)+'_swapped'
             st_as.name+='_'+suf
+            st_as.magmom = None
             structures.append(st_as)
             st_as.write_xyz()
     st.write_xyz()
@@ -893,7 +894,7 @@ def create_antisite_defect3(st, el1, el2):
     printlog( tabulate(table, headers = ['No.', 'Antisite type', 'at1', 'at2', 'Separation, A'], tablefmt='psql'), imp = 'Y' )
 
 
-
+    return structures
 
 
 
