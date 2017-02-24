@@ -76,6 +76,7 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
 
     """----Run C++ function"""
     print_and_log("Starting C++ function lib.findpores()...\n")
+    # print(r_matrix, r_impurity, step_dec, fine, prec)
     lib.findpores ( check_pore_vol, \
                     max_npores, \
                     byref(ntot),   l_pxred1, l_pxred2, l_pxred3, l_npores, \

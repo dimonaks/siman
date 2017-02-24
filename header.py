@@ -104,6 +104,8 @@ copy_to_cluster_flag = True
 close_run = False # alows to control close run file automatically after each add_loop
 first_run = True  # needed to write header of run script
 ssh_object = None # paramiko ssh_object
+show = None
+
 
 calc = CalcDict()
 conv = {};

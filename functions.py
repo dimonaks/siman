@@ -261,7 +261,7 @@ def element_name_inv(el):
 
 def return_atoms_to_cell(st):
 
-    st = st.return_atoms_to_cell(st)
+    st = st.return_atoms_to_cell()
     return st
 
 

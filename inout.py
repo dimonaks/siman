@@ -5,7 +5,7 @@ import header
 from header import printlog, runBash
 from functions import element_name_inv
 from small_functions import makedir, is_list_like
-from geo import local_surrounding
+from geo import local_surrounding, replic
 
 
 def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = False, orientation = None,

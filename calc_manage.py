@@ -580,7 +580,7 @@ def inherit_ngkpt(it_to, it_from, inputset):
     return
 
 
-def choose_cluster(cluster_name, cluster_home):
+def choose_cluster(cluster_name, cluster_home, corenum):
     """
     *cluster_name* should be in header.project_conf.CLUSTERS dict
     """
@@ -619,8 +619,14 @@ def choose_cluster(cluster_name, cluster_home):
     header.CLUSTER_PYTHONPATH    = clust['pythonpath']
     # header.SCHEDULE_SYSTEM    = clust['schedule']
     header.schedule_system    = clust['schedule']
-    header.CORENUM    = clust['corenum']
-    header.corenum    = clust['corenum']
+    # header.CORENUM    = clust['corenum']
+    
+    if corenum:
+        header.corenum    = corenum
+
+    else:
+        header.corenum    = clust['corenum']
+
     header.project_path_cluster = header.cluster_home +'/'+ header.PATH2PROJECT
 
     try:
@@ -742,10 +748,21 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     Now number of images is taken from self.set.vasp_params['IMAGES']; 
     In the case of generalization to other codes, set.nimages should be added and used
 
+    Make class for cluster to save all information about cluster in one object, 
+    like schedule_system, cluster address, corenum and so on 
+    
+    read structure in add_loop, to add calculation provied only structure, mat_proj_st_id pass in structure
+
+
     """
 
 
     def add_loop_inherit():
+        
+        nonlocal  it, setlist
+        struct_des = header.struct_des
+
+
         #inherit option
         inh_opt_ngkpt = ['full', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
         inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
@@ -772,46 +789,39 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 # print (it_new)
                 # sys.exit()
 
-
             elif inherit_option == 'make_vacancy':
                 it_new = it+'.vac'
 
             if it_suffix:
                 it_new = it+'.'+it_suffix
 
-            if it_folder:
-                section_folder = it_folder
-            else:
-                section_folder = struct_des[it].sfolder
+            if 'up' in up:
 
+                if it_folder:
+                    section_folder = it_folder
+                else:
+                    section_folder = struct_des[it].sfolder
 
+                for inputset in setlist:
+                    for v in verlist:
+                        id_base = (it,inputset,v)
 
-            for inputset in setlist:
+                        inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, confdic = confdic,
+                            it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, i_atom_to_remove = i_atom_to_remove,
+                            ortho = ortho, mul_matrix = mul_matrix, override =override)
+                
+                    if inherit_option in inh_opt_ngkpt:
+                        inherit_ngkpt(it_new, it, varset[inputset]) # 
 
-                for v in verlist:
-                    id_base = (it,inputset,v)
-                    # if id_base not in calc:
-                        # id_base = it
-
-                    # print(mul_
-
-                    inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, confdic = confdic,
-                        it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, i_atom_to_remove = i_atom_to_remove,
-                        ortho = ortho, mul_matrix = mul_matrix, override =override)
-            
-                if inherit_option in inh_opt_ngkpt:
-                    inherit_ngkpt(it_new, it, varset[inputset]) # 
 
 
             if ise_new:
-                if up != 'up3':
-                    print_and_log('Inherited calculation uses set', ise_new)
+                print_and_log('Inherited calculation uses set', ise_new)
 
                 setlist = [ise_new,]
 
             else:
-                if up != 'up3':
-                    print_and_log('Inherited calculation uses the same sets', setlist)
+                print_and_log('Inherited calculation uses the same sets', setlist)
 
 
             it = it_new
@@ -820,9 +830,14 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
     def add_loop_scale():
-        u_scale_flag = False
 
-        if calc_method and 'scale' in calc_method or 'uniform_scale' in calc_method:
+        struct_des = header.struct_des
+        nonlocal it, verlist, setlist, input_st
+        u_scale_flag = False
+        fitted_v100_id = None
+
+
+        if calc_method and ('scale' in calc_method or 'uniform_scale' in calc_method):
             # print('sdfsdf')
             if 'uniform_scale' in calc_method:
                 u_scale_flag = True
@@ -942,16 +957,18 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             if ise_new:
                 setlist = [ise_new]
             # sys.exit()
-        return
+        return u_scale_flag, fitted_v100_id
 
 
 
     def add_loop_prepare():
 
-        header.close_run = True
+        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method
 
 
-        choose_cluster(cluster, cluster_home)
+
+
+        choose_cluster(cluster, cluster_home, corenum)
         
         if run:
             prepare_run()
@@ -959,17 +976,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if header.first_run and header.copy_to_cluster_flag:
             prepare_run()
             header.first_run = False
-
-
-
-        schedule_system = header.schedule_system
-
-        if corenum:
-            ''
-        else:
-            corenum = header.corenum
-
-        struct_des = header.struct_des
 
 
         if not calc:
@@ -1014,6 +1020,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
     def add_loop_take_from_database():
+
+        nonlocal input_geo_format, it
+
         mat_proj_st_id = None
         if input_geo_format == 'mat_proj':
             print_and_log("Taking structure "+it+" from materialsproject.org ...", imp = 'Y')
@@ -1032,10 +1041,13 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             get_structure_from_cee_database(it, it_folder, verlist[0], cee_file = cee_file) #will transform it to vasp
             input_geo_format = 'vasp'
-        return
+        return mat_proj_st_id
 
 
     def add_loop_neb():
+        
+        nonlocal n_neb_images
+        nebsets = []
         neb_flag = calc_method and not set(['neb', 'only_neb']).isdisjoint(calc_method)
         if neb_flag: #put nimage values for set_sequence
             curset = varset[ setlist[0] ]
@@ -1047,7 +1059,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 raise RuntimeError
 
 
-            if corenum % n_neb_images > 0:
+            if header.corenum % n_neb_images > 0:
                 print_and_log('Error! Number of cores should be dividable by number of IMAGES')
                 raise RuntimeError
 
@@ -1063,9 +1075,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             #     print s.vasp_params['IMAGES']
             # sys.exit()
             print_and_log('Attention, I update number of images in the set to', n_neb_images, 'for this calculation; ', imp = 'y')
-        return
+        return neb_flag, nebsets
 
-    def add_loop_neb2():
+    def add_loop_neb2(neb_flag, nebsets):
         if neb_flag:
 
             if len(setlist) > 1:
@@ -1129,6 +1141,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
     def add_loop_prepare2():
+
+        nonlocal it
+        struct_des = header.struct_des
+
         if it_suffix:
             it = it+'.'+it_suffix
 
@@ -1151,10 +1167,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 printlog('add_loop(), you provided *ngkpt*, I add', ngkpt,'to description of',it,'for kspacing',kspacing, imp = 'Y')
                 struct_des[it].ngkpt_dict_for_kspacings[kspacing] = ngkpt
 
-        fv = verlist[0]; #first version
-        lv = verlist[-1];#last version
-
-        output_files_names = []
 
 
     def add_loop_choose_input_folder():
@@ -1162,8 +1174,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if ifolder:
             input_folder = ifolder
         else:
-            input_folder = header.geo_folder+struct_des[it].sfolder+"/"+it
+            input_folder = header.geo_folder+header.struct_des[it].sfolder+"/"+it
 
+        return input_folder
 
     def add_loop_try_to_read():
         # check if it is possible to read as is; please improve that section
@@ -1176,63 +1189,68 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 # continue
 
 
-    def add_loop_finalize():
-            if u_scale_flag:
-                #modify output names for fitted version 100, since it is created manually above and 
-                #by add_calculation; for u-ramping names are different
-                cl = calc[it, setlist[0], 1]
+    def add_loop_finalize(u_scale_flag, fitted_v100_id):
+        if u_scale_flag:
+            #modify output names for fitted version 100, since it is created manually above and 
+            #by add_calculation; for u-ramping names are different
+            cl = calc[it, setlist[0], 1]
 
-                calc[fitted_v100_id].path["output"] = cl.path["output"].replace('/1.', '/100.')
-                
-                calc[fitted_v100_id].associated_outcars = [out.replace('1.', '100.', 1) for out in cl.associated_outcars]
-
-
-                # print (fitted_v100_id, calc[fitted_v100_id].associated_outcars)
-                # sys.exit()
-
-            if ise_new and hasattr(varset[ise_new], 'k_band_structure') and varset[ise_new].k_band_structure: #copy chgcar
-                printlog('Coping CHGCAR for band structure', imp = 'y')
-                copy_file = header.project_path_cluster + '/' + calc[id_base].path["charge"]+'.gz'
-                copy_to   = header.project_path_cluster + '/' + calc[id].dir + '/'
-                basename = os.path.basename(copy_file)
-                # print(copy_file, copy_to)
-                command = 'cp '+copy_file + ' ' + copy_to +'/CHGCAR.gz' '; gunzip -f '+ copy_to+ '/CHGCAR.gz'
-                printlog(command, imp = 'y')
-                run_on_server(command, addr = header.cluster_address)
-
-
-
-            hstring = "res_loop('{:s}', {:s}, {:s}, show = 'fo'  )     # {:s}, on {:s}  ".format(
-                it, str(setlist), str(verlist), comment, str(datetime.date.today() )  )
-
-            if hstring != header.history[-1]: 
-                header.history.append( hstring  )
-
-
-
-            if up not in ('up1','up2','up3'): 
-                print_and_log("Warning! You are in the test mode, to add please change up to up1; "); 
-                sys.exit()
+            calc[fitted_v100_id].path["output"] = cl.path["output"].replace('/1.', '/100.')
             
-            if run: #
-                complete_run() # for IPython notebook
-                printlog(run_on_server('./run', header.CLUSTER_ADDRESS), imp= 'Y' )
-                printlog('To read results use ', hstring, '; possible options for show: fit, fo, fop, en, mag, magp, smag, maga, occ, occ1, mep, mepp', imp = 'Y')
+            calc[fitted_v100_id].associated_outcars = [out.replace('1.', '100.', 1) for out in cl.associated_outcars]
 
 
+            # print (fitted_v100_id, calc[fitted_v100_id].associated_outcars)
+            # sys.exit()
+
+        if ise_new and hasattr(varset[ise_new], 'k_band_structure') and varset[ise_new].k_band_structure: #copy chgcar
+            printlog('Coping CHGCAR for band structure', imp = 'y')
+            copy_file = header.project_path_cluster + '/' + calc[id_base].path["charge"]+'.gz'
+            copy_to   = header.project_path_cluster + '/' + calc[id].dir + '/'
+            basename = os.path.basename(copy_file)
+            # print(copy_file, copy_to)
+            command = 'cp '+copy_file + ' ' + copy_to +'/CHGCAR.gz' '; gunzip -f '+ copy_to+ '/CHGCAR.gz'
+            printlog(command, imp = 'y')
+            run_on_server(command, addr = header.cluster_address)
+
+
+
+        hstring = "res_loop('{:s}', {:s}, {:s}, show = 'fo'  )     # {:s}, on {:s}  ".format(
+            it, str(setlist), str(verlist), comment, str(datetime.date.today() )  )
+
+        if hstring != header.history[-1]: 
+            header.history.append( hstring  )
+
+
+
+        if up not in ('up1','up2','up3'): 
+            print_and_log("Warning! You are in the test mode, to add please change up to up1; "); 
+            sys.exit()
+        
+        if run: #
+            complete_run() # for IPython notebook
+            printlog(run_on_server('./run', header.CLUSTER_ADDRESS), imp= 'Y' )
+            printlog('To read results use ', hstring, '; possible options for show: fit, fo, fop, en, mag, magp, smag, maga, occ, occ1, mep, mepp', imp = 'Y')
+
+        return u_scale_flag
 
     add_loop_prepare()
-    add_loop_take_from_database()
-    add_loop_neb()
-    add_loop_scale()
+    mat_proj_st_id = add_loop_take_from_database()
+    
+    neb_flag, nebsets     = add_loop_neb()
+
+    u_scale_flag, fitted_v100_id = add_loop_scale()
+    
     add_loop_inherit()
+    
     add_loop_prepare2()
 
 
     """Main Loop by setlist and verlist"""
-    for inputset in setlist:
+    output_files_names = []
+    input_folder = add_loop_choose_input_folder()
 
-        add_loop_choose_input_folder()
+    for inputset in setlist:
 
         prevcalcver = None # version of previous calculation in verlist
 
@@ -1240,23 +1258,23 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             id = (it,inputset,v)
             
            
-            blockdir = struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
+            blockdir = header.struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
 
-            add_calculation(it,inputset,v, fv, lv, input_folder, blockdir, calc, varset, up, 
+            add_calculation(it,inputset,v, verlist[0], verlist[-1], 
+                input_folder, blockdir, calc, varset, up, 
                 inherit_option, prevcalcver, coord, savefile, input_geo_format, input_geo_file, 
-                schedule_system = schedule_system, 
-                calc_method = calc_method, u_ramping_region = u_ramping_region,
+                calc_method = calc_method, 
+                u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                corenum = corenum,
                 run = run, input_st = input_st, )
             
             prevcalcver = v
 
 
  
-    add_loop_neb2()
-    add_loop_finalize()
+    add_loop_neb2(neb_flag, nebsets)
+    add_loop_finalize(u_scale_flag, fitted_v100_id)
     
 
     return it
@@ -1273,10 +1291,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
 def add_calculation(structure_name, inputset, version, first_version, last_version, input_folder, blockdir, 
-    calc, varset, update = "no",
+    calc, varset, up = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
-    input_geo_file = None, schedule_system = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None, output_files_names = None, corenum = 1, run = None, input_st = None):
+    input_geo_file = None, calc_method = None, u_ramping_region = None,
+    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
@@ -1288,6 +1306,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     if inherit_option == 'continue' the previous completed calculation is saved in cl.prev list
 
     input_st (Structure) - Structure object can be provided instead of input_folder and input_geo_file, has highest priority
+
+
+    TODO:
+    make init of seqset inside calculate_nbands(), actualize_set, check_kpoints 
 
     """
     struct_des = header.struct_des
@@ -1303,27 +1325,33 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     if id in calc: 
         cl = calc[id]
         status = "exist"
-        printlog(str(calc[id].name), " has been already created and has state: ", str(calc[id].state))
+        printlog('add_calculation():',str(calc[id].name), " has been already created and has state: ", str(calc[id].state))
 
-        if "3" in cl.state: 
+        if "3" in cl.state:# or '5' in cl.state: 
             status = "running"
-            printlog('add_calculation: ',id, 'is already running; return ', imp = 'y')
+            # printlog('add_calculation: ',id, 'is already running; return ', imp = 'y')
+            cl.res() 
             return
 
         if "4" in cl.state: 
             status = "compl"
-            if update != "up1":
-                cl.res() 
-                return #completed calculations updated only for "up1"
+            cl.res() 
 
+            if up != 'up1':
+                return
 
 
     else:
-        #update = "up"
         status = "new"
         print_and_log( "There is no calculation with id "+ str(id)+". I create new with set "+str(inputset)+"\n" )        
 
-    if "up" in update:
+
+
+
+    if "up" in up:
+
+        header.close_run = True
+
 
         if status in ["exist","compl"]: 
             print_and_log("You asked to update existing calculation with id "+ str(id)+"; results are overwritten" )         
@@ -1336,9 +1364,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         calc[id] = CalculationVasp( varset[id[1]] )
         cl = calc[id]
 
-        calc[id].id = id 
-        calc[id].name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
-        calc[id].dir = blockdir+'/'+ str(id[0]) +'.'+ str(id[1])+'/'
+        cl.id = id 
+        cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
+        cl.dir = blockdir+'/'+ str(id[0]) +'.'+ str(id[1])+'/'
         
 
         batch_script_filename = cl.dir +  cl.id[0]+'.'+cl.id[1]+'.run'        
@@ -1346,53 +1374,51 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         # all additional properties:
 
-        if hasattr(calc[id].set, 'savefile'):
-            for s in calc[id].set.savefile:
+        if hasattr(cl.set, 'savefile'):
+            for s in cl.set.savefile:
                 if s not in savefile:
                     savefile+=s
 
 
 
-        calc[id].calc_method = calc_method
+        cl.calc_method = calc_method
 
 
-        if hasattr(calc[id].set, 'u_ramping_nstep') and calc[id].set.u_ramping_nstep:
+        if hasattr(cl.set, 'u_ramping_nstep') and cl.set.u_ramping_nstep:
             print_and_log("Attention! U ramping method is detected from set\n\n")
-            calc[id].calc_method.append('u_ramping')
+            cl.calc_method.append('u_ramping')
 
-        if hasattr(calc[id].set, 'afm_ordering'):
+        if hasattr(cl.set, 'afm_ordering'):
             print_and_log("Attention! afm_ordering method is detected from set\n\n")
-            calc[id].calc_method.append('afm_ordering')
+            cl.calc_method.append('afm_ordering')
 
 
 
-
-        calc[id].cluster_address = header.cluster_address
-        calc[id].project_path_cluster = header.project_path_cluster
-        
-        calc[id].corenum = corenum #this is correct - corenum provided to functions
-        calc[id].schedule_system = schedule_system
+        #pass using object
+        cl.cluster_address = header.cluster_address
+        cl.project_path_cluster = header.project_path_cluster
+        cl.corenum = header.corenum 
+        cl.schedule_system = header.schedule_system
 
 
         if mat_proj_st_id:
-            calc[id].mat_proj_st_id = mat_proj_st_id
+            cl.mat_proj_st_id = mat_proj_st_id
 
 
 
 
         if inherit_option == 'continue' and cl_prev:
             if hasattr(cl_prev, 'prev') and cl_prev.prev:
-                calc[id].prev.extend(cl_prev.prev) #if 'continue' flag is used several times, we do not need cl.prev.prev.prev.... but cl.prev = [cl1, cl2 ..]
+                cl.prev.extend(cl_prev.prev) #if 'continue' flag is used several times, we do not need cl.prev.prev.prev.... but cl.prev = [cl1, cl2 ..]
             else:
-                calc[id].prev.append(cl_prev)
+                cl.prev.append(cl_prev)
 
 
-        if update in ['up1', 'up2', 'up3']:
-            if not os.path.exists(calc[id].dir):
-#                 printlog( runBash("mkdir -p "+calc[id].dir) )         #Create directory if it does not exist
-                os.makedirs(calc[id].dir)
-#                 printlog( runBash("ssh "+calc[id].cluster_address+" ' mkdir -p "+calc[id].dir+" ' ") )
-                run_on_server("mkdir -p "+calc[id].dir, addr = calc[id].cluster_address)
+        if up in ['up1', 'up2', 'up3']:
+            if not os.path.exists(cl.dir):
+                os.makedirs(cl.dir)
+                run_on_server("mkdir -p "+cl.dir, addr = cl.cluster_address)
+
             if id[2] == first_version:
                 write_batch_header(batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
@@ -1407,6 +1433,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         else:
             cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
                 input_geo_format = input_geo_format, input_geo_file = input_geo_file)
+
 
         if cl.path["input_geo"]:
 
@@ -1430,92 +1457,84 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         cl.des = ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
 
 
-        setlist = [cl.set]                                                                                                    
+        setseq = [cl.set]                                                                                                    
         if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
             for s in cl.set.set_sequence:
-                setlist.append(s)
+                setseq.append(s)
+    
+
+        cl.check_kpoints()    
         
-
-
-
-
-        calc[id].check_kpoints()    
-        
-
-
-
-
-
-
-
-        for curset in setlist:
-            if len(setlist) > 1:
+        for curset in setseq:
+            if len(setseq) > 1:
                 printlog('sequence set mode: set', curset.ise,':', end = '\n')
-            calc[id].actualize_set(curset)
+            cl.actualize_set(curset)
 
 
 
 
-        if update in ['up1', 'up2', 'up3']:
+        if up in ['up1', 'up2', 'up3']:
             
-            calc[id].write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
+            cl.write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
             
         
-            out_name = calc[id].write_sge_script(str(version)+".POSCAR", version, 
+            out_name = cl.write_sge_script(str(version)+".POSCAR", version, 
                 inherit_option, prevcalcver, savefile, 
-                schedule_system = schedule_system, mode = 'body',
+                schedule_system = cl.schedule_system, mode = 'body',
                 batch_script_filename = batch_script_filename)
             
                         
             if out_name:
-                calc[id].path["output"] = calc[id].dir+out_name
+                cl.path["output"] = cl.dir+out_name
             else:
                 name_mod = ''
-                calc[id].path["output"] = calc[id].dir+str(version)+name_mod+".OUTCAR" #set path to output
+                cl.path["output"] = cl.dir+str(version)+name_mod+".OUTCAR" #set path to output
             
             #paths to other files
-            calc[id].path["charge"] = calc[id].path["output"].replace('OUTCAR', 'CHGCAR')
+            cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
 
 
 
-            output_files_names.append( calc[id].path["output"] )
+            output_files_names.append( cl.path["output"] )
 
 
 
 
             if id == id_first:
-                path_to_potcar = calc[id].add_potcar()
-            for curset in setlist:
-                calc[id].calculate_nbands(curset, calc[id_first].path['potcar'])
+                path_to_potcar = cl.add_potcar()
+            
+            for curset in setseq: #for each set
+                cl.calculate_nbands(curset, calc[id_first].path['potcar'])
 
 
 
             if id[2] == last_version:
                 list_to_copy = []
                 
-                calc[id].write_sge_script(mode = 'footer', schedule_system = schedule_system, option = inherit_option, 
+                cl.write_sge_script(mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )
                 
-
                 list_to_copy.extend( cl.make_incar() )
                 
                 list_to_copy.extend( cl.make_kpoints_file() )
-                list_to_copy.append(batch_script_filename)
-                if header.copy_to_cluster_flag: 
-                    cl.copy_to_cluster(list_to_copy, update)
 
-                    batch_on_server = calc[id].project_path_cluster+'/'+batch_script_filename 
+                list_to_copy.append(batch_script_filename)
+                
+                if header.copy_to_cluster_flag: 
+                    cl.copy_to_cluster(list_to_copy, up)
+
+                    batch_on_server = cl.project_path_cluster+'/'+batch_script_filename 
 
                     printlog('Setting executable rights for batch script on server', batch_on_server)
                     run_on_server('chmod +x '+batch_on_server, header.cluster_address)
 
                     if header.siman_run or run: #for IPython should be only for run = 1 
-                        calc[id].make_run(schedule_system, batch_on_server)
+                        cl.make_run(cl.schedule_system, batch_on_server)
 
 
 
         if status == "compl": 
-            calc[id].state = '2. Can be completed but was reinitialized' #new behavior 30.08.2016
+            cl.state = '2. Can be completed but was reinitialized' #new behavior 30.08.2016
 
 
         print_and_log("\nCalculation "+str(id)+" successfully created\n\n", imp = 'Y')
@@ -2179,6 +2198,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
     conv = {}
     base = 'base'; 
+    n    = 'temp'
+    conv[n] = []
     conv[base] = []
     conv[it] = []
     result_list = []
@@ -2249,6 +2270,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if readfiles:
                 outst = calc[id].read_results(loadflag, analys_type, voronoi, show, 
                     choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
+                if '5' in cl.state:
+                    continue
+
             else:
                 outst = ' output was not read '
 
@@ -2275,7 +2299,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             except:
                 v = 0
             #print e
-            if e < emin: emin = e; id_min = id
+            if e < emin: 
+                emin = e; 
+                id_min = id
+            
             conv[n].append(id)
             # print base
             conv[base].append(b_id)
@@ -2669,7 +2696,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         elif analys_type == 'redox_pot':
             
             if '4' not in bcl.state:
-                print_and_log("Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
+                print_and_log("res_loop: Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
                 return {}, []
 
             results_dic = calc_redox(cl, bcl, energy_ref)

@@ -1389,8 +1389,10 @@ class CalculationVasp(Calculation):
                     # print line
                     self.init.zval.append(float(line.split()[5]))
             
-            try: curset.add_nbands
-            except AttributeError: curset.add_nbands = None
+            try: 
+                curset.add_nbands
+            except AttributeError: 
+                curset.add_nbands = None
 
             if curset.add_nbands != None:
                 tve =0
@@ -1399,6 +1401,7 @@ class CalculationVasp(Calculation):
                     tve += self.init.zval[i] * self.init.nznucl[i]
                 self.nbands = int ( round ( math.ceil(tve / 2.) * curset.add_nbands ) )
                 vp['NBANDS'] = self.nbands
+
 
             if 'LSORBIT' in vp and vp['LSORBIT']:
                 # print (vp)
@@ -1589,15 +1592,15 @@ class CalculationVasp(Calculation):
         natom = self.init.natom
         incar_list = []
 
-        setlist = [self.set]
+        setseq = [self.set]
         
         if hasattr(self.set, 'set_sequence') and self.set.set_sequence:
             for s in self.set.set_sequence:
-                setlist.append(s)
+                setseq.append(s)
 
 
-        nsets = len(setlist)
-        for i, curset in enumerate(setlist):
+        nsets = len(setseq)
+        for i, curset in enumerate(setseq):
 
             if nsets == 1:
                 name_mod = ''
@@ -2563,6 +2566,11 @@ class CalculationVasp(Calculation):
         join = os.path.join
         dirname = os.path.dirname
 
+        if header.show:
+            show +=header.show
+
+
+
         if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar:
             # print ('associated outcars = ',self.associated_outcars)
 
@@ -2645,16 +2653,18 @@ class CalculationVasp(Calculation):
 
         """Start reading """
         if outcar_exist:
+
             out = grep_file('General timing', path_to_outcar, reverse = True)
-            if not out:
+
+            if 'Gen' in out:
+                self.state = '4. Finished'
+            else:
                 self.state = '5. Broken outcar'
 
         else:
-            self.state = '2. no OUTCAR'
+            self.state = '5. no OUTCAR'
         
         outst = self.state
-
-
 
 
         if "4" in self.state:
@@ -3563,8 +3573,9 @@ class CalculationVasp(Calculation):
         else:
             # if not hasattr(cl,'energy_sigma0'):
             cl = self
-            os.rename(cl.path['output'], outcar+"_unfinished") 
-            printlog(cl.id, 'is unfinished, continue:', cl.dir, imp = 'y')
+            os.rename(cl.path['output'], cl.path['output']+"_unfinished") 
+            printlog('read_results():',cl.id, 'is unfinished, continue:', cl.dir, imp = 'y')
+            cl.state = '5. Unfinished'
                 # continue
 
 
@@ -3719,12 +3730,12 @@ class CalculationVasp(Calculation):
         
         cl = self
         # print(cl.schedule_system)
+        if hasattr(cl,'schedule_system') and 'SLURM' in cl.schedule_system:
 
-        if 'SLURM' in cl.schedule_system:
             job_in_queue = cl.id[0]+'.'+cl.id[1] in runBash('ssh '+cl.cluster_address+""" squeue -o '%o' """)
 
         else:
-            print_and_log('Attention! I do not know how to check job status with chosen SCHEDULE_SYSTEM; Please teach me here! ', imp = 'y')
+            print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')
             job_in_queue = ''
 
 
@@ -3748,7 +3759,7 @@ class CalculationVasp(Calculation):
         from calc_manage import res_loop
         res_loop(*self.id)
 
-    def run(self, ise, run = None, iopt = None):
+    def run(self, ise, iopt = None, *args, **kwargs):
         """
         Wrapper for add_loop (in development)
         By default inherit self.end
@@ -3773,8 +3784,9 @@ class CalculationVasp(Calculation):
                 cl_son.res()
 
             except:
-                it_new = add_loop(*self.id, ise_new = ise, inherit_option = iopt, override = 1, run  = run)
+                it_new = add_loop(*self.id, ise_new = ise, inherit_option = iopt, override = 1, *args, **kwargs)
                 self.id_son = (it_new, ise, self.id[2])
+                cl_son = header.calc[self.id_son]
 
 
-        return
+        return cl_son

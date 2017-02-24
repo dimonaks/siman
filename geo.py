@@ -872,8 +872,8 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4):
     
     structures = []
     table = []
-    printlog('List of antisites:', imp  = 'y')
-    for i, k in enumerate(anti):
+    i = 0
+    for k in anti:
         anti[k].sort(key=itemgetter(2))
         # print([k]+anti[k])
         for a in anti[k]:
@@ -884,14 +884,15 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4):
             # st_as.name+='_as_'+str(k)+'_with_atoms_'+str(a[0]+1)+'_and_'+str(a[1]+1)+'_swapped'
             st_as.name+='_'+suf
             st_as.magmom = None
+            i+=1
             structures.append(st_as)
             st_as.write_xyz()
     st.write_xyz()
 
-
-    # print(anti)
+    printlog('List of antisites:', imp  = 'y')
 
     printlog( tabulate(table, headers = ['No.', 'Antisite type', 'at1', 'at2', 'Separation, A'], tablefmt='psql'), imp = 'Y' )
+
 
 
     return structures

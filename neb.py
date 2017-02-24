@@ -116,11 +116,14 @@ def add_neb(starting_calc = None, st = None,
         print_and_log('Error! Number of cores should be dividable by number of IMAGES')
 
 
+    sums = []
+    avds = []
+
+
     name_suffix = ''
     st_pores = []
 
     name_suffix+='n'+str(images)
-
 
 
     """Replicate cell """
@@ -155,6 +158,9 @@ def add_neb(starting_calc = None, st = None,
 
 
     elif not atoms_to_move:
+        if not r_impurity:
+            printlog('add_neb(): Error!, Please provide *r_impurity*')
+
         print_and_log('No atoms to move found, you probably gave me deintercalated structure', important = 'y')
         print_and_log('Searching for voids', important = 'y')
         st_pores = find_pores(st, r_matrix = 0.5, r_impurity = r_impurity, fine = 1, calctype = 'all_pores')
@@ -165,8 +171,7 @@ def add_neb(starting_calc = None, st = None,
 
 
 
-        sums = []
-        avds = []
+
         for x in st_pores.xcart:
             summ = local_surrounding(x, st, n_neighbours = 6, control = 'sum', periodic  = True)
             avd = local_surrounding(x, st, n_neighbours = 6, control = 'av_dev', periodic  = True)
@@ -176,6 +181,8 @@ def add_neb(starting_calc = None, st = None,
         # print
         sums = np.array(sums)
         avds  = np.array(avds).round(0)
+
+
         print_and_log('Sum of distances to 6 neighboring atoms for each void (A):\n', sums, imp ='y')
         print_and_log('Distortion of voids (0 - is symmetrical):\n', avds, imp ='y')
         
@@ -259,7 +266,7 @@ def add_neb(starting_calc = None, st = None,
         x_m = st.xcart[i_m]
 
         el_num_suffix =  type_atom_to_move +str(i_m+1)
-
+        atom_to_insert = atom_to_move
 
         #highlight the moving atom for user for double-check
         # st_new = st.change_atom_z(i_m, new_z = 100)
@@ -291,8 +298,22 @@ def add_neb(starting_calc = None, st = None,
 
     elif search_type == 'existing_voids':
         #Search for voids around choosen atoms
+        if not r_impurity:
+            printlog('add_neb(): Error!, Please provide *r_impurity* (1.6 A?)')
         if not st_pores: 
             st_pores = find_pores(st, r_matrix = 0.5, r_impurity = r_impurity, fine = 2, calctype = 'all_pores')
+
+            for x in st_pores.xcart:
+                summ = local_surrounding(x, st, n_neighbours = 6, control = 'sum', periodic  = True)
+                avd = local_surrounding(x, st, n_neighbours = 6, control = 'av_dev', periodic  = True)
+                # print sur,
+                sums.append(summ)
+                avds.append(avd[0])
+            # print
+            sums = np.array(sums)
+            avds  = np.array(avds).round(0)
+
+
 
         sur = local_surrounding(x_m, st_pores, n_neighbours = len(st_pores.xcart), control = 'atoms', periodic  = True)
         # print sur
@@ -308,7 +329,9 @@ def add_neb(starting_calc = None, st = None,
         
         final_table = []
 
-        for i, (x, d, ind) in enumerate( zip(sur[0], sur[3], sur[2])[1:] ):
+        for i, (x, d, ind) in enumerate( zip(sur[0], sur[3], sur[2])):
+            if i == 0:
+                continue
             final_table.append([i, np.array(x).round(2), round(d, 2), avds[ind], sums[ind] ]  )
 
         print_and_log( tabulate(final_table, headers = ['Final void #', 'Cart.', 'Dist', 'Dev.', 'Sum'], tablefmt='psql'), imp = 'Y' )
@@ -319,6 +342,8 @@ def add_neb(starting_calc = None, st = None,
 
 
         x_final = sur[0][i_void_final+1] # +1 because first element is x_m atom itself
+        
+        x_del = x_final #please compare with vacancy creation mode
 
         write_xyz(st.add_atoms([ x_final], 'H'), replications = (2,2,2), file_name = st.name+'_possible_positions2_replicated')
         
