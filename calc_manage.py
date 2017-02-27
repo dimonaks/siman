@@ -1327,7 +1327,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         status = "exist"
         printlog('add_calculation():',str(calc[id].name), " has been already created and has state: ", str(calc[id].state))
 
-        if "3" in cl.state:# or '5' in cl.state: 
+        # print(cl.state)
+        if '2' in cl.state or "3" in cl.state:# or '5' in cl.state: 
             status = "running"
             # printlog('add_calculation: ',id, 'is already running; return ', imp = 'y')
             cl.res() 
