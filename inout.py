@@ -365,7 +365,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
             specialcommand = specialcommand, orientation = orientation, boundbox =boundbox, rotate = rotate)
 
 
-    return
+    return xyzfile
 
 
 

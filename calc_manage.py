@@ -489,7 +489,7 @@ def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_g
         if input_geo_file:
             printlog('File ', input_geo_file, 'was found')
         else:
-            printlog('Error! No input file with version ', curver, 'was found')
+            printlog('Error! No input file with version ', curver, 'was found in', input_folder)
     
     else:
         printlog('Neither *input_geo_file* nor *input_folder* were provided')
@@ -724,7 +724,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'afm_ordering' - 
             - 'uniform_scale' - creates uniformly scaled copies of the provided calculations
             - 'scale' - arbitrary scale according to mul_matrix
-            using *scale_region* and *n_scale_images* (see *scale_cell_uniformly()*)
+            using *scale_region*  and *n_scale_images* (see *scale_cell_uniformly()*)
             The copies are available as versions from 1 to *n_scale_images* and
             suffix .su appended to *it* name
             Copies to cluster *fit* utility that finds volume corresp. to energy minimum, creates 100.POSCAR and continues run 
@@ -755,6 +755,64 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
     """
+
+
+
+    def add_loop_prepare():
+
+        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method
+
+
+
+
+        choose_cluster(cluster, cluster_home, corenum)
+        
+        if run:
+            prepare_run()
+
+        if header.first_run and header.copy_to_cluster_flag:
+            prepare_run()
+            header.first_run = False
+
+
+        if not calc:
+            calc = header.calc
+            varset = header.varset
+
+
+
+        it = it.strip()
+        
+        if it_folder: 
+            it_folder = it_folder.strip()
+
+        if not is_list_like(verlist):
+            verlist = [verlist]
+
+        if not is_list_like(setlist):
+            setlist = [setlist]
+
+        setlist = [s.strip() for s in setlist]
+
+
+        if not is_list_like(calc_method):
+            calc_method = [calc_method]
+
+
+
+
+
+
+
+
+
+        if ifolder: 
+            if it not in ifolder: # just to be consistent with names
+                print_and_log('Check ifolder !!! it is not in ifolder')
+                raise RuntimeError
+
+
+        return
 
 
     def add_loop_inherit():
@@ -832,7 +890,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     def add_loop_scale():
 
         struct_des = header.struct_des
-        nonlocal it, verlist, setlist, input_st
+        nonlocal it, verlist, setlist, input_st,it_suffix
         u_scale_flag = False
         fitted_v100_id = None
 
@@ -849,6 +907,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             if it_suffix:
                 it_new = it+'.'+it_suffix
+                it_suffix = None
 
 
 
@@ -961,61 +1020,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
 
-    def add_loop_prepare():
-
-        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method
-
-
-
-
-        choose_cluster(cluster, cluster_home, corenum)
-        
-        if run:
-            prepare_run()
-
-        if header.first_run and header.copy_to_cluster_flag:
-            prepare_run()
-            header.first_run = False
-
-
-        if not calc:
-            calc = header.calc
-            varset = header.varset
-
-
-
-        it = it.strip()
-        
-        if it_folder: 
-            it_folder = it_folder.strip()
-
-        if not is_list_like(verlist):
-            verlist = [verlist]
-
-        if not is_list_like(setlist):
-            setlist = [setlist]
-
-        setlist = [s.strip() for s in setlist]
-
-
-        if not is_list_like(calc_method):
-            calc_method = [calc_method]
-
-
-
-
-
-
-
-
-
-        if ifolder: 
-            if it not in ifolder: # just to be consistent with names
-                print_and_log('Check ifolder !!! it is not in ifolder')
-                raise RuntimeError
-
-
-        return
 
 
 
@@ -1250,6 +1254,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     output_files_names = []
     input_folder = add_loop_choose_input_folder()
 
+
+
     for inputset in setlist:
 
         prevcalcver = None # version of previous calculation in verlist
@@ -1328,9 +1334,14 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         printlog('add_calculation():',str(calc[id].name), " has been already created and has state: ", str(calc[id].state))
 
         # print(cl.state)
-        if '2' in cl.state or "3" in cl.state:# or '5' in cl.state: 
+        if '2' in cl.state or '5' in cl.state:
+            status = "ready"
+            cl.res() 
+            if up != 'up1':
+                return
+
+        if "3" in cl.state:
             status = "running"
-            # printlog('add_calculation: ',id, 'is already running; return ', imp = 'y')
             cl.res() 
             return
 

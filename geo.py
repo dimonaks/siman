@@ -614,7 +614,12 @@ def determine_symmetry_positions(st, element):
 
 
     printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y', end = '\n')
-    printlog('Atom numbers: ', positions, imp = 'y')
+    positions_for_print = {}
+    for key in positions:
+        positions_for_print[key] = [p+1 for p in positions[key]]
+
+
+    printlog('Atom numbers: ', positions_for_print, imp = 'y')
     
     sorted_keys = sorted(list(positions.keys()))
     pos_lists = [positions[key] for key in sorted_keys ]

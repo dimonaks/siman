@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import 
-import sys
+import sys, os
 
 # import header
 # from operator import itemgetter
@@ -216,6 +216,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
         plt.tight_layout()
         path2saved = ''
+        
         if image_name:
             makedir(image_name)
 
@@ -235,10 +236,14 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
             else:
                 path2saved = str(image_name)+'.'+fig_format
             
+            path2saved_png = os.path.dirname(image_name)+'/png/'+os.path.basename(image_name)+'.png'
+            makedir(path2saved_png)
+
 
 
             plt.savefig(path2saved, dpi = dpi, format=fig_format)
-            plt.savefig(str(image_name)+'.png', dpi = 300)
+            plt.savefig(path2saved_png, dpi = 300)
+            
             print_and_log("Image saved to ", path2saved, imp = 'y')
 
 

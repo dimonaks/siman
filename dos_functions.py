@@ -26,7 +26,8 @@ except:
 from header import printlog
 from picture_functions import fit_and_plot
 from functions import element_name_inv
-from geo import local_surrounding
+from geo import local_surrounding, determine_symmetry_positions
+
 
 
 
@@ -116,7 +117,9 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 
 
-def plot_dos(cl1, cl2 = None, dostype = None, iatom = 0, orbitals = ('s'), up = None, neighbors = 6, show = 1, path = 'dos', xlim = (None, None), ylim = (None,None) ):
+def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, 
+    orbitals = ('s'), up = None, neighbors = 6, show = 1, 
+    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {} ):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -128,7 +131,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = 0, orbitals = ('s'), up = 
     up - 'up2' allows to download the file once again
 
 
-    iatom (int) - number of atom starting from 1 to plot DOS by default it is assumed that the last atom is used
+    iatom (int) - number of atom starting from 1 to plot DOS;
     iatom ([float]*3) - cartesian coordinates of point around which atoms will be found
     show (bool) - whether to show the dos 
     path (str)  - path to folder with images
@@ -137,14 +140,35 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = 0, orbitals = ('s'), up = 
 
     xlim, ylim (tuple)- limits for plot
 
+    plot_param - dict of parameters to fit_and_plot
+
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
 
     """
-    iatom -= 1
+
+    if dostype == 'partial'  :
+        eld = {}
+        for i, el in enumerate(cl1.end.get_elements()):
+            eld[i+1] = el
+
+        if not iatom:
+            printlog('Warning! Please choose atom number *iatom* from the following list:\n')
+            printlog(eld)
+            sys.exit()
+        else:
+            printlog('Atom', iatom, 'of type', eld[iatom], 'is choosen', imp = 'y')
+            printlog('Atom numbers:', eld, imp = 'y')
+
+            printlog(determine_symmetry_positions(cl1.end, eld[iatom]))
+
+    iatom-=1
 
 
-
+    if 'figsize' not in plot_param:
+        plot_param['figsize'] = (4,6)
+    if 'legend' not in plot_param:
+        plot_param['legend'] = 'best'
 
 
     """1. Read dos"""
@@ -179,7 +203,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = 0, orbitals = ('s'), up = 
     if dostype == 'total':
 
         fit_and_plot(show = show, image_name = os.path.join(path, cl1.name+'.dosTotal'), xlabel = "Energy (eV)", ylabel = "DOS (states/eV)",
-            xlim = xlim, ylim = ylim,
+            **plot_param,
             Total = (dos[0].energy, smoother(dos[0].dos, 10), 'b-'))
 
     elif dostype == 'diff_total':
@@ -190,8 +214,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = 0, orbitals = ('s'), up = 
             area = trapz(dosd[:i_efermi], dx=1)
             printlog("area under dos difference = ", -area, imp = 'Y')
 
-            fit_and_plot(show = show,image_name = cl1.name+'--'+cl2.name+'.dosTotal_Diff', xlabel = "Energy (eV)", ylabel = "DOS (states/eV)",
-                xlim = xlim, ylim = ylim,
+            fit_and_plot(show = show, image_name = cl1.name+'--'+cl2.name+'.dosTotal_Diff', xlabel = "Energy (eV)", ylabel = "DOS (states/eV)",
+                **plot_param,
                 Diff_Total = (dos[0].energy, smoother(dosd, 15), 'b-'))
         else:
             printlog('You provided only one calculation; could not use diff_total')
@@ -213,13 +237,13 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = 0, orbitals = ('s'), up = 
 
 
         """Determine neighbouring atoms """
-        printlog("Number of considered neighbors is ", neighbors)
+        # printlog("Number of considered neighbors is ", neighbors, imp = 'y')
 
         if type(iatom) == int: #for the cases when we need to build surrounding around specific atom in this calculation - just use number of atom
             t = cl1.end.typat[iatom]
             z = cl1.end.znucl[t-1]
             el = element_name_inv(z)
-            printlog('Typat of chosen imp atom in cl1 is ', el)
+            printlog('Typat of chosen imp atom in cl1 is ', el, imp = 'y')
             surround_center = cl1.end.xcart[iatom]
         else: #for the case when coordinates of arbitary point are provided.
             surround_center = iatom
@@ -278,11 +302,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = 0, orbitals = ('s'), up = 
             else:
                 args[orb] = (d1.energy, smoother(d1.site_dos(iX, i_orb[orb]), nsmooth), color[orb])
 
-        image_name = os.path.join(path, cl1.name+'.'+''.join(orbitals)+'.'+el+str(iX))
+        image_name = os.path.join(path, cl1.name+'.'+''.join(orbitals)+'.'+el+str(iX+1))
 
-        fit_and_plot(show = show, image_name = image_name, figsize = (4,6), xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", 
+        fit_and_plot(show = show, image_name = image_name, xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", 
         # title = cl1.name.split('.')[0]+'; V='+str(round(cl1.vol) )+' $\AA^3$; Impurity: '+el,
-        xlim = xlim, ylim = ylim, legend = 2,
+        **plot_param, 
         **args
         )
         # printlog("Writing file", image_name, imp = 'Y')

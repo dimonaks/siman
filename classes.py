@@ -665,8 +665,9 @@ class Structure():
 
     def jmol(self):
         # self.write_poscar('CONTCAR', vasp5 = 1)
-        self.write_xyz(filename = 'temp')
-        runBash('sleep 1; jmol xyz/temp.xyz', detached = True)
+        filename = self.write_xyz()
+        # print(filename)
+        runBash('jmol '+filename, detached = True)
 
 
 class Calculation(object):
@@ -3573,10 +3574,12 @@ class CalculationVasp(Calculation):
         else:
             # if not hasattr(cl,'energy_sigma0'):
             cl = self
-            os.rename(cl.path['output'], cl.path['output']+"_unfinished") 
-            printlog('read_results():',cl.id, 'is unfinished, continue:', cl.dir, imp = 'y')
-            cl.state = '5. Unfinished'
-                # continue
+            try:
+                os.rename(cl.path['output'], cl.path['output']+"_unfinished") 
+                printlog('read_results():',cl.id, 'is unfinished, continue:', cl.dir, imp = 'y')
+                cl.state = '5. Unfinished'
+            except FileNotFoundError:
+                printlog('read_results():',cl.id, 'probably was not submitted:', cl.dir, imp = 'y')
 
 
         return outst
