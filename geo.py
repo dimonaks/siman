@@ -8,6 +8,8 @@ import numpy as np
 import header
 from header import printlog
 from small_functions import red_prec
+# from impurity import find_pores
+
 # sys.path.append('/home/aksenov/Simulation_wrapper/') 
 # sys.path.append('/home/aksenov/Simulation_wrapper/savelyev') 
 
@@ -711,6 +713,9 @@ def create_replaced_structure(st, el1, el2, rep_pos = 1, only_one = False):
     # sys.exit()
 
     return st1
+
+
+
 
 
 

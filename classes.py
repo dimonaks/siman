@@ -38,6 +38,7 @@ from functions import (read_vectors, read_list, words,
 from inout import write_xyz, write_lammps
 from small_functions import makedir
 from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
+from geo import  image_distance, replic
 
 
 
@@ -102,9 +103,14 @@ class Structure():
         self.magmom = []
 
 
+    def new(self):
+        return Structure()
 
     def xcart2xred(self,):
         self.xred = xcart2xred(self.xcart, self.rprimd)
+        self.natom = len(self.xred)
+
+
 
     def xred2xcart(self,):
         self.xcart = xred2xcart(self.xred, self.rprimd)
@@ -549,8 +555,13 @@ class Structure():
 
 
 
+    def replic(self, *args, **kwargs):
 
+        return replic(self, *args, **kwargs)
 
+    def image_distance(self, *args, **kwargs):
+
+        return image_distance(*args, **kwargs)
 
     def write_poscar(self, filename, coord_type = 'dir', vasp5 = False):
         st = self
@@ -659,6 +670,8 @@ class Structure():
     def write_xyz(self, *args, **kwargs):
         #see description for write_xyz()
         return write_xyz(self, *args, **kwargs)
+
+
 
     def write_lammps(self, *args, **kwargs):
         return write_lammps(self, *args, **kwargs)
@@ -2493,7 +2506,6 @@ class CalculationVasp(Calculation):
 
 
 
-        self.state = "2. Ready for start"
         printlog("\nRun file created\n")     
         return
 

@@ -16,6 +16,69 @@ from classes import CalculationVasp
 from impurity import find_pores
 from tabulate import tabulate
 from geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
+from impurity import determine_voids, determine_unique_voids
+
+
+
+
+
+
+
+
+
+
+def determine_unique_final(st_pores, sums, avds, x_m):
+
+    final_table = []
+    insert_positions = []
+
+
+    """Please determine unique positions with similar distances taking into acc PBC!!!
+    below is incorrect
+    """
+    # crude_prec = 1
+    # sums_crude = np.unique(sums.round(crude_prec))
+    # print_and_log('The unique voids based on the sums:', 
+    #     '\nwith 0.01 A prec:',np.unique(sums.round(2)),
+    #     '\nwith 0.1  A prec:',sums_crude,
+    #     imp ='y')
+    # print_and_log('Based on crude criteria only', len(sums_crude),'types of void are relevant', imp = 'y') 
+
+    # xcart_unique = []
+    # avds_unique  = []
+    # sums_unique  = []
+
+    # for i, s in enumerate(sums_crude):
+    #     index_of_first =  np.where(sums.round(crude_prec)==s)[0][0]
+    #     xcart_unique.append(st_pores.xcart[index_of_first])
+    #     avds_unique.append(avds[index_of_first] )
+    #     sums_unique.append(sums[index_of_first] )
+
+    # st_pores_unique = copy.deepcopy(st_pores)
+
+    # st_pores_unique.xcart = xcart_unique
+    # st_pores_unique.xcart2xred()
+
+    sur = local_surrounding(x_m, st_pores, n_neighbours = len(st_pores.xcart), control = 'atoms', periodic  = True)
+
+
+    print_and_log(
+    'I can suggest you '+str (len(sur[0])-1 )+' end positions.', imp = 'y' )
+    
+
+    for i, (x, d, ind) in enumerate( zip(sur[0], sur[3], sur[2])):
+        if i == 0:
+            continue
+        final_table.append([i-1, np.array(x).round(2), round(d, 2), avds[ind], sums[ind] ]  )
+
+    print_and_log( tabulate(final_table, headers = ['void #', 'Cart.', 'Dist', 'Dev.', 'Sum'], tablefmt='psql'), imp = 'Y' )
+
+    return sur
+
+
+
+
+
 
 def add_neb(starting_calc = None, st = None, 
     it_new = None, ise_new = None, i_atom_to_move = None, 
@@ -116,8 +179,7 @@ def add_neb(starting_calc = None, st = None,
         print_and_log('Error! Number of cores should be dividable by number of IMAGES')
 
 
-    sums = []
-    avds = []
+
 
 
     name_suffix = ''
@@ -138,16 +200,6 @@ def add_neb(starting_calc = None, st = None,
 
     """1. Choose  atom (or insert) for moving """
 
-    atoms_to_move = []
-    atoms_to_move_types = []
-    for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): #try to find automatically
-        if typ in ['Li', 'Na', 'K', 'Rb']:
-            atoms_to_move.append([i, typ, x])
-            if typ not in atoms_to_move_types:
-                atoms_to_move_types.append(typ)
-
-
-
     if is_list_like(xr_start):
         x_start = xred2xcart([xr_start], st.rprimd)[0]
         st1 = st.add_atoms([x_start], atom_to_insert)
@@ -156,122 +208,66 @@ def add_neb(starting_calc = None, st = None,
         write_xyz(st1, file_name = st.name+'_manually_start')
         printlog('Start position is created manually by adding xr_start', xr_start, x_start)
 
-
-    elif not atoms_to_move:
-        if not r_impurity:
-            printlog('add_neb(): Error!, Please provide *r_impurity*')
-
-        print_and_log('No atoms to move found, you probably gave me deintercalated structure', important = 'y')
-        print_and_log('Searching for voids', important = 'y')
-        st_pores = find_pores(st, r_matrix = 0.5, r_impurity = r_impurity, fine = 1, calctype = 'all_pores')
-
-        print_and_log('List of found voids:\n', np.array(st_pores.xcart) )
-        write_xyz(st.add_atoms(st_pores.xcart, 'H'), file_name = st.name+'_possible_positions')
-        write_xyz(st.add_atoms(st_pores.xcart, 'H'), replications = (2,2,2), file_name = st.name+'_possible_positions_replicated')
-
-
-
-
-        for x in st_pores.xcart:
-            summ = local_surrounding(x, st, n_neighbours = 6, control = 'sum', periodic  = True)
-            avd = local_surrounding(x, st, n_neighbours = 6, control = 'av_dev', periodic  = True)
-            # print sur,
-            sums.append(summ)
-            avds.append(avd[0])
-        # print
-        sums = np.array(sums)
-        avds  = np.array(avds).round(0)
-
-
-        print_and_log('Sum of distances to 6 neighboring atoms for each void (A):\n', sums, imp ='y')
-        print_and_log('Distortion of voids (0 - is symmetrical):\n', avds, imp ='y')
-        
-        crude_prec = 1
-        sums_crude = np.unique(sums.round(crude_prec))
-        print_and_log('The unique voids based on the sums:', 
-            '\nwith 0.01 A prec:',np.unique(sums.round(2)),
-            '\nwith 0.1  A prec:',sums_crude,
-            imp ='y')
-        print_and_log('Based on crude criteria only', len(sums_crude),'types of void are relevant') 
-
-        print_and_log('Please use *i_void_start* to choose the void for atom insertion from this Table:', 
-            end = '\n', imp = 'Y')
-
-        insert_positions = []
-        start_table = []
-        for i, s in enumerate(sums_crude):
-            index_of_first =  np.where(sums.round(crude_prec)==s)[0][0]
-
-            start_table.append([i,  st_pores.xcart[index_of_first].round(2), index_of_first,
-            avds[index_of_first], sums[index_of_first]     ])
-
-            insert_positions.append( st_pores.xcart[index_of_first] )
-
-
-        print_and_log( tabulate(start_table, headers = ['Start void #', 'Cart.', 'Index', 'Dev.', 'Sum'], tablefmt='psql'), imp = 'Y' )
-
-        if i_void_start == None:
-            sys.exit()
-
-        st = st.add_atoms([insert_positions[i_void_start],], atom_to_insert)
-
-        name_suffix+='i'+str(i_void_start)
-
-        i_m = st.natom-1
-        x_m = st.xcart[i_m]
-
-
-        search_type = 'existing_voids'
-        type_atom_to_move = atom_to_insert
-        el_num_suffix = ''
-
-
-
     else:
 
-        #my method of determining unique sites
-        # print_and_log('I have found', len(atoms_to_move), ' anion atoms', imp = 'y')
-        # print_and_log( 'Sums of bond lengths around these atoms:', imp = 'y')
-        # sums = []
-        # for a in atoms_to_move:
-        #     summ = local_surrounding(a[2], st, n_neighbours = 6, control = 'sum', periodic  = True)
-        #     sums.append(summ)
-        # print_and_log('\nAmong them only',len(set(sums)), 'unique' , imp = 'y')
-        # print_and_log('Choosing the first' , imp = 'y')
+        atoms_to_move = []
+        atoms_to_move_types = []
+        for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): #try to find automatically
+            if typ in ['Li', 'Na', 'K', 'Rb']:
+                atoms_to_move.append([i, typ, x])
+                if typ not in atoms_to_move_types:
+                    atoms_to_move_types.append(typ)
 
-        # print (atoms_to_move)
-        if not atom_to_move:
-            atom_to_move = atoms_to_move_types[0] # taking first found element
-            if len(atoms_to_move_types) > 1:
-                printlog('Error! More than one type of atoms available for moving detected', atoms_to_move_types,
-                    'please specify needed atom with *atoms_to_move*')
+        if  atoms_to_move:
 
+            if not atom_to_move:
+                atom_to_move = atoms_to_move_types[0] # taking first found element
+                if len(atoms_to_move_types) > 1:
+                    printlog('Error! More than one type of atoms available for moving detected', atoms_to_move_types,
+                        'please specify needed atom with *atoms_to_move*')
 
+            numbers = determine_symmetry_positions(st, atom_to_move)
 
-        numbers = determine_symmetry_positions(st, atom_to_move)
+            type_atom_to_move = atom_to_move #atoms_to_move[0][1]
 
+            if len(numbers)>0:
+                printlog('Please choose position using *i_void_start* :', [i+1 for i in range(len(numbers))],imp = 'y' )
+                i_m = numbers[i_void_start-1][0]
+                printlog('Position',i_void_start,'chosen, atom:', i_m+1, type_atom_to_move, imp = 'y' )
+            
+            else:
+                i_m = numbers[0][0]
 
+            
+            x_m = st.xcart[i_m]
 
-        type_atom_to_move = atom_to_move #atoms_to_move[0][1]
+            el_num_suffix =  type_atom_to_move +str(i_m+1)
+            atom_to_insert = atom_to_move
 
-        if len(numbers)>0:
-            printlog('Please choose position using *i_void_start* :', [i+1 for i in range(len(numbers))],imp = 'y' )
-            i_m = numbers[i_void_start-1][0]
-            printlog('Position',i_void_start,'chosen, atom:', i_m+1, type_atom_to_move, imp = 'y' )
-        
         else:
-            i_m = numbers[0][0]
 
-        
-        x_m = st.xcart[i_m]
+            print_and_log('No atoms to move found, you probably gave me deintercalated structure', important = 'y')
+            
+            st_pores, sums, avds = determine_voids(st, r_impurity)
+            
+            insert_positions = determine_unique_voids(st_pores, sums, avds)
 
-        el_num_suffix =  type_atom_to_move +str(i_m+1)
-        atom_to_insert = atom_to_move
+            print_and_log('Please use *i_void_start* to choose the void for atom insertion from the Table above:', 
+                end = '\n', imp = 'Y')
 
-        #highlight the moving atom for user for double-check
-        # st_new = st.change_atom_z(i_m, new_z = 100)
-        # search_type = 'vacancy_creation'
+            if i_void_start == None:
+                sys.exit()
 
+            st = st.add_atoms([insert_positions[i_void_start],], atom_to_insert)
+
+            name_suffix+='i'+str(i_void_start)
+
+            i_m = st.natom-1
+            x_m = st.xcart[i_m]
+
+            search_type = 'existing_voids'
+            type_atom_to_move = atom_to_insert
+            el_num_suffix = ''
 
 
 
@@ -282,8 +278,6 @@ def add_neb(starting_calc = None, st = None,
 
 
     """2. Choose final position"""
-
-
 
     if is_list_like(xr_final):
         x_final = xred2xcart([xr_final], st.rprimd)[0]
@@ -298,48 +292,17 @@ def add_neb(starting_calc = None, st = None,
 
     elif search_type == 'existing_voids':
         #Search for voids around choosen atoms
-        if not r_impurity:
-            printlog('add_neb(): Error!, Please provide *r_impurity* (1.6 A?)')
+
         if not st_pores: 
-            st_pores = find_pores(st, r_matrix = 0.5, r_impurity = r_impurity, fine = 2, calctype = 'all_pores')
-
-            for x in st_pores.xcart:
-                summ = local_surrounding(x, st, n_neighbours = 6, control = 'sum', periodic  = True)
-                avd = local_surrounding(x, st, n_neighbours = 6, control = 'av_dev', periodic  = True)
-                # print sur,
-                sums.append(summ)
-                avds.append(avd[0])
-            # print
-            sums = np.array(sums)
-            avds  = np.array(avds).round(0)
-
-
-
-        sur = local_surrounding(x_m, st_pores, n_neighbours = len(st_pores.xcart), control = 'atoms', periodic  = True)
-        # print sur
-
-
-        print_and_log(
-        'I can suggest you '+str (len(sur[0])-1 )+' end positions.' )
-        # The distances to them are : '+str(np.round(sur[3], 2) )+' A\n ',
-        # 'Openning Jmol end positions are highlighted by inserting H ', important = 'y')
-        # print x_m
-        # print sur[0]
-        print_and_log('Please choose *i_void_final* from the following Table:', end = '\n', imp = 'Y')
+            st_pores, sums, avds = determine_voids(st, r_impurity)
         
-        final_table = []
+        sur = determine_unique_final(st_pores, sums, avds, x_m)
 
-        for i, (x, d, ind) in enumerate( zip(sur[0], sur[3], sur[2])):
-            if i == 0:
-                continue
-            final_table.append([i, np.array(x).round(2), round(d, 2), avds[ind], sums[ind] ]  )
+        print_and_log('Please choose *i_void_final* from the Table above:', end = '\n', imp = 'Y')
 
-        print_and_log( tabulate(final_table, headers = ['Final void #', 'Cart.', 'Dist', 'Dev.', 'Sum'], tablefmt='psql'), imp = 'Y' )
-        
+
         if i_void_final == None:
             sys.exit()
-
-
 
         x_final = sur[0][i_void_final+1] # +1 because first element is x_m atom itself
         
@@ -347,17 +310,9 @@ def add_neb(starting_calc = None, st = None,
 
         write_xyz(st.add_atoms([ x_final], 'H'), replications = (2,2,2), file_name = st.name+'_possible_positions2_replicated')
         
-        # sys.exit()        
-        # write_xyz(st.add_atoms(sur[0][2:3], 'H'), analysis = 'imp_surrounding', show_around = 230,nnumber = 10, replications = (2,2,2), file_name = 'local230')
-        # # write_xyz(st.add_atoms(sur[0][0:1], 'H'), analysis = 'imp_surrounding', show_around = 226,nnumber = 10, replications = (2,2,2), file_name = 'local')
-        # run_jmol
         print_and_log('Choosing the closest position as end', important = 'n')
-        # i_void_final = 0
 
         st1 = st
-
-        # print st1.natom
-        # sys.exit()
 
         st2 = st.mov_atoms(i_m, x_final)
         
@@ -374,41 +329,19 @@ def add_neb(starting_calc = None, st = None,
     elif search_type == 'vacancy_creation':
         #Create vacancy by removing some neibouring atom of the same type 
         
-
-
         print_and_log('You have chosen vacancy_creation mode of add_neb tool', imp= 'Y')
 
         print_and_log( 'Type of atom to move = ', type_atom_to_move, imp = 'y')
         # print 'List of left atoms = ', np.array(st.leave_only(type_atom_to_move).xcart)
+
         sur = local_surrounding(x_m, st.leave_only(type_atom_to_move) , n_neighbours = 6, control = 'atoms', 
             periodic  = False) #exclude the atom itself
-        # print 'xcart of moving atom', x_m
-        # print 'Local surround = ', sur
-        # print 'len', len(sur[0])
-        if 0 and len(sur[0]) < 3: #not used anymore
-            
-            # print 'rprimd = \n',np.array(st.rprimd)
-            # print 'r lengths = \n',( [np.linalg.norm(r) for r in st.rprimd] )
-            # print 'xred = \n', np.array(st.xred)
-            # print 'xcart = \n', np.array(st.xcart)
-
-
-            print_and_log('The supercell is too small, I increase it 8 times!')
-            st = replic(st, mul = (2,2,2) )
-            sur = local_surrounding(x_m, st.leave_only(type_atom_to_move) , n_neighbours = 4, control = 'atoms', 
-                periodic  = False)
-            # print 'xcart of moving atom', x_m
-            write_xyz(st, file_name = st.name+'_replicated')#replications = (2,2,2))
-
-            # print 'Local surround = ', sur
-            # sys.exit()
 
         # print(sur)
         print_and_log(
         'I can suggest you '+str (len(sur[0][1:]) )+' end positions. The distances to them are : ',np.round(sur[3][1:], 2), ' A\n ',
         'They are all', type_atom_to_move, 'atoms, use *i_void_final* to choose required: 1, 2, 3 ..', imp = 'y')
 
-        
 
         if not i_void_final:
             i_void_final = 1 #since zero is itself

@@ -2,22 +2,22 @@ from __future__ import division, unicode_literals, absolute_import
 
 
 import ctypes
+from tabulate import tabulate
 #from ctypes import *
 from ctypes import cdll
 from ctypes import c_float, byref
 import numpy as np
-import traceback, os, datetime, glob, copy
+import traceback, os, sys, datetime, glob, copy
 
 
-from header import print_and_log, geo_folder, runBash
+from header import print_and_log, printlog, geo_folder, runBash
 import header
 from classes import CalculationVasp, Structure
 from set_functions import InputSet
 from functions import  return_atoms_to_cell, element_name_inv
 from inout import write_xyz
 
-
-from geo import xred2xcart, xcart2xred, replic, image_distance
+from geo import local_surrounding
 
 lib = cdll.LoadLibrary(os.path.dirname(__file__)+'/libfindpores.so')
 
@@ -120,7 +120,10 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
 
 
     """ Analyse of pores """
-    st_result = Structure()
+    # st_result = Structure()
+    st_result = st_in.new()
+
+
     st_result.rprimd = rprimd
  
     targetp = np.array((0.,0.,0.))
@@ -239,8 +242,8 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
         st_result.xred = pxred
 
 
-
-    st_result.xcart = xred2xcart(st_result.xred, rprimd)
+    st_result.rprimd = rprimd
+    st_result.xred2xcart()
     st_result.typat = [1 for x in st_result.xred]
     st_result.natom = len(st_result.typat)
     st_result.znucl = [200]
@@ -319,11 +322,11 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
         if v == 1: #TEST
             
             natoms_v1 = len(added.init.xcart) # for test 
-            st_rep_after  = replic( added.init,      (1,2,1) )
+            st_rep_after  = added.init.replic( (1,2,1) )
 
             rep = copy.deepcopy(init)
 
-            rep.init = replic( rep.init, (1,2,1) );   
+            rep.init = rep.init.replic( (1,2,1) );   
             #print rep
             rep = add(znucl, "", rep, write_geo = False)
             #print rep
@@ -436,7 +439,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
 
 
 
-            st.xcart = xred2xcart(st.xred, st.rprimd)
+            st.xred2xcart()
 
             new.init = st
 
@@ -536,7 +539,7 @@ def add_impurity(it_new, impurity_type = None, addtype = 'central', calc = [], r
         """2. The case of insertion to geo files------------------------------------------------------------"""
     else:     
 
-        
+        """ Please rewrite using new functions """
 
         print_and_log("You does not set 'id' of relaxed calculation. I try to find geometry files in "+it_new+" folder\n")
 
@@ -647,7 +650,9 @@ def insert_cluster(insertion, i_center, matrix, m_center):
                 if dv[i] < -hproj[i]: dv = dv + mat.rprimd[i]
             
             len1 = np.linalg.norm(dv)
-            len2, second_len2 = image_distance(mx, ix, r, 2) #check len1
+            len2, second_len2 = mat.image_distance(mx, ix, r, 2) #check len1
+            
+
             #print "Lengths calculated with two methods ", len1, len2
             len1 = len2 #just use second method
             #assert np.around(len1,1) == np.around(len2,1)
@@ -668,8 +673,8 @@ def insert_cluster(insertion, i_center, matrix, m_center):
             mat.xcart[j_r] = ix.copy()
     
 
-
-    mat.xred = xcart2xred(mat.xcart, r)
+    mat.rprimd = r
+    mat.xcart2xred()
     mat.natom = len(mat.xcart)
     mat.name = 'test_of_insert'
     write_xyz(mat)
@@ -760,7 +765,7 @@ def insert(it_ins, ise_ins, mat_path, it_new, calc, type_of_insertion = "xcart" 
             mat.init = copy.deepcopy(ins.end)
             #mat.build = build
             mat.init.rprimd = rprimd #return initial rprimd
-            mat.init.xcart = xred2xcart(mat.init.xred, mat.init.rprimd) #calculate xcart with new rprimd
+            mat.init.xred2xcart() #calculate xcart with new rprimd
           
             des = "atoms with reduced coord. from "+ins.name+" was fully copied to "+mat_geofile
             mat.init.name = 'test_insert_xred'+str(mat.version)
@@ -773,3 +778,86 @@ def insert(it_ins, ise_ins, mat_path, it_new, calc, type_of_insertion = "xcart" 
 
     return
     
+
+
+
+
+
+def determine_voids(st, r_impurity):
+
+    if not r_impurity:
+        printlog('add_neb(): Error!, Please provide *r_impurity* (1.6 A?)')
+
+
+    sums = []
+    avds = []
+    printlog('Searching for voids', important = 'y')
+    st_pores = find_pores(st, r_matrix = 0.5, r_impurity = r_impurity, fine = 1, calctype = 'all_pores')
+
+    printlog('List of found voids:\n', np.array(st_pores.xcart) )
+    write_xyz(st.add_atoms(st_pores.xcart, 'H'), file_name = st.name+'_possible_positions')
+    write_xyz(st.add_atoms(st_pores.xcart, 'H'), replications = (2,2,2), file_name = st.name+'_possible_positions_replicated')
+
+    for x in st_pores.xcart:
+        summ = local_surrounding(x, st, n_neighbours = 6, control = 'sum', periodic  = True)
+        avd = local_surrounding(x, st, n_neighbours = 6, control = 'av_dev', periodic  = True)
+        # print sur,
+        sums.append(summ)
+        avds.append(avd[0])
+    # print
+    sums = np.array(sums)
+    avds  = np.array(avds).round(0)
+
+    print_and_log('Sum of distances to 6 neighboring atoms for each void (A):\n', sums, imp ='y')
+    print_and_log('Distortion of voids (0 - is symmetrical):\n', avds, imp ='y')
+    
+    return st_pores, sums, avds
+
+def determine_unique_voids(st_pores, sums, avds):
+    crude_prec = 1
+    sums_crude = np.unique(sums.round(crude_prec))
+    print_and_log('The unique voids based on the sums:', 
+        '\nwith 0.01 A prec:',np.unique(sums.round(2)),
+        '\nwith 0.1  A prec:',sums_crude,
+        imp ='y')
+    print_and_log('Based on crude criteria only', len(sums_crude),'types of void are relevant', imp = 'y') 
+
+
+    insert_positions = []
+    start_table = []
+    for i, s in enumerate(sums_crude):
+        index_of_first =  np.where(sums.round(crude_prec)==s)[0][0]
+
+        start_table.append([i,  st_pores.xcart[index_of_first].round(2), index_of_first,
+        avds[index_of_first], sums[index_of_first]     ])
+
+        insert_positions.append( st_pores.xcart[index_of_first] )
+
+    print_and_log( tabulate(start_table, headers = ['void #', 'Cart.', 'Index', 'Dev.', 'Sum'], tablefmt='psql'), imp = 'Y' )
+    
+    return insert_positions
+
+def insert_atom(st, el, i_void = None, r_imp = 1.6):
+
+    r_impurity = r_imp
+    st_pores, sums, avds = determine_voids(st, r_impurity)
+
+    insert_positions = determine_unique_voids(st_pores, sums, avds)
+
+    printlog('To continue please choose *i_void* from the list above', imp = 'y')
+    if i_void == None:
+        sys.exit()
+
+    st_new = copy.deepcopy(st)
+
+    xc = insert_positions[i_void]
+    st_new.add_atoms([xc], el)
+
+    st.name+='+'+el
+    st.des+=';Atom '+el+' added to '+ str(xc)
+    printlog(st.des, imp = 'y')
+
+    st.write_xyz()
+
+    return st_new
+

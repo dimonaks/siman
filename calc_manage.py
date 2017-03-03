@@ -347,16 +347,6 @@ def update_des(struct_des, des_list):
 def cif2poscar(cif_file, poscar_file):
 
 
-    if 0: #using cif2cell for conversion
-        if header.CIF2CELL:
-            print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
-            printlog('File',poscar_file, 'created.')
-
-            #check
-            if not os.path.exists(poscar_file):
-                print_and_log("Error! cif2cell failed")
-        else:
-            printlog('Error! cif2cell is not installed!')
 
 
     if pymatgen_flag:
@@ -366,8 +356,17 @@ def cif2poscar(cif_file, poscar_file):
         Poscar(s).write_file(poscar_file)
         printlog('File',poscar_file, 'created.')
     
+    elif header.CIF2CELL: #using cif2cell for conversion
+
+        print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
+        printlog('File',poscar_file, 'created.')
+
+        #check
+        if not os.path.exists(poscar_file):
+            print_and_log("Error! cif2cell failed")
+
     else:
-        printlog('Error! Support of cif files requires pymatgen; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
+        printlog('Error! Support of cif files requires pymatgen or cif2cell; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
 
 
 
@@ -1331,7 +1330,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     if id in calc: 
         cl = calc[id]
         status = "exist"
-        printlog('add_calculation():',str(calc[id].name), " has been already created and has state: ", str(calc[id].state))
+        printlog('add_calculation():',str(calc[id].name), " has been already created and has state: ", str(calc[id].state),)# imp = 'y')
 
         # print(cl.state)
         if '2' in cl.state or '5' in cl.state:
@@ -1542,6 +1541,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                     if header.siman_run or run: #for IPython should be only for run = 1 
                         cl.make_run(cl.schedule_system, batch_on_server)
+
+            cl.state = "2. Ready for start"
 
 
 
@@ -3093,7 +3094,7 @@ def get_structure_from_cee_database(it, it_folder, ver, cee_struct_type = 'exp',
     database_server = 'aksenov@10.30.100.28'
     database_path   = '/home/Data/CEStorage/'
 
-    if 'exp' in struct:
+    if 'exp' in cee_struct_type:
         templ = '*exp*.cif'
     else:
         templ = '*.cif'
@@ -3102,10 +3103,10 @@ def get_structure_from_cee_database(it, it_folder, ver, cee_struct_type = 'exp',
 
     makedir(local_folder)
 
-    out = get_from_server(os.path.join(database_path, it_base, templ), local_folder, addr = database_server)
+    out = get_from_server(database_path+'/'+it_base+'/'+templ, local_folder, addr = database_server)
 
     geofiles = glob.glob(local_folder+templ)
-    printlog(out, 'The following files have been downloaded', geofiles  )
+    printlog(out, 'The following files have been downloaded', geofiles, imp ='Y'  )
     
 
 

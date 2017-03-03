@@ -104,7 +104,7 @@ def file_exists_on_server(file, addr):
 
 def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz = True):
     """
-    Download files using either  paramiko (higher priority) or rcync; 
+    Download files using either  paramiko (higher priority) or rsync; 
     For paramiko header.ssh_object should be defined
 
     files (list of str)  - files on cluster to download 
@@ -154,8 +154,16 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
         return out
 
 
+    if '*' in files:
+        printlog('get_from_server(): get by template')
+        files = run_on_server('ls '+files, addr).splitlines()
+        # print(files)
+        # sys.exit()
+        printlog('get_from_server(): I download', files)
 
-    if not is_list_like(files):
+
+
+    elif not is_list_like(files):
         files = [files]
     
     files = [file.replace('\\', '/') for file in files] #make sure the path is POSIX
