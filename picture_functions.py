@@ -90,7 +90,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
 
     r = r[ np.logical_and(mi<r, r<ma) ] # only roots inside the interval are interesting
 
-    if spl(r):
+    if len(spl(r)) > 0:
         diff_barrier = max( spl(r) ) # the maximum value 
     else:
         print_and_log('Warning! no roots')
