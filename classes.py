@@ -161,14 +161,19 @@ class Structure():
 
 
 
-    def add_atoms(self, atoms_xcart, element = 'Pu'):
+    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False):
         """
-        appends at the end. Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
+        appends at the end if element is new. Other case insertered according to VASP conventions
+        Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
         atoms_xcart (list of ndarray)
 
         magmom is appended with 0.6, please improve me! by using other values for magnetic elements 
 
-        Returns Structure()
+
+        if return_ins:
+            Returns Structure(), int - place of insertion of first atom
+        else:
+
         """
 
         printlog('self.add_atoms(): adding atom ', element, imp = 'y')
@@ -204,6 +209,7 @@ class Structure():
             if magmom_flag:
                 st.magmom.extend( [0.6]*natom_to_add  )
 
+            j_ins = self.natom # first one
 
         else:
             i = st.znucl.index(el_z_to_add)
@@ -229,8 +235,10 @@ class Structure():
 
 
         st.xcart2xred()
-
-        return st
+        if return_ins:
+            return st, j_ins
+        else:
+            return st
 
 
 
@@ -1051,7 +1059,9 @@ class CalculationVasp(Calculation):
         """
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
+        self.path["poscar"] = filename
         
+
         self.hex_a = None
         self.hex_c = None
         self.gbpos = None
@@ -3603,6 +3613,7 @@ class CalculationVasp(Calculation):
 
 
     def get_chg_file(self, filetype = 'CHGCAR', nametype = ''):
+        #allow to get xml as well 
         #cl - object of CalculationVasp class
         #filetype (str) - 'CHG' or 'CHGCAR'
         #nametype (str) - 'asoutcar', 
@@ -3611,7 +3622,11 @@ class CalculationVasp(Calculation):
         else:
             path_to_chg = os.path.join( os.path.dirname(self.path['output']), filetype)
 
-        self.path['chgcar'] = path_to_chg
+        if 'CHGCAR' in filetype:
+            self.path['chgcar'] = path_to_chg
+        elif 'xml' in filetype:
+            self.path['xml'] = path_to_chg
+
 
         # print(path_to_chg)
         # print(self.cluster_address)
@@ -3805,3 +3820,23 @@ class CalculationVasp(Calculation):
 
 
         return cl_son
+
+
+    def read_pdos_using_phonopy(self):
+        from calc_manage import create_phonopy_conf_file
+
+        create_phonopy_conf_file(self.end, path = self.dir)
+
+        cwd = os.getcwd()
+
+        os.chdir(self.dir)
+        runBash('phonopy --fc '+os.path.basename(self.path['xml']))
+
+        # if 'poscar' not in self.path:
+        self.path['poscar'] = self.path['output'].replace('OUTCAR','POSCAR')
+
+        print('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
+        runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
+        os.chdir(cwd)
+
+

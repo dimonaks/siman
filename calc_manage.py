@@ -2904,11 +2904,37 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
+def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10]):
+
+    mpstr = " ".join(map(str, mp))
+
+    filename = path+'/mesh.conf'
+
+    with open(filename, 'w', newline = '') as f:
+        f.write("DIM = 1 1 1\n")
+        f.write("ATOM_NAME = ")
+        for z in st.znucl:
+            el = element_name_inv(z)
+            f.write(el+' ')
+        # f.write("\nDIAG = .TRUE.\n")
+        # f.write("DISPLACEMENT_DISTANCE = 0.03\n")    
+
+        f.write("\nMP = {:}\n".format( mpstr ))
 
 
 
+def read_phonopy_dat_file(filename):
 
+    dos = {'tot':[], 'freq':[]}
 
+    with open(filename, 'r', ) as f:
+        f.readline()
+        for line in f:
+            val = line.split()
+            dos['freq'].append(float(val[0]))
+            dos['tot'].append(float(val[1]))
+
+    return dos
 
 def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], additional = None):
     #creates file for phonopy, run phonopy

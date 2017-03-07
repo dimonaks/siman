@@ -848,16 +848,18 @@ def insert_atom(st, el, i_void = None, r_imp = 1.6):
     if i_void == None:
         sys.exit()
 
-    st_new = copy.deepcopy(st)
+    # st.name = st.name.split('+')[0]
+
 
     xc = insert_positions[i_void]
-    st_new.add_atoms([xc], el)
+    
+    st_new, i_add = st.add_atoms([xc], el, return_ins = True)
 
-    st.name+='+'+el
-    st.des+=';Atom '+el+' added to '+ str(xc)
+    st_new.name+='+'+el+str(i_void)
+    st_new.des+=';Atom '+el+' added to '+ str(xc)
     printlog(st.des, imp = 'y')
 
-    st.write_xyz()
+    st_new.write_xyz()
 
-    return st_new
+    return st_new, i_add
 

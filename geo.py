@@ -840,10 +840,12 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
 
 
 
-def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4):
+def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
     """
     Looks for all unique antisites for el1 and el2
     
+    iatom (int) - create antistes only using this atom number
+
     Todo
     #check that distances through  PBC are two small
     """
@@ -866,6 +868,11 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4):
 
             for at1 in eqv_atoms1:
                 for at2 in eqv_atoms2:
+
+                    if iatom != None:
+                        if at1 != iatom:
+                            continue
+
                     x1 = st.xcart[at1]
                     x2 = st.xcart[at2]
                     d = image_distance(x1, x2, r)[0]
