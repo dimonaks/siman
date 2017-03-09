@@ -2916,10 +2916,15 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10]):
         for z in st.znucl:
             el = element_name_inv(z)
             f.write(el+' ')
+        f.write('\n')
+
         # f.write("\nDIAG = .TRUE.\n")
         # f.write("DISPLACEMENT_DISTANCE = 0.03\n")    
 
-        f.write("\nMP = {:}\n".format( mpstr ))
+        # f.write("TETRAHEDRON\n")
+        # f.write("SIGMA = 0.1\n")
+
+        f.write("MP = {:}\n".format( mpstr ))
 
 
 

@@ -108,7 +108,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
 
 
 
-def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name = None, show = None,
+def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", 
+    image_name = None, filename = None,
+    show = None,
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  
     linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
@@ -118,6 +120,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
     Creates one plot with two dependecies and fit them;
     return minimum fitted value of x2 and corresponding value of y2; 
     if name == "" image will not be plotted
+    filename (str) - name of file with figure, image_name - deprecated
+
     power - the power of polynom
     ncol - number of legend coluns
 
@@ -130,6 +134,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", image_name 
 
     # print data
 
+    if image_name == None:
+        image_name  = filename
 
     if 1:
 

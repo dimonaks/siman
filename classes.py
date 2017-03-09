@@ -3688,7 +3688,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def bader_analysis(self):
+    def get_bader_ACF(self):
         #Make bader on server
         #assumes that bader is installed
 
@@ -3696,37 +3696,50 @@ class CalculationVasp(Calculation):
         path = self.project_path_cluster+self.dir
         
         # print()
-        CHG     = path+v+".CHG"
+        CHG     = path+v+".CHGCAR"
+        CHG_scratch_gz  = '/scratch/amg/aksenov/'+self.dir+'/'+v+".CHGCAR.gz"
         AECCAR0 = path+v+".AECCAR0"
         AECCAR2 = path+v+".AECCAR2"
         CHGCAR_sum = path+v+".CHGCAR_sum"
         baderlog =  path+v+".bader.log"
+        ACF      = path+v+'.ACF.dat'
 
-        command1 = "cd "+path+"; ~/utils/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
+        command1 = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
         "mv CHGCAR_sum "+CHGCAR_sum+";"
 
         command2 = \
-        "cd "+path+"; ~/utils/bader "+CHG+" -ref "+CHGCAR_sum+" > "+\
-        v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat;"
+        "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+\
+        v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
         # print "ssh "+cluster_address+" '"+command1+"'"
 
-
-
+        command3 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz '
+        # print(command3)
         
         if runBash("ssh "+self.cluster_address+" '[ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ;' """): #true if file not exists
-            print_and_log(  CHGCAR_sum, "not exist. try to calculate it ", imp = 'Y')
+            print_and_log(  CHGCAR_sum, "not exist. trying to calculate it ", imp = 'Y')
             printlog( runBash("ssh "+self.cluster_address+" '"+command1+"'")+'\n' ) 
 
+        if runBash("ssh "+self.cluster_address+" '[ -e "+   CHG       +""" ] || echo "NO"     ;' """): #true if file not exists
+            printlog( runBash("ssh "+self.cluster_address+" '"+command3+"'")+'\n', imp = 'y' ) 
+
+
         
-        if runBash("ssh "+self.cluster_address+" '[ -e "+   baderlog       +""" ] || echo "NO"     ;' """): #true if file not exists
-            print_and_log(  baderlog, "not exist. try to calculate Bader ", imp = 'Y')
-            printlog( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n' ) 
-        
+        if runBash("ssh "+self.cluster_address+" '[ -e "+   ACF     +""" ] || echo "NO"     ;' """): #true if file not exists
+            print_and_log(  ACF, " does not exist. trying to calculate Bader ", imp = 'Y')
+            printlog( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n', imp = 'y' ) 
+            
 
 
 
         ACF = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
-        # print ACF
+        print('ACF', ACF)
+        return ACF
+        
+    def bader_coseg():
+
+        "used in coseg project Ti- C,O" 
+        ACF = self.get_bader_ACF()
+
         ACF = ACF.splitlines()[2:] #list of lines with charges for each atom
 
         # print ACF[0]
@@ -3809,17 +3822,19 @@ class CalculationVasp(Calculation):
 
 
         if self.id[1] != ise:
-            try:
-                cl_son = header.calc[self.id_son]
+            if not hasattr(self, 'children'):
+                self.children = []
+
+            for idd in self.children:
+                cl_son = header.calc[idd]
                 cl_son.res()
-
-            except:
+            else:
                 it_new = add_loop(*self.id, ise_new = ise, inherit_option = iopt, override = 1, *args, **kwargs)
-                self.id_son = (it_new, ise, self.id[2])
-                cl_son = header.calc[self.id_son]
+                child = (it_new, ise, self.id[2])
+                self.children.append(child)
 
 
-        return cl_son
+        return header.calc[child]
 
 
     def read_pdos_using_phonopy(self):
@@ -3832,11 +3847,15 @@ class CalculationVasp(Calculation):
         os.chdir(self.dir)
         runBash('phonopy --fc '+os.path.basename(self.path['xml']))
 
-        # if 'poscar' not in self.path:
-        self.path['poscar'] = self.path['output'].replace('OUTCAR','POSCAR')
+        if 'poscar' not in self.path:
+            self.path['poscar'] = self.path['output'].replace('OUTCAR','POSCAR')
 
         print('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
         runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
+
+        from calc_manage import read_phonopy_dat_file
+
+        self.pdos = read_phonopy_dat_file('total_dos.dat')
+
+
         os.chdir(cwd)
-
-

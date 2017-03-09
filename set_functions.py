@@ -96,6 +96,9 @@ vasp_other_keys = [
 'TIME',
 'PRECFOCK',
 'NKRED',
+'NGX',
+'NGY',
+'NGZ',
 ]
 
 siman_keys = [
