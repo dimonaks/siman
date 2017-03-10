@@ -28,7 +28,7 @@ def smoother(x, n, mul = 1):
                store[v] = x[u+v]
           av = float(sum(store)) / n
           x_smooth.append(av*mul)
-     return x_smooth
+     return np.asarray(x_smooth)
 
 
 

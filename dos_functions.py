@@ -25,30 +25,12 @@ except:
 
 from header import printlog
 from picture_functions import fit_and_plot
-from functions import element_name_inv
+from functions import element_name_inv, smoother
 from geo import local_surrounding, determine_symmetry_positions
 
 
 
 
-
-def smoother(x, n, mul = 1):
-    #mul - additionally multiplies values
-     x_smooth = []
-     L = len(x)
-     store = numpy.zeros((n,1),float)
-     for u in range(L-n):
-          for v in range(n):
-               store[v] = x[u+v]
-          av = float(sum(store)) / n
-          x_smooth.append(av*mul)
-     
-     for u in range(L-n,L):
-          for v in range(L-u-1):
-               store[v] = x[u+v]
-          av = float(sum(store)) / n
-          x_smooth.append(av*mul)
-     return x_smooth
 
 
 
@@ -117,7 +99,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 
 
-def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, 
+def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, 
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {} ):
     """
@@ -148,21 +130,35 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None,
     """
 
     if dostype == 'partial'  :
-        eld = {}
+        eld1, eld2 = {}, {}
         for i, el in enumerate(cl1.end.get_elements()):
-            eld[i+1] = el
+            eld1[i+1] = el
+        
+        if cl2:
+            for i, el in enumerate(cl2.end.get_elements()):
+                eld2[i+1] = el
 
         if not iatom:
             printlog('Warning! Please choose atom number *iatom* from the following list:\n')
             printlog(eld)
             sys.exit()
         else:
-            printlog('Atom', iatom, 'of type', eld[iatom], 'is choosen', imp = 'y')
-            printlog('Atom numbers:', eld, imp = 'y')
+            printlog('cl1: Atom', iatom, 'of type', eld1[iatom], 'is choosen', imp = 'y')
+            printlog('cl1: Atom numbers:', eld1, imp = 'y')
 
-            printlog(determine_symmetry_positions(cl1.end, eld[iatom]))
+            if cl2:
+                printlog('cl2: Atom', iatom2, 'of type', eld2[iatom2], 'is choosen', imp = 'y')
+
+
+            printlog('cl1:', determine_symmetry_positions(cl1.end, eld1[iatom]), imp = 'y')
+            printlog('cl2:', determine_symmetry_positions(cl2.end, eld2[iatom]), imp = 'y')
 
     iatom-=1
+    if cl2:
+        if not iatom2:
+            printlog('Error!, provide *iatom2*!')
+        iatom2-=1
+
 
 
     if 'figsize' not in plot_param:
@@ -197,16 +193,25 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None,
     
 
 
-    
+    if len(dos[0].dos) == 2:
+        spin_pol = True
+    else:
+        spin_pol = False
 
     """2. Plot dos for different cases"""
     if dostype == 'total':
+        # print(dos[0].dos)
 
-        fit_and_plot(show = show, image_name = os.path.join(path, cl1.name+'.dosTotal'), xlabel = "Energy (eV)", ylabel = "DOS (states/eV)",
+        if spin_pol:
+            dosplot = {'Tot up':(dos[0].energy, smoother(dos[0].dos[0], 10), 'b-'), 'Tot down':(dos[0].energy, -smoother(dos[0].dos[1], 10), 'r-')}
+        else:
+            dosplot = {'Total':(dos[0].energy, smoother(dos[0].dos, 10), 'b-')}
+
+        fit_and_plot(show = show, image_name = os.path.join(path, cl1.name+'.dosTotal'), xlabel = "Energy (eV)", ylabel = "DOS (states/eV)",hor = True,
             **plot_param,
-            Total = (dos[0].energy, smoother(dos[0].dos, 10), 'b-'))
+            **dosplot)
 
-    elif dostype == 'diff_total':
+    elif dostype == 'diff_total': #no spin-polarized!!!!
 
         if len(dos) > 1:    
             #calculate dos diff 
@@ -214,7 +219,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None,
             area = trapz(dosd[:i_efermi], dx=1)
             printlog("area under dos difference = ", -area, imp = 'Y')
 
-            fit_and_plot(show = show, image_name = cl1.name+'--'+cl2.name+'.dosTotal_Diff', xlabel = "Energy (eV)", ylabel = "DOS (states/eV)",
+            fit_and_plot(show = show, image_name = cl1.name+'--'+cl2.name+'.dosTotal_Diff', xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", hor = True,
                 **plot_param,
                 Diff_Total = (dos[0].energy, smoother(dosd, 15), 'b-'))
         else:
@@ -252,31 +257,53 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None,
         local_atoms = local_surrounding(surround_center, cl1.end, neighbors, control = 'atoms', periodic = True)
 
         numbers = local_atoms[2] # first atom is impurity if exist
-        printlog("Numbers of local atoms:", [n+1 for n in numbers] )
-        printlog("List of distances", [round(d,2) for d in local_atoms[3]] )
+        printlog("Numbers of local atoms:", [n+1 for n in numbers], imp = 'Y' )
+        printlog("List of distances", [round(d,2) for d in local_atoms[3]], imp = 'Y' )
 
 
         iX = numbers[0]
+        # printlog
+        numbers_list = [numbers]
+        if cl2:
+            numbers_list.append([iatom2])
 
-        for j in range(len(dos)):
+
+
+        for d, numbers in zip(dos, numbers_list):
             
-            dos[j].p = [] #central and and surrounding
-            dos[j].d = [] #central atom and surrounding atoms
-            dos[j].d6 = 0 #sum by six atoms
+            d.p = [] #central and and surrounding
+            d.d = []
+            d.p_down = [] #central and and surrounding
+            d.d_down = [] #central atom and surrounding atoms
+            d.d6 = 0 #sum by six atoms
 
             for i in numbers: #Now for surrounding atoms in numbers list:
 
-                plist = [dos[j].site_dos(i, l)  for l in (1,2,3) ]
-                dos[j].p.append( [ sum(x) for x in zip(*plist) ] )
+                if spin_pol:
+                    plist = [d.site_dos(i, l)  for l in (2,4,6) ]
+                    plist_down = [d.site_dos(i, l)  for l in (3,5,7) ]
+                    d.p_down.append( [ sum(x) for x in zip(*plist_down) ] )
+
+                else:
+                    plist = [d.site_dos(i, l)  for l in (1,2,3) ]
+                d.p.append( [ sum(x) for x in zip(*plist) ] )
 
 
-                dlist = [dos[j].site_dos(i, l)  for l in (4,5,6,7,8) ] # For total d T96C
-                dsum = [ sum(x) for x in zip(*dlist) ] 
-                dos[j].d.append(  dsum   )
+
+
+                if spin_pol:
+                    dlist = [d.site_dos(i, l)  for l in (8,10,12,14,16) ] #
+                    dlist_down = [d.site_dos(i, l)  for l in (9,11,13,15,17) ] #
+                    d.d_down.append(  [ sum(x) for x in zip(*dlist_down) ]   )
+
+                else:
+                    dlist = [d.site_dos(i, l)  for l in (4,5,6,7,8) ] #
+                
+                d.d.append(  [ sum(x) for x in zip(*dlist) ]   )
             
 
-            dos[j].p6 = [ sum(pi) for pi in zip(*dos[j].p) ] #sum over neighbouring atoms
-            dos[j].d6 = [ sum(di) for di in zip(*dos[j].d) ] #sum over neighbouring atoms
+            d.p6 = [ sum(pi) for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
+            d.d6 = [ sum(di) for di in zip(*d.d) ] #sum over neighbouring atoms
 
             # t2g = [dos[0].site_dos(iTi, l)  for l in 4,5,7] #  Now only for first Ti atom
             # dos[0].t2g =  [ sum(x) for x in zip(*t2g) ]  
@@ -289,22 +316,63 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None,
         """Plotting"""
         nsmooth = 15 # smooth of dos
         d1 = dos[0]
+        ds = [d1]
+        names = [cl1.id[0]+' at '+eld1[iatom+1]]
+        atoms = [iatom]
+        els   = [eld1[iatom+1]]
+        lts = ['-',] #linetypes
+        if cl2:
+            ds.append(dos[1])
+            names.append(cl2.id[0]+' at '+eld2[iatom2+1])
+            lts.append('--')
+            atoms.append(iatom2)
+            els.append(eld2[iatom2+1])
+
         energy1 = dos[0].energy
         args = {}
-        i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
-        color = {'s':'k-', 'p':'g-', 'd':'b-', 'py':'r-', 'pz':'b-', 'px':'c-', 'dxy':'m-', 'dyz':'c-', 'dz2':'m-', 'dxz':'r-', 'dx2':'g-'}
+        if spin_pol:
+            i_orb =      {'s':0, 'py':2, 'pz':4, 'px':6, 'dxy':8, 'dyz':10, 'dz2':12, 'dxz':14, 'dx2':16}
+            i_orb_down = {'s':1, 'py':3, 'pz':5, 'px':7, 'dxy':9, 'dyz':11, 'dz2':13, 'dxz':15, 'dx2':17}
+
+        else:
+            i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
+        color = {'s':'k', 'p':'g', 'd':'b', 'py':'r', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
 
         for orb in orbitals:
-            if orb == 'p':
-                args[orb] = (d1.energy, smoother(d1.p[0], nsmooth), color[orb])
-            elif orb == 'd':
-                args[orb] = (d1.energy, smoother(d1.d[0], nsmooth), color[orb])
-            else:
-                args[orb] = (d1.energy, smoother(d1.site_dos(iX, i_orb[orb]), nsmooth), color[orb])
+            for n, l, iat, el, d in zip(names, lts, atoms,els, ds):
+                if el == 'Fe' and orb == 'p':
+                    continue
+                if el == 'O' and orb == 'd':
+                    continue
+                nam = orb
+                nam_down = nam+'_down'
 
-        image_name = os.path.join(path, cl1.name+'.'+''.join(orbitals)+'.'+el+str(iX+1))
+                if spin_pol:
+                    nam+='_up'
+                suf = '; '+n
+                nam+=suf
+                nam_down+=suf
 
-        fit_and_plot(show = show, image_name = image_name, xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", 
+                if orb == 'p':
+                    args[nam] = (d.energy, smoother(d.p[0], nsmooth), color[orb]+l)
+                    if spin_pol:
+                        args[nam_down] = (d.energy, -smoother(d.p_down[0], nsmooth), color[orb]+l)
+                
+
+                elif orb == 'd':
+                    args[nam] = (d.energy, smoother(d.d[0], nsmooth), color[orb]+l)
+                    if spin_pol:
+                        args[nam_down] = (d.energy, -smoother(d.d_down[0], nsmooth), color[orb]+l)
+                
+
+                else:
+                    args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
+                    if spin_pol:
+                        args[nam_down] = (d.energy, -smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), color[orb]+l)
+
+        image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))
+
+        fit_and_plot(show = show, image_name = image_name, xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", hor = True,
         # title = cl1.name.split('.')[0]+'; V='+str(round(cl1.vol) )+' $\AA^3$; Impurity: '+el,
         **plot_param, 
         **args
