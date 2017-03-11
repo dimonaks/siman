@@ -145,13 +145,13 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         else:
             printlog('cl1: Atom', iatom, 'of type', eld1[iatom], 'is choosen', imp = 'y')
             printlog('cl1: Atom numbers:', eld1, imp = 'y')
+            printlog('cl1:', determine_symmetry_positions(cl1.end, eld1[iatom]), imp = 'y')
 
             if cl2:
                 printlog('cl2: Atom', iatom2, 'of type', eld2[iatom2], 'is choosen', imp = 'y')
 
 
-            printlog('cl1:', determine_symmetry_positions(cl1.end, eld1[iatom]), imp = 'y')
-            printlog('cl2:', determine_symmetry_positions(cl2.end, eld2[iatom]), imp = 'y')
+                printlog('cl2:', determine_symmetry_positions(cl2.end, eld2[iatom]), imp = 'y')
 
     iatom-=1
     if cl2:
@@ -317,14 +317,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         nsmooth = 15 # smooth of dos
         d1 = dos[0]
         ds = [d1]
-        names = [cl1.id[0]+' at '+eld1[iatom+1]]
+        names = [cl1.id[0]+'_at_'+eld1[iatom+1]+str(iatom+1)]
         atoms = [iatom]
         els   = [eld1[iatom+1]]
         lts = ['-',] #linetypes
         if cl2:
             ds.append(dos[1])
-            names.append(cl2.id[0]+' at '+eld2[iatom2+1])
-            lts.append('--')
+            names.append(cl2.id[0]+'_at_'+eld2[iatom2+1]+str(iatom2+1))
+            lts.append(':')
             atoms.append(iatom2)
             els.append(eld2[iatom2+1])
 
@@ -357,13 +357,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                     args[nam] = (d.energy, smoother(d.p[0], nsmooth), color[orb]+l)
                     if spin_pol:
                         args[nam_down] = (d.energy, -smoother(d.p_down[0], nsmooth), color[orb]+l)
+                        color[orb] = 'c'
                 
 
                 elif orb == 'd':
                     args[nam] = (d.energy, smoother(d.d[0], nsmooth), color[orb]+l)
                     if spin_pol:
                         args[nam_down] = (d.energy, -smoother(d.d_down[0], nsmooth), color[orb]+l)
-                
+                        color[orb] = 'm'
 
                 else:
                     args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
