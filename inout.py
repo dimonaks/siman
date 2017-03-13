@@ -111,6 +111,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     imp_positions = [], specialcommand = None, analysis = None, show_around = None, replications = None, nnumber = 6, topview = True,
     filename = None, file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
     include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None, show_around_x = None, only_elements = None,
+    include_vectors = True
     ):
     """Writes st structure in xyz format in the folder xyz/path
 
@@ -127,7 +128,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     analysis - additional processing, allows to show only specifice atoms, 
         'imp_surrounding' - shows Ti atoms only around impurity
         nnumber - number of neighbours to show
-        show_around - choose atom number around which to show
+        show_around - choose atom number around which to show, from 1
         show_around_x - show atoms around point, has higher priority
         only_elements - see local_surrounding
 
@@ -135,7 +136,9 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
     full_cell - returns atoms to cell and replicate boundary atoms
 
-    jmol - 1,0 - allow to use jmol
+    include_vectors (bool) - write vectors to xyz
+
+    jmol - 1,0 -  use jmol to produce png picture
     """
     if replications:
         st = replic(st, mul = replications, inv = 1 )
@@ -160,7 +163,9 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     # print st.natom, len(st.xred), len(st.xcart), len(st.typat), len(st.znucl), max(st.typat)
     
     printlog("write_xyz(): Name is", name, important = 'n')
-    if name == '': name = 'noname'
+    
+    if name == '': 
+        name = 'noname'
 
 
     if xcart == [] or len(xcart) != len(xred):
@@ -175,14 +180,18 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
 
 
-    xyzfile = os.path.join(basepath, name+".xyz")
-    makedir(xyzfile)
+    suf = ''
+
+
+
 
 
     """Processing section"""
 
 
     if analysis == 'imp_surrounding':
+        
+        suf = '_loc'+str(show_around)
         lxcart = []
         ltypat = []
         i=0
@@ -229,6 +238,11 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
 
 
+    name+=suf
+    xyzfile = os.path.join(basepath, name+".xyz")
+    makedir(xyzfile)
+
+
     """Include atoms on the edge of cell"""
     if full_cell:
         # print xred
@@ -271,11 +285,14 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     #     del somelist[i]
 
 
-
+    if include_vectors:
+        nvect = 3
+    else:
+        nvect = 0
 
     with open(xyzfile,'w') as f:
         for i in range(repeat):
-            f.write(str(natom + len(imp_positions)-nsub + 3)+"\n") #+3 vectors
+            f.write(str(natom + len(imp_positions)-nsub + nvect)+"\n") #+3 vectors
             f.write(name+"\n")
 
             if imp_positions: 
@@ -299,9 +316,10 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
 
                 f.write( "%.5f %.5f %.5f \n"%( xcart[i][0], xcart[i][1], xcart[i][2] ) )
+            if include_vectors:
 
-            for r in st.rprimd:
-                f.write('Tv {:.10f} {:.10f} {:.10f}\n'.format(*r)  )
+                for r in st.rprimd:
+                    f.write('Tv {:.10f} {:.10f} {:.10f}\n'.format(*r)  )
 
 
     # os._exit(1)
