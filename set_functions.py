@@ -666,6 +666,8 @@ def init_default_sets():
             'PREC'      : "Normal",
             'KSPACING'  : 0.235,
             }
+        s.potdir = copy.deepcopy(header.nu_dict)
+
         s.update()
         header.varset[setname] = copy.deepcopy(s)
     

@@ -2,10 +2,106 @@
 from __future__ import division, unicode_literals, absolute_import 
 import os
 import header
+import numpy  as np
 from header import printlog, runBash
-from functions import element_name_inv
+from functions import element_name_inv, unique_elements
 from small_functions import makedir, is_list_like
 from geo import local_surrounding, replic
+
+
+def read_xyz(st, filename, rprimd = None):
+    """
+    Read xyz file into st
+
+    rprimd (list of lists) - if None or [None, ] then Tv are read; if Tv does not exist then create automatically 
+
+    """
+    with open(filename,'r') as f:
+        nlines = int(f.readline())
+        st.name = f.readline().strip()
+        elements = []
+        st.xcart = []
+        st.rprimd = []
+        for i in range(nlines):
+            xc = f.readline().split()
+            if len(xc) == 0:
+                printlog('Warning! xyz file is broken, not enough lines')
+                break
+
+            if 'Tv' in xc[0]: 
+                st.rprimd.append(np.asarray(xc[1:], dtype = float) )
+
+            else:
+                elements.append(xc[0])
+                st.xcart.append(np.asarray(xc[1:], dtype = float) )
+
+        st.natom = len(st.xcart)
+        
+
+
+        
+
+    st.znucl = [element_name_inv(el) for el in unique_elements(elements)]
+    
+
+    elements_z = [element_name_inv(el) for el in elements]
+    st.typat = []
+    for z in elements_z:
+        st.typat.append( st.znucl.index(z)+1 )
+
+    st.ntypat = len(st.znucl)
+
+
+    # print(st.rprimd)
+    if rprimd == None or None in rprimd or 0 in rprimd or len(rprimd) != 3:
+        printlog('None detected in *rprimd*, I use vectors from xyz file')
+        if len(st.rprimd) != 3:
+            printlog('Only these primitive vectors were found in xyz :\n', np.round(st.rprimd, 3), '\nI take rest from *rprimd*', imp ='y')
+            if rprimd:
+                for r in rprimd:
+                    if is_list_like(r):
+                        st.rprimd.append(r)
+            else:
+                printlog('Error! Please provide vector in *rprimd*')
+
+
+
+
+
+    else:
+        
+        printlog('I use vectors from *rprimd*')
+        st.rprimd = rprimd
+
+    if len(st.rprimd) != 3:
+        printlog('Error! Check *rprimd* or Tv in xyz')
+
+
+    if st.get_volume() < 0:
+        printlog('Warning! rprimd gives negative volume, I exchange vectors 2 and 3', imp = 'y')
+        t = st.rprimd[1]
+        st.rprimd[1] = st.rprimd[2]
+        st.rprimd[2] = t
+        if st.get_volume() < 0:
+            printlog('Error! still negative volume, check your primitive vectors', imp = 'y')
+        st.tmap = [1,3]
+    else:
+        st.tmap = [1,2]
+
+    printlog('Final rprimd = \n', np.round(st.rprimd, 3), imp = 'y')
+
+
+
+    st.nznucl = st.get_nznucl()
+
+    st.recip = st.get_recip()
+
+    st.update_xred()
+
+    st.reorder_for_vasp(inplace = True)
+
+    # print(st.perm)
+    return st
 
 
 def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = False, orientation = None,

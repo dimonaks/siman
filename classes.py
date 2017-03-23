@@ -35,7 +35,7 @@ from small_functions import cat_files, grep_file, red_prec
 from functions import (read_vectors, read_list, words,
      element_name_inv, calculate_voronoi,
     get_from_server, push_to_server, run_on_server, list2string, smoother, file_exists_on_server)
-from inout import write_xyz, write_lammps
+from inout import write_xyz, write_lammps, read_xyz
 from small_functions import makedir
 from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
 from geo import  image_distance, replic
@@ -109,11 +109,32 @@ class Structure():
     def xcart2xred(self,):
         self.xred = xcart2xred(self.xcart, self.rprimd)
         self.natom = len(self.xred)
-
+    def update_xred(self,):
+        self.xred = xcart2xred(self.xcart, self.rprimd)
+        self.natom = len(self.xred)
 
 
     def xred2xcart(self,):
         self.xcart = xred2xcart(self.xred, self.rprimd)
+
+    def update_xcart(self,):
+        self.xcart = xred2xcart(self.xred, self.rprimd)
+
+    def get_volume(self):
+        self.vol = np.dot( self.rprimd[0], np.cross(self.rprimd[1], self.rprimd[2])  ); #volume
+        return self.vol
+
+    def get_recip(self):
+        """Calculate reciprocal vectors"""
+        self.recip = calc_recip_vectors(self.rprimd)
+        return self.recip
+
+    def get_nznucl(self):
+        """list of numbers of atoms of each type"""
+        self.nznucl = []
+        for typ in range(1,self.ntypat+1):
+            self.nznucl.append(  self.typat.count(typ) )
+        return self.nznucl
 
     def get_elements(self):
         #return list of elements names
@@ -242,40 +263,55 @@ class Structure():
 
 
 
-    def reorder(st, ):
+    def reorder_for_vasp(self, inplace = False):
         """
         
-        !UNFINISHED
-        Group and order atoms by typat; consistent with VASP
-
+        Group and order atoms by atom types; consistent with VASP
+        return st
         """
         ''
-        # st = copy.deepcopy(st)
-        # zxred  = [[] for i in st.znucl]
-        # zxcart = [[] for i in st.znucl]
-        # ztypat = [[] for i in st.znucl]
-        # zmagmom= [[] for i in st.znucl]
-        # for t, xr, xc in zip(st.typat, st.xred, st.xcart):
-        #     # print "t ", t, xr
-        #     zxred[ t-1].append(xr)
-        #     zxcart[t-1].append(xc)
-        #     ztypat[t-1].append(t)
+        if inplace:
+            st = self
+        else:
+            st = copy.deepcopy(self)
+        nt = range(st.ntypat)
+        zxred  = [[] for i in nt]
+        zxcart = [[] for i in nt]
+        ztypat = [[] for i in nt]
+        zmagmom= [[] for i in nt]
+        ziat =   [[] for i in nt]
+        i = 0
+        # print(st.ntypat)
+        for t, xr, xc in zip(st.typat, st.xred, st.xcart):
+            # print ("t ", t, xr)
+            zxred[ t-1].append(xr)
+            zxcart[t-1].append(xc)
+            ztypat[t-1].append(t)
+            ziat[t-1].append(i)
+            i+=1
+
+        st.nznucl = [len(typat) for typat in ztypat]
+
+        st.xcart = [item for sublist in zxcart for item in sublist]
+        st.xred  = [item for sublist in zxred for item in sublist]
+        st.typat = [item for sublist in ztypat for item in sublist]
+        original_numbers  = [item for sublist in ziat for item in sublist]
         
-        # st.nznucl = [len(xred) for xred in zxred]
+        st.perm = [original_numbers.index(i) for i in range(st.natom)] # show the initial order of atoms; starting from 0
 
-        # xred, xcart, typat = [], [], []
-        # for i in range(ntypat):
-        #     xred.append()
+        if hasattr(st, 'magmom') and any(st.magmom):
+            for t, m in zip(st.typat, st.magmom):
+                zmagmom[t-1].append(m)
+            st.magmom = [item for sublist in zmagmom for item in sublist]
 
-        # if hasattr(st, 'magmom') and any(st.magmom):
-        #     magmom_flag = True
-        #     magmom = st.magmom
-        # else:
-        #     magmom_flag = False
-        #     magmom = [0]*st.natom
+        else:
+            st.magmom = [None]
 
-        # #probably better use sort?
-        # a = zip(st.typat, st.xred, st.xcart, magmom)
+        # print(st.get_elements())
+
+        # print(st.perm)
+
+        
 
         return st
 
@@ -601,8 +637,15 @@ class Structure():
 
         with open(filename,'w', newline = '') as f:
             """Writes structure (POSCAR) in VASP format """
-            f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; ' + self.name)
+            f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; ')
             
+            if hasattr(self, 'tmap'):
+                f.write('tmap=[{:s}] ; '.format(list2string(st.tmap).replace(' ', ',') ))
+
+
+            f.write(self.name)
+
+
             f.write("\n{:18.15f}\n".format(1.0))
             
             for i in 0, 1, 2:
@@ -683,6 +726,13 @@ class Structure():
 
     def write_lammps(self, *args, **kwargs):
         return write_lammps(self, *args, **kwargs)
+
+
+    def read_xyz(self, *args, **kwargs):
+        
+        # print(self.perm)
+        return read_xyz(self, *args, **kwargs)
+
 
     def jmol(self):
         # self.write_poscar('CONTCAR', vasp5 = 1)
@@ -1211,14 +1261,8 @@ class CalculationVasp(Calculation):
                     st.typat.append(i+1)
 
             #Determine reciprocal vectors
-            st.recip = []
-            st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  ); #volume
-            #print vol
-            st.recip.append(   np.cross( st.rprimd[1], st.rprimd[2] )   )
-            st.recip.append(   np.cross( st.rprimd[2], st.rprimd[0] )   )
-            st.recip.append(   np.cross( st.rprimd[0], st.rprimd[1] )   )
-            for i in 0,1,2:
-                st.recip[i] =  st.recip[i] * 2 * math.pi / st.vol;
+            st.recip = st.get_recip()
+
 
                 # if hasattr(self.init, 'vel'):
                 #     print "I write to POSCAR velocity as well"
@@ -1636,31 +1680,27 @@ class CalculationVasp(Calculation):
             
 
             with open(incar_filename,'w', newline = '') as f:
-                if 'SYSTEM' in vp and vp['SYSTEM']:
-                    # print(vp['SYSTEM'])
-                    f.write('SYSTEM = '+str(vp['SYSTEM'])+'\n')
-                    vp['SYSTEM'] = None
-                else:
-                    f.write( 'SYSTEM = %s\n\n'%(self.des) )
+
+                f.write( 'SYSTEM = ')
+                if hasattr(self.init, 'perm'):
+                    f.write( 'perm=[{:s}] ; '.format( list2string([i+1 for i in self.init.perm]).replace(' ', ',') )) #write permuations
+                f.write( '{:s}\n'.format(self.des) )
+
 
                 for key in sorted(vp):
-
-                    if key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
+    
+                    if key == 'SYSTEM':
+                        ''
+                    elif key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
                         f.write('MAGMOM = '+list2string(self.init.magmom)+"\n") #magmom from geo file has higher preference
-                        # sys.exit()
-                        continue
-                    
+                   
+                    elif vp[key] == None:
+                        ''
 
-                    if vp[key] == None:
-                        continue
+                    elif key == 'KSPACING' and self.set.kpoints_file: #attention! for k-points only the base set is used!!
+                        '' # since VASP has higher priority of KSPACING param, it should not be written 
 
-                    if key == 'KSPACING' and self.set.kpoints_file: #attention! for k-points only the base set is used!!
-                        continue # since VASP has higher priority of KSPACING param, it should not be written 
-
-
-
-
-                    if type(vp[key]) == list:
+                    elif type(vp[key]) == list:
                         lis = vp[key]
                         f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
                    
