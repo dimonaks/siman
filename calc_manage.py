@@ -1027,6 +1027,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         nonlocal input_geo_format, it
 
         mat_proj_st_id = None
+        if mat_proj_id:
+            input_geo_format = 'mat_proj'
+
         if input_geo_format == 'mat_proj':
             print_and_log("Taking structure "+it+" from materialsproject.org ...", imp = 'Y')
             if it_folder == None:
@@ -2098,7 +2101,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'no', b_id = None, 
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
-    calc_method = None, u_ramping_region = None, input_geo_file = None,
+    calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
     alkali_ion_number = None, cluster = None, ret = None, override = None):
