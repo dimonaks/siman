@@ -148,6 +148,10 @@ class Structure():
     def convert2pymatgen(self):
         return pymatgen.Structure(self.rprimd, self.get_elements(), self.xred)
 
+    def printme(self):
+        print(self.convert2pymatgen())
+        return 
+
     def get_space_group_info(self, symprec = 0.01):
         p = self.convert2pymatgen()
         return p.get_space_group_info(symprec)
@@ -1295,8 +1299,8 @@ class CalculationVasp(Calculation):
         #     print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n") 
         
         N_from_kspacing = []
-        it = self.id[0]
 
+        it = self.id[0]
 
 
         if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings'): #compatibiliy issues
@@ -1322,6 +1326,7 @@ class CalculationVasp(Calculation):
 
 
         elif kspacing:
+            self.init.recip = self.init.get_recip()
             for i in 0, 1, 2:
                 N_from_kspacing.append( math.ceil( (np.linalg.norm(self.init.recip[i]) / to_ang_local) / kspacing) )
 
@@ -1466,10 +1471,12 @@ class CalculationVasp(Calculation):
                 tve =0
                 for i in range(self.init.ntypat):
                     # print self.init.zval
-                    tve += self.init.zval[i] * self.init.nznucl[i]
-                self.nbands = int ( round ( math.ceil(tve / 2.) * curset.add_nbands ) )
+                    tve += self.init.zval[i] * self.init.nznucl[i] #number of electrons 
+                
+                nbands_min = math.ceil(tve / 2.)
+                self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
                 vp['NBANDS'] = self.nbands
-
+                printlog('I found that at least', nbands_min, ' bands are required. I add ', self.nbands, )
 
             if 'LSORBIT' in vp and vp['LSORBIT']:
                 # print (vp)
@@ -1815,7 +1822,7 @@ class CalculationVasp(Calculation):
 
         return [filename]
 
-    def copy_to_cluster(self,list_to_copy, update):
+    def copy_to_cluster(self, list_to_copy, update):
         d = self.dir
         list_to_copy.append( os.path.join(d, 'POTCAR')  )
         list_to_copy.extend( glob.glob(   os.path.join(d, '*POSCAR*')  ) )
@@ -3018,6 +3025,7 @@ class CalculationVasp(Calculation):
                     #self.energy = float(line.split()[4])
                     self.e_without_entr = float(line.split()[3]) #
                     self.energy_sigma0 = float(line.split()[6]) #energy(sigma->0)
+                    self.e0 = self.energy_sigma0
                     self.list_e_sigma0.append(  self.energy_sigma0  )
                     self.list_e_without_entr.append(  self.e_without_entr  )
 

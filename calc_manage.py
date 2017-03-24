@@ -605,13 +605,12 @@ def choose_cluster(cluster_name, cluster_home, corenum):
     
 
     #Determine cluster home using ssh
-    if header.ssh_object:
-        header.cluster_home = header.ssh_object.run('pwd')
-    else:
-        header.cluster_home = runBash('ssh '+header.cluster_address+' pwd')
+    # run_on_server('touch ~/.hushlogin', header.cluster_address)
+
+    header.cluster_home = run_on_server('pwd', header.cluster_address)
+
 
     printlog('The home folder on cluster is ', header.cluster_home)
-
 
 
 
@@ -641,7 +640,7 @@ def choose_cluster(cluster_name, cluster_home, corenum):
 
 
 def add_loop(it, setlist, verlist, calc = None, varset = None, 
-    up = 'up1', inherit_option = None,
+    up = 'up2', inherit_option = None,
     i_atom_to_remove = None, confdic = None,
     coord = 'direct', savefile = 'oc', show = None, comment = '', 
     input_geo_format = None, ifolder = None, input_geo_file = None, input_st = None,
@@ -1251,7 +1250,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     
     add_loop_prepare2()
 
-
     """Main Loop by setlist and verlist"""
     output_files_names = []
     input_folder = add_loop_choose_input_folder()
@@ -1338,20 +1336,21 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         # print(cl.state)
         if '2' in cl.state or '5' in cl.state:
             status = "ready"
-            cl.res() 
-            if up != 'up1':
+            # cl.res() 
+            if up != 'up2':
                 return
 
-        if "3" in cl.state:
+        if "3" in cl.state: #attention, should be protected from running the same calculation once again
             status = "running"
             cl.res() 
             return
 
-        if "4" in cl.state: 
+        elif "4" in cl.state: 
             status = "compl"
             cl.res() 
+            # sys.exit()
 
-            if up != 'up1':
+            if up != 'up2':
                 return
 
 
@@ -2101,7 +2100,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
 def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'no', b_id = None, 
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
-    calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None,
+    calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
     alkali_ion_number = None, cluster = None, ret = None, override = None):

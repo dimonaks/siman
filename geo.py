@@ -522,7 +522,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
     mp    (int)  include additionall atoms before cutting supecell
     test_overlap (bool) - check if atoms are overlapping -  quite slow
     """ 
-    sc = copy.deepcopy(st) 
+    sc = st.new() 
 
     sc.rprimd = list(np.dot(mul_matrix, st.rprimd  ))
     printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
@@ -579,6 +579,10 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
             if i1 != i2 and image_distance(x1, x2, sc.rprimd)[0] < 0.1: #less than 0.1 Angstrom
                 printlog('Error! Atoms in supercell are overlapping. Play with *bound*')
 
+    sc.recip = sc.get_recip()
+    sc.znucl = copy.copy(st.znucl)
+    sc.ntypat = st.ntypat
+    sc.nznucl = sc.get_nznucl()
 
 
     return sc
@@ -646,6 +650,8 @@ def remove_one_atom(st, element, del_pos = 1):
     """
     removes one atom of element type from position del_pos
     """
+    if not del_pos:
+        del_pos = 1
     positions = determine_symmetry_positions(st, element)
     pos = positions[ del_pos - 1 ]
     i_del = pos[0]

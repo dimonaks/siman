@@ -61,6 +61,11 @@ def run_on_server(command, addr):
         out = header.ssh_object.run(command)
     else:
         out = runBash('ssh '+addr+' "'+command+'"')    
+    
+    out = out.split('#')[-1].strip()
+    # sys.exit()
+
+
     return out
 
 
@@ -77,12 +82,13 @@ def push_to_server(files = None, to = None,  addr = None):
 
     files_str = ' '.join(np.array(files ))
 
-    printlog('push_to_server(): uploading files ', files, 'to', addr, to)
     
     command = ' mkdir -p {:}'.format( to )
+    # print('asfsadfdsf', to)
+    printlog('push_to_server():', command, run_on_server(command, addr))
+    # sys.exit()
 
-    run_on_server(command, addr)
-
+    printlog('push_to_server(): uploading files ', files, 'to', addr, to)
 
     if header.ssh_object:
         for file in files:
