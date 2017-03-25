@@ -2270,7 +2270,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 cl = calc[id]
                 if '3' in cl.check_job_state():
                     printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
-                    continue
+                    # cl.res()
+                    # continue
 
 
             if 'path' in show:

@@ -72,6 +72,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0):
     else:
         redox = 0
 
+    # print(n1, n2)
 
     dV = cl1.end.vol / n1 - cl2.end.vol / n2 
 

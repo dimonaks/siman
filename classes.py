@@ -484,7 +484,7 @@ class Structure():
 
     def replace_atoms(self, atoms_to_replace, el_new):
         """
-
+        atoms_to_replace - list of atom numbers starting from 0
         """
         st = copy.deepcopy(self)
 
