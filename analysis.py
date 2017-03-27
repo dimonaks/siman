@@ -95,3 +95,17 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0):
 
     return results_dic
 
+
+
+def matrix_diff(cl1, cl2, energy_ref = 0):
+    
+    e = cl1.energy_sigma0
+    v = cl1.end.vol
+    n_m = cl1.end.nznucl[0]
+    e_b = cl2.energy_sigma0
+    n_m_b = cl2.end.nznucl[0]
+    v_b = cl2.end.vol
+    print(n_m_b, n_m)
+    diffE = e - e_b/n_m_b*n_m - energy_ref
+    
+    return diffE, v - v_b

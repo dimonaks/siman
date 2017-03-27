@@ -699,6 +699,7 @@ class Structure():
 
 
     def write_cif(self, filename):
+        makedir(filename)
         symprec = 0.1
         st_mp = self.convert2pymatgen()
         sg_before =  st_mp.get_space_group_info() 
@@ -2782,7 +2783,7 @@ class CalculationVasp(Calculation):
             self.end.list_xcart = []
             self.energy = empty_struct()
 
-            nsgroup = 1
+            nsgroup = None
             magnitudes = []
             self.mag_sum = [] #toatal mag summed by atoms, +augmentation
 
@@ -3071,9 +3072,11 @@ class CalculationVasp(Calculation):
                     warnings += 1#line
 
 
-                if "Subroutine DYNSYM returns" in line:
+                if "Subroutine DYNSYM returns" in line and not nsgroup:
                     nsgroup = line.split()[4]#number of space group operations
-
+                # if nsgroup == None:
+                if "Subroutine GETGRP returns:" in line and not nsgroup:
+                    nsgroup = line.split()[4]    
 
 
                 if "Iteration" in line:

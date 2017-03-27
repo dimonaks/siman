@@ -36,7 +36,7 @@ from functions import (list2string, gb_energy_volume, element_name_inv
 from inout import write_xyz
 
 from picture_functions import plot_mep, fit_and_plot
-from analysis import calc_redox
+from analysis import calc_redox, matrix_diff
 from geo import image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 
 
@@ -2101,6 +2101,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
+    ortho = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
     alkali_ion_number = None, cluster = None, ret = None, override = None):
@@ -2271,7 +2272,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 if '3' in cl.check_job_state():
                     printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
                     # cl.res()
-                    # continue
+                    continue
 
 
             if 'path' in show:
@@ -2388,13 +2389,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     elif analys_type == 'matrix_diff': #
                         print_and_log( 'Calculating matrix_diff...')
                         
-                        e_b = calc[b_id].energy_sigma0
-                        n_m_b = calc[b_id].end.nznucl[0]
-                        v_b = calc[b_id].end.vol
-                        diffE = e - e_b/n_m_b*n_m
-                        
-                        outst2 += " {:.3f} & {:.2f} &".format( (diffE - energy_ref), (v - v_b) ).center(6)
-                        result_list = [diffE - energy_ref, v - v_b]
+
+                        diffE, diffV = matrix_diff(calc[id], calc[b_id], energy_ref)
+                        outst2 += " {:.3f} & {:.2f} &".format( diffE, diffV ).center(6)
+                        result_list = [diffE, diffV]
 
 
                     elif analys_type == 'diff': #
