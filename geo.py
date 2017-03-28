@@ -368,6 +368,8 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     else:
         dlist = copy.deepcopy(dlist_unsort)
     dlist.sort()
+    # print('local_surrounding(): dlist', dlist)
+
 
     if abs(dlist[0]) < 0.01:
         dlistnn = dlist[1:n_neighbours+1] #without first impurity which is x_central
@@ -646,16 +648,17 @@ def remove_atoms(st, atoms_to_remove):
     return st
 
 
-def remove_one_atom(st, element, del_pos = 1):
+def remove_one_atom(st, element, del_pos = 1, iat = 0):
     """
     removes one atom of element type from position del_pos
+    iat - number of atom inside subset
     """
     if not del_pos:
         del_pos = 1
     positions = determine_symmetry_positions(st, element)
     pos = positions[ del_pos - 1 ]
-    i_del = pos[0]
-    st = st.del_atom(i_del) # remove just the first atoms
+    i_del = pos[iat]
+    st = st.del_atom(i_del) # remove just iat atom
     st.name += '.'+element+str(i_del)+'del'
     return st
 

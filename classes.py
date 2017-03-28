@@ -342,6 +342,7 @@ class Structure():
 
         typ = st.typat[i]
 
+        print('del_atom(): I remove atom ',  st.get_elements()[i])
         del st.typat[i]
         del st.xred[i]
         del st.xcart[i]
@@ -501,8 +502,16 @@ class Structure():
 
                 if n in atoms_to_replace:
                     xcart = st.xcart[i]
-                    st = st.add_atoms([xcart], element = el_new)
+                    print('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new)
                     st = st.del_atom(i)
+
+                    st = st.add_atoms([xcart], element = el_new)
+                    print(st.natom)
+                    print(st.get_elements())
+
+                    print(st.natom)
+
+                    print(st.get_elements())
                     del numbers[i]
 
                     break

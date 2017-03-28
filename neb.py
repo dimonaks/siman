@@ -61,15 +61,16 @@ def determine_unique_final(st_pores, sums, avds, x_m):
 
     sur = local_surrounding(x_m, st_pores, n_neighbours = len(st_pores.xcart), control = 'atoms', periodic  = True)
 
+    print('neb.determine_unique_final(): sur',  sur)
 
     print_and_log(
-    'I can suggest you '+str (len(sur[0])-1 )+' end positions.', imp = 'y' )
+    'I can suggest you '+str (len(sur[0]) )+' end positions.', imp = 'y' )
     
 
     for i, (x, d, ind) in enumerate( zip(sur[0], sur[3], sur[2])):
-        if i == 0:
-            continue
-        final_table.append([i-1, np.array(x).round(2), round(d, 2), avds[ind], sums[ind] ]  )
+        # if i == 0:
+        #     continue
+        final_table.append([i, np.array(x).round(2), round(d, 2), avds[ind], sums[ind] ]  )
 
     print_and_log( tabulate(final_table, headers = ['void #', 'Cart.', 'Dist', 'Dev.', 'Sum'], tablefmt='psql'), imp = 'Y' )
 
@@ -82,7 +83,7 @@ def determine_unique_final(st_pores, sums, avds, x_m):
 
 def add_neb(starting_calc = None, st = None, 
     it_new = None, ise_new = None, i_atom_to_move = None, 
-    up = 'up1',
+    up = 'up2',
     search_type = 'vacancy_creation',
     images  = 3, r_impurity = None, corenum = 15, 
     calc_method = ['neb'], 
@@ -145,9 +146,11 @@ def add_neb(starting_calc = None, st = None,
     calc = header.calc
     struct_des = header.struct_des
     varset = header.varset
+    
 
     if not hasattr(calc_method, '__iter__'):
         calc_method = [calc_method]
+
 
 
     if starting_calc and st:
@@ -179,7 +182,9 @@ def add_neb(starting_calc = None, st = None,
         print_and_log('Error! Number of cores should be dividable by number of IMAGES')
 
 
-
+    if not ise_new:
+        ise_new = starting_calc.id[1]
+        printlog('I use', ise_new, 'as ise_new', imp = 'y')
 
 
     name_suffix = ''
@@ -212,11 +217,20 @@ def add_neb(starting_calc = None, st = None,
 
         atoms_to_move = []
         atoms_to_move_types = []
-        for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): #try to find automatically
-            if typ in ['Li', 'Na', 'K', 'Rb']:
-                atoms_to_move.append([i, typ, x])
-                if typ not in atoms_to_move_types:
-                    atoms_to_move_types.append(typ)
+        
+        if i_atom_to_move:
+            typ = st.get_elements()[i_atom_to_move]
+            printlog('add_neb: atom', typ, 'will be moved', imp = 'y')
+            atoms_to_move.append([i_atom_to_move, typ, st.xcart[i_atom_to_move]])
+            atoms_to_move_types.append(typ)
+
+        else:
+            #try to find automatically among alkali - special case for batteries
+            for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): 
+                if typ in ['Li', 'Na', 'K', 'Rb']:
+                    atoms_to_move.append([i, typ, x])
+                    if typ not in atoms_to_move_types:
+                        atoms_to_move_types.append(typ)
 
         if  atoms_to_move:
 
@@ -380,7 +394,8 @@ def add_neb(starting_calc = None, st = None,
 
 
     """ Determining magnetic moments  """
-    if varset[ise_new].vasp_params['ISPIN'] == 2:
+    vp = varset[ise_new].vasp_params
+    if 'ISPIN' in vp and vp['ISPIN'] == 2:
         print_and_log('Magnetic calculation detected. Preparing spin modifications ...', imp = 'y')
         cl_test = CalculationVasp(varset[ise_new])
         cl_test.init = st1
