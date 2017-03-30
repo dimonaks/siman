@@ -1752,6 +1752,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         section_folder = it_folder
 
     else:
+        if it_new not in struct_des:
+            printlog('Error! please provide *it_folder*')
         section_folder = struct_des[it_new].sfolder
 
 
@@ -1768,13 +1770,19 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         des = ' Partly inherited from the final state of '+cl_base.name+'; r2 and r3 from '+calc_from_name
         st.rprimd[1] = st_from.rprimd[1].copy()
         st.rprimd[2] = st_from.rprimd[2].copy()       
+        st.update_xcart() #calculate new xcart from xred, because rprimd was changed
+
 
     elif inherit_type == "r1r2r3":
         des = ' Partly inherited from the final state of '+cl_base.name+'; r1, r2, r3 from '+calc_from_name
         st.rprimd = copy.deepcopy( st_from.rprimd )
-        new.hex_a = calc_from.hex_a
-        new.hex_c = calc_from.hex_c
-        st.xcart = xred2xcart(new.end.xred, new.end.rprimd) #calculate new xcart from xred, because rprimd was changed
+        try:
+            new.hex_a = calc_from.hex_a
+            new.hex_c = calc_from.hex_c
+        except:
+            printlog('Attention! hex_a and hex_c were not found')
+
+        st.update_xcart() #calculate new xcart from xred, because rprimd was changed
 
 
     elif inherit_type == "full":
