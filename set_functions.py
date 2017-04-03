@@ -9,15 +9,19 @@ Oграничения режима sequence_set:
 4) kpoints file только для первого сета
 5) u-ramping inherit_xred - могут быть проблемы более чем для двух сетов
 
+
+TODO:
+ngkpt_dict_for_kspacings - when ngkpt is used could be problems, please test.
+
 """
 
 
 import json
 
 import header
-from header import print_and_log;
+from header import print_and_log, printlog;
 import copy
-
+from small_functions import is_list_like
 #Vasp keys
 vasp_electronic_keys = [
 'ALGO',
@@ -166,6 +170,9 @@ def read_vasp_sets(user_vasp_sets, override_global = False):
 
                     s.set_add_nbands(param[key])
 
+                elif key == 'ngkpt':
+                    s.set_ngkpt(param[key])
+
 
                 elif key == 'bfolder':
                     print_and_log( 'New blockfolder', param[key])
@@ -274,7 +281,9 @@ class InputSet():
             if self.vasp_params[key] == None: continue
             print_and_log( "{:30s} = {:s} ".format("s.vasp_params['"+key+"']", str(self.vasp_params[key]) ), imp = 'Y', end = '\n' )
 
-        print_and_log('POTDIR:', self.potdir, imp = 'Y', end = '\n' )
+        printlog('ngkpt:', self.ngkpt, imp = 'Y')
+
+        printlog('POTDIR:', self.potdir, imp = 'Y', end = '\n' )
 
     def update(self):
         #deprecated, but still can be usefull
@@ -457,8 +466,8 @@ class InputSet():
         return
 
     def set_ngkpt(self,arg):
-        if type(arg) is not tuple:
-            sys.exit("\nset_ngkpt type error\n")
+        if not is_list_like(arg):
+            printlog("Error! set_ngkpt type error")
         old = copy.copy(self.ngkpt)     
         self.ngkpt = copy.copy(arg)
         self.kpoints_file = True
