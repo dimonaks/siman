@@ -64,6 +64,7 @@ def run_on_server(command, addr):
     
     out = out.split('#')[-1].strip()
     # sys.exit()
+    
 
 
     return out

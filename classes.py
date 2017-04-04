@@ -1355,7 +1355,7 @@ class CalculationVasp(Calculation):
 
         self.init.ngkpt = N
 
-        if kspacing not in ngkpt_dict:
+        if kspacing != None and kspacing not in ngkpt_dict:
             ngkpt_dict[kspacing] = N
             printlog('check_kpoints(): I added ',N,'as a k-grid for',kspacing,'in struct_des of', it)
 
