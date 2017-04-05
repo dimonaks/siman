@@ -2628,7 +2628,7 @@ class CalculationVasp(Calculation):
         Download and Read VASP OUTCAR file
 
         ###INPUT:
-            - load (str) - 'x' - download xml, o - download outcar and contcar
+            - load (str) - 'x' - download xml, o - download outcar and contcar, un - read unfinished
             - show (str) - print additional information
             - choose_outcar - see description in res_loop()
 
@@ -2736,10 +2736,13 @@ class CalculationVasp(Calculation):
 
             out = grep_file('General timing', path_to_outcar, reverse = True)
 
-            if 'Gen' in out:
+            # print(load)
+            if 'Gen' in out or 'un' in load:
                 self.state = '4. Finished'
             else:
                 self.state = '5. Broken outcar'
+
+
 
         else:
             self.state = '5. no OUTCAR'

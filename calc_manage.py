@@ -2131,8 +2131,11 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         b_id - key of base calculation (for example bulk cell), used in several regimes; 
         r_id - key of reference calculation; defines additional calculation (for example atom in vacuum or graphite to calculate formation energies); can contain directly the energy per one atom
 
-        up - if equal to 'up2' the files are redownloaded; also can be used to download additional files can be 'xo' (deprecated?)
-        
+        up - 
+            if equal to 'up2' the files are redownloaded; also can be used to download additional files can be 'xo' (deprecated?)
+            - if 'un' is found in up then siman will try to read unfinished outcars
+
+
         readfiles (bool) - True - read from outcar, False - read from database; 
 
 
@@ -2209,7 +2212,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         b_ver_shift = 0
 
     if '2' in up:
-        loadflag = 'o'
+        loadflag = up+'o'
     else:
         loadflag = up
 
@@ -2734,6 +2737,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             # sys.exit()
             name_without_ext = 'mep.'+itise+'.U'+str(max(cl.ldauu))
             path2mep_l = cl.dir+name_without_ext+'.eps'
+            # print(path2mep_l)
             if not os.path.exists(path2mep_l) or '2' in up:
                 ''
                 get_from_server(files = path2mep_s, to_file = path2mep_l, addr = cl.cluster_address, )
@@ -2817,13 +2821,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             #prepare lists
             ni = cl.set.vasp_params['IMAGES']
             vlist = [1]+list(range(3, ni+3) )+[2]
-            # print vlist
+            # print( vlist)
             mep_energies = []
             atom_pos     = []
             for v in vlist:
                 cli = calc[cl.id[0], cl.id[1], v]
-                if '4' not in cli.state:
-                    printlog('res_loop(): Calc',cli.id,'is not finished; return')
+                if '4' not in cli.state or 'un' not in up:
+                    printlog('Attention! res_loop(): Calc',cli.id,'is not finished; return')
                     return {}, []
                 # print cli.id
                 # cli.end = return_to_cell(cli.end)
