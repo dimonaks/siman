@@ -324,7 +324,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         if cl2:
             ds.append(dos[1])
             names.append(cl2.id[0]+'_at_'+eld2[iatom2+1]+str(iatom2+1))
-            lts.append(':')
+            lts.append('--')
             atoms.append(iatom2)
             els.append(eld2[iatom2+1])
 
@@ -336,7 +336,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         else:
             i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
-        color = {'s':'k', 'p':'g', 'd':'b', 'py':'r', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
+        color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
+        # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
 
         for orb in orbitals:
             for n, l, iat, el, d in zip(names, lts, atoms,els, ds):
@@ -354,16 +355,17 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 nam_down+=suf
 
                 if orb == 'p':
-                    args[nam] = (d.energy, smoother(d.p[0], nsmooth), color[orb]+l)
+                    dashes=(5, 1)
+                    args[nam] = {'x':d.energy, 'y':smoother(d.p[0], nsmooth), 'c':color[orb], 'ls':l, 'label':el+' '+orb, 'dashes':dashes}
                     if spin_pol:
-                        args[nam_down] = (d.energy, -smoother(d.p_down[0], nsmooth), color[orb]+l)
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
                         color[orb] = 'c'
                 
 
                 elif orb == 'd':
-                    args[nam] = (d.energy, smoother(d.d[0], nsmooth), color[orb]+l)
+                    args[nam] = {'x':d.energy, 'y':smoother(d.d[0], nsmooth), 'c':color[orb], 'ls':l, 'label':el+' '+orb}
                     if spin_pol:
-                        args[nam_down] = (d.energy, -smoother(d.d_down[0], nsmooth), color[orb]+l)
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.d_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
                         color[orb] = 'm'
 
                 else:

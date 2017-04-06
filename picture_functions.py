@@ -114,7 +114,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  
     linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
-    ver_lines = None,
+    ver_lines = None, alpha = 0.8,
     **data):
     """Should be used in two below sections!
     Creates one plot with two dependecies and fit them;
@@ -128,7 +128,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
     fig_format - format of saved file.
     dpi    - resolution of saved file
     ver_lines - list of vertical lines (x, type)
-    data - each entry should be (X, Y, 'r-')
+    data - each entry should be (X, Y, 'r-') or (X, Y, 'r-', label) or dict (not implemented for powers yet)
 
     """
 
@@ -155,16 +155,31 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
 
             if scatter:
                 
-                plt.scatter(data[key][0], data[key][1],  s = data[key][2], c = data[key][-1], alpha = 0.8, label = key)
+                plt.scatter(data[key][0], data[key][1],  s = data[key][2], c = data[key][-1], alpha = alpha, label = key)
             else:
 
-                try:
-                    label = data[key][3]
-                except:
-                    label = key
-                # print 'label is ', label
 
-                plt.plot(data[key][0], data[key][1], data[key][2], linewidth = linewidth, label = label, markersize = markersize, alpha = 0.8)
+
+                con = data[key]
+                if type(con) == list or type(con) == tuple:
+                    try:
+                        label = con[3]
+                    except:
+                        label = key
+
+                    xyf = [con[0], con[1], con[2]]
+                    con = {'label':label} #fmt -color style
+
+                elif type(con) == dict:
+                    if 'fmt' not in con:
+                        con['fmt'] = ''
+                    # print(con)
+                    xyf = [con['x'], con['y'], con['fmt']]
+                    del con['x']
+                    del con['y']
+                    del con['fmt']
+
+                plt.plot(*xyf, linewidth = linewidth, markersize = markersize, alpha = alpha, **con)
 
 
 
