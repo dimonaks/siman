@@ -99,7 +99,8 @@ def write_batch_header(batch_script_filename = None,
             f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
             f.write("module load Compilers/Intel/psxe_2015.6\n")
             f.write("module load MPI/intel/5.1.3.258/intel \n")
-            f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n\n")
+            f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
+            f.write("module load ScriptLang/python/2.7\n\n")
 
         if schedule_system == 'SLURM':
             if '~' in path_to_job:
