@@ -913,11 +913,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             v = verlist[0]
 
             # if up != 'up3':
-            print_and_log('Preparing   scale  calculation ... ', imp = 'Y')
+            print_and_log('add_loop_scale(): Preparing   scale  calculation ... ', imp = 'Y')
 
             if len(verlist) > 1:
                 print_and_log('Error! Currently   scale  is allowed only for one version')
-                raise RuntimeError
             
 
 
@@ -935,26 +934,39 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             verlist_new = []
 
             if ise_new and len(setlist) > 1:
-                raise RuntimeError
+                printlog('Error, ise_new and setlist > 1 detected!')
+
 
             for inputset in setlist:
-
                 if inputset in varset:
                     inherit_ngkpt(it_new, it, varset[inputset])
 
-
                 id_s = (it,inputset,v)
+
+
+
+
                 if input_st:
+                    printlog('add_loop_scale():using input_st', pname)
                     st = input_st
                     pname = st.name
                     input_st = None
                 elif id_s in calc:
-                    st = calc[id_s].end
+                    try:
+                        st = calc[id_s].end
+                        assert len(st.xcart) == st.natom
+                        printlog('add_loop_scale(): end state of ', id_s, 'is used', st.name)
+                    except:
+                        st = calc[id_s].init
+                        printlog('add_loop_scale(): init state of ', id_s, 'is used', st.name)
+
                     pname = str(id_s)
                 else:
+                    printlog('add_loop_scale(): starting to read input file')
                     st = smart_structure_read(curver = v, input_folder = struct_des[it].sfolder+'/'+it, 
                         input_geo_format = input_geo_format, input_geo_file = input_geo_file)
                     pname = st.name
+
 
                 write_xyz(st, file_name = st.name+'_used_for_scaling')
                 printlog('Scale_region is', scale_region, imp = 'y')
@@ -2110,7 +2122,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
-    ortho = None,
+    ortho = None, mat_proj_cell = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
     alkali_ion_number = None, cluster = None, ret = None, override = None):
