@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """
 fit_tool.py by Aksyonov Dmitry, Skoltech, Moscow
 

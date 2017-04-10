@@ -2425,7 +2425,7 @@ class CalculationVasp(Calculation):
                     outputs = [ os.path.basename(out) for out in output_files_names ]
                     # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
                     # f.write('/home/aksenov/tools/fit_tool.py '+list2string(outputs)+'\n' )
-                    f.write(header.cluster_home+'/tools/fit_tool.py '+list2string(outputs)+'\n' )
+                    f.write('python '+header.cluster_home+'/tools/fit_tool.py '+list2string(outputs)+'\n' )
                     
 
                     f.write('cp 100.POSCAR POSCAR \n')

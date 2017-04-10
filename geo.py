@@ -486,23 +486,36 @@ def ortho_vec(rprim, ortho_sizes = None):
     By calculating np.dot(mul_matrix, rprim) you will get rprim of orthogonal supercell (actually as close as possible to it) 
     """
 
+    printlog('Calculating mul_matrix for ortho:',ortho_sizes, imp = 'y',)
+
     vec_new = np.diag(ortho_sizes)
 
     # print(rprim)
+    # t = rprim[1]
+    # rprim[1] = rprim[0]
+    # rprim[0] = t
+
+
     mul_matrix_float = np.dot( vec_new,  np.linalg.inv(rprim) )
 
     # ortho_test = np.dot(mul_matrix_float, rprim )
 
     # print(ortho_test)
     # print(mul_matrix_float)
+    printlog('mul_matrix_float:\n',mul_matrix_float, imp = 'y', end = '\n')
 
     mul_matrix = np.array(mul_matrix_float)
     mul_matrix = mul_matrix.round(0)
     mul_matrix = mul_matrix.astype(int)
 
+
     for i in [0,1,2]:
         if mul_matrix[i][i] == 0:
-            mul_matrix[i][i] = 1
+            # mul_matrix[i][i] = 1
+            ''
+
+    printlog('mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
+
 
     return mul_matrix
 
@@ -525,8 +538,11 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
     test_overlap (bool) - check if atoms are overlapping -  quite slow
     """ 
     sc = st.new() 
-
+    sc.name = st.name+'_supercell'
     sc.rprimd = list(np.dot(mul_matrix, st.rprimd  ))
+    printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
+    # printlog('Mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
+
     printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
     st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  )
@@ -962,4 +978,7 @@ def calc_k_point_mesh(rprimd, kspacing):
 
 
     return N_opt
+
+
+
 

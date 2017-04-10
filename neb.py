@@ -96,7 +96,7 @@ def add_neb(starting_calc = None, st = None,
     x_start = None, xr_start = None,
     x_final = None, xr_final = None,
     upload_vts = False,
-    run = False
+    run = False, add_loop_dic = None,
      ):
 
 
@@ -147,6 +147,8 @@ def add_neb(starting_calc = None, st = None,
     struct_des = header.struct_des
     varset = header.varset
     
+    if not add_loop_dic:
+        add_loop_dic = {}
 
     if not hasattr(calc_method, '__iter__'):
         calc_method = [calc_method]
@@ -586,7 +588,7 @@ def add_neb(starting_calc = None, st = None,
 
     inherit_ngkpt(it_new, it, varset[ise_new])
 
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'ov', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, run =run  )
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'ov', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, run =run, **add_loop_dic  )
     if upload_vts:
         siman_dir = os.path.dirname(__file__)
         # print(upload_vts)

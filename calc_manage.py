@@ -947,9 +947,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
                 if input_st:
-                    printlog('add_loop_scale():using input_st', pname)
                     st = input_st
                     pname = st.name
+                    printlog('add_loop_scale():using input_st', pname)
                     input_st = None
                 elif id_s in calc:
                     try:
