@@ -550,16 +550,6 @@ class Structure():
 
 
 
-    def find_atom_num_by_xcart(self, x_tar, prec = 1e-10):
-        for i, x in enumerate(self.xcart):
-            if np.linalg.norm(x-x_tar) < prec:
-            # if all(x == x_tar):
-                return i
-        # print self.xcart.index(x_tar)
-        # return self.xcart.index(x_tar)
-
-
-        # print type(atoms_xcart)
 
 
 
@@ -596,6 +586,40 @@ class Structure():
         print_and_log(str(n)+" atoms were returned to cell.\n")
         #print st.xred
         return st
+
+
+
+    def find_atom_num_by_xcart(self, x_tar, prec = 1e-6):
+        """take into account periodic conditions
+
+        TODO:
+        make normal function that treats periodic boundary conditions normally!!!
+        """
+
+        [xr_tar] = xcart2xred([x_tar], self.rprimd)
+        # print(xr_tar)
+        #PBC!!!
+        for i in [0,1,2]:
+            if xr_tar[i] <= 0:
+                xr_tar[i]+= 1
+            if xr_tar[i] > 1:
+                xr_tar[i]-= 1
+        # print(xr_tar)
+        [x_tar] = xred2xcart([xr_tar], self.rprimd)
+        # print(x_tar)
+        self = self.return_atoms_to_cell()
+
+        for i, x in enumerate(self.xcart):
+            if np.linalg.norm(x-x_tar) < prec:
+            # if all(x == x_tar):
+                printlog('Atom', i+1, 'corresponds to', x_tar)
+
+                return i
+        # print self.xcart.index(x_tar)
+        # return self.xcart.index(x_tar)
+
+
+        # print type(atoms_xcart)
 
 
 
@@ -3893,10 +3917,13 @@ class CalculationVasp(Calculation):
 
             for idd in self.children:
                 cl_son = header.calc[idd]
-                cl_son.res()
-            else:
-                it_new = add_loop(*self.id, ise_new = ise, inherit_option = iopt, override = 1, *args, **kwargs)
-                child = (it_new, ise, self.id[2])
+                # cl_son.res()
+                # self.children = list(set(self.children))
+                child = idd
+            # if len(self.children) == 0:
+            it_new = add_loop(*self.id, ise_new = ise, inherit_option = iopt, override = 1, *args, **kwargs)
+            child = (it_new, ise, self.id[2])
+            if child not in self.children:
                 self.children.append(child)
 
 

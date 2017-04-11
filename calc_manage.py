@@ -1349,7 +1349,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         # print(cl.state)
         if '2' in cl.state or '5' in cl.state:
             status = "ready"
-            # cl.res() 
+            cl.res() 
             if up != 'up2':
                 return
 

@@ -115,7 +115,7 @@ def add_neb(starting_calc = None, st = None,
             - it_new (str) - name for calculation
 
 
-        - i_atom_to_move (int) - number of atom for moving;
+        - i_atom_to_move (int) - number of atom for moving starting from 0;
         - *mag_config* (int ) - choose magnetic configuration - allows to obtain different localizations of electron
         - *replicate* (tuple 3*int) - replicate cell along rprimd
         - i_void_start,  i_void_final (int) - position numbers of voids (or atoms) from the suggested lists
@@ -222,7 +222,7 @@ def add_neb(starting_calc = None, st = None,
         
         if i_atom_to_move:
             typ = st.get_elements()[i_atom_to_move]
-            printlog('add_neb: atom', typ, 'will be moved', imp = 'y')
+            printlog('add_neb(): atom', typ, 'will be moved', imp = 'y')
             atoms_to_move.append([i_atom_to_move, typ, st.xcart[i_atom_to_move]])
             atoms_to_move_types.append(typ)
 
@@ -242,10 +242,16 @@ def add_neb(starting_calc = None, st = None,
                     printlog('Error! More than one type of atoms available for moving detected', atoms_to_move_types,
                         'please specify needed atom with *atoms_to_move*')
 
-            numbers = determine_symmetry_positions(st, atom_to_move)
-
             type_atom_to_move = atom_to_move #atoms_to_move[0][1]
 
+            if i_atom_to_move:
+                numbers = [[i_atom_to_move]]
+                i_void_start = 1
+            else:
+                numbers = determine_symmetry_positions(st, atom_to_move)
+
+            # print(numbers)
+            # sys.exit()
             if len(numbers)>0:
                 printlog('Please choose position using *i_void_start* :', [i+1 for i in range(len(numbers))],imp = 'y' )
                 i_m = numbers[i_void_start-1][0]
@@ -351,7 +357,7 @@ def add_neb(starting_calc = None, st = None,
         # print 'List of left atoms = ', np.array(st.leave_only(type_atom_to_move).xcart)
 
         sur = local_surrounding(x_m, st.leave_only(type_atom_to_move) , n_neighbours = 6, control = 'atoms', 
-            periodic  = False) #exclude the atom itself
+            periodic  = True) #exclude the atom itself
 
         # print(sur)
         print_and_log(
@@ -365,6 +371,7 @@ def add_neb(starting_calc = None, st = None,
         print_and_log('Choosing position ', i_void_final, 'with distance', round(sur[3][i_void_final], 2), 'A', imp = 'y')
 
         x_del = sur[0][i_void_final]
+        print(x_del)
         i_del = st.find_atom_num_by_xcart(x_del)
         name_suffix += el_num_suffix+'v'+str(i_void_final)
 
