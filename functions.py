@@ -168,14 +168,18 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
             # print(addr,file,to_file)
             out = runBash('rsync -uaz  '+addr+':'+file+ ' '+to_file)
 
-        if out:
+        if 'error' in out:
             res = out
         else:
             res = 'OK'
+            out = ''
 
         printlog('Download result is ', res)
 
         return out
+
+
+
 
 
     if '*' in files:

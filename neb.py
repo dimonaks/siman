@@ -326,8 +326,11 @@ def add_neb(starting_calc = None, st = None,
         if i_void_final == None:
             sys.exit()
 
-        x_final = sur[0][i_void_final+1] # +1 because first element is x_m atom itself
+        x_final = sur[0][i_void_final] #
         
+        printlog('You chose:', np.array(x_final).round(2), end = '\n', imp = 'Y')
+
+
         x_del = x_final #please compare with vacancy creation mode
 
         write_xyz(st.add_atoms([ x_final], 'H'), replications = (2,2,2), file_name = st.name+'_possible_positions2_replicated')

@@ -2,6 +2,8 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import, print_function
 import itertools, os, copy, math, glob, re, shutil, sys, pickle
+import re
+
 from small_functions import angle
 
 #additional packages
@@ -2103,7 +2105,8 @@ class CalculationVasp(Calculation):
             parrallel_run_command = "mpirun -x PATH vasp"
         elif schedule_system == 'PBS':
             # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
-            parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
+            # parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
+            parrallel_run_command = header.vasp_command #skoltech cluster
         
         elif schedule_system == 'SLURM':
             # parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI"
@@ -2676,7 +2679,8 @@ class CalculationVasp(Calculation):
         if header.show:
             show +=header.show
 
-
+        if not hasattr(self, 'dir'):
+            self.dir = os.path.dirname(self.path['output'])
 
         if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar:
             # print ('associated outcars = ',self.associated_outcars)
@@ -3266,8 +3270,13 @@ class CalculationVasp(Calculation):
                         if "Direct" in line:
                             self.end.xred = []
                             for i in range(self.end.natom):
-                                xr = np.asarray ( [float(x) for x in contcar.readline().split()] )
-                                self.end.xred.append( xr )
+                                try:
+                                    xr = np.asarray ( [float(x) for x in contcar.readline().split()] )
+                                    self.end.xred.append( xr )
+                                except:
+                                    self.end.xred.append( [0,0,0] )
+
+                                    printlog('Attention!, I could not parse CONTCAR:', path_to_contcar)
                 # print(self.end.xred)
 
 
@@ -3862,14 +3871,21 @@ class CalculationVasp(Calculation):
 
         
         cl = self
-        # print(cl.schedule_system)
-        if hasattr(cl,'schedule_system') and 'SLURM' in cl.schedule_system:
+        job_in_queue = ''
+        if hasattr(cl,'schedule_system'):
 
-            job_in_queue = cl.id[0]+'.'+cl.id[1] in runBash('ssh '+cl.cluster_address+""" squeue -o '%o' """)
+            check_string =  cl.id[0]+'.'+cl.id[1]
+            if 'SLURM' in cl.schedule_system:
 
-        else:
-            print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')
-            job_in_queue = ''
+                job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster_address)
+                printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running')
+
+            elif 'PBS' in cl.schedule_system:
+                job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
+
+            else:
+                print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')
+                job_in_queue = ''
 
 
         if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster_address) and job_in_queue: 

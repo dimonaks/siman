@@ -2311,6 +2311,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if readfiles:
                 outst = calc[id].read_results(loadflag, analys_type, voronoi, show, 
                     choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
+                
                 if '5' in cl.state:
                     continue
 
@@ -2837,10 +2838,12 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             # print( vlist)
             mep_energies = []
             atom_pos     = []
+            
             for v in vlist:
                 cli = calc[cl.id[0], cl.id[1], v]
-                if '4' not in cli.state or 'un' not in up:
-                    printlog('Attention! res_loop(): Calc',cli.id,'is not finished; return')
+                # print(cl.id[0], cl.id[1], v, cli.state)
+                if '4' not in cli.state and 'un' not in up:
+                    printlog('Attention! res_loop(): analys_type == neb, Calc',cli.id,'is not finished; return')
                     return {}, []
                 # print cli.id
                 # cli.end = return_to_cell(cli.end)
