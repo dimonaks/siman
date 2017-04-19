@@ -200,7 +200,7 @@ class Structure():
         if return_ins:
             Returns Structure(), int - place of insertion of first atom
         else:
-
+            Structure()
         """
 
         printlog('self.add_atoms(): adding atom ', element, imp = 'y')
@@ -382,7 +382,9 @@ class Structure():
 
 
     def mov_atoms(self, iat = None, to_x = None):
-
+        """
+        Move one atom to xcart position *to_x*
+        """
         st = copy.deepcopy(self)
         st.xcart[iat] = to_x
         st.xcart2xred()
@@ -626,14 +628,16 @@ class Structure():
 
 
     def shift_atoms(self, vector_red):
-
+        """
+        Shift all atoms according to *vector_red*
+        """
         st = copy.deepcopy(self)
         vec = np.array(vector_red)
         for xr in st.xred:
             xr+=vec
 
         st.xred2xcart()
-
+        st = st.return_atoms_to_cell()
         return st
 
 
@@ -646,7 +650,7 @@ class Structure():
 
         return image_distance(*args, **kwargs)
 
-    def write_poscar(self, filename, coord_type = 'dir', vasp5 = False):
+    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = False):
         st = self
         to_ang = 1
         rprimd = st.rprimd
@@ -655,6 +659,10 @@ class Structure():
         typat = st.typat  
         znucl = st.znucl
        
+        if not filename:
+            filename = ('xyz/POSCAR_'+st.name).replace('.', '_')
+
+
         # print 
         """1. Generate correct nznucl and zxred and zxcart"""
         zxred  = [[] for i in znucl]
@@ -729,7 +737,7 @@ class Structure():
                 print_and_log("Error! The type of coordinates should be 'car' or 'dir' ")
                 raise NameError
         f.close()
-        print_and_log( "POSCAR was generated\n")
+        print_and_log("POSCAR was written to", filename, imp = 'y')
 
 
 

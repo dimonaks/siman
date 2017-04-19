@@ -33,7 +33,7 @@ from small_functions import makedir
 from geo import replic
 
 
-def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
+def plot_mep(atom_pos, mep_energies, image_name = None, show = None, fitplot_arg = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path,
@@ -41,6 +41,8 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
     """
 
     #Create
+    if not fitplot_arg:
+        fitplot_arg = {}
     atom_pos = np.array(atom_pos)
     data = atom_pos.T #
     tck, u= interpolate.splprep(data) #now we get all the knots and info about the interpolated spline
@@ -100,7 +102,8 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None):
 
 
     path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, ynew, 'b-'), xlim = (-0.05, None  ),
-    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, show = show, fig_format = 'eps')
+    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, show = show, 
+    fig_format = 'eps', **fitplot_arg)
 
 
     return path2saved, diff_barrier

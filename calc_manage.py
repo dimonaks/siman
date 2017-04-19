@@ -2125,7 +2125,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     ortho = None, mat_proj_cell = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None, ret = None, override = None):
+    alkali_ion_number = None, cluster = None, ret = None, override = None, fitplot_arg = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -2181,6 +2181,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         ret (str) - return some more information in results_dic
             'energies' - just list of full energies
+
+        fitplot_arg - additional arguments for fit_and_plot function
 
 
         - ise_new - dummy
@@ -2877,7 +2879,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
-            _, diff_barrier = plot_mep(atom_pos, mep_energies, show = 0)
+            _, diff_barrier = plot_mep(atom_pos, mep_energies, show = 0, fitplot_arg = fitplot_arg)
 
             results_dic['barrier'] = diff_barrier
             cl1.barrier = diff_barrier
@@ -2889,7 +2891,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     show_flag = True
                 else:
                     show_flag = False
-                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag)
+                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_arg = fitplot_arg)
 
             if push2archive:
                 path2saved, _ = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')
