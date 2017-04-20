@@ -3912,9 +3912,9 @@ class CalculationVasp(Calculation):
 
 
 
-    def res(self,):
+    def res(self, **argv):
         from calc_manage import res_loop
-        res_loop(*self.id)
+        res_loop(*self.id, **argv)
 
     def run(self, ise, iopt = None, *args, **kwargs):
         """

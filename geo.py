@@ -487,7 +487,7 @@ def ortho_vec(rprim, ortho_sizes = None):
     """
 
     printlog('Calculating mul_matrix for ortho:',ortho_sizes, imp = 'y',)
-
+    printlog('rprim is;', rprim)
     vec_new = np.diag(ortho_sizes)
 
     # print(rprim)
