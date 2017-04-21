@@ -173,6 +173,18 @@ def add_neb(starting_calc = None, st = None,
 
 
 
+    if corenum == None:
+        if images == 3:
+            corenum = 15
+        elif images == 7:
+            corenum = 14
+        else:
+            printlog('add_neb(): Error! number of images', images,'is unknown to me; please provide corenum!')
+
+
+
+
+
 
     if corenum:
         # header.corenum = corenum
@@ -373,14 +385,17 @@ def add_neb(starting_calc = None, st = None,
 
         print_and_log('Choosing position ', i_void_final, 'with distance', round(sur[3][i_void_final], 2), 'A', imp = 'y')
 
-        x_del = sur[0][i_void_final]
-        print(x_del)
-        i_del = st.find_atom_num_by_xcart(x_del)
         name_suffix += el_num_suffix+'v'+str(i_void_final)
 
+        x_del = sur[0][i_void_final]
+        printlog('xcart of atom to delete', x_del)
+        i_del = st.find_atom_num_by_xcart(x_del)
+        # print(st.xcart)
+        print_and_log( 'number of atom to delete = ', i_del)
+        if i_del == None:
+            printlog('add_neb(): Error! I could find atom to delete!')
 
         print_and_log('Making vacancy at end position for starting configuration', imp = 'y')
-        print_and_log( 'number of atom to delete = ', i_del)
         # print st.magmom
         st1 = st.del_atom(i_del)
         # print st1.magmom

@@ -609,7 +609,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
 
 
 
-def determine_symmetry_positions(st, element):
+def determine_symmetry_positions(st, element, silent = 0):
     """
     determine non-equivalent positions for atoms of type *element*
 
@@ -636,14 +636,14 @@ def determine_symmetry_positions(st, element):
         if el == element:
             positions[pos].append(i)
 
-
-    printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y', end = '\n')
+    if not silent:
+        printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y', end = '\n')
     positions_for_print = {}
     for key in positions:
         positions_for_print[key] = [p+1 for p in positions[key]]
 
-
-    printlog('Atom numbers: ', positions_for_print, imp = 'y')
+    if not silent:
+        printlog('Atom numbers: ', positions_for_print, imp = 'y')
     
     sorted_keys = sorted(list(positions.keys()))
     pos_lists = [positions[key] for key in sorted_keys ]

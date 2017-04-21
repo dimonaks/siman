@@ -574,7 +574,7 @@ class Structure():
         for xr in st.xred:
             for j in 0,1,2:
                 if xr[j]  < bob:  xr[j] = xr[j] - int(xr[j]) + 1 #allows to account that xr can be more than 2
-                if xr[j]  > upb:  xr[j] = xr[j] - int(xr[j])
+                if xr[j]  >= upb:  xr[j] = xr[j] - int(xr[j])
         n+=1
         # zmin = 100
         # for xr in st.xred:
@@ -601,15 +601,20 @@ class Structure():
         """
 
         [xr_tar] = xcart2xred([x_tar], self.rprimd)
-        # print(xr_tar)
+        printlog('find_atom_num_by_xcart(): xr_tar = ', xr_tar)
         #PBC!!!
         for i in [0,1,2]:
-            if xr_tar[i] <= 0:
+            if xr_tar[i] < 0:
                 xr_tar[i]+= 1
-            if xr_tar[i] > 1:
+            if xr_tar[i] >= 1:
                 xr_tar[i]-= 1
+        printlog('find_atom_num_by_xcart(): xr_tar after periodic = ', xr_tar)
+
         # print(xr_tar)
         [x_tar] = xred2xcart([xr_tar], self.rprimd)
+        
+        printlog('find_atom_num_by_xcart(): x_tar after periodic = ', x_tar)
+
         # print(x_tar)
         self = self.return_atoms_to_cell()
 
@@ -3840,8 +3845,30 @@ class CalculationVasp(Calculation):
 
         ACF = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
         print('ACF', ACF)
-        return ACF
+
+        if ACF:
+            ACF_l = ACF.splitlines()
+        charges = []
+        for line in ACF_l:
+            try:
+                charges.append(round(float(line.split()[4]), 3))
+            except:
+                pass
+        self.charges = charges
+
+        # print(charges[[1,2]])
+        print(list(zip(charges, self.end.get_elements())))
+
+
+        return charges
         
+
+
+
+
+
+
+
     def bader_coseg():
 
         "used in coseg project Ti- C,O" 
