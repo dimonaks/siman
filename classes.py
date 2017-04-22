@@ -3587,11 +3587,20 @@ class CalculationVasp(Calculation):
                     plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
                     plt.show()
                     plt.clf()
+
             if 'chg' in show:
                 self.tot_chg_by_atoms = tot_chg_by_atoms[-1] #save for last step only
-
-
-
+                # print(list(zip(self.end.get_elements(), self.tot_chg_by_atoms)))
+                els  = self.end.get_elements()
+                try:
+                    only_el = show.split('.')[1:]
+                except:
+                    only_el = None
+                print('\nMulliken charges are:')
+                for el, ch in zip(els, self.tot_chg_by_atoms):
+                    if only_el == None or (only_el and el in only_el):
+                        print('{:s} {:4.2f};'.format(el, ch), end = ' ')
+                print()
             if 'occ' in show:
                 ''
                 # print (matrices)
@@ -3803,7 +3812,7 @@ class CalculationVasp(Calculation):
     def get_bader_ACF(self):
         #Make bader on server
         #assumes that bader is installed
-
+        self.res()
         v = str(self.version)
         path = self.project_path_cluster+self.dir
         
