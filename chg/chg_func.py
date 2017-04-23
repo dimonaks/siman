@@ -43,6 +43,7 @@ def chg_at_point(chgfile, xred1, ):
 def cal_chg_diff(cl1, cl2, wcell):
     """1. Calculate differences of charge densities
     Works on local computer
+    wcell = 1 or 2 - which cell to use to show
 
     TO DO:
     instead of paths to files, work with objects

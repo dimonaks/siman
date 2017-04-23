@@ -3730,6 +3730,14 @@ class CalculationVasp(Calculation):
 
 
 
+    def determine_filenames(self, nametype = 'asoutcar'):
+        """
+        try to determine correct filenames
+        """
+        if nametype == 'asoutcar':
+            for filetype in 'CHGCAR', 'AECCAR0', 'AECCAR2':
+                self.path[filetype.lower()] = self.path['output'].replace('OUTCAR',filetype)
+                print('determine_filenames()',self.path[filetype.lower()])
 
 
 
@@ -3815,15 +3823,21 @@ class CalculationVasp(Calculation):
         self.res()
         v = str(self.version)
         path = self.project_path_cluster+self.dir
-        
+        ppc = self.project_path_cluster
+        self.determine_filenames()
+
         # print()
-        CHG     = path+v+".CHGCAR"
         CHG_scratch_gz  = '/scratch/amg/aksenov/'+self.dir+'/'+v+".CHGCAR.gz"
-        AECCAR0 = path+v+".AECCAR0"
-        AECCAR2 = path+v+".AECCAR2"
+
+        CHG     = ppc + self.path['chgcar']
+        AECCAR0 = ppc + self.path['aeccar0']
+        AECCAR2 = ppc + self.path['aeccar2']
         CHGCAR_sum = path+v+".CHGCAR_sum"
         baderlog =  path+v+".bader.log"
         ACF      = path+v+'.ACF.dat'
+
+
+
 
         command1 = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
         "mv CHGCAR_sum "+CHGCAR_sum+";"
