@@ -3063,7 +3063,7 @@ class CalculationVasp(Calculation):
                 if  "Ewald energy   TEWEN" in line:
                     self.energy.ewald = float(line.split()[-1]) # the electrostatic interaction of the ions in a compensating electron gas.
                     # print self.energy.ewald
-                if  "-1/2 Hartree   DENC" in line:
+                if  "-1/2 Hartree   DENC" in line or "-Hartree energ DENC" in line:
                     self.energy.hartree = float(line.split()[-1]) #Coulomb electron-electron energy
                     # print self.energy.hartree
                 if  "-V(xc)+E(xc)   XCENC" in line:
