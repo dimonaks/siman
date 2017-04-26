@@ -336,8 +336,9 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     - control - type of output; 
               sum - sum of distances, 
               av - av distance, 
-              list - list of distances; 
+              'mavm': #min, av, max
               av_dev - return (average deviation, maximum deviation) from average distance in mA.
+              list - list of distances; 
               atoms  - coordinates of neighbours
 
     - periodic - if True, then cell is additionaly replicated; needed for small cells
