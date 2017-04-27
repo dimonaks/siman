@@ -131,7 +131,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
     fig_format - format of saved file.
     dpi    - resolution of saved file
     ver_lines - list of vertical lines (x, type)
-    data - each entry should be (X, Y, 'r-') or (X, Y, 'r-', label) or dict (not implemented for powers yet)
+    data - each entry should be (X, Y, 'r-') or (X, Y, 'r-', label) 
+    or dict {'x':,'y':, 'fmt':, 'label', 'xticks' }    not implemented for powers yet
 
     """
 
@@ -147,7 +148,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
         if title: 
             plt.title(title)
         plt.ylabel(ylabel)
-        plt.xlabel(xlabel)
+        if xlabel != None:
+            plt.xlabel(xlabel)
 
 
 
@@ -177,10 +179,21 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
                     if 'fmt' not in con:
                         con['fmt'] = ''
                     # print(con)
+
+                    if 'x' not in con:
+                        l = len(con['y'])
+                        con['x'] = range(l)
+
+                    if 'xticks' in con:
+                        plt.xticks(con['x'], con['xticks'])
+                        del con['xticks']
+
                     xyf = [con['x'], con['y'], con['fmt']]
                     del con['x']
                     del con['y']
                     del con['fmt']
+
+
 
                 plt.plot(*xyf, linewidth = linewidth, markersize = markersize, alpha = alpha, **con)
 
