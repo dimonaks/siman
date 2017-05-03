@@ -863,7 +863,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     for v in verlist:
                         id_base = (it,inputset,v)
 
-                        inherit_icalc(inherit_option, it_new, v, id_base, calc, id_from = id_from, confdic = confdic,
+                        inherit_icalc(inherit_option, it_new, v, id_base, calc, st_base = input_st, id_from = id_from, confdic = confdic,
                             it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, i_atom_to_remove = i_atom_to_remove,
                             ortho = ortho, mul_matrix = mul_matrix, override =override)
                 
@@ -1584,7 +1584,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
+def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base = None,
     id_from = None, confdic = None,
     atom_new = None, atom_to_replace = None,  
     id_base_st_type = 'end', 
@@ -1601,6 +1601,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None,
         id_base - new structure will be based on the final structure of this calculation;     (can be either Calculation() object or path to geo file)
         id_from - can be additionally used to adopt for example rprimd from id_from to it_new; (can be either Calculation() object or path to geo file)
 
+        st_base - if not None then used instead of id_base; not implemented yet
         confdic (dict) - to pass more parameters
 
 
