@@ -2249,6 +2249,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     energies = []
 
 
+
     emin = 0
     if b_id:
         if b_id in calc:

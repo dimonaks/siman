@@ -552,6 +552,28 @@ class Structure():
 
 
 
+    def add_vacuum(self, vec, thick):
+        """
+        To be improved
+        vector - along which vector, 0, 1, 2
+        thick - thickness of vector 
+
+
+        TODO:
+        make thick to be thickness along axis and not vector
+
+        """
+        st = copy.deepcopy(self)
+        v = st.rprimd[vec]
+        v_l = np.linalg.norm(v)
+        new_len = v_l+thick
+
+        st.rprimd[vec]*=new_len/v_l
+
+        st.update_xred()
+        st.name+='_vac'
+        st.write_xyz()
+        return st
 
 
 
@@ -2695,8 +2717,10 @@ class CalculationVasp(Calculation):
         if not hasattr(self, 'dir'):
             self.dir = os.path.dirname(self.path['output'])
 
+
         if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar:
             # print ('associated outcars = ',self.associated_outcars)
+            printlog('read_results(): choose_outcar', choose_outcar)
 
             path_to_outcar = join( dirname(self.path["output"]), self.associated_outcars[choose_outcar-1] )
 
