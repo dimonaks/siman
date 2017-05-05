@@ -3399,7 +3399,7 @@ class CalculationVasp(Calculation):
             # print self.a
             a = ("%.4f" %      ( self.a )      ).center(j[2])
             c = ("%.4f" %      ( self.c )      ).center(j[3])
-            time = ("%.2f" % (self.time/3600.)    ).center(j[4])
+            time = ("%.3f" % (self.time/3600.)    ).center(j[4])
             itertm = ("%.1f" % (self.time/1./iterat)    ).center(j[5])
             Nmd = ("%1i,%2i,%3i" % (self.mdstep, iterat/self.mdstep, iterat)    ).center(j[6])
             self.iterat = iterat
