@@ -1095,6 +1095,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             print_and_log('Attention, I update number of images in the set to', n_neb_images, 'for this calculation; ', imp = 'y')
         return neb_flag, nebsets
 
+
     def add_loop_neb2(neb_flag, nebsets):
         if neb_flag:
 
@@ -1253,6 +1254,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         return u_scale_flag
 
     add_loop_prepare()
+
     mat_proj_st_id = add_loop_take_from_database()
     
     neb_flag, nebsets     = add_loop_neb()
@@ -1293,6 +1295,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
  
     add_loop_neb2(neb_flag, nebsets)
+
     add_loop_finalize(u_scale_flag, fitted_v100_id)
     
 
