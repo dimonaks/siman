@@ -180,6 +180,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     if corenum == None:
         if images == 3:
             corenum = 15
+        elif images == 5:
+            corenum = 15
         elif images == 7:
             corenum = 14
         else:

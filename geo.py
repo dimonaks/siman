@@ -122,12 +122,38 @@ def find_moving_atom(st1, st2):
     """
     find moving atom
 
+    The cells should have the same rprimd!
+
+
+
     return number of atom which moves between two cell
     """
-    diffv = np.array(st1.xcart) - np.array(st2.xcart)
-    diffn = np.linalg.norm(diffv, axis = 1)
+
+    for r1, r2 in zip(st1.rprimd, st2.rprimd):
+        if np.linalg.norm(r1-r2)>0.001:
+            printlog('Attention! find_moving_atom(): st1 and st2 have different rprimd')
+
+    st1 = st1.return_atoms_to_cell()
+    st2 = st2.return_atoms_to_cell()
+
+    # diffv = np.array(st1.xcart) - np.array(st2.xcart)
+    # diffn = np.linalg.norm(diffv, axis = 1)
+
+
+    diffn = []
+    for x1, x2 in zip(st1.xcart, st2.xcart):
+        d1, d2 = image_distance(x1, x2, st1.rprimd)
+        diffn.append(d1)
+
+
 
     return np.argmax(diffn) # number of atom moving along the path
+
+
+
+
+
+
 
 def calc_recip_vectors(rprimd):
     #Determine reciprocal vectors 
