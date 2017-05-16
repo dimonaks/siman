@@ -858,7 +858,7 @@ class Calculation(object):
         """Reads geometrical data from filename file in abinit format"""
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
-
+            
 
 
         with open(filename,"r") as file:
@@ -3990,7 +3990,7 @@ class CalculationVasp(Calculation):
         from calc_manage import res_loop
         res_loop(*self.id, **argv)
 
-    def run(self, ise, iopt = None, *args, **kwargs):
+    def run(self, ise, iopt = 'full_nomag', up = 'up1', *args, **kwargs):
         """
         Wrapper for add_loop (in development)
         By default inherit self.end
@@ -3999,7 +3999,8 @@ class CalculationVasp(Calculation):
         iopt - inherit_option
 
         TODO:
-        if ise is not provided continue in the same folder under the same name
+        1. if ise is not provided continue in the same folder under the same name,
+        however, it is not always what is needed, therefore use inherit_xred = continue
         """
 
         from calc_manage import add_loop
@@ -4009,7 +4010,8 @@ class CalculationVasp(Calculation):
 
 
 
-        if self.id[1] != ise:
+        # if self.id[1] != ise:
+        if 1:
             if not hasattr(self, 'children'):
                 self.children = []
 
@@ -4019,7 +4021,7 @@ class CalculationVasp(Calculation):
                 # self.children = list(set(self.children))
                 child = idd
             # if len(self.children) == 0:
-            it_new = add_loop(*self.id, ise_new = ise, inherit_option = iopt, override = 1, *args, **kwargs)
+            it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
             child = (it_new, ise, self.id[2])
             if child not in self.children:
                 self.children.append(child)
