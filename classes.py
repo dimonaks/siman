@@ -858,7 +858,7 @@ class Calculation(object):
         """Reads geometrical data from filename file in abinit format"""
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
-            
+
 
 
         with open(filename,"r") as file:
@@ -2907,6 +2907,7 @@ class CalculationVasp(Calculation):
             self.potcar_lines = []
             self.stress = None
             self.intstress = None
+            spin_polarized = None
             for line in outcarlines:
 
                 #Check bands
