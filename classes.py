@@ -154,9 +154,18 @@ class Structure():
         print(self.convert2pymatgen())
         return 
 
-    def get_space_group_info(self, symprec = 0.01):
-        p = self.convert2pymatgen()
-        return p.get_space_group_info(symprec)
+    def get_space_group_info(self, symprec = None):
+        
+        default = 0.01
+        if not symprec:
+            symprec = default
+
+        if hasattr(self, 'spg') and symprec == default:
+            spg = self.spg
+        else:
+            p = self.convert2pymatgen()
+            spg = p.get_space_group_info(symprec)
+        return spg
 
     def get_angles(self):
         R = self.rprimd
@@ -3723,6 +3732,7 @@ class CalculationVasp(Calculation):
             elif 'ecut' in out_type : outst = outst_ecut
             elif 'kp' in out_type   : outst = outst_kp
             elif 'ts' in out_type   : outst = outst_ts
+            
             elif not header.siman_run:
                 outst_simple = d.join([etot, lens, strs, Nmd])
                 # print("Bi2Se3.static.1               |  -20.1543  |    10.27;10.27;10.27    | -680,-680,-657 |   1,13, 13   |    ")
@@ -4023,6 +4033,7 @@ class CalculationVasp(Calculation):
                 child = idd
             # if len(self.children) == 0:
             it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
+            # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
             child = (it_new, ise, self.id[2])
             if child not in self.children:
                 self.children.append(child)

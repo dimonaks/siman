@@ -44,7 +44,7 @@ PATH2DATABASE        = '/home/aksenov/Data/CEStorage/_aksenov'
 geo_folder           = './'
 path_to_images       = path_to_paper+'/fig/'
 path_to_wrapper      = '/home/aksenov/Simulation_wrapper/'
-
+show_head = None # show header for res_loop()
 
 
 """List of constants determined during installation"""
