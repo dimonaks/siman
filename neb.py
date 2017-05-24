@@ -243,11 +243,24 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         if is_list_like(xr_start):
             x_start = xred2xcart([xr_start], st.rprimd)[0]
-            st1 = st.add_atoms([x_start], atom_to_insert)
+            st1, i_m = st.add_atoms([x_start], atom_to_insert, return_ins = 1)
             x_m = x_start
-            name_suffix+='s'
+            # i_m = st1.find_atom_num_by_xcart(x_start)
+            # print(st1.get_elements()[i_m])
+            # sys.exit()
+
+
+            if i_atom_to_move:
+                nn = str(i_atom_to_move+1)
+            else:
+                nn = str(i_void_start)
+
+            name_suffix+=atom_to_insert+nn
             write_xyz(st1, file_name = st.name+'_manually_start')
             printlog('Start position is created manually by adding xr_start', xr_start, x_start)
+            type_atom_to_move = atom_to_insert
+            el_num_suffix = ''
+
 
         else:
 
@@ -279,6 +292,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 type_atom_to_move = atom_to_move #atoms_to_move[0][1]
 
                 if i_atom_to_move:
+                    printlog('add_neb(): *i_atom_to_move* = ', i_atom_to_move, 'is used', imp ='y')
                     numbers = [[i_atom_to_move]]
                     i_void_start = 1
                 else:
@@ -333,7 +347,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             st2 = st.add_atoms([x_final], atom_to_insert)
             x_del = x_final 
             search_type = 'manual_insertion'
-            name_suffix+='f'+atom_to_insert
+            name_suffix+= 'v'+str(i_void_final) 
             write_xyz(st2, file_name = st.name+'_manually_final')
             printlog('Final position is created manually by adding xr_final', xr_final, x_del)
 
@@ -410,20 +424,30 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             if i_del == None:
                 printlog('add_neb(): Error! I could find atom to delete!')
 
-            print_and_log('Making vacancy at end position for starting configuration', imp = 'y')
             # print st.magmom
-            st1 = st.del_atom(i_del)
             # print st1.magmom
 
-            print_and_log('Making vacancy at start position for final configuration', important = 'n')
+
+            # try:
+            if is_list_like(xr_start):
+                st2 = st1.mov_atoms(i_m, x_del) # i_m and sur[0][neb_config] should coincide
+                # i_del = st1.find_atom_num_by_xcart(x_del)
+                
+                st1 = st1.del_atom(i_del) 
+
+            else:
+                print_and_log('Making vacancy at end position for starting configuration', imp = 'y')
+                st1 = st.del_atom(i_del) 
 
 
-            st2 = st.mov_atoms(i_m, x_del) # i_m and sur[0][neb_config] should coincide
+                print_and_log('Making vacancy at start position for final configuration', important = 'n')
+                st2 = st.mov_atoms(i_m, x_del) # i_m and sur[0][neb_config] should coincide
+            # except:
+                # st2 = st
+
             st2 = st2.del_atom(i_del) # these two steps provide the same order
 
 
-    write_xyz(st1, file_name = st1.name+'_start')# replications = (2,2,2))
-    write_xyz(st2, file_name = st2.name+'_end')# replications = (2,2,2))
 
 
 
@@ -572,6 +596,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     struct_des[it_new].x_m_ion_start = x_m
     struct_des[it_new].xr_m_ion_start = xcart2xred([x_m], st1.rprimd)[0]
 
+    st1 = st1.remove_close_lying()
+    st2 = st2.remove_close_lying()
+
+
     cl.end = st1
     ver_new = 1
     cl.version = ver_new
@@ -586,6 +614,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     struct_des[it_new].x_m_ion_final = x_del
     struct_des[it_new].xr_m_ion_final = xcart2xred([x_del], st2.rprimd)[0]
 
+
+
     cl.end = st2
     ver_new = 2
     cl.version = ver_new
@@ -594,6 +624,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     
     cl.write_siman_geo(geotype = 'end', description = 'Final conf. for neb from '+obtained_from, override = True)
 
+
+
+    write_xyz(st1, file_name = st1.name+'_start')# replications = (2,2,2))
+    write_xyz(st2, file_name = st2.name+'_end')# replications = (2,2,2))
 
 
 

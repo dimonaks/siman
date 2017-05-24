@@ -686,6 +686,25 @@ class Structure():
 
         return image_distance(*args, **kwargs)
 
+
+
+    def remove_close_lying(self):
+        st = copy.deepcopy(self)    
+        tol = 0.4
+
+        for i, x1 in enumerate(st.xcart):
+            for j, x2 in enumerate(st.xcart):
+                if all(x1 == x2):
+                    continue
+                if np.linalg.norm(x1-x2) < tol:
+                    printlog('remove_close_lying(): Attention, atom', i, 'of type ', st.get_elements()[i], 'was removed')
+
+                    st = st.remove_atoms([i])
+
+
+        return st
+
+
     def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = False):
         st = self
         to_ang = 1
