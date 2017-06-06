@@ -101,7 +101,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, 
-    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {} ):
+    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '' ):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -123,6 +123,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     xlim, ylim (tuple)- limits for plot
 
     plot_param - dict of parameters to fit_and_plot
+    suf2 - additional suffix
+
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
@@ -324,7 +326,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         if cl2:
             ds.append(dos[1])
             names.append(cl2.id[0]+'_at_'+eld2[iatom2+1]+str(iatom2+1))
-            lts.append('--')
+            lts.append('-')
             atoms.append(iatom2)
             els.append(eld2[iatom2+1])
 
@@ -347,6 +349,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                     continue
                 nam = orb
                 nam_down = nam+'_down'
+                print('name', n)
+                print('lts', l)
+                formula = n.split('.')[0]
 
                 if spin_pol:
                     nam+='_up'
@@ -356,14 +361,15 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                 if orb == 'p':
                     dashes=(5, 1)
-                    args[nam] = {'x':d.energy, 'y':smoother(d.p[0], nsmooth), 'c':color[orb], 'ls':l, 'label':el+' '+orb, 'dashes':dashes}
+                    # dashes=None
+                    args[nam] = {'x':d.energy, 'y':smoother(d.p[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}#, 'dashes':dashes}
                     if spin_pol:
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None,}# 'dashes':dashes}
                         color[orb] = 'c'
                 
 
                 elif orb == 'd':
-                    args[nam] = {'x':d.energy, 'y':smoother(d.d[0], nsmooth), 'c':color[orb], 'ls':l, 'label':el+' '+orb}
+                    args[nam] = {'x':d.energy, 'y':smoother(d.d[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
                     if spin_pol:
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.d_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
                         color[orb] = 'm'
