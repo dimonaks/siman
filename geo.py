@@ -703,6 +703,7 @@ def remove_one_atom(st, element, del_pos = 1, iat = 0):
     i_del = pos[iat]
     st = st.del_atom(i_del) # remove just iat atom
     st.name += '.'+element+str(i_del)+'del'
+    st.magmom = [None]
     return st
 
 def create_deintercalated_structure(st, element, del_pos = 1):

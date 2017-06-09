@@ -838,6 +838,8 @@ def determine_unique_voids(st_pores, sums, avds):
     return insert_positions
 
 def insert_atom(st, el, i_void = None, r_imp = 1.6):
+    """Simple Wrapper for inserting atoms """
+
 
     r_impurity = r_imp
     st_pores, sums, avds = determine_voids(st, r_impurity)
@@ -860,6 +862,7 @@ def insert_atom(st, el, i_void = None, r_imp = 1.6):
     printlog(st.des, imp = 'y')
 
     st_new.write_xyz()
+    st_new.magmom = [None]
 
     return st_new, i_add
 
