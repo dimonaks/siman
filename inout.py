@@ -114,13 +114,15 @@ def read_xyz(st, filename, rprimd = None):
 def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = False, orientation = None,
     axis = False, bonds = True, rprimd = None, shift = None, rotate = None,
     label = None, high_contrast = None, specialcommand = None,
-    boundbox = 2):
+    boundbox = 2, atom_labels = None):
     """
     atomselection - string in gmol format with number of atoms to be nrotateSelected
     topview - additional top view, requires two models in xyz
     orientation - additional rotation
     axis - add axes
     rotate - rotation of all atoms around view axis in degrees
+    label (tuple ()) - used for impurities, please decribe
+    atom_labels (bool) - turn on atom labels
     """
     if not scriptfile:
         scriptfile = os.getcwd()+'/'+'temporary_jmol_script'
@@ -192,6 +194,13 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
                 name_old = name
 
 
+
+        if atom_labels:
+            f.write('select all\nset label "%e"\nset labeloffset 0 0\nset labelfront off\ncolor label black\nfont label 18 bold \n')
+
+
+
+
         if rotate:
             f.write('rotate z '+str(rotate)+'\n')
 
@@ -214,7 +223,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
     imp_positions = [], specialcommand = None, analysis = None, show_around = None, replications = None, nnumber = 6, topview = True,
     filename = None, file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
     include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None, show_around_x = None, only_elements = None,
-    include_vectors = True
+    include_vectors = True, jmol_args = None,
     ):
     """Writes st structure in xyz format in the folder xyz/path
 
@@ -243,6 +252,10 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
     jmol - 1,0 -  use jmol to produce png picture
     """
+
+    if jmol_args == None:
+        jmol_args = {}
+
     if replications:
         st = replic(st, mul = replications, inv = 1 )
   
@@ -483,7 +496,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
         
         printlog( 'imp_positions = ',imp_positions)
         write_jmol(xyzfile, pngfile, scriptfile, atomselection, topview = topview, rprimd =rprimd, shift = shift, label = [(pos[3], pos[4]) for pos in imp_positions], 
-            specialcommand = specialcommand, orientation = orientation, boundbox =boundbox, rotate = rotate)
+            specialcommand = specialcommand, orientation = orientation, boundbox =boundbox, rotate = rotate, **jmol_args)
 
 
     return xyzfile

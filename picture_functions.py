@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 
 import header
 from header import print_and_log
+from header import calc
 from inout import write_xyz
 from small_functions import makedir
 
@@ -67,6 +68,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None, fitplot_arg
 
 
 
+    # if '_mep' not in calc:
+    calc['_mep'] = [atom_pos, mep_energies]
+
 
 
     mine = min(mep_energies)
@@ -74,11 +78,12 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None, fitplot_arg
 
     
     
-    xnew = np.linspace(0, path_length)
+    xnew = np.linspace(0, path_length, 1000)
 
     # ynew = spline(mep_pos, eners, xnew )
-    # spl = CubicSpline(mep_pos, eners, bc_type = 'natural' ) second-derivative zero
+    # spl = CubicSpline(mep_pos, eners, bc_type = 'natural' ) # second-derivative zero
     spl = CubicSpline(mep_pos, eners, bc_type = 'clamped' ) #first derivative zero
+    # spl = CubicSpline(mep_pos, eners, bc_type = 'periodic') 
     ynew = spl(xnew)
 
     #minimum now is always zero,
