@@ -77,6 +77,7 @@ class CalcDict(dict):
             with shelve.open(calc_database, protocol = 3) as d:
                 try:
                     val = d[str(key)]
+                    print(len(d))
                     dict.__setitem__(self, key, val)
                 # print('reading ',key, 'from db')
                 # print(val)

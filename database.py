@@ -170,6 +170,7 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
 
         with shelve.Shelf(dbm.open(header.calc_database, 'w'), protocol = 3) as d:
             for key in header.calc:
+                # print(key)
                 d[str(key)] = header.calc[key]
         
         # with dbm.open(header.calc_database, 'w') as d:
