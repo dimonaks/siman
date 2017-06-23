@@ -2307,7 +2307,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
             if 'path' in show:
-                printlog(cl.path['output'], imp = 'Y')
+                printlog(os.getcwd()+'/'+cl.path['output'], imp = 'Y')
                 # sys.exit()
                 return
 

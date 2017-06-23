@@ -34,11 +34,13 @@ from small_functions import makedir
 from geo import replic
 
 
-def plot_mep(atom_pos, mep_energies, image_name = None, show = None, fitplot_arg = None):
+def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, fitplot_arg = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path,
     mep_energies (list) - full energies of the system corresponding to atom_pos
+
+    image_name - deprecated, use filename
     """
 
     #Create
@@ -106,8 +108,10 @@ def plot_mep(atom_pos, mep_energies, image_name = None, show = None, fitplot_arg
     # sys.exit()
 
 
+
+
     path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, ynew, 'b-'), xlim = (-0.05, None  ),
-    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, show = show, 
+    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, filename = filename, show = show, 
     fig_format = 'eps', **fitplot_arg)
 
 
