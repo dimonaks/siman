@@ -967,6 +967,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                         input_geo_format = input_geo_format, input_geo_file = input_geo_file)
                     pname = st.name
 
+                st = copy.deepcopy(st)
+                st.magmom = [None] # added on 24.06.2017
 
                 write_xyz(st, file_name = st.name+'_used_for_scaling')
                 printlog('Scale_region is', scale_region, imp = 'y')
