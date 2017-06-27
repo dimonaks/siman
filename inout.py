@@ -111,7 +111,7 @@ def read_xyz(st, filename, rprimd = None):
     return st
 
 
-def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = False, orientation = None,
+def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = 1, orientation = None,
     axis = False, bonds = True, rprimd = None, shift = None, rotate = None,
     label = None, high_contrast = None, specialcommand = None,
     boundbox = 2, atom_labels = None):
@@ -205,7 +205,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
             f.write('rotate z '+str(rotate)+'\n')
 
         if specialcommand:
-            f.write(specialcommand)
+            f.write(specialcommand+'\n')
 
         
         # f.write('write image 2800 2800 png "'+pngfile+'"')
@@ -219,11 +219,12 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
     return
 
 
-def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth = 1 , 
-    imp_positions = [], specialcommand = None, analysis = None, show_around = None, replications = None, nnumber = 6, topview = True,
-    filename = None, file_name = None, full_cell = False, orientation = None, boundbox = 2, withgb = False,
-    include_boundary = 2, rotate = None, imp_sub_positions = None, jmol = None, show_around_x = None, only_elements = None,
-    include_vectors = True, jmol_args = None,
+def write_xyz(st, path = None, filename = None, file_name = None,
+    include_vectors = True, repeat = 1, shift = 1.0, replications = None, full_cell = False, 
+    analysis = None, show_around = None, show_around_x = None,  nnumber = 6, only_elements = None,
+    gbpos2 = None, gbwidth = 1, withgb = False, include_boundary = 2,
+    imp_positions = [], imp_sub_positions = None,
+    jmol = None, specialcommand = None, jmol_args = None,
     ):
     """Writes st structure in xyz format in the folder xyz/path
 
@@ -248,9 +249,10 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
     full_cell - returns atoms to cell and replicate boundary atoms
 
-    include_vectors (bool) - write vectors to xyz
+    include_vectors (bool) - write primitive vectors to xyz
 
     jmol - 1,0 -  use jmol to produce png picture
+    jmol_args - see write_jmol()
     """
 
     if jmol_args == None:
@@ -307,6 +309,9 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
 
     if analysis == 'imp_surrounding':
         
+        if show_around == 0:
+            printlog('Error! number of atom *show_around* should start from 1')
+
         suf = '_loc'+str(show_around)
         lxcart = []
         ltypat = []
@@ -331,7 +336,7 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
                     # print i, condition
 
                 else:
-                    condition = (t > 1) # compat with prev behav
+                    condition = (t > 1) # compat with prev behav, to show around any impurities (all atoms with typat more than one)
                 
                 # print 'se', condition
 
@@ -495,8 +500,8 @@ def write_xyz(st, path = None, repeat = 1, shift = 1.0,  gbpos2 = None, gbwidth 
         pngfile = os.getcwd()+'/'+basepath+name+".png"
         
         printlog( 'imp_positions = ',imp_positions)
-        write_jmol(xyzfile, pngfile, scriptfile, atomselection, topview = topview, rprimd =rprimd, shift = shift, label = [(pos[3], pos[4]) for pos in imp_positions], 
-            specialcommand = specialcommand, orientation = orientation, boundbox =boundbox, rotate = rotate, **jmol_args)
+        write_jmol(xyzfile, pngfile, scriptfile, atomselection, rprimd =rprimd, shift = shift, label = [(pos[3], pos[4]) for pos in imp_positions], 
+            specialcommand = specialcommand, **jmol_args)
 
 
     return xyzfile

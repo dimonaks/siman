@@ -114,6 +114,7 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
             f.write("#SBATCH --mem-per-cpu=7675\n")
+            f.write("#SBATCH -l other=avx\n") # AVX2 instructions for new node to improve speed by 18% 
 
             # f.write("#SBATCH --nodelist=node-amg03\n")
             if header.siman_run: #only for me
