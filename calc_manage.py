@@ -2132,7 +2132,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     ortho = None, mat_proj_cell = None,
     it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None, ret = None, override = None, fitplot_arg = None):
+    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_arg = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -2188,6 +2188,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         ret (str) - return some more information in results_dic
             'energies' - just list of full energies
+        check_job - (bool) check status on server, use 0 if no internet connection
 
         fitplot_arg - additional arguments for fit_and_plot function
 
@@ -2301,8 +2302,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if id not in calc:
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
                 continue #pass non existing calculations
-            else:
-                cl = calc[id]
+            cl = calc[id]
+           
+            if check_job:
                 if '3' in cl.check_job_state():
                     printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
                     # cl.res()
