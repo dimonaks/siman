@@ -84,8 +84,15 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     # ynew = spline(mep_pos, eners, xnew )
     # spl = CubicSpline(mep_pos, eners, bc_type = 'natural' ) # second-derivative zero
-    spl = CubicSpline(mep_pos, eners, bc_type = 'clamped' ) #first derivative zero
+    # spl = CubicSpline(mep_pos, eners,) #
     # spl = CubicSpline(mep_pos, eners, bc_type = 'periodic') 
+    spl = CubicSpline(mep_pos, eners, bc_type = 'clamped' ) #first derivative zero
+
+
+
+    # spl = scipy.interpolate.PchipInterpolator(mep_pos, eners)
+
+
     ynew = spl(xnew)
 
     #minimum now is always zero,
@@ -110,7 +117,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
 
 
-    path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), spline = (xnew, ynew, 'b-'), xlim = (-0.05, None  ),
+    path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), 
+        spline = (xnew, ynew, 'b-'), 
+        xlim = (-0.05, None  ),
     xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, filename = filename, show = show, 
     fig_format = 'eps', **fitplot_arg)
 
