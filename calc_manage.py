@@ -35,7 +35,7 @@ from functions import (list2string, gb_energy_volume, element_name_inv
      , get_from_server,  run_on_server, push_to_server)
 from inout import write_xyz
 
-from picture_functions import plot_mep, fit_and_plot
+from picture_functions import plot_mep, fit_and_plot, plot_conv
 from analysis import calc_redox, matrix_diff
 from geo import image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 

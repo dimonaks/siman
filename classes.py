@@ -2724,6 +2724,10 @@ class CalculationVasp(Calculation):
             - load (str) - 'x' - download xml, o - download outcar and contcar, un - read unfinished
             - show (str) - print additional information
             - choose_outcar - see description in res_loop()
+            - out_type - controls the return string
+                see in code, add here
+                also controls reading of OUTCAR
+                'xcarts' read xcart every relaxation step and write into self.end.list_xcart
 
 
         ###RETURN:
@@ -3027,7 +3031,7 @@ class CalculationVasp(Calculation):
                     #print self.end.rprimd
                     #print self.rprimd
                 if "POSITION" in line:
-                    if not contcar_exist or out_type == 'dimer':
+                    if not contcar_exist or out_type == 'xcarts':
                         self.end.xcart = [] #clean xcart before filling
                         for i in range(self.end.natom):
                             #print outcarlines[i_line+1+i].split()[0:3] 
@@ -3038,7 +3042,7 @@ class CalculationVasp(Calculation):
                             self.end.xcart.append( xcart )
                             #self.end.xred.append ( xcart2xred( xcart, self.end.rprimd) )
                 
-                        if out_type == 'dimer':
+                        if out_type == 'xcarts':
                             self.end.list_xcart.append(self.end.xcart) #xcart at each step only for dimer
 
                         #the change of typat is accounted below

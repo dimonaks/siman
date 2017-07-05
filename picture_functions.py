@@ -26,7 +26,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 import header
-from header import print_and_log
+from header import print_and_log, printlog
 from header import calc
 from inout import write_xyz
 from small_functions import makedir
@@ -127,7 +127,24 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     return path2saved, diff_barrier
 
 
+def process_fig_filename(image_name, fig_format):
 
+    makedir(image_name)
+
+    if fig_format in image_name:
+        path2saved = str(image_name)
+
+    elif str(image_name).split('.')[-1] in ['eps', 'png', 'pdf']:
+        path2saved = str(image_name)
+        fig_format = str(image_name).split('.')[-1]
+
+    else:
+        path2saved = str(image_name)+'.'+fig_format
+    
+    path2saved_png = os.path.dirname(image_name)+'/png/'+os.path.basename(image_name)+'.png'
+    makedir(path2saved_png)
+
+    return path2saved, path2saved_png
 
 def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", 
     image_name = None, filename = None,
@@ -273,28 +290,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
         path2saved = ''
         
         if image_name:
-            makedir(image_name)
 
-            try:
-                path_to_images
-            except:
-                path_to_images = ''
-            
-
-            if fig_format in image_name:
-                path2saved = str(image_name)
-
-            elif str(image_name).split('.')[-1] in ['eps', 'png', 'pdf']:
-                path2saved = str(image_name)
-                fig_format = str(image_name).split('.')[-1]
-
-            else:
-                path2saved = str(image_name)+'.'+fig_format
-            
-            path2saved_png = os.path.dirname(image_name)+'/png/'+os.path.basename(image_name)+'.png'
-            makedir(path2saved_png)
-
-
+            path2saved, path2saved_png = process_fig_filename(image_name, fig_format)
 
             plt.savefig(path2saved, dpi = dpi, format=fig_format)
             plt.savefig(path2saved_png, dpi = 300)
@@ -691,13 +688,16 @@ def plot_bar_simple(xlabel = "xlabel", ylabel = "ylabel",
 
 
 
-def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelnames = None):
+def plot_conv(list_of_calculations = None, calc = None, 
+    type_of_plot = None, conv_ext = [], labelnames = None, cl = None,
+    plot = 1, filename = None):
     """
     Allows to fit and plot different properties;
     Input:
     'type_of_plot' - ("fit_gb_volume"-fits gb energies and volume and plot dependencies without relaxation and after it,
-     )
+     'dimer'
 
+    cl - calculation to use - new interface, please rewrite the old one
 
     """
 
@@ -753,11 +753,15 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
 
 
 
+    if list_of_calculations:
+        conv = list_of_calculations
+        n = conv[0]
 
-    conv = list_of_calculations
-    name = []; n = conv[0]
-    name.append( n[0] )
-    image_name = n[0]+'_'+n[1]+'_'+str(n[2])
+        name = []; 
+       
+        name.append( n[0] )
+        
+        image_name = n[0]+'_'+n[1]+'_'+str(n[2])
 
     energies = []; init_energies = []
     volumes = []
@@ -1132,19 +1136,23 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
 
     if type_of_plot == "dimer":
 
+        if not cl:
+            cl =  calc[list_of_calculations[0]]
 
         x1 = [] #list of distances
 
-        cl =  calc[list_of_calculations[0]]
+
+        
         if cl.end.natom > 2:
             raise RuntimeError
 
 
+        # print (cl.end.list_xcart)
         for xcart in cl.end.list_xcart:
             # x = xcart[1]
             # d = (x[0]**2 + x[1]**2 + x[2]**2)**0.5
             d = np.linalg.norm(xcart[1]-xcart[0]) #assuming there are only two atoms
-
+            print(xcart[0], xcart[1], d)
 
             x1.append(d)
 
@@ -1153,6 +1161,7 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
         name = 'dimer'
         xlabel = 'Bond length'
         ylabel = 'Full energy'
+        # print(x1, y1)
         coeffs1 = np.polyfit(x1, y1, power)        
       
         fit_func1 = np.poly1d(coeffs1)
@@ -1161,16 +1170,25 @@ def plot_conv(list_of_calculations, calc, type_of_plot, conv_ext = [], labelname
         fit_y1 = fit_func1(x_range); 
         f = fit_func1.deriv()
         min_e = fit_func1(f.r[2]).real
-        print_and_log("The minimum energy per atom and optimal length of dimer are {:.3f} eV and {:.3f} A".format( min_e/2., f.r[2].real) )
-        print_and_log("The atomization energy for dimer is {:.3f} eV ; The energy of atom in box is taken from the provided b_id".format(min_e - 2*cl.e_ref) )
-
+        printlog("The minimum energy per atom and optimal length of dimer are {:.3f} eV and {:.3f} A".format( min_e/2., f.r[2].real), imp = 'Y' )
+        try:
+            printlog("The atomization energy for dimer is {:.3f} eV ; The energy of atom in box is taken from the provided b_id".format(min_e - 2*cl.e_ref), imp = 'Y' )
+        except:
+            print('Reference energy was not found')
         plt.figure()
         plt.title(name)
         plt.ylabel(ylabel)
         plt.xlabel(xlabel)
         plt.plot(x1, y1, 'ro', label = 'init')
         plt.plot(x_range, fit_y1, 'r-', label = 'init_fit')
-        plt.show()
+        
+        if filename:
+            path2saved, path2saved_png = process_fig_filename(filename, fig_format)
+
+
+        if plot:
+            plt.show()
+
     return
 
 
