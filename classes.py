@@ -1575,7 +1575,7 @@ class CalculationVasp(Calculation):
                 nbands_min = math.ceil(tve / 2.)
                 self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
                 vp['NBANDS'] = self.nbands
-                printlog('I found that at least', nbands_min, ' bands are required. I add ', self.nbands, )
+                printlog('I found that at least', nbands_min, ' bands are required. I will use', self.nbands, 'bands; add_nbands = ', curset.add_nbands)
 
             if 'LSORBIT' in vp and vp['LSORBIT']:
                 # print (vp)
@@ -3994,7 +3994,7 @@ class CalculationVasp(Calculation):
             if 'SLURM' in cl.schedule_system:
 
                 job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster_address)
-                printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running')
+                printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
 
             elif 'PBS' in cl.schedule_system:
                 job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)

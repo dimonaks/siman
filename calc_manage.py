@@ -471,7 +471,7 @@ def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_g
     if input_geo_file:
 
         printlog("You provided the following geo file explicitly ", input_geo_file, 
-            '; Version of file does not matter, I use *curver*=',curver, 'as a new version', imp = 'Y' )
+            '; Version of file does not matter, I use *curver*=',curver, 'as a new version' )
         
     elif input_folder:
 
