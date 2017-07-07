@@ -291,7 +291,7 @@ def element_name_inv(el):
 
     return elinv # inversed notion of element
 
-
+invert = element_name_inv
 
 
 def return_atoms_to_cell(st):

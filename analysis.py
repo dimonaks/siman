@@ -1,6 +1,6 @@
 from __future__ import division, unicode_literals, absolute_import 
 from header import printlog
-from functions import element_name_inv
+from functions import element_name_inv, invert
 
 def calc_redox(cl1, cl2, energy_ref = None, value = 0):
     """
@@ -109,3 +109,49 @@ def matrix_diff(cl1, cl2, energy_ref = 0):
     diffE = e - e_b/n_m_b*n_m - energy_ref
     
     return diffE, v - v_b
+
+
+
+def form_en(sources, products, norm_el = None):
+    """
+    Calculate formation energy of reaction
+    sources, products - list of tuples (x, cl), where x is multiplier and cl is calculation
+    norm_el  - which element to use for normalization
+        'all' - normalize by total number of atoms
+
+    """
+
+    El = []
+    Nzl = []
+
+
+    for ls in [sources, products]:
+        E = 0
+        Nz = {}
+        for x, cl in ls:
+            E += x*cl.e0 
+            for i, z in enumerate(cl.end.znucl):
+                if z not in Nz:
+                    Nz[z] = 0
+                Nz[z] += x*cl.end.nznucl[i]
+        El.append(E)
+        Nzl.append(Nz)
+
+    for z in Nzl[0]:
+        if abs(Nzl[0][z] - Nzl[1][z]) > 1e-5:
+            printlog('Error! Number of', invert(z), 'atoms in source and product are different!')
+
+    # norm = 1
+    if 'all' == norm_el:
+        norm = sum(Nzl[0].values())
+    elif type(norm_el) == str:
+        norm = Nzl[0][invert(norm_el)]
+    elif norm_el != None:
+        norm = norm_el
+    else:
+        norm = 1
+    # print('Normalizing by ', norm_el, norm, 'atoms')
+
+
+    print('dE = {:4.2f} eV'.format((El[1]-El[0])/norm))
+

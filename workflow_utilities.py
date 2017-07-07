@@ -20,13 +20,15 @@ from geo import create_deintercalated_structure
 from geo import remove_one_atom
 from geo import create_replaced_structure, create_antisite_defect3, determine_symmetry_positions
 
-def make_vacancy(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None, opt_vol = 0, 
+def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None, opt_vol = 0, 
     suf = '', it_folder = None,
     el_rep = '', pos_rep = 1, pos_rep2 = None, 
     up = 0, fit = 0,  outcar = None, only_read = 0,
     compat1 = False, add_loop_arg = {}):
     """
     Function allow to create point defects and run them
+	previous name: make_vacancy()
+
 
     cl - starting Calculation 
     st_type - starting structure of cl: 'init' or 'end' 
