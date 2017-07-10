@@ -1,7 +1,7 @@
 from __future__ import division, unicode_literals, absolute_import 
 from header import printlog
 from functions import element_name_inv, invert
-
+from geo import determine_symmetry_positions
 def calc_redox(cl1, cl2, energy_ref = None, value = 0):
     """
     Calculated average redox potential and change of volume
@@ -155,3 +155,56 @@ def form_en(sources, products, norm_el = None):
 
     print('dE = {:4.2f} eV'.format((El[1]-El[0])/norm))
 
+
+
+def chgsum(cll, el, site):
+    """
+    calculate sum of Bader charges for particular atoms
+    """
+
+
+    for cl in cll:
+        # print(cl.id, end = '  ')
+
+        try:
+            cl.chgsum[(el, site)] = 0
+        except:
+            pass
+        if not hasattr(cl, 'charges'):
+            cl.get_bader_ACF()
+        # determine_symmetry_positions(cl.end, el, silent = 0)
+
+    print('')
+    pos = determine_symmetry_positions(cll[0].end, el, silent = 0)
+
+
+    for p in pos[site]:
+        ''
+        for cl in cll:
+            if not hasattr(cl, 'chgsum'):
+                cl.chgsum = {}
+                cl.chgsum[(el, site)] = 0
+
+            cl.chgsum[(el, site)] += cl.charges[p]
+        
+            # print('{:5.3f}'.format(cl.charges[p]), end = '  ')
+        # print('')
+    print('Sum of charges for ', el+str(site+1), ':')
+    for cl in cll:
+        cl.chgsum[(el, site)]/=len(pos[site])
+        if el == 'O':
+            chgsum = 6 - cl.chgsum[(el, site)]
+        elif el == 'Fe':
+            chgsum = 8 - cl.chgsum[(el, site)] #Fe
+        else:
+            chgsum = cl.chgsum[(el, site)] #any
+
+
+
+        if cl == cll[0]:
+            chgsum_ref = chgsum
+
+        print('{:5.2f}({:4.2f})'.format(chgsum, chgsum_ref-chgsum), end = '  ')
+    print('\n')
+
+    return 

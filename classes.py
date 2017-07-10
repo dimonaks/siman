@@ -492,7 +492,7 @@ class Structure():
             else:
                 atom_exsist = False
         printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
-
+        st.magmom = [None]
         # print(st.get_elements())
         return st
 
