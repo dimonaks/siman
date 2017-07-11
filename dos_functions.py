@@ -100,7 +100,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
-    orbitals = ('s'), up = None, neighbors = 6, show = 1, 
+    orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '' ):
     """
     cl1 (CalculationVasp) - object created by add_loop()
@@ -111,7 +111,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     orbitals (list of str) - any from 's, p, d, py, pz, px, dxy, dyz, dz2, dxz, dx2' where 'p' and 'd' are sums of projections
     up - 'up2' allows to download the file once again
-
+    labels - two manual labels for cl1 and cl2 instead of auto
 
     iatom (int) - number of atom starting from 1 to plot DOS;
     iatom ([float]*3) - cartesian coordinates of point around which atoms will be found
@@ -153,7 +153,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 printlog('cl2: Atom', iatom2, 'of type', eld2[iatom2], 'is choosen', imp = 'y')
 
 
-                printlog('cl2:', determine_symmetry_positions(cl2.end, eld2[iatom]), imp = 'y')
+                printlog('cl2:', determine_symmetry_positions(cl2.end, eld2[iatom2]), imp = 'y')
 
     iatom-=1
     if cl2:
@@ -319,13 +319,24 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         nsmooth = 15 # smooth of dos
         d1 = dos[0]
         ds = [d1]
+        names = []
+        # if labels:
+        #     names.append(labels[0])
+        # else:
         names = [cl1.id[0]+'_at_'+eld1[iatom+1]+str(iatom+1)]
+        
         atoms = [iatom]
         els   = [eld1[iatom+1]]
         lts = ['-',] #linetypes
         if cl2:
             ds.append(dos[1])
+            
+            # if labels:
+            #     names.append(labels[1])
+            # else:
             names.append(cl2.id[0]+'_at_'+eld2[iatom2+1]+str(iatom2+1))
+            
+
             lts.append('-')
             atoms.append(iatom2)
             els.append(eld2[iatom2+1])
@@ -342,17 +353,21 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
 
         for orb in orbitals:
+            i = 0
             for n, l, iat, el, d in zip(names, lts, atoms,els, ds):
                 if el == 'Fe' and orb == 'p':
                     continue
-                if el == 'O' and orb == 'd':
+                if el == 'O' and orb in ('d', 'dxy', 'dyz', 'dxz', 'dz2', 'dx2'):
                     continue
                 nam = orb
                 nam_down = nam+'_down'
                 print('name', n)
                 print('lts', l)
-                formula = n.split('.')[0]
-
+                if labels:
+                    formula = labels[i]
+                else:
+                    formula = n.split('.')[0]
+                i+=1
                 if spin_pol:
                     nam+='_up'
                 suf = '; '+n
@@ -377,7 +392,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 else:
                     args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
                     if spin_pol:
-                        args[nam_down] = (d.energy, -smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), color[orb]+l)
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.d_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
+
+                        # args[nam_down] = (d.energy, -smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), color[orb]+l)
 
         image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))
 

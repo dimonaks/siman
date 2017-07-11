@@ -649,7 +649,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
     mat_proj_cell = '',
-    mat_proj_id = None, cee_file = None,
+    mat_proj_id = None, 
+    cee_args = None,
     ise_new = None, it_suffix = None,
     scale_region = None, n_scale_images = 7, id_from = None,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
@@ -735,8 +736,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         - cluster_home - override value of header.CLUSTERS
 
-
-        - cee_file (str) - name of file to be taken from cee database
+        cee_args - arguments for taking files from cee database; see get_structure_from_cee_database
+            - cee_file (str) - name of file to be taken from cee database
+            - section (str) - CEStorage, Catalysts, ets
 
         - run (bool) - complete the run file copy to server and run
 
@@ -1060,7 +1062,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             if it_folder == None:
                 print_and_log('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
 
-            get_structure_from_cee_database(it, it_folder, verlist[0], cee_file = cee_file) #will transform it to vasp
+            get_structure_from_cee_database(it, it_folder, verlist[0], **cee_args) #will transform it to vasp
             input_geo_format = 'vasp'
         return mat_proj_st_id
 
@@ -2130,7 +2132,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
     ortho = None, mat_proj_cell = None,
-    it_folder = None, choose_outcar = None, choose_image = None, mat_proj_id = None, ise_new = None, push2archive = False,
+    it_folder = None, choose_outcar = None, choose_image = None, 
+    cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
     alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_arg = None):
     """Read results
@@ -3153,7 +3156,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
 
-def get_structure_from_cee_database(it, it_folder, ver, cee_struct_type = 'exp', cee_file = None):
+def get_structure_from_cee_database(it, it_folder, ver, section = 'CEStorage', cee_struct_type = 'exp', cee_file = None):
     """
     cee_struct_type (str) - 
         'exp' - experimental structures
@@ -3164,7 +3167,8 @@ def get_structure_from_cee_database(it, it_folder, ver, cee_struct_type = 'exp',
     print_and_log("Taking structure "+it_base+" from CEE CREI database of Skoltech ...", imp = 'Y')
 
     database_server = 'aksenov@10.30.100.28'
-    database_path   = '/home/Data/CEStorage/'
+    # database_path   = '/home/Data/CEStorage/'
+    database_path   = '/home/Data/'+section+'/'
 
     if 'exp' in cee_struct_type:
         templ = '*exp*.cif'

@@ -1283,11 +1283,17 @@ class CalculationVasp(Calculation):
             except:
                 vasp5 = True
 
+
             if vasp5:
+                printlog('Vasp5 detected')
                 for el in ilist:
                     elements_list.append(el)
+                printlog('elements_list:', elements_list)
 
                 ilist = f.readline().split()
+            else:
+                printlog('Vasp4 detected')
+
 
             
             for z in ilist:
@@ -1300,13 +1306,18 @@ class CalculationVasp(Calculation):
 
             coordinates = []
 
+            if len(elements_list) > 0:
+                read_elements = 0
+            else:
+                read_elements = 1
+
             for nz in st.nznucl:
 
                 for i in range(nz):
                     vec = f.readline().split()
                     coordinates.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
 
-                    if len(vec) == 4: # elements may be added by pymatgen
+                    if read_elements and len(vec) == 4: # elements may be added by pymatgen
                         # print_and_log("Probably elements names are added at the end of coordinates, trying to read them")
                         if vec[3] not in elements_list:
                             elements_list.append(vec[3])
@@ -4068,6 +4079,7 @@ class CalculationVasp(Calculation):
     def read_pdos_using_phonopy(self):
         from calc_manage import create_phonopy_conf_file
 
+        self.get_chg_file('vasprun.xml', nametype = 'asoutcar')
         create_phonopy_conf_file(self.end, path = self.dir)
 
         cwd = os.getcwd()
