@@ -167,6 +167,11 @@ class Structure():
             spg = p.get_space_group_info(symprec)
         return spg
 
+    def sg(self,symprec = None):
+        s = self.get_space_group_info(symprec)
+        print(s)
+        return s
+
     def get_angles(self):
         R = self.rprimd
         alpha = angle(R[1], R[2])
@@ -703,6 +708,35 @@ class Structure():
 
 
         return st
+
+    def nn(self, i, n = 6):
+        """
+        show neigbours
+        i - number of central atom, from 1
+        """
+        import itertools
+        from functions import invert
+        zn = self.znucl
+
+        out = local_surrounding(self.xcart[i-1], self, n, 'atoms', True)
+        # out =  (xcart_local, typat_local, numbers, dlist )
+
+        out = list(out)
+        # out[0] = list(itertools.chain.from_iterable(out[0]))
+        out[1] = [invert(zn[o-1]) for o in out[1]]
+        out[2] = [o+1 for o in out[2]]
+
+        out = [out[2], out[1], out[3]]
+
+        tab = np.asarray(out).T.tolist()
+
+ 
+        # df = pd.DataFrame(tab)
+        # print(df)
+        print('Neigbours around atom', i, self.get_elements()[i-1],':')
+        print( tabulate(tab[1:], headers = ['No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
+
+
 
 
     def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = False):
@@ -1697,7 +1731,7 @@ class CalculationVasp(Calculation):
                 number_of_ord = math.factorial(ns) / math.factorial(0.5 * ns)**2
                 if number_of_ord > 100:
                     print_and_log('Attention! Number of orderings is more than 100 - I will check only first 100', imp = 'y')
-                # else:
+                else:
 
                     ls = [0]*len(spec_mom_is)
                     # print ls
@@ -1734,7 +1768,7 @@ class CalculationVasp(Calculation):
                             # print i
                             new_magmom[i] = s * magmom[i]
                         
-                        # print_and_log(j, new_magmom, imp = 'y')
+                        printlog(j, new_magmom,)
                         
                         mag_orderings.append(new_magmom)
 

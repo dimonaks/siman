@@ -110,6 +110,7 @@ show = None
 
 
 calc = CalcDict()
+global db
 conv = {};
 varset = {};
 struct_des = {};

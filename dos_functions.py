@@ -22,7 +22,7 @@ except:
     print('Warning ase is not installed. I need ase to parse to DOSCAR. install ase with    pip install ase')
 
 
-
+import header
 from header import printlog
 from picture_functions import fit_and_plot
 from functions import element_name_inv, smoother
@@ -101,7 +101,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
-    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '' ):
+    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 6 ):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -130,6 +130,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
 
     """
+    if fontsize:
+        header.mpl.rcParams.update({'font.size': fontsize+4})
+        header.mpl.rc('legend', fontsize= fontsize) 
+
+
 
     if dostype == 'partial'  :
         eld1, eld2 = {}, {}
@@ -277,6 +282,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             d.d = []
             d.p_down = [] #central and and surrounding
             d.d_down = [] #central atom and surrounding atoms
+            d.t2g_up = []
+            d.t2g_down = []
+            d.eg_up = []
+            d.eg_down = []
             d.d6 = 0 #sum by six atoms
 
             for i in numbers: #Now for surrounding atoms in numbers list:
@@ -294,9 +303,23 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
                 if spin_pol:
-                    dlist = [d.site_dos(i, l)  for l in (8,10,12,14,16) ] #
+                    dlist      = [d.site_dos(i, l)  for l in (8,10,12,14,16) ] #
                     dlist_down = [d.site_dos(i, l)  for l in (9,11,13,15,17) ] #
                     d.d_down.append(  [ sum(x) for x in zip(*dlist_down) ]   )
+
+                    t2g_down = [d.site_dos(i, l)  for l in (9, 11, 15) ]
+                    eg_down  = [d.site_dos(i, l)  for l in (13, 17) ]
+                    
+                    t2g_up   = [d.site_dos(i, l)  for l in (8, 10, 14) ]
+                    eg_up    = [d.site_dos(i, l)  for l in (12, 16) ]
+                    
+                    d.t2g_down.append(  [ sum(x) for x in zip(*t2g_down) ]   )
+                    d.eg_down.append(  [ sum(x) for x in zip(*eg_down) ]   )
+                    d.t2g_up.append(  [ sum(x) for x in zip(*t2g_up) ]   )
+                    d.eg_up.append(  [ sum(x) for x in zip(*eg_up) ]   )
+
+
+
 
                 else:
                     dlist = [d.site_dos(i, l)  for l in (4,5,6,7,8) ] #
@@ -349,15 +372,15 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         else:
             i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
-        color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
+        color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g'}
         # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
 
         for orb in orbitals:
             i = 0
             for n, l, iat, el, d in zip(names, lts, atoms,els, ds):
-                if el == 'Fe' and orb == 'p':
+                if el in ['Fe', 'Co'] and orb == 'p':
                     continue
-                if el == 'O' and orb in ('d', 'dxy', 'dyz', 'dxz', 'dz2', 'dx2'):
+                if el == 'O' and orb in ('d', 't2g', 'eg', 'dxy', 'dyz', 'dxz', 'dz2', 'dx2'):
                     continue
                 nam = orb
                 nam_down = nam+'_down'
@@ -369,7 +392,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                     formula = n.split('.')[0]
                 i+=1
                 if spin_pol:
-                    nam+='_up'
+                    nam+=''
                 suf = '; '+n
                 nam+=suf
                 nam_down+=suf
@@ -388,6 +411,16 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                     if spin_pol:
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.d_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
                         color[orb] = 'm'
+                
+                elif orb == 't2g':
+                    args[nam] = {'x':d.energy, 'y':smoother(d.t2g_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                    if spin_pol:
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.t2g_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
+                
+                elif orb == 'eg':
+                    args[nam] = {'x':d.energy, 'y':smoother(d.eg_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                    if spin_pol:
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.eg_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
 
                 else:
                     args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
