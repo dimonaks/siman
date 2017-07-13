@@ -170,13 +170,16 @@ def chgsum(cll, el, site):
             cl.chgsum[(el, site)] = 0
         except:
             pass
-        if not hasattr(cl, 'charges'):
+        if not hasattr(cl, 'charges') or len(cl.charges) == 0:
             cl.get_bader_ACF()
         # determine_symmetry_positions(cl.end, el, silent = 0)
 
     print('')
-    pos = determine_symmetry_positions(cll[0].end, el, silent = 0)
-
+    try:
+        pos = determine_symmetry_positions(cll[0].end, el, silent = 0)
+    except:
+        printlog('chgsum() Warning!', cll[0].id, 'is broken!')
+        return 0
 
     for p in pos[site]:
         ''
@@ -190,14 +193,15 @@ def chgsum(cll, el, site):
             # print('{:5.3f}'.format(cl.charges[p]), end = '  ')
         # print('')
     print('Sum of charges for ', el+str(site+1), ':')
+    
+
+    el_ind = cl.init.znucl.index(invert(el)) # index of element in znucl and zval and nznucl
+    zval = cl.init.zval[el_ind] # number of electrons in chosen potential
+
     for cl in cll:
         cl.chgsum[(el, site)]/=len(pos[site])
-        if el == 'O':
-            chgsum = 6 - cl.chgsum[(el, site)]
-        elif el == 'Fe':
-            chgsum = 8 - cl.chgsum[(el, site)] #Fe
-        else:
-            chgsum = cl.chgsum[(el, site)] #any
+        
+        chgsum = zval - cl.chgsum[(el, site)]
 
 
 
@@ -207,4 +211,5 @@ def chgsum(cll, el, site):
         print('{:5.2f}({:4.2f})'.format(chgsum, chgsum_ref-chgsum), end = '  ')
     print('\n')
 
-    return 
+    # print(cl.charges)
+    return chgsum

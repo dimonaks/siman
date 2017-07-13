@@ -659,7 +659,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False,
+    run = False, check_job  = 1
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -1293,7 +1293,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                run = run, input_st = input_st, )
+                run = run, input_st = input_st, check_job = check_job)
             
             prevcalcver = v
 
@@ -1321,7 +1321,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     calc, varset, up = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None):
+    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
@@ -1363,8 +1363,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         if "3" in cl.state: #attention, should be protected from running the same calculation once again
             status = "running"
-            cl.res() 
-            return
+            cl.res()
+            if check_job: 
+                return
 
         elif "4" in cl.state: 
             status = "compl"

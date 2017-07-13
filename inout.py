@@ -446,7 +446,7 @@ def write_xyz(st, path = None, filename = None, file_name = None,
     # os._exit(1)
     printlog('File', xyzfile, 'was written', imp = 'y')
 
-
+    pngfile = None
     if jmol:
         """
         script mode for jmol. Create script file as well for elobarate visualization
@@ -497,14 +497,15 @@ def write_xyz(st, path = None, filename = None, file_name = None,
 
         xyzfile = os.getcwd()+'/'+xyzfile
         scriptfile = basepath+name+".jmol"
-        pngfile = os.getcwd()+'/'+basepath+name+".png"
+        bn = (basepath+name).replace('.', '_')
+        pngfile = os.getcwd()+'/'+bn+".png"
         
         printlog( 'imp_positions = ',imp_positions)
         write_jmol(xyzfile, pngfile, scriptfile, atomselection, rprimd =rprimd, shift = shift, label = [(pos[3], pos[4]) for pos in imp_positions], 
             specialcommand = specialcommand, **jmol_args)
 
 
-    return xyzfile
+    return xyzfile, pngfile
 
 
 

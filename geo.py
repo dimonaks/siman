@@ -362,7 +362,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     - control - type of output; 
               sum - sum of distances, 
               av - av distance, 
-              'mavm': #min, av, max
+              'mavm': #min, av, max, av excluding min and max
               av_dev - return (average deviation, maximum deviation) from average distance in mA.
               list - list of distances; 
               atoms  - coordinates of neighbours
@@ -419,7 +419,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
     elif control == 'mavm': #min, av, max
         dsort = sorted(dlistnn)
-        output = (dsort[0], sum(dsort[1:-1])/(n_neighbours-2), dsort[-1] ) #min, av excluding min and max, max
+        output = (round(dsort[0], 2), sum(dsort[1:-1])/(n_neighbours-2), round(dsort[-1], 2) ) #min, av excluding min and max, max
 
        
     elif control == 'av_dev':
@@ -427,7 +427,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         dav = sum(dlistnn)/n_neighbours
         av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
         max_dev = max([abs(d-dav) for d in dlistnn])
-        output = (av_dev*1000, max_dev*1000)
+        output = (round(av_dev*1000, 0), round(max_dev*1000, 0))
 
     elif control == 'atoms':
         # print dlist_unsort

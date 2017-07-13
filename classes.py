@@ -709,16 +709,18 @@ class Structure():
 
         return st
 
-    def nn(self, i, n = 6):
+    def nn(self, i, n = 6, ndict = None):
         """
         show neigbours
         i - number of central atom, from 1
+        ndict (dic) - number of specific neigbour atoms
+
         """
         import itertools
         from functions import invert
         zn = self.znucl
-
-        out = local_surrounding(self.xcart[i-1], self, n, 'atoms', True)
+        x = self.xcart[i-1]
+        out = local_surrounding(x, self, n, 'atoms', True)
         # out =  (xcart_local, typat_local, numbers, dlist )
 
         out = list(out)
@@ -736,6 +738,18 @@ class Structure():
         print('Neigbours around atom', i, self.get_elements()[i-1],':')
         print( tabulate(tab[1:], headers = ['No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
 
+
+        info = {}
+
+        info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9])
+        info['av(A-O)']   = local_surrounding(x, self, ndict[8], 'av', True, only_elements = [8])
+        info['min(A-O)'], _ ,info['max(A-O)']    = local_surrounding(x, self, ndict[8], 'mavm', True, only_elements = [8])
+        info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
+        info['Onumbers'] = local_surrounding(x, self, ndict[8], 'atoms', True, only_elements = [8])[2]
+
+        # print(info)
+
+        return info
 
 
 
@@ -3983,7 +3997,8 @@ class CalculationVasp(Calculation):
         self.charges = charges
 
         # print(charges[[1,2]])
-        print(list(zip(charges, self.end.get_elements())))
+        if 0:
+            print(list(zip(charges, self.end.get_elements())))
 
 
         return charges
