@@ -57,6 +57,7 @@ def chgarith(chgf1, chgf2, op, filename, wcell):
 
     if len(chg1.chg) != len(chg2.chg):
         print ('Number of images in charge density files not equal. Using just   the final images in both files.')
+        print ('len(chg.chg)', len(chg1.chg), len(chg2.chg) )
         chg1.chg = [chg1.chg[-1]]
         chg1.atoms = [chg1.atoms[-1]]
         if chg1.is_spin_polarized():

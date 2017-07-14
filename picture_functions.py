@@ -148,7 +148,7 @@ def process_fig_filename(image_name, fig_format):
 
 def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", 
     image_name = None, filename = None,
-    show = None,
+    show = None, fontsize = None,
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  
     linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
@@ -175,6 +175,12 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
 
     if image_name == None:
         image_name  = filename
+
+
+    if fontsize:
+        header.mpl.rcParams.update({'font.size': fontsize+4})
+        header.mpl.rc('legend', fontsize= fontsize) 
+
 
     if 1:
 

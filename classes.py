@@ -464,7 +464,7 @@ class Structure():
 
 
     def get_numbers(self, element):
-
+        "return numbers of specific element "
         return [i for i, el in enumerate(self.get_elements()) if el == element]
 
 
@@ -709,18 +709,20 @@ class Structure():
 
         return st
 
-    def nn(self, i, n = 6, ndict = None):
+    def nn(self, i, n = 6, ndict = None, only = None, silent = 0):
         """
         show neigbours
         i - number of central atom, from 1
         ndict (dic) - number of specific neigbour atoms
-
+        only - list of interesting z neighbours
         """
         import itertools
         from functions import invert
+
+
         zn = self.znucl
         x = self.xcart[i-1]
-        out = local_surrounding(x, self, n, 'atoms', True)
+        out = local_surrounding(x, self, n, 'atoms', True, only_elements = only)
         # out =  (xcart_local, typat_local, numbers, dlist )
 
         out = list(out)
@@ -735,17 +737,21 @@ class Structure():
  
         # df = pd.DataFrame(tab)
         # print(df)
-        print('Neigbours around atom', i, self.get_elements()[i-1],':')
-        print( tabulate(tab[1:], headers = ['No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
+        if not silent:
+            print('Neigbours around atom', i, self.get_elements()[i-1],':')
+            print( tabulate(tab[1:], headers = ['No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
 
 
         info = {}
-
+        info['numbers'] = out[2]
         info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9])
-        info['av(A-O)']   = local_surrounding(x, self, ndict[8], 'av', True, only_elements = [8])
-        info['min(A-O)'], _ ,info['max(A-O)']    = local_surrounding(x, self, ndict[8], 'mavm', True, only_elements = [8])
         info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
-        info['Onumbers'] = local_surrounding(x, self, ndict[8], 'atoms', True, only_elements = [8])[2]
+        info['sum(A-O,F)'] = local_surrounding(x, self, n, 'sum', True, only_elements = [8,9])
+
+        if ndict:
+            info['av(A-O)']   = local_surrounding(x, self, ndict[8], 'av', True, only_elements = [8])
+            info['min(A-O)'], _ ,info['max(A-O)']    = local_surrounding(x, self, ndict[8], 'mavm', True, only_elements = [8])
+            info['Onumbers'] = local_surrounding(x, self, ndict[8], 'atoms', True, only_elements = [8])[2]
 
         # print(info)
 
@@ -887,7 +893,7 @@ class Structure():
 
     def jmol(self):
         # self.write_poscar('CONTCAR', vasp5 = 1)
-        filename = self.write_xyz()
+        filename, _ = self.write_xyz()
         # print(filename)
         runBash('jmol '+filename, detached = True)
 
@@ -3655,8 +3661,14 @@ class CalculationVasp(Calculation):
                         alkali_ions.append([i, z, x])
 
                 if len(alkali_ions) > 0:
-                    chosen_ion = alkali_ions[0] #just the first one is used
+                    if alkali_ion_number:
+                        kk = alkali_ion_number-1
+
+                        chosen_ion = (kk, st.znucl[st.typat[kk]-1], st.xcart[kk])
+                    else:
+                        chosen_ion = alkali_ions[0] #just the first one is used
                             # alkali_ions[min(alkali_ions)]
+
                     sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = 4, control = 'atoms', 
                     periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
 
@@ -3959,35 +3971,46 @@ class CalculationVasp(Calculation):
         command1 = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
         "mv CHGCAR_sum "+CHGCAR_sum+";"
 
-        command2 = \
-        "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+\
-        v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
-        # print "ssh "+cluster_address+" '"+command1+"'"
+        command2 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz '
 
-        command3 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz '
-        # print(command3)
+        mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
+        
+        command3 = "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+mv
+        command3s = "cd "+path+"; ~/tools/bader "+CHG+" > "+mv #simple
+        
+
         
         if runBash("ssh "+self.cluster_address+" '[ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ;' """): #true if file not exists
             print_and_log(  CHGCAR_sum, "not exist. trying to calculate it ", imp = 'Y')
             printlog( runBash("ssh "+self.cluster_address+" '"+command1+"'")+'\n' ) 
 
         if runBash("ssh "+self.cluster_address+" '[ -e "+   CHG       +""" ] || echo "NO"     ;' """): #true if file not exists
-            printlog( runBash("ssh "+self.cluster_address+" '"+command3+"'")+'\n', imp = 'y' ) 
-
-
-        
-        if runBash("ssh "+self.cluster_address+" '[ -e "+   ACF     +""" ] || echo "NO"     ;' """): #true if file not exists
-            print_and_log(  ACF, " does not exist. trying to calculate Bader ", imp = 'Y')
             printlog( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n', imp = 'y' ) 
-            
 
 
 
-        ACF = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
-        print('ACF', ACF)
+        def run_bader(command, ):        
+            if runBash("ssh "+self.cluster_address+" '[ -e "+   ACF     +""" ] || echo "NO"     ;' """): #true if file not exists
+                print_and_log(  ACF, " does not exist. trying to calculate Bader ", imp = 'Y')
+                printlog( runBash("ssh "+self.cluster_address+" '"+command+"'")+'\n', imp = 'y' ) 
+                
 
-        if ACF:
-            ACF_l = ACF.splitlines()
+
+
+            ACF_text = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
+            return ACF_text
+
+        ACF_text = run_bader(command3)
+        if 'No such file or directory' in ACF_text:
+            printlog('Warning!, most probable problemes with',CHGCAR_sum)
+            printlog('Trying without it ...')
+            ACF_text = run_bader(command3s)
+
+        print('ACF_text = ', ACF_text)
+
+
+        if ACF_text:
+            ACF_l = ACF_text.splitlines()
         charges = []
         for line in ACF_l:
             try:

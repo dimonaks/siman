@@ -642,8 +642,8 @@ def choose_cluster(cluster_name, cluster_home, corenum):
 
 
 def add_loop(it, setlist, verlist, calc = None, varset = None, 
-    up = 'up2', inherit_option = None,
-    i_atom_to_remove = None, confdic = None,
+    up = 'up2', inherit_option = None, id_from = None, inherit_args = None, confdic = None,
+    i_atom_to_remove = None,
     coord = 'direct', savefile = 'oc', show = None, comment = '', 
     input_geo_format = None, ifolder = None, input_geo_file = None, input_st = None,
     corenum = None,
@@ -652,7 +652,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     mat_proj_id = None, 
     cee_args = None,
     ise_new = None, it_suffix = None,
-    scale_region = None, n_scale_images = 7, id_from = None,
+    scale_region = None, n_scale_images = 7,
     n_neb_images = None, occ_atom_coressp = None,ortho = None,
     mul_matrix = None,
     ngkpt = None,
@@ -702,9 +702,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         - comment - arbitrary comment for history.
 
 
-        #inherit flags:
-        confdic (dict) - to pass parameters to inherit_icalc
 
+        #inherit flags:
+        inherit_args (dict) - to pass parameters to inherit_icalc; 
+        confdic (dicts) - additional configuration parameters to inherit_icalc in dict, used for antisites
         - inherit_option (str):
             - 'continue'     - copy last contcar to poscar, outcar to prev.outcar and run again; on the next launch prev.outcar
                 will be rewritten, please improve the code to save all previous outcars 
@@ -762,7 +763,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     def add_loop_prepare():
 
-        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method
+        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method, inherit_args
 
 
 
@@ -801,7 +802,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             calc_method = [calc_method]
 
 
-
+        if inherit_args is None:
+            inherit_args = {}
 
 
 
@@ -829,31 +831,41 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         # if inherit_option in inh_opt_ngkpt+inh_opt_other:
         omit_inh_opt = ['inherit_xred', 'continue']
         if inherit_option and inherit_option not in omit_inh_opt:
+            
+            if 'id_base_st_type' in inherit_args and inherit_args['id_base_st_type'] == 'init':
+                iti = it+'.init'
+            else:
+                iti = it
+
             if inherit_option == 'full':
-                it_new = it+'.if'
+                it_new = iti+'.if'
 
             elif inherit_option == 'full_nomag':
-                it_new = it+'.ifn'
+                it_new = iti+'.ifn'
 
             elif inherit_option == 'occ':
                 #please add additional vars to control for which atoms the inheritance should take place (added)
-                it_new = it+'.ifo' #full inheritence + triggering OMC from some other source        
+                it_new = iti+'.ifo' #full inheritence + triggering OMC from some other source        
 
             elif inherit_option == 'supercell':
                mod = name_mod_supercell(ortho, mul_matrix)
-               it_new = it+mod
+               it_new = iti+mod
 
             elif 'antisite' in inherit_option:
                 suf = inherit_option.split('.')[-1]
-                it_new = it+'.'+suf
+                it_new = iti+'.'+suf
                 # print (it_new)
                 # sys.exit()
 
             elif inherit_option == 'make_vacancy':
-                it_new = it+'.vac'
+                it_new = iti+'.vac'
 
-            if it_suffix:
+
+
+            if it_suffix: # override default behaviour
                 it_new = it+'.'+it_suffix
+
+
 
             if 'up' in up:
 
@@ -868,7 +880,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
                         inherit_icalc(inherit_option, it_new, v, id_base, calc, st_base = input_st, id_from = id_from, confdic = confdic,
                             it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, i_atom_to_remove = i_atom_to_remove,
-                            ortho = ortho, mul_matrix = mul_matrix, override =override)
+                            ortho = ortho, mul_matrix = mul_matrix, override =override, **inherit_args)
                 
                     if inherit_option in inh_opt_ngkpt:
                         inherit_ngkpt(it_new, it, varset[inputset]) # 
@@ -2173,7 +2185,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         - show - (str), allows to show additional information:
             - mag - magnetic moments on magnetic atoms
               maga
-                *alkali_ion_number* (int) - number of atom around which to sort mag moments 
+                *alkali_ion_number* (int) - number of atom around which to sort mag moments from 1
             - en  - convergence of total energy vs max force
             - mep - neb path
             - fo  - max force on each md step

@@ -53,14 +53,28 @@ def cal_chg_diff(cl1, cl2, wcell):
 
     """
 
-    file1 = cl1.get_chg_file()
-    file2 = cl2.get_chg_file()
+    file1 = cl1.get_chg_file(nametype  = 'asoutcar')
+    if not file1:
+        printlog('No CHGCAR for cl1, trying CHG', imp = 'Y')
+        file1 = cl1.get_chg_file('CHG', nametype  = 'asoutcar')
+
+    file2 = cl2.get_chg_file(nametype  = 'asoutcar')
+    if not file2:
+        printlog('No CHGCAR for cle trying CHG', imp = 'Y')
+        file2 = cl2.get_chg_file('CHG', nametype  = 'asoutcar')
+
+
+    if file1 == None or file2 == None:
+        printlog('Error!, chg not found for one cl:', file1, file2)
+
 
     working_dir = cl1.dir
 
     dendiff_filename = working_dir + ('CHGCAR_'+str(cl1.id[0])+'-'+str(cl2.id[0])).replace('.', '_')
 
+    printlog('Diff =', file1, '-', file2)
     chgarith(file1, file2, '-', dendiff_filename, wcell)
+
     printlog('Charge difference saved to', dendiff_filename, imp = 'Y')
 
     return dendiff_filename
