@@ -3908,20 +3908,11 @@ class CalculationVasp(Calculation):
            
         return path_to_chg
 
-    def get_file(self, filename, update = None):
-        #cl - object of CalculationVasp class
-        # filename - standart Vasp file name
-        path_to_file = self.path['output'].replace('OUTCAR', filename)
+    def get_file(self, *args, **kwargs):
 
-        if (not os.path.exists(path_to_file)) or update: 
-
-            get_from_server(self.project_path_cluster+'/'+path_to_file, to = os.path.dirname(path_to_file), addr = self.cluster_address)
+        return self.get_chg_file(*args, **kwargs)
 
 
-            # printlog( runBash("rsync -zave ssh "+self.cluster_address+":"+self.project_path_cluster+path_to_file+" "+self.dir)+'\n' ) #CHG
-            # print_and_log( path_to_file, 'was downloaded')
-            
-        return path_to_file
 
 
     def bader(self):

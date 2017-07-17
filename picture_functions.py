@@ -86,11 +86,11 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     # spl = CubicSpline(mep_pos, eners, bc_type = 'natural' ) # second-derivative zero
     # spl = CubicSpline(mep_pos, eners,) #
     # spl = CubicSpline(mep_pos, eners, bc_type = 'periodic') 
-    spl = CubicSpline(mep_pos, eners, bc_type = 'clamped' ) #first derivative zero
+    # spl = CubicSpline(mep_pos, eners, bc_type = 'clamped' ) #first derivative zero
 
 
 
-    # spl = scipy.interpolate.PchipInterpolator(mep_pos, eners)
+    spl = scipy.interpolate.PchipInterpolator(mep_pos, eners)
 
 
     ynew = spl(xnew)
