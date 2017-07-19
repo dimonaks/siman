@@ -101,7 +101,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
-    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 6 ):
+    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12 ):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -124,6 +124,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     plot_param - dict of parameters to fit_and_plot
     suf2 - additional suffix
+
+    # nsmooth = 15 # smooth of dos
 
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
@@ -186,7 +188,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         printlog(cl.name, 'e_fermi', cl.efermi, imp = 'Y')
      
-        DOSCAR = cl.get_file('DOSCAR', update = up); 
+        DOSCAR = cl.get_file('DOSCAR', nametype = 'asoutcar'); 
         printlog('DOSCAR file is ', DOSCAR)
 
         dos.append( VaspDos(DOSCAR, cl.efermi) )
@@ -339,7 +341,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
         """Plotting"""
-        nsmooth = 15 # smooth of dos
+        # nsmooth = 15 # smooth of dos
         d1 = dos[0]
         ds = [d1]
         names = []

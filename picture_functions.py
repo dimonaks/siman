@@ -34,18 +34,26 @@ from small_functions import makedir
 from geo import replic
 
 
-def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, fitplot_arg = None):
+def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, fitplot_args = None, style_dic = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path,
     mep_energies (list) - full energies of the system corresponding to atom_pos
 
     image_name - deprecated, use filename
+    style_dic - dictionary with styles
+        'p' - style of points
+        'l' - style of labels
+        'label' - label of points
+
     """
 
     #Create
-    if not fitplot_arg:
-        fitplot_arg = {}
+    if not style_dic:
+        style_dic = {'p':'ro', 'l':'b-', 'label':None}
+
+    if not fitplot_args:
+        fitplot_args = {}
     atom_pos = np.array(atom_pos)
     data = atom_pos.T #
     tck, u= interpolate.splprep(data) #now we get all the knots and info about the interpolated spline
@@ -117,11 +125,11 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
 
 
-    path2saved = fit_and_plot(orig = (mep_pos, eners, 'ro'), 
-        spline = (xnew, ynew, 'b-'), 
+    path2saved = fit_and_plot(orig = (mep_pos, eners, style_dic['p'], style_dic['label']), 
+        spline = (xnew, ynew, style_dic['l'], None), 
         xlim = (-0.05, None  ),
     xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, filename = filename, show = show, 
-    fig_format = 'eps', **fitplot_arg)
+    fig_format = 'eps', **fitplot_args)
 
 
     return path2saved, diff_barrier
@@ -152,7 +160,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  
     linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
-    ver_lines = None, alpha = 0.8,
+    ver_lines = None, alpha = 0.8, first = True, last = True, 
     **data):
     """Should be used in two below sections!
     Creates one plot with two dependecies and fit them;
@@ -169,6 +177,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
     data - each entry should be (X, Y, 'r-') or (X, Y, 'r-', label) 
     or dict {'x':,'y':, 'fmt':, 'label', 'xticks' }    not implemented for powers yet
 
+    first, last - sometimes multiple plots are required. Use first = 1, last =0 for the first plot, 0, 0 for intermidiate, and 0, 1 for last
+
     """
 
     # print data
@@ -184,8 +194,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
 
     if 1:
 
-        
-        plt.figure(figsize=figsize)
+        if first:
+            plt.figure(figsize=figsize)
         if title: 
             plt.title(title)
         plt.ylabel(ylabel)
@@ -295,23 +305,24 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
         plt.tight_layout()
         path2saved = ''
         
-        if image_name:
+        if last:
+            if image_name:
 
-            path2saved, path2saved_png = process_fig_filename(image_name, fig_format)
+                path2saved, path2saved_png = process_fig_filename(image_name, fig_format)
 
-            plt.savefig(path2saved, dpi = dpi, format=fig_format)
-            plt.savefig(path2saved_png, dpi = 300)
-            
-            print_and_log("Image saved to ", path2saved, imp = 'y')
+                plt.savefig(path2saved, dpi = dpi, format=fig_format)
+                plt.savefig(path2saved_png, dpi = 300)
+                
+                print_and_log("Image saved to ", path2saved, imp = 'y')
 
 
-        elif show is None:
-            show = True
-        # print_and_log(show)
-        if show:
-            plt.show()
-        plt.clf()
-        plt.close('all')
+            elif show is None:
+                show = True
+            # print_and_log(show)
+            if show:
+                plt.show()
+            plt.clf()
+            plt.close('all')
 
 
     return path2saved

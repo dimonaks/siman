@@ -2148,7 +2148,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     it_folder = None, choose_outcar = None, choose_image = None, 
     cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_arg = None):
+    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -2206,7 +2206,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             'energies' - just list of full energies
         check_job - (bool) check status on server, use 0 if no internet connection
 
-        fitplot_arg - additional arguments for fit_and_plot function
+        fitplot_args - additional arguments for fit_and_plot function
 
 
         - ise_new - dummy
@@ -2905,7 +2905,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
-            _, diff_barrier = plot_mep(atom_pos, mep_energies, show = 0, fitplot_arg = fitplot_arg)
+            _, diff_barrier = plot_mep(atom_pos, mep_energies, show = 0, fitplot_args = fitplot_args)
 
             results_dic['barrier'] = diff_barrier
             cl1.barrier = diff_barrier
@@ -2917,7 +2917,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     show_flag = True
                 else:
                     show_flag = False
-                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_arg = fitplot_arg)
+                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_args = fitplot_args)
 
             if push2archive:
                 path2saved, _ = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')

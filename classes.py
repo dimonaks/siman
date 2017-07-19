@@ -3651,6 +3651,7 @@ class CalculationVasp(Calculation):
                 printlog(np.array(self.mag_sum).round(2), imp = 'Y' )
 
             if 'mag' in show or 'occ' in show:
+                n_neighbours = 4
                 st = self.end
                 alkali_ions = []
                 dist_dic = {}
@@ -3669,7 +3670,7 @@ class CalculationVasp(Calculation):
                         chosen_ion = alkali_ions[0] #just the first one is used
                             # alkali_ions[min(alkali_ions)]
 
-                    sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = 4, control = 'atoms', 
+                    sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = n_neighbours, control = 'atoms', 
                     periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
 
                     # print (sur)
@@ -3691,21 +3692,25 @@ class CalculationVasp(Calculation):
 
                 # print (tot_mag_by_atoms)
                 # if tot_mag_by_atoms:
-                print ('first step ', tot_mag_by_atoms[0][numb].round(3) )
+                # print ('first step ', tot_mag_by_atoms[0][numb].round(3) )
                 # print ('first step all ', tot_mag_by_atoms[0][ifmaglist].round(3) )
                 # for mag in tot_mag_by_atoms:
                 #     print ('  -', mag[numb].round(3) )
 
-                print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
+                # print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
+                mmm = tot_mag_by_atoms[-1][numb].round(3)
+
+                print ('atom:mag  = ', ', '.join('{}:{:4.2f}'.format(iat, m) for iat, m  in zip(  numb+1, mmm   )) )
                 if 'a' in show:
-                    print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
+                    ''
+                    # print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
 
                     # sys.exit()
                 if len(alkali_ions) > 0:
-                    print ('Dist from 1st found alkali ion ',element_name_inv( chosen_ion[1]),
+                    printlog ('Dist from 1st found alkali ion ',element_name_inv( chosen_ion[1]),
                         ' to sur. transition met atoms: (Use *alkali_ion_number* to choose ion manually)')
-                    print ('dist:atom = ', 
-                    [ '{:.2f}:{}'.format(d, iat) for d, iat in zip(  dist, numb+1  )  ] )
+                    print ('atom:dist = ', 
+                    ', '.join('{}:{:.2f}'.format(iat, d) for iat, d  in zip(  numb+1, dist   )  ) )
 
                 self.tot_mag_by_atoms = tot_mag_by_atoms
                 # plt.plot(np.array(sur[3]).round(2), tot_mag_by_atoms[-1][numb]) mag vs dist for last step
