@@ -384,8 +384,8 @@ def determine_file_format(input_geo_file):
     elif 'geo' in input_geo_file:
         input_geo_format = 'abinit'
     else:
-        printlog("Error! smart_structure_read(): File format is unknown, should be from ", supported_file_formats)
-
+        printlog("Attention! File format of",input_geo_file ,"is unknown, should be from ", supported_file_formats, 'skipping')
+        input_geo_format = None
     return input_geo_format
 
 
@@ -404,7 +404,11 @@ def get_file_by_version(geofilelist, version):
         
         input_geofile = os.path.normpath(input_geofile)
 
+
         input_geo_format = determine_file_format(input_geofile)
+        # sys.exit()
+
+        printlog('For file', input_geofile, input_geo_format, ' format was detected', imp = 'n')
 
         if input_geo_format in ['abinit',]: #version determined from token 
             # curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
@@ -430,9 +434,11 @@ def get_file_by_version(geofilelist, version):
             except:
                 curv = None
                 printlog('Failed to determine version, skipping')
-
+        else:
+            curv = None
 
         if curv == version:
+            printlog('match', curv, version)
             matched_files.append(input_geofile)
 
     if len(matched_files) > 1:
@@ -482,10 +488,14 @@ def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_g
         else:
             geofilelist = glob.glob(input_folder+'/*') 
 
-
         geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
 
+        printlog('List of files:', geofilelist)
+
         input_geo_file = get_file_by_version(geofilelist, curver)
+        # sys.exit()
+
+        printlog('The result of getting by version', input_geo_file)
 
         if input_geo_file:
             printlog('File ', input_geo_file, 'was found')
@@ -659,7 +669,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1
+    run = False, check_job  = 1, params = None,
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -743,6 +753,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         - run (bool) - complete the run file copy to server and run
 
+        - params (dic) - dictionary of additional parameters, please move here numerous arguments
+            - 'occmatrix' - explicit path to occmatrix file
+
+
     Comments:
         !Check To create folders and add calculations add_flag should have value 'add' 
 
@@ -763,9 +777,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     def add_loop_prepare():
 
-        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method, inherit_args
+        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params
 
-
+        if not params:
+            params = {}
 
 
         choose_cluster(cluster, cluster_home, corenum)
@@ -824,7 +839,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         nonlocal  it, setlist
         struct_des = header.struct_des
 
-
+        printlog('add_loop: starting add_loop_inherit ...', imp ='n')
         #inherit option
         inh_opt_ngkpt = ['full', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
         inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
@@ -1305,7 +1320,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                run = run, input_st = input_st, check_job = check_job)
+                run = run, input_st = input_st, check_job = check_job, params = params)
             
             prevcalcver = v
 
@@ -1333,7 +1348,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     calc, varset, up = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1):
+    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
@@ -1359,7 +1374,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
     cl_prev = None
-
+    if not params:
+        params = {}
 
     if id in calc: 
         cl = calc[id]
@@ -1496,7 +1512,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 dir_1 = os.path.dirname(cl.path["input_geo"] )
                 dir_2 = cl.dir
                 if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1:
-                    shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
+                    if 'occmatrix' in params:
+                        shutil.copyfile(params['occmatrix'], dir_2+'/OCCMATRIX' ) # file is provided explicitly
+
+                    else:
+                        shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
     
 
 
