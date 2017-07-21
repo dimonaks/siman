@@ -2494,6 +2494,7 @@ class CalculationVasp(Calculation):
 
 
             contcar_file = None
+            
             if neb_flag:
                 print_and_log('Writing scripts for NEB method', important = 'n')
                 nim = self.set.vasp_params['IMAGES']
@@ -2634,6 +2635,7 @@ class CalculationVasp(Calculation):
             self.associated_outcars = []
 
         penult_set_name = None
+
         for k, curset in enumerate(sets):
             
             if nsets > 1: #the incar name is modified during creation only if more than 1 set is detected
