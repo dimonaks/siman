@@ -669,5 +669,5 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     else:
         print_and_log('Please be sure that vtsttools are at',header.cluster_address, header.cluster_home+'/tools/vts/', imp = 'Y')
 
-
+    printlog('add_neb finished')
     return it_new 

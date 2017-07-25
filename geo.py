@@ -419,7 +419,10 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
     elif control == 'mavm': #min, av, max
         dsort = sorted(dlistnn)
-        output = (round(dsort[0], 2), sum(dsort[1:-1])/(n_neighbours-2), round(dsort[-1], 2) ) #min, av excluding min and max, max
+        if n_neighbours > 2:
+            output = (round(dsort[0], 2), sum(dsort[1:-1])/(n_neighbours-2), round(dsort[-1], 2) ) #min, av excluding min and max, max
+        else:
+            output = (round(dsort[0], 2), 0, round(dsort[-1], 2) ) #min, av excluding min and max, max
 
        
     elif control == 'av_dev':

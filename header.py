@@ -107,7 +107,7 @@ close_run = False # alows to control close run file automatically after each add
 first_run = True  # needed to write header of run script
 ssh_object = None # paramiko ssh_object
 show = None
-
+corenum = 1
 
 calc = CalcDict()
 global db

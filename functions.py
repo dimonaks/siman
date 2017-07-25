@@ -56,6 +56,7 @@ def list2string(ilist):
 
 
 def run_on_server(command, addr):
+    printlog('Running', command, 'on server ...')
     command = command.replace('\\', '/') # make sure is POSIX
     if header.ssh_object:
         out = header.ssh_object.run(command)
@@ -63,6 +64,8 @@ def run_on_server(command, addr):
         out = runBash('ssh '+addr+' "'+command+'"')    
     
     out = out.split('#')[-1].strip()
+
+    printlog(out)
     # sys.exit()
     
 

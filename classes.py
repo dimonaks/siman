@@ -750,8 +750,10 @@ class Structure():
 
         if ndict:
             info['av(A-O)']   = local_surrounding(x, self, ndict[8], 'av', True, only_elements = [8])
+            info['avdev(A-O)'], _   = local_surrounding(x, self, ndict[8], 'av_dev', True, only_elements = [8])
             info['min(A-O)'], _ ,info['max(A-O)']    = local_surrounding(x, self, ndict[8], 'mavm', True, only_elements = [8])
             info['Onumbers'] = local_surrounding(x, self, ndict[8], 'atoms', True, only_elements = [8])[2]
+
 
         # print(info)
 
@@ -2620,7 +2622,7 @@ class CalculationVasp(Calculation):
 
 
 
-            return contcar_file
+            return contcar_file, subfolders
 
 
 
@@ -2676,12 +2678,16 @@ class CalculationVasp(Calculation):
 
                 # print(savefile)
                 # sys.exit()
-                contcar_file = write_footer(set_mod = set_mod, run_tool_flag = run_tool_flag, savefile = savefile,
+                contcar_file, subfolders = write_footer(set_mod = set_mod, run_tool_flag = run_tool_flag, savefile = savefile,
                  final_analysis_flag = final_analysis_flag)
 
-
+            
             if k < nsets-1 and contcar_file:
-                f.write('cp '+contcar_file+' POSCAR  #sequence_set: preparation of input geo for next set\n')
+                if neb_flag and mode == 'footer':
+                    for n_st in subfolders:
+                        f.write('cp '+n_st+'/'+contcar_file+' '+n_st+'/POSCAR  # sequence_set: preparation of input geo for next neb set\n' )
+                else:
+                    f.write('cp '+contcar_file+' POSCAR  #sequence_set: preparation of input geo for next set\n')
 
 
 

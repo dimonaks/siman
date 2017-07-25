@@ -236,10 +236,10 @@ def complete_run(close_run = True):
             f.write("mv run last_run\n")
 
 
-        
-        push_to_server('run',  header.cluster_home, header.cluster_address)
-        run_on_server('chmod +x run', header.cluster_address)
-        printlog('run sent')
+        if header.copy_to_cluster_flag:
+            push_to_server('run',  header.cluster_home, header.cluster_address)
+            run_on_server('chmod +x run', header.cluster_address)
+            printlog('run sent')
     
     return
 
@@ -618,9 +618,10 @@ def choose_cluster(cluster_name, cluster_home, corenum):
 
     #Determine cluster home using ssh
     # run_on_server('touch ~/.hushlogin', header.cluster_address)
-
-    header.cluster_home = run_on_server('pwd', header.cluster_address)
-
+    if header.copy_to_cluster_flag:
+        header.cluster_home = run_on_server('pwd', header.cluster_address)
+    else:
+        header.cluster_home = ''
 
     printlog('The home folder on cluster is ', header.cluster_home)
 
@@ -782,7 +783,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if not params:
             params = {}
 
-
+        # if header.copy_to_cluster_flag:
         choose_cluster(cluster, cluster_home, corenum)
         
         if run:
@@ -1383,25 +1384,27 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         printlog('add_calculation():',str(calc[id].name), " has been already created and has state: ", str(calc[id].state),)# imp = 'y')
 
         # print(cl.state)
-        if '2' in cl.state or '5' in cl.state:
-            status = "ready"
-            cl.res() 
-            if up != 'up2':
-                return
+        # print(check_job)
+        if check_job:
+            if '2' in cl.state or '5' in cl.state:
+                status = "ready"
+                cl.res(check_job = check_job) 
+                if up != 'up2':
+                    return
 
-        if "3" in cl.state: #attention, should be protected from running the same calculation once again
-            status = "running"
-            cl.res()
-            if check_job: 
-                return
+            if "3" in cl.state: #attention, should be protected from running the same calculation once again
+                status = "running"
+                cl.res(check_job = check_job)
+                if check_job: 
+                    return
 
-        elif "4" in cl.state: 
-            status = "compl"
-            cl.res() 
-            # sys.exit()
+            elif "4" in cl.state: 
+                status = "compl"
+                cl.res(check_job = check_job) 
+                # sys.exit()
 
-            if up != 'up2':
-                return
+                if up != 'up2':
+                    return
 
 
     else:
@@ -1458,7 +1461,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         #pass using object
-        cl.cluster_address = header.cluster_address
+        # if header.copy_to_cluster_flag:
+        cl.cluster_address      = header.cluster_address
         cl.project_path_cluster = header.project_path_cluster
         cl.corenum = header.corenum 
         cl.schedule_system = header.schedule_system
@@ -1480,7 +1484,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if up in ['up1', 'up2', 'up3']:
             if not os.path.exists(cl.dir):
                 os.makedirs(cl.dir)
-                run_on_server("mkdir -p "+cl.dir, addr = cl.cluster_address)
+                if header.copy_to_cluster_flag:
+                    run_on_server("mkdir -p "+cl.dir, addr = cl.cluster_address)
 
             if id[2] == first_version:
                 write_batch_header(batch_script_filename = batch_script_filename,
