@@ -2494,7 +2494,7 @@ class CalculationVasp(Calculation):
 
                 return contcar
 
-
+            subfolders = None
             contcar_file = None
             
             if neb_flag:
@@ -3828,7 +3828,8 @@ class CalculationVasp(Calculation):
             printlog("Reading of results completed\n\n", imp = 'n')
             
             if pymatgen_flag:
-                self.end.write_cif(os.path.join(self.dir,self.name))
+                ''
+                # self.end.write_cif(os.path.join(self.dir,self.name))
             
 
 
@@ -3841,7 +3842,7 @@ class CalculationVasp(Calculation):
             elif 'ts' in out_type   : outst = outst_ts
             
             elif not header.siman_run:
-                outst_simple = d.join([etot, lens, strs, Nmd])
+                outst_simple = '|'.join([etot, lens, strs, Nmd])
                 # print("Bi2Se3.static.1               |  -20.1543  |    10.27;10.27;10.27    | -680,-680,-657 |   1,13, 13   |    ")
                 if header.show_head:
                     printlog("name                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')

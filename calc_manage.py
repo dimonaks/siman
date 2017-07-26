@@ -2362,6 +2362,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
             
             if readfiles:
+                printlog('Starting self.read_results() ...')
                 outst = calc[id].read_results(loadflag, analys_type, voronoi, show, 
                     choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
                 
@@ -2371,7 +2372,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             else:
                 outst = ' output was not read '
 
-
+            printlog('read_results() output', outst)
 
 
 
