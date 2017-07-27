@@ -761,7 +761,8 @@ class Structure():
 
 
 
-    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = False):
+    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True):
+        
         st = self
         to_ang = 1
         rprimd = st.rprimd
@@ -773,6 +774,7 @@ class Structure():
         if not filename:
             filename = ('xyz/POSCAR_'+st.name).replace('.', '_')
 
+        printlog('Starting writing POSCAR', filename, 'Vasp5:', vasp5)
 
         # print 
         """1. Generate correct nznucl and zxred and zxcart"""
@@ -849,7 +851,7 @@ class Structure():
                 raise NameError
         f.close()
         print_and_log("POSCAR was written to", filename, imp = 'y')
-
+        return
 
 
     def write_cif(self, filename):
