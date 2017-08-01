@@ -752,8 +752,9 @@ class Structure():
             info['av(A-O)']   = local_surrounding(x, self, ndict[8], 'av', True, only_elements = [8])
             info['avdev(A-O)'], _   = local_surrounding(x, self, ndict[8], 'av_dev', True, only_elements = [8])
             info['min(A-O)'], _ ,info['max(A-O)']    = local_surrounding(x, self, ndict[8], 'mavm', True, only_elements = [8])
-            info['Onumbers'] = local_surrounding(x, self, ndict[8], 'atoms', True, only_elements = [8])[2]
-
+            atoms = local_surrounding(x, self, ndict[8], 'atoms', True, only_elements = [8])
+            info['Onumbers'] = atoms[2][1:] # exclude first, because itself!
+            # print(info['Onumbers'])
 
         # print(info)
 
