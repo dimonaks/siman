@@ -101,7 +101,8 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
-    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12 ):
+    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12,
+    lts2 = '--' ):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -126,7 +127,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     suf2 - additional suffix
 
     # nsmooth = 15 # smooth of dos
-
+    lts2 - style of lines for cl2
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
@@ -362,7 +363,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             names.append(cl2.id[0]+'_at_'+eld2[iatom2+1]+str(iatom2+1))
             
 
-            lts.append('-')
+            lts.append(lts2)
             atoms.append(iatom2)
             els.append(eld2[iatom2+1])
 

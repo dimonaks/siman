@@ -1079,7 +1079,8 @@ class Calculation(object):
 
             vel = read_vectors("vel", self.natom, gen_words)
             # print vel
-            if vel[0] != None: self.init.vel = vel
+            if vel[0] != None: 
+                self.init.vel = vel
 
             #read magnetic states; name of vasp variable
             self.init.magmom = read_list("magmom", self.natom, float, gen_words)
@@ -2148,7 +2149,7 @@ class CalculationVasp(Calculation):
                 rm_chg_wav - if True than CHGCAR and WAVECAR are removed
 
             """   
-            
+            printlog('The value of savefile is', savefile)
             if write:
                 pre = v + name_mod
 
@@ -2561,7 +2562,7 @@ class CalculationVasp(Calculation):
 
                 else:
 
-                    run_command(option = option, name = self.name+'.n_'+nim_str+name_mod, 
+                    run_command(option = option, name = self.name+set_mod+'.n_'+nim_str+name_mod, 
                     parrallel_run_command = parrallel_run_command, write = True)
 
                     contcar_file = 'CONTCAR'
@@ -2870,6 +2871,7 @@ class CalculationVasp(Calculation):
 
 
 
+
         """Copy from server """
 
 
@@ -2912,7 +2914,8 @@ class CalculationVasp(Calculation):
 
             out = grep_file('General timing', path_to_outcar, reverse = True)
 
-            # print(load)
+            printlog('The load flag is ', load)
+            # sys.exit()
             if 'Gen' in out or 'un' in load:
                 self.state = '4. Finished'
             else:

@@ -129,8 +129,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             - 'neb'
             - 'only_neb' - run only footer
 
-        - x_start, x_final (array) - explicit coordinates of moving atom for starting and final positions, combined with atom_to_insert
-        
+        - x_start, x_final (array) - explicit xcart coordinates of moving atom for starting and final positions, combined with atom_to_insert
+        - xr_start, xr_final (array) - explicit xred
+
+
         - upload_vts (bool) - if True upload Vasp.pm and nebmake.pl to server
         - run (bool)  - run on server
 
@@ -146,6 +148,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
     """
+
+    naming_conventions209 = True # set False to reproduce old behavior before 2.09.2017
+
 
     calc = header.calc
     struct_des = header.struct_des
@@ -222,7 +227,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
 
-
+    printlog('Search type is ', search_type)
     if search_type == None:
         
         if st_end == None:
@@ -272,6 +277,11 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 printlog('add_neb(): atom', typ, 'will be moved', imp = 'y')
                 atoms_to_move.append([i_atom_to_move, typ, st.xcart[i_atom_to_move]])
                 atoms_to_move_types.append(typ)
+    
+                if naming_conventions209:
+                    name_suffix+=typ+str(i_atom_to_move+1)
+
+
 
             else:
                 #try to find automatically among alkali - special case for batteries
@@ -314,6 +324,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 el_num_suffix =  type_atom_to_move +str(i_m+1)
                 atom_to_insert = atom_to_move
 
+                st1 = st
+
             else:
 
                 print_and_log('No atoms to move found, you probably gave me deintercalated structure', important = 'y')
@@ -339,12 +351,20 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 type_atom_to_move = atom_to_insert
                 el_num_suffix = ''
 
+                st1 = st
+
+
 
         """2. Choose final position"""
 
         if is_list_like(xr_final):
             x_final = xred2xcart([xr_final], st.rprimd)[0]
-            st2 = st.add_atoms([x_final], atom_to_insert)
+            
+            #check if i_atom_to_move should be removed
+            st2 = st1.del_atom(i_m)
+
+
+            st2 = st2.add_atoms([x_final], atom_to_insert)
             x_del = x_final 
             search_type = 'manual_insertion'
             name_suffix+= 'v'+str(i_void_final) 
@@ -400,7 +420,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             print_and_log( 'Type of atom to move = ', type_atom_to_move, imp = 'y')
             # print 'List of left atoms = ', np.array(st.leave_only(type_atom_to_move).xcart)
 
-            sur = local_surrounding(x_m, st.leave_only(type_atom_to_move) , n_neighbours = 6, control = 'atoms', 
+            sur = local_surrounding(x_m, st.leave_only(type_atom_to_move) , n_neighbours = 8, control = 'atoms', 
                 periodic  = True) #exclude the atom itself
 
             # print(sur)
@@ -658,7 +678,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     inherit_ngkpt(it_new, it, varset[ise_new])
 
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'ov', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, run =run, **add_loop_dic  )
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, run =run, **add_loop_dic  )
     
 
     if upload_vts:
