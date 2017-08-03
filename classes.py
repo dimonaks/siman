@@ -2174,7 +2174,11 @@ class CalculationVasp(Calculation):
                     f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
                     f.write('gzip -f '+chgcar+'\n')                
 
-
+                if 'p' in savefile: # 
+                    fln = 'PARCHG'
+                    parchg  = pre +'.'+fln
+                    f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
+                    f.write('gzip -f '+parchg+'\n') 
 
                 # else:
                 #     f.write("rm CHG \n") #file can be used only for visualization
@@ -2648,6 +2652,10 @@ class CalculationVasp(Calculation):
                 if mode == 'body' or footer_flag:
                     f.write('\n#sequence set: '+curset.ise+' \n')
                     f.write('cp '+curset.ise+'.INCAR  INCAR\n')
+                    if hasattr(curset, 'savefile') and len(curset.savefile) > 0:
+                        savefile = curset.savefile 
+
+
                 penult_set_name = sets[-2].ise
             
 
@@ -2736,6 +2744,7 @@ class CalculationVasp(Calculation):
                 f.write('sleep 5\n')                        
             
             elif schedule_system == 'SLURM':
+                f.write("squeue\n") 
                 f.write("sbatch -p AMG " + run_name+"\n") 
             else:
                 printlog('Error! Unknown schedule_system', schedule_system)
@@ -3926,6 +3935,7 @@ class CalculationVasp(Calculation):
                 printlog('Charge file', path_to_chg_scratch, 'was not found', imp = 'Y')
                 path_to_chg = None
            
+        printlog('File', path_to_chg, ' was download', imp = 'y')
         return path_to_chg
 
     def get_file(self, *args, **kwargs):

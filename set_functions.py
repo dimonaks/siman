@@ -105,7 +105,8 @@ vasp_other_keys = [
 'NGZ',
 'NBMOD',
 'LPARD',
-'EINT'
+'EINT',
+'LWAVE',
 ]
 
 siman_keys = [

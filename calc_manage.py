@@ -2,6 +2,7 @@
 from __future__ import division, unicode_literals, absolute_import 
 from operator import itemgetter
 import copy, traceback, datetime, sys, os, glob, shutil, re
+from itertools import product
 
 import numpy as np
 
@@ -837,7 +838,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     def add_loop_inherit():
         
-        nonlocal  it, setlist
+        nonlocal  it, setlist, id_base
         struct_des = header.struct_des
 
         printlog('add_loop: starting add_loop_inherit ...', imp ='n')
@@ -1242,6 +1243,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
     def add_loop_finalize(u_scale_flag, fitted_v100_id):
+        nonlocal id_base
         if u_scale_flag:
             #modify output names for fitted version 100, since it is created manually above and 
             #by add_calculation; for u-ramping names are different
@@ -1256,14 +1258,45 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             # sys.exit()
 
         if ise_new and hasattr(varset[ise_new], 'k_band_structure') and varset[ise_new].k_band_structure: #copy chgcar
+            
+            # calc[id_base].path["charge"]
+
+            def server_cp(copy_file, gz = True, scratch = False):
+                
+                if scratch:
+                    copy_file = '/scratch/amg/aksenov/' + copy_file
+                else:
+                    copy_file = header.project_path_cluster + '/' + copy_file
+
+
+                if gz:
+                    command = 'cp '+copy_file + ' ' + copy_to +'/CHGCAR.gz' '; gunzip -f '+ copy_to+ '/CHGCAR.gz'
+                else:
+                    command = 'cp '+copy_file + ' ' + copy_to +'/CHGCAR' 
+
+
+
+                printlog(command, imp = 'y')
+                out = run_on_server(command, addr = header.cluster_address)
+                printlog(out, imp = 'y')                
+                return out
+
+
             printlog('Coping CHGCAR for band structure', imp = 'y')
-            copy_file = header.project_path_cluster + '/' + calc[id_base].path["charge"]+'.gz'
             copy_to   = header.project_path_cluster + '/' + calc[id].dir + '/'
-            basename = os.path.basename(copy_file)
-            # print(copy_file, copy_to)
-            command = 'cp '+copy_file + ' ' + copy_to +'/CHGCAR.gz' '; gunzip -f '+ copy_to+ '/CHGCAR.gz'
-            printlog(command, imp = 'y')
-            run_on_server(command, addr = header.cluster_address)
+
+            copy_file = calc[id_base].path["chgcar"]
+            for s, gz in product([0,1], ['', '.gz']):
+                printlog('scratch, gz:', s, gz)
+                out = server_cp(copy_file+gz, gz = gz, scratch = s)
+                if out == '':
+                    printlog('Succesfully copied', imp = 'y')
+                    break
+
+
+
+            if 'cannot stat' in out:
+                copy_file = '/scratch/amg/aksenov/' + calc[id_base].path["chgcar"]+'.gz'
 
 
 
@@ -1285,6 +1318,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             printlog('To read results use ', hstring, '; possible options for show: fit, fo, fop, en, mag, magp, smag, maga, occ, occ1, mep, mepp', imp = 'Y')
 
         return u_scale_flag
+
+    id_base = None
 
     add_loop_prepare()
 

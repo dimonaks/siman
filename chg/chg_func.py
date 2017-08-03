@@ -40,10 +40,15 @@ def chg_at_point(chgfile, xred1, ):
 
 
 
-def cal_chg_diff(cl1, cl2, wcell):
+def cal_chg_diff(cl1, cl2, wcell, chg = 'CHGCAR'):
     """1. Calculate differences of charge densities
     Works on local computer
-    wcell = 1 or 2 - which cell to use to show
+    wcell = 0 or 1 - which cell to use to show
+    chg (str) - which file to use 
+        CHGCAR - the name as outcar
+            if not exist CHG is used
+        PARCHG - partial charge, the name without any additions
+    
 
     TO DO:
     instead of paths to files, work with objects
@@ -52,16 +57,23 @@ def cal_chg_diff(cl1, cl2, wcell):
 
 
     """
+    files = []
+    for cl in cl1, cl2:
+        if chg == 'CHGCAR':
+            file = cl.get_chg_file(nametype  = 'asoutcar')
+            if not file:
+                printlog('No CHGCAR for cl',cl.id[0], 'trying CHG', imp = 'Y')
+                file = cl.get_chg_file('CHG', nametype  = 'asoutcar')
+        elif chg == 'PARCHG':
+            file = cl.get_file('PARCHG')
 
-    file1 = cl1.get_chg_file(nametype  = 'asoutcar')
-    if not file1:
-        printlog('No CHGCAR for cl1, trying CHG', imp = 'Y')
-        file1 = cl1.get_chg_file('CHG', nametype  = 'asoutcar')
 
-    file2 = cl2.get_chg_file(nametype  = 'asoutcar')
-    if not file2:
-        printlog('No CHGCAR for cle trying CHG', imp = 'Y')
-        file2 = cl2.get_chg_file('CHG', nametype  = 'asoutcar')
+        files.append(file)
+
+
+
+    file1 = files[0]
+    file2 = files[1]
 
 
     if file1 == None or file2 == None:
@@ -70,7 +82,7 @@ def cal_chg_diff(cl1, cl2, wcell):
 
     working_dir = cl1.dir
 
-    dendiff_filename = working_dir + ('CHGCAR_'+str(cl1.id[0])+'-'+str(cl2.id[0])).replace('.', '_')
+    dendiff_filename = working_dir + (chg+'_'+str(cl1.id[0])+'-'+str(cl2.id[0])).replace('.', '_')
 
     printlog('Diff =', file1, '-', file2)
     chgarith(file1, file2, '-', dendiff_filename, wcell)
