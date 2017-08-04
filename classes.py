@@ -167,9 +167,10 @@ class Structure():
             spg = p.get_space_group_info(symprec)
         return spg
 
-    def sg(self,symprec = None):
+    def sg(self,symprec = None, silent = 0):
         s = self.get_space_group_info(symprec)
-        print(s)
+        if not silent:
+            print(s)
         return s
 
     def get_angles(self):
@@ -2883,6 +2884,7 @@ class CalculationVasp(Calculation):
 
         """Copy from server """
 
+        printlog('The load flag is ', load)
 
         if 'o' in load:
 
@@ -2923,7 +2925,7 @@ class CalculationVasp(Calculation):
 
             out = grep_file('General timing', path_to_outcar, reverse = True)
 
-            printlog('The load flag is ', load)
+            printlog('The grep result of',path_to_outcar, 'is:', out)
             # sys.exit()
             if 'Gen' in out or 'un' in load:
                 self.state = '4. Finished'
@@ -3564,7 +3566,8 @@ class CalculationVasp(Calculation):
                 lpl  = ''
                 ecut = ''
 
-            lens = ("%.2f;%.2f;%.2f" % (v[0],v[1],v[2] ) ).center(j[19])
+            # lens = ("%.2f;%.2f;%.2f" % (v[0],v[1],v[2] ) ).center(j[19])
+            lens = "{:4.2f};{:4.2f};{:4.2f}".format(v[0],v[1],v[2] ) 
             r1 = ("%.2f" % ( v[0] ) ).center(j[19])            
             vol = ("%.1f" % ( self.end.vol ) ).center(j[20])
             nat = ("%i" % ( self.end.natom ) ).center(j[21])
@@ -3577,7 +3580,7 @@ class CalculationVasp(Calculation):
             Uhu   = " {:3.1f} ".format(u_hubbard)
             ed    = ' {:3.0f}'.format( e_diff)
             edg   = ' {:3.1f} '.format( e_diff_md)
-
+            spg   = ' {:4s} '.format( self.end.sg(silent = 1)[0])
             """Warning! concentrations are calculated correctly only for cells with one impurity atom"""
             #gbcon = ("%.3f" % (     1./self.end.yzarea      ) ).center(j[23]) # surface concentation at GB A-2
             #bcon = ("%.1f" % (     1./self.natom * 100      ) ).center(j[24]) # volume atomic concentration, %
@@ -3597,7 +3600,7 @@ class CalculationVasp(Calculation):
             outst_gbe = voro+etot+               d+vol+d+kspacing+d+strs+d+eprs+d+nat+d+time+d+Nmd+d+War+d+nsg+"\\\\" # For comparing gb energies and volume
             outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
             
-            outst_cathode = d.join([etot, etot1, lens, vol,nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
+            outst_cathode = d.join([spg,etot, etot1, lens, vol,nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
             # print self.end.xred[-1]
             #print outstring_kp_ec
             # print show
@@ -3847,7 +3850,8 @@ class CalculationVasp(Calculation):
                 # self.end.write_cif(os.path.join(self.dir,self.name))
             
 
-
+            # print(out_type)
+            # sys.exit()
             if   out_type == 'gbe'  : outst = outst_gbe
             elif out_type == 'e_imp': outst = outst_imp
             elif out_type == 'e_seg': outst = outst_seg            
@@ -3865,6 +3869,7 @@ class CalculationVasp(Calculation):
                 
                 outst = outst_simple
             else: 
+                printlog('Output type: outst_cathode')
                 outst = outst_cathode
             #else: print_and_log("Uknown type of outstring\n")
 

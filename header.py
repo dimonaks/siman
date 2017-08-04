@@ -76,11 +76,21 @@ class CalcDict(dict):
         else:
             with shelve.open(calc_database, protocol = 3) as d:
                 try:
+                    # print(type(key)==str)
+                    if type(key) == str:
+                        # print('String key detected', key)
+                        l = key.split('.')
+                        if len(l) > 2:
+                            key = ('.'.join(l[0:-2]), l[-2], int(l[-1]))
+                        # print(key)
                     val = d[str(key)]
                     # print(len(d))
                     dict.__setitem__(self, key, val)
-                # print('reading ',key, 'from db')
+                    # print('reading ',str(key), 'from db')
                 # print(val)
+                # else:
+
+
                 except:
                     val = None
         

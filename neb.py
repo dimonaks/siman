@@ -96,7 +96,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     x_start = None, xr_start = None,
     x_final = None, xr_final = None,
     upload_vts = False,
-    run = False, add_loop_dic = None,
+    run = False, add_loop_dic = None, old_behaviour = None,
      ):
 
 
@@ -148,8 +148,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
     """
-
-    naming_conventions209 = True # set False to reproduce old behavior before 2.09.2017
+    if old_behaviour:
+        naming_conventions209 = False #
+    else:
+        naming_conventions209 = True # set False to reproduce old behavior before 2.09.2017
 
 
     calc = header.calc
@@ -312,6 +314,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 # sys.exit()
                 if len(numbers)>0:
                     printlog('Please choose position using *i_void_start* :', [i+1 for i in range(len(numbers))],imp = 'y' )
+                    printlog('*i_void_start* = ', i_void_start)
                     i_m = numbers[i_void_start-1][0]
                     printlog('Position',i_void_start,'chosen, atom:', i_m+1, type_atom_to_move, imp = 'y' )
                 
@@ -646,8 +649,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
 
-    write_xyz(st1, file_name = st1.name+'_start')# replications = (2,2,2))
-    write_xyz(st2, file_name = st2.name+'_end')# replications = (2,2,2))
+    write_xyz(st1, file_name = it_new+'_start')
+    write_xyz(st2, file_name = it_new+'_end')
 
 
 

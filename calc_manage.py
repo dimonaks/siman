@@ -2846,8 +2846,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if not os.path.exists(path2mep_l) or '2' in up:
                 ''
                 get_from_server(files = path2mep_s, to_file = path2mep_l, addr = cl.cluster_address, )
-                get_from_server(files = cl.project_path_cluster+'/'+cl.dir+'/movie.xyz', to_file = cl.dir+'/movie.xyz', addr = cl.cluster_address, )
-            
+                movie_to = cl.dir+'/movie.xyz'
+                get_from_server(files = cl.project_path_cluster+'/'+cl.dir+'/movie.xyz', to_file = movie_to, addr = cl.cluster_address, )
+                
+                shutil.copyfile(movie_to, 'figs/'+name_without_ext+'.xyz')
 
 
 
@@ -2981,6 +2983,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 else:
                     show_flag = False
                 plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_args = fitplot_args)
+
+
 
             if push2archive:
                 path2saved, _ = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')
