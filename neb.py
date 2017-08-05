@@ -196,7 +196,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
 
-
+    # print(atom_to_insert)
+    # sys.exit()
 
 
     if corenum:
@@ -472,6 +473,33 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
 
+    """Checking correctness of path"""
+    #if start and final positions are used, collisions with existing atoms are possible 
+    if is_list_like(xr_start) and is_list_like(xr_final):
+        printlog('Checking correctness')
+        st1, _, _ = st1.remove_close_lying()
+
+        stt = st1.add_atoms([x_final,], 'Pu')
+        stt, x, _ = stt.remove_close_lying(rm_both = True) # now the final position is empty for sure
+        # print(st._removed)
+        if stt._removed:
+            st1 = stt
+
+
+        st2, _, _ = st2.remove_close_lying()
+        stt = st2.add_atoms([x_start,], 'Pu')
+        stt, x, _ = stt.remove_close_lying(rm_both = True) # now the start position is empty for sure
+        if stt._removed:
+            st2 = stt
+
+        print(st2.get_elements())
+        # sys.exit()
+
+
+    elif is_list_like(xr_final) and not is_list_like(xr_start) or is_list_like(xr_start) and not is_list_like(xr_final):
+        printlog('Attention! only start of final position is provided, please check that everything is ok with start and final states!!!')
+
+
 
 
 
@@ -619,8 +647,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     struct_des[it_new].x_m_ion_start = x_m
     struct_des[it_new].xr_m_ion_start = xcart2xred([x_m], st1.rprimd)[0]
 
-    st1 = st1.remove_close_lying()
-    st2 = st2.remove_close_lying()
+    # st1, _, _ = st1.remove_close_lying()
+    # st2, _, _ = st2.remove_close_lying()
 
 
     cl.end = st1
@@ -648,9 +676,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     cl.write_siman_geo(geotype = 'end', description = 'Final conf. for neb from '+obtained_from, override = True)
 
 
+    i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
+    i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
+    st1s = st1.replace_atoms([i1], 'Pu')
+    st2s = st2.replace_atoms([i2], 'Pu')
 
-    write_xyz(st1, file_name = it_new+'_start')
-    write_xyz(st2, file_name = it_new+'_end')
+    write_xyz(st1s, file_name = it_new+'_start')
+    write_xyz(st2s, file_name = it_new+'_end')
 
 
 

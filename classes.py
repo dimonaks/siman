@@ -661,6 +661,8 @@ class Structure():
                 printlog('Atom', i+1, 'corresponds to', x_tar)
 
                 return i
+        else:
+            printlog('Attention, atom ', x_tar, 'was not found' )
         # print self.xcart.index(x_tar)
         # return self.xcart.index(x_tar)
 
@@ -694,21 +696,49 @@ class Structure():
 
 
 
-    def remove_close_lying(self):
+    def remove_close_lying(self, rm_both = 0):
+        """
+        rm_both (bool) - if True than remove both atoms, if False than only the second atom is removed
+        
+        SIDE:
+            write _removed field to returned st
+
+        TODO:
+            Works incorrectly for more than one overlap !!!
+
+        """
         st = copy.deepcopy(self)    
         tol = 0.4
-
+        removed = False
+        x1_del = []
+        x2_del = []
+        numbers = range(st.natom)
+        count = 0
         for i, x1 in enumerate(st.xcart):
-            for j, x2 in enumerate(st.xcart):
-                if all(x1 == x2):
-                    continue
+            for j, x2 in list(zip(numbers, st.xcart))[i+1:]:
+                # print(i,j)
+                # if all(x1 == x2):
+                #     continue
+                # if all(x1 == x1_del) or (x2 == x2_del):
+                #     continue
                 if np.linalg.norm(x1-x2) < tol:
-                    printlog('remove_close_lying(): Attention, atom', i, 'of type ', st.get_elements()[i], 'was removed')
+                    count+=1
+                    if count > 1:
+                        raise RuntimeError # please make this function more universal - removing not by numbers, but by coordinates or more intelligent- see remove_atoms()
+                    x1_del = x1
+                    x2_del = x2
+                    if rm_both:
+                        printlog('remove_close_lying(): Atoms', i,j, 'of types ', st.get_elements()[i], st.get_elements()[j], 'are removed')
 
-                    st = st.remove_atoms([i])
+                        st = st.remove_atoms([i, j])
+                        removed = True
+                    else:
+                        printlog('remove_close_lying(): Atom', j, 'of type ', st.get_elements()[j], 'is removed')
+                        st = st.remove_atoms([j])
+                        removed = True
+        st._removed = removed
 
-
-        return st
+        return st, x1_del, x2_del
 
     def nn(self, i, n = 6, ndict = None, only = None, silent = 0):
         """
@@ -2810,7 +2840,7 @@ class CalculationVasp(Calculation):
         ###INPUT:
             - load (str) - 'x' - download xml, o - download outcar and contcar, un - read unfinished
             - show (str) - print additional information
-            - choose_outcar - see description in res_loop()
+            - choose_outcar - see description in res_loop(), from 1
             - out_type - controls the return string
                 see in code, add here
                 also controls reading of OUTCAR
@@ -2843,9 +2873,11 @@ class CalculationVasp(Calculation):
 
             path_to_outcar = join( dirname(self.path["output"]), self.associated_outcars[choose_outcar-1] )
 
+            printlog(self.associated_outcars)
         else:
             path_to_outcar  = self.path["output"]
         
+
         if 'OUTCAR' in path_to_outcar:
             path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
             path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
@@ -2872,7 +2904,8 @@ class CalculationVasp(Calculation):
             
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
-        print_and_log('read_results() path to outcar', path_to_outcar, imp = 'n')
+        print_and_log('read_results() path to outcar', path_to_outcar)
+        # sys.exit()
 
 
 
