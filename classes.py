@@ -2928,14 +2928,17 @@ class CalculationVasp(Calculation):
 
             files = [ self.project_path_cluster+'/'+path_to_outcar, self.project_path_cluster+'/'+path_to_contcar ]
 
-            get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
-
+            # get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
+            for file in files:
+                self.get_file(os.path.basename(file))
 
 
         if 'x' in load:
 
-            get_from_server(files = join(self.project_path_cluster, path_to_xml), to = os.path.dirname(path_to_outcar),  
-                addr = self.cluster_address)
+            # get_from_server(files = join(self.project_path_cluster, path_to_xml), to = os.path.dirname(path_to_outcar),  
+            #     addr = self.cluster_address)
+            
+            self.get_file(os.path.basename(path_to_xml))
 
 
 
@@ -3938,10 +3941,13 @@ class CalculationVasp(Calculation):
 
 
     def get_chg_file(self, filetype = 'CHGCAR', nametype = ''):
-        #allow to get xml as well 
+        #allow to get any file of type filetype 
         #cl - object of CalculationVasp class
-        #filetype (str) - 'CHG' or 'CHGCAR'
-        #nametype (str) - 'asoutcar', 
+        #filetype (str) - 'CHG', 'CHGCAR', etc
+        #nametype (str) - 'asoutcar' - update filetype to OUTCAR format
+
+        #Comment
+            #initially used for chg files - rename!
         if nametype == 'asoutcar':
             path_to_chg = self.path['output'].replace('OUTCAR',filetype)
         else:
@@ -3963,17 +3969,17 @@ class CalculationVasp(Calculation):
 
 
         if out:
-            printlog('Charge file', path_to_chg, 'was not found, trying scratch', imp = 'Y')
+            printlog('File', path_to_chg, 'was not found, trying scratch', imp = 'Y')
             # printlog('Charge file', path_to_chg, 'was not found')
             path_to_chg_scratch = '/scratch/amg/aksenov/'+path_to_chg
 
             out = get_from_server(path_to_chg_scratch, os.path.dirname(path_to_chg), addr = self.cluster_address)
             
             if out:
-                printlog('Charge file', path_to_chg_scratch, 'was not found', imp = 'Y')
+                printlog('File', path_to_chg_scratch, 'was not found', imp = 'Y')
                 path_to_chg = None
            
-        printlog('File', path_to_chg, ' was download', imp = 'y')
+        printlog('File', path_to_chg, ' was download', imp = 'e')
         return path_to_chg
 
     def get_file(self, *args, **kwargs):
