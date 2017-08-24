@@ -1,7 +1,12 @@
 from __future__ import division, unicode_literals, absolute_import 
+import numpy as np
+
+import header
 from header import printlog
 from functions import element_name_inv, invert
-from geo import determine_symmetry_positions
+from geo import determine_symmetry_positions, local_surrounding
+from database import push_figure_to_archive
+
 def calc_redox(cl1, cl2, energy_ref = None, value = 0):
     """
     Calculated average redox potential and change of volume
@@ -213,3 +218,224 @@ def chgsum(cll, el, site):
 
     # print(cl.charges)
     return chgsum
+
+
+
+
+
+
+def fit_a(conv, description_for_archive):
+
+    """Fit equation of state for bulk systems.
+
+    The following equation is used::
+
+       sjeos (default)
+           A third order inverse polynomial fit 10.1103/PhysRevB.67.026103
+
+                           2      3        -1/3
+       E(V) = c + c t + c t  + c t ,  t = V
+               0   1     2      3
+
+       taylor
+           A third order Taylor series expansion about the minimum volume
+
+       murnaghan
+           PRB 28, 5480 (1983)
+
+       birch
+           Intermetallic compounds: Principles and Practice,
+           Vol I: Principles. pages 195-210
+
+       birchmurnaghan
+           PRB 70, 224107
+
+       pouriertarantola
+           PRB 70, 224107
+
+       vinet
+           PRB 70, 224107
+
+       antonschmidt
+           Intermetallics 11, 23-32 (2003)
+
+       p3
+           A third order polynomial fit
+
+        Use::
+
+           eos = EquationOfState(volumes, energies, eos='sjeos')
+           v0, e0, B = eos.fit()
+           eos.plot()
+
+    """
+    # e, v, emin, vmin       = plot_conv( conv[n], calc,  "fit_gb_volume2")
+    from pictrure_functions import fit_and_plot
+
+
+
+    alist = []
+    vlist = []
+    etotlist  = []
+    magn1 = []
+    magn2 = []
+    alphas= []
+    for id in conv[n]:
+        cl = calc[id]
+        st = cl.end
+        alist.append(cl.end.rprimd[0][0])
+        etotlist.append(cl.energy_sigma0)
+        vlist.append(cl.end.vol)
+        magn1.append(cl.magn1)
+        magn2.append(cl.magn2)
+        alpha, beta, gamma = st.get_angles()
+        alphas.append(alpha)
+        print('alpha, energy: {:4.2f}, {:6.3f}'.format(alpha, cl.energy_sigma0))
+
+    fit_and_plot(U1 = (alphas, etotlist, 'o-r'), 
+        image_name = 'figs/angle', ylabel = 'Total energy, eV', xlabel = 'Angle, deg', xlim = (89, 92.6))
+
+    if ase_flag:
+        if 'angle' in analys_type:
+            eos = EquationOfState(alphas, etotlist, eos = 'sjeos')
+        else:
+            eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
+        # import inspect
+
+        # print (inspect.getfile(EquationOfState))
+
+        v0, e0, B = eos.fit()
+        #print "c = ", clist[2]
+        print_and_log( '''
+        v0 = {0} A^3
+        a0 = {1} A
+        E0 = {2} eV
+        B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
+
+        savedpath = 'figs/'+cl.name+'.png'
+        makedir(savedpath)
+
+
+        cl.B = B*160.218
+        # plt.close()
+        # plt.clf()
+        # plt.close('all')
+        if 'fit' in show:
+            mpl.rcParams.update({'font.size': 14})
+
+            eos.plot(savedpath, show = True)
+            printlog('fit results are saved in ',savedpath, imp = 'y')
+        else:
+            printlog('To use fitting install ase: pip install ase')
+    # plt.clf()
+
+    if push2archive:
+        push_figure_to_archive(local_figure_path = savedpath, caption = description_for_archive)
+
+    return
+
+
+
+
+
+
+def around_alkali(st, nn, alkali_ion_number):
+    #return numbers and distances to 
+
+    n_neighbours = nn
+    alkali_ions = []
+
+    ifmaglist = st.get_maglist()
+
+    for i, typ, x in zip(range(st.natom), st.typat, st.xcart):
+        z = st.znucl[typ-1]
+        if z in header.ALKALI_ION_ELEMENTS:
+            alkali_ions.append([i, z, x])
+
+    if len(alkali_ions) > 0:
+        if alkali_ion_number:
+            kk = alkali_ion_number-1
+
+            chosen_ion = (kk, st.znucl[st.typat[kk]-1], st.xcart[kk])
+        else:
+            chosen_ion = alkali_ions[0] #just the first one is used
+                # alkali_ions[min(alkali_ions)]
+
+        sur   = local_surrounding(chosen_ion[2], st, n_neighbours = n_neighbours, control = 'atoms', 
+        periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
+
+        # print (sur)
+        dist = np.array(sur[3]).round(2)
+        numb = np.array(sur[2])
+
+    else:
+        numb = ifmaglist # if no alk ions show for all mag atoms
+        chosen_ion = None
+
+    return numb, dist, chosen_ion
+
+
+
+def find_polaron(st, i_alk_ion):
+    #using magmom, find the transition atoms that have different magnetic moments
+    #i_alk_ion - number of ion from 0 to calculate distances to transition metals
+
+
+
+    # maglist = cli.end.get_maglist()
+    # magm = np.array(cli.end.magmom)
+
+    # n_tm = len(magm[maglist])
+    # # print(len(maglist))
+    # numb, dist, chosen_ion = around_alkali(cli.end, n_tm, atom_num)
+    # # print(magm[numb][1:]) 
+    # mtm = magm[numb][1:] # the first is alkali
+
+    # m_av = sum(mtm)/len(mtm)
+    # print(mtm-m_av)
+
+    def zscore(s):
+        # print(np.std(s))
+        return (s - np.mean(s)) / np.std(s)
+
+    magmom = np.array(st.magmom)
+    _, mag_numbers = st.get_maglist()
+
+    pol = {}
+    # for z in mag_numbers:
+    #     pos = determine_symmetry_positions(st, invert(z))
+
+
+    # sys.exit()
+
+    for key in mag_numbers:
+        printlog('Looking at polarons on transition atoms: ',invert(key) )
+        numbs = np.array(mag_numbers[key])
+        magmom_tm = magmom[numbs]
+        dev = np.absolute(  zscore(magmom_tm) )
+        # print(magmom_tm)
+        # print(list(zip(magmom_tm, dev.round(1))))
+        # p = np.where(dev>2)[0] # 2 standard deviations
+        # print(dev>2)
+        # print (type(numbs))
+        nstd = 1.5
+        # nstd = 4
+        i_pols = numbs[dev>nstd]
+
+        if len(i_pols) > 0:
+            x1 = st.xcart[i_alk_ion]
+            d_to_pols = []
+            for j in i_pols:
+                x2 = st.xcart[j]
+                d, _ = st.image_distance(x1, x2)
+                d_to_pols.append(d)
+            print('polarons are detected on atoms', i_pols, 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
+            print('mag moments on trans. atoms:', magmom_tm.round(1))
+            
+            pol[key] = i_pols
+        else:
+            print('no polarons is detected with nstd', nstd)
+            print('mag moments on trans. atoms:', magmom_tm.round(1))
+            # print(' deviations                :', dev.round(1))
+            pol[key] = None
+    return pol, magmom_tm

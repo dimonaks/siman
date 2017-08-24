@@ -147,6 +147,24 @@ class Structure():
         return [self.znucl[t-1] for t in self.typat]
 
 
+    def get_maglist(self):
+        #return bool list of which  elements are magnetic (here all transition metals are searched!)
+        #and dictionary with numbers of each transition metal
+        ifmaglist = []
+        zlist = self.get_elements_z()
+        mag_numbers = {}
+        for i, z in enumerate(zlist): #
+            if z in header.TRANSITION_ELEMENTS:
+                if z not in mag_numbers:
+                    mag_numbers[z] = []
+                ifmaglist.append(True)
+                mag_numbers[z].append(i)
+            else:
+                ifmaglist.append(False)
+        ifmaglist = np.array(ifmaglist)
+
+        return ifmaglist, mag_numbers
+
     def convert2pymatgen(self):
         return pymatgen.Structure(self.rprimd, self.get_elements(), self.xred)
 
@@ -692,7 +710,7 @@ class Structure():
 
     def image_distance(self, *args, **kwargs):
 
-        return image_distance(*args, **kwargs)
+        return image_distance(*args, **kwargs, r = self.rprimd)
 
 
 
@@ -3028,16 +3046,8 @@ class CalculationVasp(Calculation):
             tot_mag_by_atoms = [] #magnetic moments by atoms on each step
             tot_chg_by_atoms = []
             tot_mag_by_mag_atoms = []
-            #which atoms to use
-            magnetic_elements = header.MAGNETIC_ELEMENTS
-            #Where magnetic elements?
-
-            ifmaglist = [] #np.array() #[False]*len(zlist)
 
 
-            # print ifmaglist
-
-            # sys.exit()
             ldauu = None
             e_sig0 = 0 #energy sigma 0 every scf iteration
             occ_matrices = {} # the number of atom is the key
@@ -3101,21 +3111,8 @@ class CalculationVasp(Calculation):
                     # printlog('I read ',elements, 'from outcar')
                     self.end.znucl = [element_name_inv(el) for el in elements]
                     # print (self.end.znucl)
-                    try:
-                        zlist = [int(self.end.znucl[t-1]) for t in self.end.typat] #
-                    except:
-                        zlist = []
-                    # print (zlist)
-                    # i_mag_start = None
-                    # i_mag_end   = None
-                    for i, z in enumerate(zlist): #
-                        if z in magnetic_elements:
-                            ifmaglist.append(True)
-                        else:
-                            ifmaglist.append(False)
 
-                    ifmaglist = np.array(ifmaglist)
-
+                    ifmaglist, _ = self.end.get_maglist()
 
 
                 if 'ISPIN' in line:
@@ -3362,6 +3359,7 @@ class CalculationVasp(Calculation):
                     # print tot_mag_by_atoms
                     # magnetic_elements
                     # ifmaglist
+                    # self.tot_mag_by_atoms = tot_mag_by_atoms
 
 
 
@@ -3713,37 +3711,16 @@ class CalculationVasp(Calculation):
                 printlog(np.array(self.mag_sum).round(2), imp = 'Y' )
 
             if 'mag' in show or 'occ' in show:
-                n_neighbours = 4
-                st = self.end
-                alkali_ions = []
-                dist_dic = {}
+                from analysis import around_alkali
+                numb, dist, chosen_ion = around_alkali(self.end, 4, alkali_ion_number)
+                
+                #probably not used anymore
+                # dist_dic = {}
+                # self.dist_numb = zip(dist, numb)
+                # for d, n in self.dist_numb:
+                #     dist_dic[n] = d 
+                #probably not used anymore
 
-                for i, typ, x in zip(range(st.natom), st.typat, st.xcart):
-                    z = st.znucl[typ-1]
-                    if z in header.ALKALI_ION_ELEMENTS:
-                        alkali_ions.append([i, z, x])
-
-                if len(alkali_ions) > 0:
-                    if alkali_ion_number:
-                        kk = alkali_ion_number-1
-
-                        chosen_ion = (kk, st.znucl[st.typat[kk]-1], st.xcart[kk])
-                    else:
-                        chosen_ion = alkali_ions[0] #just the first one is used
-                            # alkali_ions[min(alkali_ions)]
-
-                    sur   = local_surrounding(chosen_ion[2], self.end, n_neighbours = n_neighbours, control = 'atoms', 
-                    periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
-
-                    # print (sur)
-                    dist = np.array(sur[3]).round(2)
-                    numb = np.array(sur[2])
-                    self.dist_numb = zip(dist, numb)
-                    for d, n in self.dist_numb:
-                        dist_dic[n] = d 
-                else:
-                    numb = ifmaglist # if no alk ions show for all mag atoms
-                    chosen_ion = None
 
             if 'mag' in show and tot_mag_by_atoms:
                 print ('\n\n\n')
@@ -3768,13 +3745,12 @@ class CalculationVasp(Calculation):
                     # print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
 
                     # sys.exit()
-                if len(alkali_ions) > 0:
+                if chosen_ion:
                     printlog ('Dist from 1st found alkali ion ',element_name_inv( chosen_ion[1]),
                         ' to sur. transition met atoms: (Use *alkali_ion_number* to choose ion manually)')
                     print ('atom:dist = ', 
                     ', '.join('{}:{:.2f}'.format(iat, d) for iat, d  in zip(  numb+1, dist   )  ) )
 
-                self.tot_mag_by_atoms = tot_mag_by_atoms
                 # plt.plot(np.array(sur[3]).round(2), tot_mag_by_atoms[-1][numb]) mag vs dist for last step
                 
                 # print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))

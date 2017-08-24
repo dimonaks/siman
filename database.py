@@ -288,6 +288,34 @@ def get_from_database(x1, x2, mat, inquiry_keys = None, silent = None, ssh_objec
 
 
 
+def push_figure_to_archive(local_figure_path, caption, figlabel = None, autocompl = True ):
+    shutil.copy(local_figure_path, header.path_to_images)
+    print_and_log('push_figure_to_archive():', local_figure_path, 'copied to', header.path_to_images, imp = 'y')
+    
+    name_without_ext =   '.'.join( os.path.basename(local_figure_path).split('.')[:-1]) 
+    figfile = '{{'+name_without_ext+'}}'
+
+    if not figlabel:
+        figlabel = '.'.join(name_without_ext.split('.')[:-1])
+    
+    if autocompl:
+        caption+=' for '+figlabel 
+
+    tex_text = \
+    ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
+    "\caption{{\label{{fig:{:s}}} {:s} }}\n"
+    "\end{{figure}}\n").format(figfile, figlabel, caption )
+
+
+    # print (tex_text)
+    with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+', newline = '') as f:
+        f.seek(0)
+        a = f.read()
+        # print (a)
+        if tex_text not in a:
+            f.write(tex_text)
+    return
+
 
 
 

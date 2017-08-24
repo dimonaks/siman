@@ -37,12 +37,14 @@ from functions import (list2string, gb_energy_volume, element_name_inv
 from inout import write_xyz
 
 from picture_functions import plot_mep, fit_and_plot, plot_conv
-from analysis import calc_redox, matrix_diff
+from analysis import calc_redox, matrix_diff, fit_a
 from geo import image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 
 
 from set_functions import init_default_sets
 
+from database import push_figure_to_archive
+from analysis import find_polaron
 
 
 printlog = print_and_log
@@ -162,33 +164,6 @@ def write_batch_header(batch_script_filename = None,
 
 
 
-def push_figure_to_archive(local_figure_path, caption, figlabel = None, autocompl = True ):
-    shutil.copy(local_figure_path, header.path_to_images)
-    print_and_log('push_figure_to_archive():', local_figure_path, 'copied to', header.path_to_images, imp = 'y')
-    
-    name_without_ext =   '.'.join( os.path.basename(local_figure_path).split('.')[:-1]) 
-    figfile = '{{'+name_without_ext+'}}'
-
-    if not figlabel:
-        figlabel = '.'.join(name_without_ext.split('.')[:-1])
-    
-    if autocompl:
-        caption+=' for '+figlabel 
-
-    tex_text = \
-    ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
-    "\caption{{\label{{fig:{:s}}} {:s} }}\n"
-    "\end{{figure}}\n").format(figfile, figlabel, caption )
-
-
-    # print (tex_text)
-    with open(header.project_conf.path_to_paper+'/auto_fig.tex', 'a+', newline = '') as f:
-        f.seek(0)
-        a = f.read()
-        # print (a)
-        if tex_text not in a:
-            f.write(tex_text)
-    return
 
 
 def clean_history_file(history_list):
@@ -2699,108 +2674,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             print_and_log ("name %s_template          acell  %.5f  %.5f  %.5f # fit parameters are &%.5f &%.5f &%i &%i"  % (fit_hex(0.00002,0.00003,4000,6000, it, inputset, verlist, calc) )  )    
 
         elif 'fit_a' in analys_type:
-            """Fit equation of state for bulk systems.
-
-            The following equation is used::
-
-               sjeos (default)
-                   A third order inverse polynomial fit 10.1103/PhysRevB.67.026103
-
-                                   2      3        -1/3
-               E(V) = c + c t + c t  + c t ,  t = V
-                       0   1     2      3
-
-               taylor
-                   A third order Taylor series expansion about the minimum volume
-
-               murnaghan
-                   PRB 28, 5480 (1983)
-
-               birch
-                   Intermetallic compounds: Principles and Practice,
-                   Vol I: Principles. pages 195-210
-
-               birchmurnaghan
-                   PRB 70, 224107
-
-               pouriertarantola
-                   PRB 70, 224107
-
-               vinet
-                   PRB 70, 224107
-
-               antonschmidt
-                   Intermetallics 11, 23-32 (2003)
-
-               p3
-                   A third order polynomial fit
-
-                Use::
-
-                   eos = EquationOfState(volumes, energies, eos='sjeos')
-                   v0, e0, B = eos.fit()
-                   eos.plot()
-
-            """
-            # e, v, emin, vmin       = plot_conv( conv[n], calc,  "fit_gb_volume2")
-            alist = []
-            vlist = []
-            etotlist  = []
-            magn1 = []
-            magn2 = []
-            alphas= []
-            for id in conv[n]:
-                cl = calc[id]
-                st = cl.end
-                alist.append(cl.end.rprimd[0][0])
-                etotlist.append(cl.energy_sigma0)
-                vlist.append(cl.end.vol)
-                magn1.append(cl.magn1)
-                magn2.append(cl.magn2)
-                alpha, beta, gamma = st.get_angles()
-                alphas.append(alpha)
-                print('alpha, energy: {:4.2f}, {:6.3f}'.format(alpha, cl.energy_sigma0))
             
-            fit_and_plot(U1 = (alphas, etotlist, 'o-r'), 
-                image_name = 'figs/angle', ylabel = 'Total energy, eV', xlabel = 'Angle, deg', xlim = (89, 92.6))
-
-            if ase_flag:
-                if 'angle' in analys_type:
-                    eos = EquationOfState(alphas, etotlist, eos = 'sjeos')
-                else:
-                    eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
-                # import inspect
-
-                # print (inspect.getfile(EquationOfState))
-
-                v0, e0, B = eos.fit()
-                #print "c = ", clist[2]
-                print_and_log( '''
-                v0 = {0} A^3
-                a0 = {1} A
-                E0 = {2} eV
-                B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
-
-                savedpath = 'figs/'+cl.name+'.png'
-                makedir(savedpath)
-
-
-                cl.B = B*160.218
-                # plt.close()
-                # plt.clf()
-                # plt.close('all')
-                if 'fit' in show:
-                    mpl.rcParams.update({'font.size': 14})
-
-                    eos.plot(savedpath, show = True)
-                    printlog('fit results are saved in ',savedpath, imp = 'y')
-                else:
-                    printlog('To use fitting install ase: pip install ase')
-            # plt.clf()
-
-            if push2archive:
-                push_figure_to_archive(local_figure_path = savedpath, caption = description_for_archive)
-
+            fit_a(conv, description_for_archive)
 
 
         # elif analys_type == 'fit_angle':
@@ -2931,7 +2806,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             # print( vlist)
             mep_energies = []
             atom_pos     = []
-            
+            pols = []
             for v in vlist:
                 cli = calc[cl.id[0], cl.id[1], v]
                 # print(cl.id[0], cl.id[1], v, cli.state)
@@ -2943,6 +2818,26 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy - not very good, sometimes unconverged energy could be lower! 
                 mep_energies.append(  cli.energy_sigma0   ) #use last energy 
                 atom_pos.append( cli.end.xcart[atom_num] )
+
+                # Find polaron positions
+
+                pol, mag = find_polaron(cli.end, atom_num)
+                if pol:
+                    for key in pol:
+                        if np.any(pol[key]):
+                            for n in pol[key]:
+                                if n not in pols:
+                                    pols.append(n)
+                else:
+                    ''
+                    # print('Mag_moments on trans,', mag.round(1))
+            if len(pols) > 0:
+                print('During migration of alkali ions polarons are detected on atoms:', pols)
+            elif len(pols) > 1:
+                printlog('Attention! polaron is moving during migration! Obtained barrier is ambiguous')
+            else:
+                printlog('Compare magnetic moments above! In principle should be the same!')
+
 
             # print np.array(atom_pos)
 
@@ -2983,6 +2878,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 else:
                     show_flag = False
                 plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_args = fitplot_args)
+
+
+
 
 
 
