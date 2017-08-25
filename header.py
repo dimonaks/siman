@@ -120,7 +120,8 @@ show = None
 corenum = 1
 
 calc = CalcDict()
-global db
+# global db
+db = calc
 conv = {};
 varset = {};
 struct_des = {};

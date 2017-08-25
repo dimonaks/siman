@@ -30,11 +30,11 @@ except:
 import header
 from header import print_and_log, runBash, mpl, plt
 
-from small_functions import is_list_like, makedir
+from small_functions import is_list_like, makedir, list2string
 from classes import Calculation, CalculationVasp, Description
-from functions import (list2string, gb_energy_volume, element_name_inv 
+from functions import (gb_energy_volume, element_name_inv 
      , get_from_server,  run_on_server, push_to_server)
-from inout import write_xyz
+from inout import write_xyz, write_occmatrix
 
 from picture_functions import plot_mep, fit_and_plot, plot_conv
 from analysis import calc_redox, matrix_diff, fit_a
@@ -1910,36 +1910,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         
         # sys.exit()
 
-        #create OCCMATRIX 
-        print_and_log('I create OCCMATRIX in ', it_new_folder)
-        with open(it_new_folder+'/OCCMATRIX', 'w', newline = '') as f:
-            numat = len(occs)
-            f.write(str(numat)+'  #num of atoms to be specified\n')
-            
-            at_nums = occs.keys()
-            at_spin = [] # # 2 or 1
-            at_ltyp = [] # l - orbital type, 1 - s, 2 - d, 3 - f
-            for key in occs: 
-                occ = occs[key]
-                if len(occ) == 10: # spin polarized, d orbital
-                    at_spin.append(2)
-                    at_ltyp.append(2)
-                else:
-                    raise RuntimeError # please write by yourself for other cases
+        write_occmatrix(occs, it_new_folder)
 
-
-            for i, l, s in zip(at_nums, at_spin, at_ltyp):
-
-                f.write(list2string([i+1, l, s])+'    #i, l, s\n')
-                # for sp in range(s):
-                f.write('spin 1\n')
-                for row in occs[i][ 0:len(occs[i])//s ]:
-                    f.write(list2string(row)+'\n')
-                if s == 2:
-                    f.write('spin 2\n')
-                    for row in occs[i][ len(occs[i])//s: ]:
-                        f.write(list2string(row)+'\n')
-                f.write('\n')
 
         # st.magmom = [None]
         
@@ -2831,6 +2803,22 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 else:
                     ''
                     # print('Mag_moments on trans,', mag.round(1))
+            
+                #visualization of path
+                st = cli.end
+                st_loc = st.nn(atom_num, 6, from_one = False, silent = 1)['st']
+                # st_loc = st_loc.shift
+                if v == vlist[0]:
+                    vec = st.center_on(atom_num)
+                st_loc = st_loc.shift_atoms(vec)
+                st_loc.write_xyz()
+
+                av = st.nn(atom_num, 2, from_one = False, silent = 1)['av(A-O,F)']
+                print('Average_distance A-O', av, 'A')
+
+
+
+
             if len(pols) > 0:
                 print('During migration of alkali ions polarons are detected on atoms:', pols)
             elif len(pols) > 1:
@@ -2870,6 +2858,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             results_dic['barrier'] = diff_barrier
             cl1.barrier = diff_barrier
             cl2.barrier = diff_barrier
+
+
+
 
 
             if 'mep' in show:

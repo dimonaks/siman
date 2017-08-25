@@ -5,7 +5,7 @@ import header
 import numpy  as np
 from header import printlog, runBash
 from functions import element_name_inv, unique_elements
-from small_functions import makedir, is_list_like
+from small_functions import makedir, is_list_like, list2string
 from geo import local_surrounding, replic
 
 
@@ -615,3 +615,38 @@ def write_lammps(st, filename = '', charges = None):
                     uncompute v1\n""")
 
     return
+
+
+def write_occmatrix(occs, folder):
+    #create OCCMATRIX 
+    printlog('I create OCCMATRIX in ', folder, imp = 'y')
+    filename = folder+'/OCCMATRIX'
+    with open(filename, 'w', newline = '') as f:
+        numat = len(occs)
+        f.write(str(numat)+'  #num of atoms to be specified\n')
+        
+        at_nums = occs.keys()
+        at_spin = [] # # 2 or 1
+        at_ltyp = [] # l - orbital type, 1 - s, 2 - d, 3 - f
+        for key in occs: 
+            occ = occs[key]
+            if len(occ) == 10: # spin polarized, d orbital
+                at_spin.append(2)
+                at_ltyp.append(2)
+            else:
+                raise RuntimeError # please write by yourself for other cases
+
+
+        for i, l, s in zip(at_nums, at_spin, at_ltyp):
+
+            f.write(list2string([i+1, l, s])+'    #i, l, s\n')
+            # for sp in range(s):
+            f.write('spin 1\n')
+            for row in occs[i][ 0:len(occs[i])//s ]:
+                f.write(list2string(row)+'\n')
+            if s == 2:
+                f.write('spin 2\n')
+                for row in occs[i][ len(occs[i])//s: ]:
+                    f.write(list2string(row)+'\n')
+            f.write('\n')
+    return filename

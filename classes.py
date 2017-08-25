@@ -33,10 +33,10 @@ import numpy as np
 import header
 from header import printlog, print_and_log, runBash, plt
 
-from small_functions import cat_files, grep_file, red_prec
+from small_functions import cat_files, grep_file, red_prec, list2string
 from functions import (read_vectors, read_list, words,
      element_name_inv, calculate_voronoi,
-    get_from_server, push_to_server, run_on_server, list2string, smoother, file_exists_on_server)
+    get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
 from inout import write_xyz, write_lammps, read_xyz
 from small_functions import makedir
 from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
@@ -377,7 +377,7 @@ class Structure():
 
         typ = st.typat[i]
 
-        print('del_atom(): I remove atom ',  st.get_elements()[i])
+        printlog('del_atom(): I remove atom ',  st.get_elements()[i], imp = 'n')
         del st.typat[i]
         del st.xred[i]
         del st.xcart[i]
@@ -718,11 +718,14 @@ class Structure():
         """
         rm_both (bool) - if True than remove both atoms, if False than only the second atom is removed
         
+        PBC is realized through image_distance
+
         SIDE:
             write _removed field to returned st
 
         TODO:
             Works incorrectly for more than one overlap !!!
+
 
         """
         st = copy.deepcopy(self)    
@@ -739,10 +742,10 @@ class Structure():
                 #     continue
                 # if all(x1 == x1_del) or (x2 == x2_del):
                 #     continue
-                if np.linalg.norm(x1-x2) < tol:
+                if self.image_distance(x1, x2)[0] < tol:
                     count+=1
                     if count > 1:
-                        raise RuntimeError # please make this function more universal - removing not by numbers, but by coordinates or more intelligent- see remove_atoms()
+                        raise RuntimeError # for detecting multiple overlaps please make this function more universal - removing not by numbers, but by coordinates or more intelligent- see remove_atoms()
                     x1_del = x1
                     x2_del = x2
                     if rm_both:
@@ -758,23 +761,24 @@ class Structure():
 
         return st, x1_del, x2_del
 
-    def nn(self, i, n = 6, ndict = None, only = None, silent = 0):
+    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True):
         """
         show neigbours
-        i - number of central atom, from 1
+        i - number of central atom, from 1 or 0 (from_one = True or False)
         ndict (dic) - number of specific neigbour atoms
         only - list of interesting z neighbours
         """
         import itertools
         from functions import invert
-
+        if from_one:
+            i -= 1
 
         zn = self.znucl
-        x = self.xcart[i-1]
-        out = local_surrounding(x, self, n, 'atoms', True, only_elements = only)
+        x = self.xcart[i]
+        out_or = local_surrounding(x, self, n, 'atoms', True, only_elements = only)
         # out =  (xcart_local, typat_local, numbers, dlist )
 
-        out = list(out)
+        out = list(out_or)
         # out[0] = list(itertools.chain.from_iterable(out[0]))
         out[1] = [invert(zn[o-1]) for o in out[1]]
         out[2] = [o+1 for o in out[2]]
@@ -787,7 +791,7 @@ class Structure():
         # df = pd.DataFrame(tab)
         # print(df)
         if not silent:
-            print('Neigbours around atom', i, self.get_elements()[i-1],':')
+            print('Neigbours around atom', i+1, self.get_elements()[i],':')
             print( tabulate(tab[1:], headers = ['No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
 
 
@@ -796,6 +800,18 @@ class Structure():
         info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9])
         info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
         info['sum(A-O,F)'] = local_surrounding(x, self, n, 'sum', True, only_elements = [8,9])
+
+        t = set(out_or[2])
+        s = set(range(self.natom)) 
+        d = s.difference(t) 
+        # d = d.remove(i)
+        # print(t)
+        # print(i)
+        # print(d)
+        st_left = self.remove_atoms(d)
+        st_left.name+='_loc'
+        # sys.exit()
+        info['st'] = st_left
 
         if ndict:
             info['av(A-O)']   = local_surrounding(x, self, ndict[8], 'av', True, only_elements = [8])
@@ -809,6 +825,18 @@ class Structure():
 
         return info
 
+
+    def center_on(self, i):
+        #calc vector which alows to make particular atom in the center 
+        x_r = self.xred[i]
+        center = np.sum(self.xred, 0)/self.natom
+        # print(center)
+        # sys.exit()
+        # print(x_r)
+        dv = center - x_r
+        # print(dv)
+        # print(dv+x_r)
+        return dv
 
 
     def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True):

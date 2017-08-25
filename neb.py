@@ -483,7 +483,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         stt, x, _ = stt.remove_close_lying(rm_both = True) # now the final position is empty for sure
         # print(st._removed)
         if stt._removed:
-            st1 = stt
+            st1 = stt # only if overlapping was found we assign new structure
 
 
         st2, _, _ = st2.remove_close_lying()
@@ -680,7 +680,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
     st1s = st1.replace_atoms([i1], 'Pu')
     st2s = st2.replace_atoms([i2], 'Pu')
-
+    vec = st1.center_on(i1)
+    st1s = st1s.shift_atoms(vec)
+    st2s = st2s.shift_atoms(vec)
     write_xyz(st1s, file_name = it_new+'_start')
     write_xyz(st2s, file_name = it_new+'_end')
 

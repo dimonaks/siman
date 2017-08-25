@@ -26,6 +26,9 @@ def is_list_like(obj):
 def is_string_like(s):
 	return isinstance(s, string_types)
 
+def list2string(ilist):
+    #' '.join(['{:}']*len(lis)).format(*lis)
+    return ' '.join(np.array(ilist).astype(str))
 
 
 def merge_dics(dic1, dic2):

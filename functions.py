@@ -50,9 +50,7 @@ def smoother(x, n, mul = 1):
 
 
 
-def list2string(ilist):
-    #' '.join(['{:}']*len(lis)).format(*lis)
-    return ' '.join(np.array(ilist).astype(str))
+
 
 
 def run_on_server(command, addr):
