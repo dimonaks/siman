@@ -364,11 +364,22 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         if is_list_like(xr_final):
             x_final = xred2xcart([xr_final], st.rprimd)[0]
             
+
+            #old
             #check if i_atom_to_move should be removed
-            st2 = st1.del_atom(i_m)
+            # st2 = st1.del_atom(i_m)
+            # st2 = st2.add_atoms([x_final], atom_to_insert)
+
+            #new
+            st2 = st1.mov_atoms(i_m, x_final)
 
 
-            st2 = st2.add_atoms([x_final], atom_to_insert)
+            
+            # st1.printme()
+            # st2.printme()
+            # sys.exit()
+
+
             x_del = x_final 
             search_type = 'manual_insertion'
             name_suffix+= 'v'+str(i_void_final) 

@@ -2779,6 +2779,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             mep_energies = []
             atom_pos     = []
             pols = []
+            sts = []
             for v in vlist:
                 cli = calc[cl.id[0], cl.id[1], v]
                 # print(cl.id[0], cl.id[1], v, cli.state)
@@ -2813,10 +2814,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 st_loc = st_loc.shift_atoms(vec)
                 st_loc.write_xyz()
 
+                sts.append(st.shift_atoms(vec))
+
+
                 av = st.nn(atom_num, 2, from_one = False, silent = 1)['av(A-O,F)']
                 print('Average_distance A-O', av, 'A')
 
-
+            write_xyz(sts = sts) # write traectory
 
 
             if len(pols) > 0:

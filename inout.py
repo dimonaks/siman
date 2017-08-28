@@ -219,12 +219,12 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
     return
 
 
-def write_xyz(st, path = None, filename = None, file_name = None,
+def write_xyz(st = None, path = None, filename = None, file_name = None,
     include_vectors = True, repeat = 1, shift = 1.0, replications = None, full_cell = False, 
     analysis = None, show_around = None, show_around_x = None,  nnumber = 6, only_elements = None,
     gbpos2 = None, gbwidth = 1, withgb = False, include_boundary = 2,
     imp_positions = [], imp_sub_positions = None,
-    jmol = None, specialcommand = None, jmol_args = None,
+    jmol = None, specialcommand = None, jmol_args = None, sts = None
     ):
     """Writes st structure in xyz format in the folder xyz/path
 
@@ -253,18 +253,36 @@ def write_xyz(st, path = None, filename = None, file_name = None,
 
     jmol - 1,0 -  use jmol to produce png picture
     jmol_args - see write_jmol()
+
+    sts - list of Structure - write several structures to xyz file - other options are not working in this regime
     """
 
     if jmol_args == None:
         jmol_args = {}
 
+    if st == None:
+        st = sts[0]
+
+
     if replications:
         st = replic(st, mul = replications, inv = 1 )
   
-    def update_var():
+    def update_var(st):
+        if st.natom != len(st.xred) != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
+            printlog( "Error! write_xyz: check your arrays.\n\n"    )
+
+        if st.xcart == [] or len(st.xcart) != len(st.xred):
+            printlog( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n")
+            st.xcart = xred2xcart(st.xred, st.rprimd)
+            #print xcart[1]
+
         return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xred)
 
-    rprimd, xcart, xred, typat, znucl, natom = update_var()
+    
+
+    rprimd, xcart, xred, typat, znucl, natom = update_var(st)
+
+
 
 
     if file_name:
@@ -276,9 +294,7 @@ def write_xyz(st, path = None, filename = None, file_name = None,
 
 
 
-    if natom != len(xred) != len(xcart) != len(typat) or len(znucl) != max(typat): 
-        printlog( "Error! write_xyz: check your arrays.\n\n"    )
-    # print st.natom, len(st.xred), len(st.xcart), len(st.typat), len(st.znucl), max(st.typat)
+
     
     printlog("write_xyz(): Name is", name, important = 'n')
     
@@ -286,10 +302,7 @@ def write_xyz(st, path = None, filename = None, file_name = None,
         name = 'noname'
 
 
-    if xcart == [] or len(xcart) != len(xred):
-        printlog( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n")
-        xcart = xred2xcart(xred, rprimd)
-        #print xcart[1]
+
     
     if path:
         basepath = path
@@ -375,7 +388,7 @@ def write_xyz(st, path = None, filename = None, file_name = None,
 
         # print st.xred
 
-        rprimd, xcart, xred, typat, znucl, natom = update_var()
+        rprimd, xcart, xred, typat, znucl, natom = update_var(st)
         
     # asdegf
 
@@ -411,36 +424,45 @@ def write_xyz(st, path = None, filename = None, file_name = None,
     else:
         nvect = 0
 
+
+    def write(st):
+        rprimd, xcart, xred, typat, znucl, natom = update_var(st)
+
+        f.write(str(natom + len(imp_positions)-nsub + nvect)+"\n") #+3 vectors
+        f.write(name+"\n")
+        if imp_positions: 
+            for i, el in enumerate(imp_positions):
+                # if len(el) != 4: continue
+                f.write( "%s %.5f %.5f %.5f \n"%( el[3], el[0], el[1], el[2] ) )
+                # print 'composite -pointsize 60 label:{0:d} -geometry +{1:d}+{2:d} 1.png 2.png'.format(i, el[0], el[1])
+
+
+        for i in range(natom):
+            typ = typat[i] - 1
+            
+            z = int ( znucl[ typ ] )
+
+            if i in imp_sub_positions: 
+                # f.write( "Be " )
+                continue
+            else:
+                el = element_name_inv(z)
+                f.write( el+" " )
+
+            f.write( "%.5f %.5f %.5f \n"%( xcart[i][0], xcart[i][1], xcart[i][2] ) )
+
+        if include_vectors:
+            for r in st.rprimd:
+                f.write('Tv {:.10f} {:.10f} {:.10f}\n'.format(*r)  )
+
     with open(xyzfile,'w') as f:
-        for i in range(repeat):
-            f.write(str(natom + len(imp_positions)-nsub + nvect)+"\n") #+3 vectors
-            f.write(name+"\n")
+        if sts:
+            for st in sts:
+                write(st)
+        else:
+            for i in range(repeat):
+                write(st)
 
-            if imp_positions: 
-                for i, el in enumerate(imp_positions):
-                    # if len(el) != 4: continue
-                    f.write( "%s %.5f %.5f %.5f \n"%( el[3], el[0], el[1], el[2] ) )
-                    # print 'composite -pointsize 60 label:{0:d} -geometry +{1:d}+{2:d} 1.png 2.png'.format(i, el[0], el[1])
-
-
-            for i in range(natom):
-                typ = typat[i] - 1
-                
-                z = int ( znucl[ typ ] )
-
-                if i in imp_sub_positions: 
-                    # f.write( "Be " )
-                    continue
-                else:
-                    el = element_name_inv(z)
-                    f.write( el+" " )
-
-
-                f.write( "%.5f %.5f %.5f \n"%( xcart[i][0], xcart[i][1], xcart[i][2] ) )
-            if include_vectors:
-
-                for r in st.rprimd:
-                    f.write('Tv {:.10f} {:.10f} {:.10f}\n'.format(*r)  )
 
 
     # os._exit(1)

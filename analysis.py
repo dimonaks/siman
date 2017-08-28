@@ -429,7 +429,7 @@ def find_polaron(st, i_alk_ion):
                 x2 = st.xcart[j]
                 d, _ = st.image_distance(x1, x2)
                 d_to_pols.append(d)
-            print('polarons are detected on atoms', i_pols, 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
+            print('polarons are detected on atoms', [i+1 for i in i_pols], 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
             print('mag moments on trans. atoms:', magmom_tm.round(1))
             
             pol[key] = i_pols
