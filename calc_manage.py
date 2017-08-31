@@ -786,7 +786,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         if not is_list_like(setlist):
             setlist = [setlist]
-
+        # print(setlist)
         setlist = [s.strip() for s in setlist]
 
 

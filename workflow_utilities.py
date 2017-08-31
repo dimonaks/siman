@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 import header
 from header import print_and_log as printlog
-from header import calc
+from header import calc, db
 from picture_functions import fit_and_plot
 from small_functions import merge_dics
 from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, add_to_database
@@ -19,6 +19,38 @@ from analysis import calc_redox,  matrix_diff
 from geo import create_deintercalated_structure
 from geo import remove_one_atom
 from geo import create_replaced_structure, create_antisite_defect3, determine_symmetry_positions
+
+
+
+
+
+
+
+
+def prepare(it_new, opt_vol, it_folder, ise, cl, st_type, option):
+
+    if not it_folder:
+        it_folder = header.struct_des[cl.id[0]].sfolder+'/'+option
+    if st_type == 'end':
+        st = cl.end
+    elif st_type == 'init':
+        st = cl.init
+
+
+    if not ise:
+        if opt_vol:
+            ise = '4uis'
+        else:
+            ise = '1u'
+
+    if opt_vol:
+        id_new = (it_new+'.su', ise, 100)
+    else:
+        id_new = (it_new, ise, 1)
+
+    return id_new, st, it_folder
+
+
 
 def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None, opt_vol = 0, 
     suf = '', it_folder = None,
@@ -72,24 +104,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
     if compat1: # no element in name
         it_new = cl.id[0].replace('su', 'vac')+str(pos)
 
-    if not it_folder:
-        it_folder = header.struct_des[cl.id[0]].sfolder+'/'+option
-    if st_type == 'end':
-        st = cl.end
-    elif st_type == 'init':
-        st = cl.init
-
-
-    if not ise:
-        if opt_vol:
-            ise = '4uis'
-        else:
-            ise = '1u'
-
-    if opt_vol:
-        id_new = (it_new+'.su', ise, 100)
-    else:
-        id_new = (it_new, ise, 1)
+    id_new, st, it_folder = prepare(it_new, opt_vol, it_folder, ise, cl, st_type, option)
 
     if not only_read and (up or id_new not in calc):
         
@@ -170,3 +185,62 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
 
         return {'dE':dE, 'N':cl_v.end.natom, 'Name':cl.id}
+
+
+
+def process_modified(cl, mod_dic, opt_vol = 1, st_type = 'end', name = None, el_new = None, run = 0, ise = None, it_folder = None, mode = None, add_loop_arg = None):
+    """
+    inherited from create_charges - functionality is extended
+    The utility allows to (contrlolled by mode parameter):
+    1) create charged cells by removing specific atoms provided in del_dic
+    2) replace specific atoms 
+
+    add_loop
+    res_loop
+
+
+    mode - 
+        delete
+        remove
+
+    mod_dic - dic of configurations with atom numbers starting from 1
+
+    """
+    # if not del_dic:
+    if add_loop_arg == None:
+        add_loop_arg = {}
+
+
+
+    for key in mod_dic:
+        mod_pos = mod_dic[key]
+        mod_pos = [p-1 for p in mod_pos]
+        suf = mode[0]+str(key)
+        it_new = cl.id[0]+'.'+ suf
+        id_new, stA, it_folder = prepare(it_new, opt_vol, it_folder, ise, cl, st_type, mode)
+
+        if run: 
+            if mode == 'delete':
+                st = stA.remove_atoms(mod_pos)
+            elif mode == 'replace':
+                st = stA.replace_atoms(atoms_to_replace = mod_pos, el_new = el_new)
+
+            st.name+=suf
+            st.write_xyz()
+            # sys.exit()
+            if opt_vol:
+                add_loop(it_new, id_new[1], 1, calc_method = 'uniform_scale',
+                 scale_region = (-4, 4), inherit_option = 'inherit_xred', input_st = st, it_folder = it_folder, **add_loop_arg)            
+            else:
+                add_loop(it_new, id_new[1], 1, input_st = st, it_folder = it_folder, **add_loop_arg)             
+
+
+
+
+        else:
+            if opt_vol and fit:
+                res_loop(id_new[0], id_new[1], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '2', choose_outcar = None)
+            else:
+                res_loop(*id_new, up = '1', choose_outcar = None, show = 'fo')
+        
+    return

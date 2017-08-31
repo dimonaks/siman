@@ -741,7 +741,7 @@ def create_deintercalated_structure(st, element, del_pos = 1):
 def create_replaced_structure(st, el1, el2, rep_pos = 1, only_one = False):
 
     """
-    returns deintercalated structures
+    allow to replace symmetry non-equivalent positions structures
 
     rep_pos(int) - number of position starting from 1
     only_one - replace only one first atom
