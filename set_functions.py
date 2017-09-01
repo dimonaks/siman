@@ -107,6 +107,7 @@ vasp_other_keys = [
 'LPARD',
 'EINT',
 'LWAVE',
+'GGA',
 ]
 
 siman_keys = [

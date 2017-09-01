@@ -19,13 +19,7 @@ except:
 
 
 
-try:
-    # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library
-    from ase.utils.eos import EquationOfState
-    ase_flag = True
-except:
-    print('ase is not avail; run   pip install ase')
-    ase_flag = False
+
 
 import header
 from header import print_and_log, runBash, mpl, plt
@@ -2647,7 +2641,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         elif 'fit_a' in analys_type:
             
-            fit_a(conv, description_for_archive)
+            fit_a(conv, n, description_for_archive, analys_type, show, push2archive)
 
 
         # elif analys_type == 'fit_angle':

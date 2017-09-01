@@ -188,7 +188,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
 
 
-def process_modified(cl, mod_dic, opt_vol = 1, st_type = 'end', name = None, el_new = None, run = 0, ise = None, it_folder = None, mode = None, add_loop_arg = None):
+def process_modified(cl, mod_dic, opt_vol = 1, fit = 0,  st_type = 'end', name = None, el_new = None, run = 0, ise = None, it_folder = None, mode = None, add_loop_arg = None):
     """
     inherited from create_charges - functionality is extended
     The utility allows to (contrlolled by mode parameter):
@@ -238,8 +238,13 @@ def process_modified(cl, mod_dic, opt_vol = 1, st_type = 'end', name = None, el_
 
 
         else:
+            if 'check_job' in add_loop_arg:
+                cj = add_loop_arg['check_job']
+            else:
+                cj = None
             if opt_vol and fit:
-                res_loop(id_new[0], id_new[1], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '2', choose_outcar = None)
+                # res_loop(id_new[0], id_new[1], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '2', choose_outcar = None)
+                res_loop(id_new[0], id_new[1], list(range(1,7)), analys_type = 'fit_a', show = 'fitfo', up = '2', choose_outcar = None, check_job = cj)
             else:
                 res_loop(*id_new, up = '1', choose_outcar = None, show = 'fo')
         

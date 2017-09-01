@@ -1325,6 +1325,14 @@ class Calculation(object):
             self = pickle.load(f)
         # printlog('Calculation object succesfully read from ', filename)
         return self
+
+    @property
+    def sfolder(self):
+        self._x = header.struct_des[self.id[0]].sfolder
+        return self._x
+
+
+
 class CalculationAbinit(Calculation):
     """docstring for CalculationAbinit"""
     pass

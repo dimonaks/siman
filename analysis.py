@@ -2,10 +2,22 @@ from __future__ import division, unicode_literals, absolute_import
 import numpy as np
 
 import header
-from header import printlog
+from header import printlog, mpl
 from functions import element_name_inv, invert
 from geo import determine_symmetry_positions, local_surrounding
 from database import push_figure_to_archive
+from picture_functions import fit_and_plot
+from header import db
+from small_functions import is_list_like, makedir
+
+try:
+    # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library
+    from ase.utils.eos import EquationOfState
+    ase_flag = True
+except:
+    print('ase is not avail; run   pip install ase')
+    ase_flag = False
+
 
 def calc_redox(cl1, cl2, energy_ref = None, value = 0):
     """
@@ -224,7 +236,7 @@ def chgsum(cll, el, site):
 
 
 
-def fit_a(conv, description_for_archive):
+def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
 
     """Fit equation of state for bulk systems.
 
@@ -270,7 +282,6 @@ def fit_a(conv, description_for_archive):
 
     """
     # e, v, emin, vmin       = plot_conv( conv[n], calc,  "fit_gb_volume2")
-    from pictrure_functions import fit_and_plot
 
 
 
@@ -281,7 +292,7 @@ def fit_a(conv, description_for_archive):
     magn2 = []
     alphas= []
     for id in conv[n]:
-        cl = calc[id]
+        cl = db[id]
         st = cl.end
         alist.append(cl.end.rprimd[0][0])
         etotlist.append(cl.energy_sigma0)
@@ -296,7 +307,7 @@ def fit_a(conv, description_for_archive):
         image_name = 'figs/angle', ylabel = 'Total energy, eV', xlabel = 'Angle, deg', xlim = (89, 92.6))
 
     if ase_flag:
-        if 'angle' in analys_type:
+        if 'angle' in analysis_type:
             eos = EquationOfState(alphas, etotlist, eos = 'sjeos')
         else:
             eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
@@ -306,7 +317,7 @@ def fit_a(conv, description_for_archive):
 
         v0, e0, B = eos.fit()
         #print "c = ", clist[2]
-        print_and_log( '''
+        printlog( '''
         v0 = {0} A^3
         a0 = {1} A
         E0 = {2} eV
