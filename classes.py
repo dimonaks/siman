@@ -1672,11 +1672,17 @@ class CalculationVasp(Calculation):
         path_to_potcar = os.path.join(self.dir, 'POTCAR')
         potcar_files   = []
 
+        if self.set.path2pot:
+            path2pot = self.set.path2pot
+        else:
+            path2pot = header.PATH2POTENTIALS
+        printlog('Potentials from ', path2pot, 'are taken')
+
         if self.set.potdir:
             
             for z in self.init.znucl:
                 
-                potcar_files.append(os.path.join(header.PATH2POTENTIALS, self.set.potdir[ int(z) ], 'POTCAR') )
+                potcar_files.append(os.path.join(path2pot, self.set.potdir[ int(z) ], 'POTCAR') )
 
             printlog("POTCAR files:", potcar_files)        
             # print(path_to_potcar)            

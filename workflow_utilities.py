@@ -30,6 +30,8 @@ from geo import create_replaced_structure, create_antisite_defect3, determine_sy
 def prepare(it_new, opt_vol, it_folder, ise, cl, st_type, option):
 
     if not it_folder:
+        if option == None:
+            option = ''
         it_folder = header.struct_des[cl.id[0]].sfolder+'/'+option
     if st_type == 'end':
         st = cl.end
@@ -188,7 +190,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
 
 
-def process_modified(cl, mod_dic, opt_vol = 1, fit = 0,  st_type = 'end', name = None, el_new = None, run = 0, ise = None, it_folder = None, mode = None, add_loop_arg = None):
+def process_modified(cl, mod_dic = None, scale_region = (-4,4), opt_vol = 1, fit = 0,  st_type = 'end', name = None, el_new = None, run = 0, ise = None, it_folder = None, mode = None, add_loop_arg = None):
     """
     inherited from create_charges - functionality is extended
     The utility allows to (contrlolled by mode parameter):
@@ -202,6 +204,7 @@ def process_modified(cl, mod_dic, opt_vol = 1, fit = 0,  st_type = 'end', name =
     mode - 
         delete
         remove
+        None
 
     mod_dic - dic of configurations with atom numbers starting from 1
 
@@ -210,13 +213,21 @@ def process_modified(cl, mod_dic, opt_vol = 1, fit = 0,  st_type = 'end', name =
     if add_loop_arg == None:
         add_loop_arg = {}
 
-
+    if mod_dic == None:
+        mod_dic = {1:1}
 
     for key in mod_dic:
         mod_pos = mod_dic[key]
-        mod_pos = [p-1 for p in mod_pos]
-        suf = mode[0]+str(key)
+        if mode:
+            mod_pos = [p-1 for p in mod_pos]
+
+        if mode:
+            suf = mode[0]+str(key)
+        else:
+            suf = ''
+        
         it_new = cl.id[0]+'.'+ suf
+        
         id_new, stA, it_folder = prepare(it_new, opt_vol, it_folder, ise, cl, st_type, mode)
 
         if run: 
@@ -224,13 +235,15 @@ def process_modified(cl, mod_dic, opt_vol = 1, fit = 0,  st_type = 'end', name =
                 st = stA.remove_atoms(mod_pos)
             elif mode == 'replace':
                 st = stA.replace_atoms(atoms_to_replace = mod_pos, el_new = el_new)
+            else:
+                st = stA
 
             st.name+=suf
             st.write_xyz()
             # sys.exit()
             if opt_vol:
                 add_loop(it_new, id_new[1], 1, calc_method = 'uniform_scale',
-                 scale_region = (-4, 4), inherit_option = 'inherit_xred', input_st = st, it_folder = it_folder, **add_loop_arg)            
+                 scale_region = scale_region, inherit_option = 'inherit_xred', input_st = st, it_folder = it_folder, **add_loop_arg)            
             else:
                 add_loop(it_new, id_new[1], 1, input_st = st, it_folder = it_folder, **add_loop_arg)             
 
@@ -244,7 +257,7 @@ def process_modified(cl, mod_dic, opt_vol = 1, fit = 0,  st_type = 'end', name =
                 cj = None
             if opt_vol and fit:
                 # res_loop(id_new[0], id_new[1], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '2', choose_outcar = None)
-                res_loop(id_new[0], id_new[1], list(range(1,7)), analys_type = 'fit_a', show = 'fitfo', up = '2', choose_outcar = None, check_job = cj)
+                res_loop(id_new[0], id_new[1], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '2', choose_outcar = None, check_job = cj)
             else:
                 res_loop(*id_new, up = '1', choose_outcar = None, show = 'fo')
         

@@ -118,6 +118,8 @@ siman_keys = [
 'set_sequence',# sequence of sets
 'savefile', #additional keys pointing which files should be saved
 'k_band_structure', # list, first position is number of points, then high-symmetry k-points in the form ['G', 0, 0, 0] in reciprocal space for calculating band structure 
+'path2pot', # path to folder with potentials - used with potdir; if not provided that header.path2potentials is used
+'path_to_potcar', # explicit path to potential - depreacated
 ]
 
 def read_vasp_sets(user_vasp_sets, override_global = False):
@@ -689,6 +691,7 @@ def init_default_sets():
 
     setname = 'opt'
     if setname  in varset: #init only once
+        # sys.exit()
         s = InputSet(setname) 
         s.kpoints_file = True
         s.add_nbands = 1.25
