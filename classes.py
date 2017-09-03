@@ -1672,7 +1672,7 @@ class CalculationVasp(Calculation):
         path_to_potcar = os.path.join(self.dir, 'POTCAR')
         potcar_files   = []
 
-        if self.set.path2pot:
+        if hasattr(self.set, 'path2pot' ) and self.set.path2pot:
             path2pot = self.set.path2pot
         else:
             path2pot = header.PATH2POTENTIALS

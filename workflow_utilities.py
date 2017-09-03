@@ -222,11 +222,11 @@ def process_modified(cl, mod_dic = None, scale_region = (-4,4), opt_vol = 1, fit
             mod_pos = [p-1 for p in mod_pos]
 
         if mode:
-            suf = mode[0]+str(key)
+            suf = '.'+mode[0]+str(key)
         else:
             suf = ''
         
-        it_new = cl.id[0]+'.'+ suf
+        it_new = cl.id[0] + suf
         
         id_new, stA, it_folder = prepare(it_new, opt_vol, it_folder, ise, cl, st_type, mode)
 
