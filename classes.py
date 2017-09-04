@@ -2990,7 +2990,7 @@ class CalculationVasp(Calculation):
 
             # get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
             for file in files:
-                self.get_file(os.path.basename(file))
+                self.get_file(os.path.basename(file), up = load)
 
 
         if 'x' in load:
@@ -2998,7 +2998,7 @@ class CalculationVasp(Calculation):
             # get_from_server(files = join(self.project_path_cluster, path_to_xml), to = os.path.dirname(path_to_outcar),  
             #     addr = self.cluster_address)
             
-            self.get_file(os.path.basename(path_to_xml))
+            self.get_file(os.path.basename(path_to_xml), up = load)
 
 
 
@@ -3958,11 +3958,13 @@ class CalculationVasp(Calculation):
 
 
 
-    def get_chg_file(self, filetype = 'CHGCAR', nametype = ''):
+    def get_chg_file(self, filetype = 'CHGCAR', nametype = '', up = 'up1'):
         #allow to get any file of type filetype 
         #cl - object of CalculationVasp class
         #filetype (str) - 'CHG', 'CHGCAR', etc
         #nametype (str) - 'asoutcar' - update filetype to OUTCAR format
+        #up = up1 - donot update
+              #up2 - update
 
         #Comment
             #initially used for chg files - rename!
@@ -3980,7 +3982,7 @@ class CalculationVasp(Calculation):
         # print(path_to_chg)
         # print(self.cluster_address)
 
-        if os.path.exists(path_to_chg): 
+        if os.path.exists(path_to_chg) and 'up2' not in up: 
             out = None
         else:
             out = get_from_server(path_to_chg, os.path.dirname(path_to_chg), addr = self.cluster_address)
