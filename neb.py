@@ -5,7 +5,7 @@ import numpy as np
 from operator import itemgetter
 
 
-from header import print_and_log, printlog
+from header import print_and_log, printlog, runBash
 import header
 from calc_manage import add_loop, res_loop, add_des, inherit_ngkpt
 from functions import  return_atoms_to_cell, push_to_server
@@ -491,13 +491,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         st1, _, _ = st1.remove_close_lying()
 
         stt = st1.add_atoms([x_final,], 'Pu')
-        stt, x, _ = stt.remove_close_lying(rm_both = True) # now the final position is empty for sure
+        stt, x, _ = stt.remove_close_lying(rm_both = True) # now the final position is empty for sure; however the order can be spoiled
         # print(st._removed)
         if stt._removed:
             st1 = stt # only if overlapping was found we assign new structure
 
 
-        st2, _, _ = st2.remove_close_lying()
+        st2, _, _ = st2.remove_close_lying(rm_first = stt._removed)
         stt = st2.add_atoms([x_start,], 'Pu')
         stt, x, _ = stt.remove_close_lying(rm_both = True) # now the start position is empty for sure
         if stt._removed:
@@ -698,9 +698,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     write_xyz(st2s, file_name = it_new+'_end')
 
 
-
+    st1s.write_poscar('xyz/POSCAR1')
+    st2s.write_poscar('xyz/POSCAR2')
+    a = runBash('cd xyz; '+header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
+    # print(a)
+    runBash('cd xyz; mkdir '+it_new+'_all;'+"""for i in {00..04}; do cp $i/POSCAR """+ it_new+'_all/POSCAR$i; done; rm -r 00 01 02 03 04')
     #prepare calculations
-
+    # sys.exit()
 
 
 

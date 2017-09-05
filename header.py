@@ -239,6 +239,7 @@ Need: import subprocess
         stdout = subprocess.PIPE
         stderr = subprocess.STDOUT
 
+    printlog('running in BASH:', cmd)
     my_env = os.environ.copy()
     # my_env["PATH"] = "/opt/local/bin:/opt/local/sbin:" + my_env["PATH"]
     p = subprocess.Popen(cmd, executable='/bin/bash', shell=True, stdout=stdout, stderr = stderr, stdin = None, env = my_env)

@@ -714,10 +714,11 @@ class Structure():
 
 
 
-    def remove_close_lying(self, rm_both = 0):
+    def remove_close_lying(self, rm_both = 0, rm_first = 0):
         """
         rm_both (bool) - if True than remove both atoms, if False than only the second atom is removed
-        
+        rm_first (bool) - if True than the first atom of two overlapping is removed, otherwise the second atom is removed
+
         PBC is realized through image_distance
 
         SIDE:
@@ -755,7 +756,12 @@ class Structure():
                         removed = True
                     else:
                         printlog('remove_close_lying(): Atom', j, 'of type ', st.get_elements()[j], 'is removed')
-                        st = st.remove_atoms([j])
+                        
+                        if rm_first:
+                            st = st.remove_atoms([i]) # the existing atom is removed
+                        else:
+                            st = st.remove_atoms([j]) # the added atom is removed
+                        
                         removed = True
         st._removed = removed
 
@@ -3936,7 +3942,7 @@ class CalculationVasp(Calculation):
             cl = self
             try:
                 os.rename(cl.path['output'], cl.path['output']+"_unfinished") 
-                printlog('read_results():',cl.id, 'is unfinished, continue:', cl.dir, imp = 'y')
+                printlog('read_results():',cl.id, 'is unfinished, continue:', cl.dir, cl.cluster_address, imp = 'y')
                 cl.state = '5. Unfinished'
             except FileNotFoundError:
                 printlog('read_results():',cl.id, 'probably was not submitted:', cl.dir, imp = 'y')
