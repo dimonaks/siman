@@ -1879,11 +1879,12 @@ class CalculationVasp(Calculation):
 
                     mag_orderings = []
                     mag_orderings.append(magmom)
-                    printlog('Only first five orderings are checked !')
+                    nords = 71
+                    printlog('Only'+str(nords)+' orderings are checked !')
 
                     for j, order in enumerate(orderings):
                         # print order
-                        if j > 4:
+                        if j >nords:
                             break
 
                         new_magmom = copy.deepcopy(magmom)
@@ -2665,8 +2666,29 @@ class CalculationVasp(Calculation):
 
                     run_command(option = option, name = self.name+set_mod+'.n_'+nim_str+name_mod, 
                     parrallel_run_command = parrallel_run_command, write = True)
+                    # print(set_mod)
+                    # sys.exit()
+                    if '.' in set_mod and set_mod[0] == '.':
+                        set_mod_loc = set_mod[1:]
+                    else:
+                        set_mod_loc = set_mod
 
-                    contcar_file = 'CONTCAR'
+                    name_mod   = set_mod_loc
+                    if name_mod:
+                        contcar = name_mod+'.CONTCAR'
+                        outcar  = name_mod+'.OUTCAR'
+                        for n_st in subfolders:
+                            f.write('cp '+n_st+'/OUTCAR  '+n_st+'/'+outcar  +'  #sequence set: save file\n' )
+                            f.write('cp '+n_st+'/CONTCAR  '+n_st+'/'+contcar+'  #sequence set: save file\n' )
+                    else:
+                        contcar = 'CONTCAR'
+
+                    contcar_file = contcar
+
+
+
+
+
 
                 if final_analysis_flag:
                     f.write('export PATH=$PATH:'+header.cluster_home+'/tools/gnuplot/bin/ \n')
