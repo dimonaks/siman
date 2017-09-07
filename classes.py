@@ -1880,7 +1880,7 @@ class CalculationVasp(Calculation):
                     mag_orderings = []
                     mag_orderings.append(magmom)
                     nords = 71
-                    printlog('Only'+str(nords)+' orderings are checked !')
+                    printlog('Only '+str(nords)+' orderings are checked !')
 
                     for j, order in enumerate(orderings):
                         # print order
