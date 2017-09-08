@@ -3473,6 +3473,10 @@ class CalculationVasp(Calculation):
                                 # print(line)
 
 
+                if 'TOTAL ELASTIC MODULI' in line:
+                    for i in range(9):
+                        line = outcarlines[i_line+i]
+                        print(line.strip())
 
 
 

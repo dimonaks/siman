@@ -625,7 +625,7 @@ def choose_cluster(cluster_name, cluster_home, corenum):
 def add_loop(it, setlist, verlist, calc = None, varset = None, 
     up = 'up2', inherit_option = None, id_from = None, inherit_args = None, confdic = None,
     i_atom_to_remove = None,
-    coord = 'direct', savefile = 'oc', show = None, comment = '', 
+    coord = 'direct', savefile = 'oc', show = '', comment = '', 
     input_geo_format = None, ifolder = None, input_geo_file = None, input_st = None,
     corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
@@ -753,6 +753,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if not params:
             params = {}
 
+
+        params['show'] = show
         # if header.copy_to_cluster_flag:
         choose_cluster(cluster, cluster_home, corenum)
         
@@ -1290,12 +1292,16 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     id_base = None
 
+    # id1 = (it, setlist[0], verlist[0])
+
     add_loop_prepare()
 
     mat_proj_st_id = add_loop_take_from_database()
     
     neb_flag, nebsets     = add_loop_neb()
 
+
+    # if 
     u_scale_flag, fitted_v100_id = add_loop_scale()
     
     add_loop_inherit()
@@ -1382,6 +1388,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     if not params:
         params = {}
 
+    if 'show' not in params:
+        params['show'] = ''
+
     if id in calc: 
         cl = calc[id]
         status = "exist"
@@ -1392,19 +1401,19 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if check_job:
             if '2' in cl.state or '5' in cl.state:
                 status = "ready"
-                cl.res(check_job = check_job) 
+                cl.res(check_job = check_job, show = params['show']) 
                 if up != 'up2':
                     return
 
             if "3" in cl.state: #attention, should be protected from running the same calculation once again
                 status = "running"
-                cl.res(check_job = check_job)
+                cl.res(check_job = check_job, show = params['show'])
                 if check_job: 
                     return
 
             elif "4" in cl.state: 
                 status = "compl"
-                cl.res(check_job = check_job) 
+                cl.res(check_job = check_job, show = params['show']) 
                 # sys.exit()
 
                 if up != 'up2':
@@ -2690,7 +2699,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 movie_to = cl.dir+'/movie.xyz'
                 get_from_server(files = cl.project_path_cluster+'/'+cl.dir+'/movie.xyz', to_file = movie_to, addr = cl.cluster_address, )
                 
-                shutil.copyfile(movie_to, 'figs/'+name_without_ext+'.xyz')
+                if os.path.exists(movie_to):
+                    shutil.copyfile(movie_to, 'figs/'+name_without_ext+'.xyz')
 
 
 
