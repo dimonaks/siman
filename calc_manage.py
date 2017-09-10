@@ -1401,8 +1401,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if check_job:
             if '2' in cl.state or '5' in cl.state:
                 status = "ready"
-                cl.res(check_job = check_job, show = params['show']) 
                 if up != 'up2':
+                    cl.res(check_job = check_job, show = params['show']) 
                     return
 
             if "3" in cl.state: #attention, should be protected from running the same calculation once again

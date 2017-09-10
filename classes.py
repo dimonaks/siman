@@ -773,6 +773,9 @@ class Structure():
         i - number of central atom, from 1 or 0 (from_one = True or False)
         ndict (dic) - number of specific neigbour atoms
         only - list of interesting z neighbours
+
+        out
+        numbers from 1!!!!!
         """
         import itertools
         from functions import invert
@@ -802,7 +805,7 @@ class Structure():
 
 
         info = {}
-        info['numbers'] = out[2]
+        info['numbers'] = out[0]
         info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9])
         info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
         info['sum(A-O,F)'] = local_surrounding(x, self, n, 'sum', True, only_elements = [8,9])
