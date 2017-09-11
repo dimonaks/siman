@@ -2925,11 +2925,22 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
-def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10]):
+def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10], filetype = 'mesh'):
+
+    """filetype
+            mesh - mesh.conf
+            band - band.conf
+    """
+
 
     mpstr = " ".join(map(str, mp))
 
-    filename = path+'/mesh.conf'
+
+    if filetype == 'band':
+        filename = path+'/band.conf'
+
+    else:
+        filename = path+'/mesh.conf'
 
     with open(filename, 'w', newline = '') as f:
         f.write("DIM = 1 1 1\n")
@@ -2944,8 +2955,13 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10]):
 
         # f.write("TETRAHEDRON\n")
         # f.write("SIGMA = 0.1\n")
+        if filetype == 'mesh':
 
-        f.write("MP = {:}\n".format( mpstr ))
+            f.write("MP = {:}\n".format( mpstr ))
+        
+        if filetype == 'band':
+            f.write("BAND = {:}\n".format( '0.5 0.5 0.5  0.0 0.0 0.0  0.5 0.5 0.0  0.0 0.5 0.0' ))
+
 
 
 

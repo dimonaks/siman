@@ -4268,11 +4268,21 @@ class CalculationVasp(Calculation):
         return header.calc[child]
 
 
-    def read_pdos_using_phonopy(self):
+    def read_pdos_using_phonopy(self, mode = 'pdos'):
+        """
+        mode - 
+            pdos
+            band
+        """
+
+
         from calc_manage import create_phonopy_conf_file
 
         self.get_chg_file('vasprun.xml', nametype = 'asoutcar')
         create_phonopy_conf_file(self.end, path = self.dir)
+        create_phonopy_conf_file(self.end, path = self.dir, filetype = 'band') #create band file
+
+
 
         cwd = os.getcwd()
 
@@ -4282,12 +4292,23 @@ class CalculationVasp(Calculation):
         if 'poscar' not in self.path:
             self.path['poscar'] = self.path['output'].replace('OUTCAR','POSCAR')
 
-        print('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
-        runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
+        if mode == 'pdos':
+            print('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
+            runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
 
         from calc_manage import read_phonopy_dat_file
 
         self.pdos = read_phonopy_dat_file('total_dos.dat')
 
 
+        #phonons
+        
+
+        if mode == 'band':
+            print('phonopy -c '+os.path.basename(self.path['poscar'])+' -p band.conf --readfc ')
+            runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -p band.conf --readfc ')
+
+
         os.chdir(cwd)
+
+        return
