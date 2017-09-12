@@ -800,7 +800,7 @@ class Structure():
         # df = pd.DataFrame(tab)
         # print(df)
         if not silent:
-            print('Neigbours around atom', i+1, self.get_elements()[i],':')
+            print('Neighbors around atom', i+1, self.get_elements()[i],':')
             print( tabulate(tab[1:], headers = ['No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
 
 

@@ -1,6 +1,6 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
-import os, math
+import os, math, re
 import numpy as np
 from six import string_types
 from collections import Iterable
@@ -87,3 +87,16 @@ def makedir(path):
         os.makedirs(dirname)
         printlog("Directory", dirname, " was created", imp = 'y')
     return
+
+
+def latex_chem(formula):
+    return re.sub("([0-9])", "$_\\1$", formula)
+
+def latex_spg(spg):
+    spg = spg.replace('_1', '$_1$')
+    spg = spg.replace('p', 'P')
+    if '-' in spg:
+        pos = spg.find('-')
+        dig = spg[pos+1]
+        spg = spg.replace('-'+dig, '$\\bar{'+dig+'}$')
+    return spg

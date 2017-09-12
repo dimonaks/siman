@@ -3,6 +3,9 @@ from __future__ import division, unicode_literals, absolute_import
 
 import shelve, sys, datetime, shutil, tempfile, os, json
 
+import pandas as pd
+
+
 import header
 from header import runBash, print_and_log, printlog
 from classes import CalculationVasp
@@ -320,3 +323,18 @@ def push_figure_to_archive(local_figure_path, caption, figlabel = None, autocomp
 
 
 
+def read_cvs_database(columns):
+    """
+    Allows to read cvs file with experimental results
+    """
+
+    dfs = pd.read_csv(r'database/literature.csv')[columns]
+    dfs.drop(0, inplace=True)
+    dfs.dropna(inplace=True)
+    dfs.set_index('is', inplace = True)
+    dfs = dfs.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    # dfs['owner'] = 'world'    
+    # print(dfs.sort_index())
+    # print(dfs)
+    # sys.exit()
+    return dfs

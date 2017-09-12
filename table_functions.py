@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import 
-import sys, os
+import sys, os, re
 
 # import header
 # from operator import itemgetter
@@ -38,7 +38,7 @@ from geo import replic
 
 
 def latex_table(table, caption, label, header = None, fullpage = '', filename = None, writetype = 'w', header0 = None, size = None,
-    replace = None ):
+    replace = None, float_format = None):
     """
     If header is not provided, table[0] is used as a header
 
@@ -48,7 +48,11 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
     replace - list of tuples for replacements
 
+    float_format - list of float numbers
+
     """
+
+
     def myprint(string):
         if filename:
             f.write(string+"\n")
@@ -64,8 +68,28 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         print_and_log("Saving table to "+path+filename+'\n')
 
     for i in range(len(table)):
+        if float_format:
+            formatter = iter(float_format)
+        else:
+            formatter = (2 for i in range(100))
+            
         if is_list_like(table[i]):
-            tab = ' & '.join([str(l) for l in table[i]])
+            tab = ''
+            for j, l in enumerate(table[i]):
+                # print(type(l))
+                if type(l) != str:
+                    fmt = '{:3.'+str(next(formatter))+'f}'
+                    # fmt = 'a'
+                    # print(fmt)
+                    pos = fmt.format(l)
+                    # 
+                    # fmt
+                    # print(pos)
+                    # pos = str(l)
+                else:
+                    pos = str(l)
+                tab+=pos + " & "
+            # tab = ' & '.join([str(l) for l in table[i]])
             table[i] = tab
 
 
@@ -132,11 +156,35 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
 def geo_table_row(cl, name = '', show_alpha = 0):
     #Basic table
-    
+    from small_functions import latex_spg, latex_chem
+    if not cl:
+        return
     st = cl.end
     # if not name:
     spg = st.get_space_group_info()
-    spg = spg[0].replace('_1', '$_1$')
+    spg = latex_spg(spg[0])
+    name = latex_chem(name)
+
+
+    #transform to standard
+    st_mp = cl.end.convert2pymatgen()
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    symprec = 0.1
+    sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
+
+    st_mp_prim = sf.find_primitive()
+    st_mp_conv = sf.get_conventional_standard_structure()
+    
+    # st_mp_prim.
+    # print('primitive,', st_mp_prim.lattice)
+    # print('conventio,', st_mp_conv.lattice)
+
+
+    # st_mp_prim = sf.get_primitive_standard_structure()
+    # st_mp_prim = sf.get_conventional_standard_structure()
+
+
+
 
     alpha, beta, gamma = st.get_angles()
     elem = np.array(cl.end.get_elements())
@@ -146,7 +194,7 @@ def geo_table_row(cl, name = '', show_alpha = 0):
         alpha = ''
 
 
-    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name[0], 'DFT',  cl.vlength[0], 
+    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT',  cl.vlength[0], 
         cl.vlength[1], cl.vlength[2])+alpha+'& {:5.1f} & {:s}'.format(st.vol, spg)
 
 

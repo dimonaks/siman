@@ -102,7 +102,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12,
-    lts2 = '--' ):
+    lts2 = '--', split_type = 'octa' ):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -124,10 +124,16 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     xlim, ylim (tuple)- limits for plot
 
     plot_param - dict of parameters to fit_and_plot
+        dashes - control of dahsed lines
+
     suf2 - additional suffix
 
     # nsmooth = 15 # smooth of dos
     lts2 - style of lines for cl2
+
+    split_type - 
+        octa  - the names are t2g and eg
+        tetra - the names are t2 and e
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
@@ -401,11 +407,15 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 nam_down+=suf
 
                 if orb == 'p':
-                    dashes=(5, 1)
+                    if 'dashes' in plot_param:
+                        dashes = plot_param['dashes']
+                        del plot_param['dashes']
+                    else:
+                        dashes=(5, 1)
                     # dashes=None
-                    args[nam] = {'x':d.energy, 'y':smoother(d.p[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}#, 'dashes':dashes}
+                    args[nam] = {'x':d.energy, 'y':smoother(d.p[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
                     if spin_pol:
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None,}# 'dashes':dashes}
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
                         color[orb] = 'c'
                 
 
@@ -416,12 +426,23 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                         color[orb] = 'm'
                 
                 elif orb == 't2g':
-                    args[nam] = {'x':d.energy, 'y':smoother(d.t2g_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                    if split_type == 'octa':
+                        orb_name = orb
+                    elif split_type == 'tetra':
+                        orb_name = 't2'
+
+                    args[nam] = {'x':d.energy, 'y':smoother(d.t2g_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb_name}
                     if spin_pol:
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.t2g_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
                 
                 elif orb == 'eg':
-                    args[nam] = {'x':d.energy, 'y':smoother(d.eg_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                    if split_type == 'octa':
+                        orb_name = orb
+                    elif split_type == 'tetra':
+                        orb_name = 'e'
+
+
+                    args[nam] = {'x':d.energy, 'y':smoother(d.eg_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb_name}
                     if spin_pol:
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.eg_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
 

@@ -217,6 +217,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
 
 
                 con = data[key]
+                # print(con)
+                # sys.exit()
                 if type(con) == list or type(con) == tuple:
                     try:
                         label = con[3]
