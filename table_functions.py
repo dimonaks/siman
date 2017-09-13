@@ -72,7 +72,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
             formatter = iter(float_format)
         else:
             formatter = (2 for i in range(100))
-            
+
         if is_list_like(table[i]):
             tab = ''
             for j, l in enumerate(table[i]):
@@ -90,7 +90,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
                     pos = str(l)
                 tab+=pos + " & "
             # tab = ' & '.join([str(l) for l in table[i]])
-            table[i] = tab
+            table[i] = tab[0:-3]
 
 
     n = len(table[0].split('&'))-2
@@ -154,8 +154,11 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         f.close()
     return
 
-def geo_table_row(cl, name = '', show_alpha = 0):
+def geo_table_row(cl, name = '', show_alpha = 0, mnpo4_hack = False):
     #Basic table
+    """
+    mnpo4_hack (bool) - if true exchange a and c for mnpo4 phase
+    """
     from small_functions import latex_spg, latex_chem
     if not cl:
         return
@@ -193,9 +196,14 @@ def geo_table_row(cl, name = '', show_alpha = 0):
     if not show_alpha:
         alpha = ''
 
+    v = st.vlength
+    a, b, c = v
+    if mnpo4_hack and 'MnPO' in name:
+        c, b, a = v
 
-    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT',  cl.vlength[0], 
-        cl.vlength[1], cl.vlength[2])+alpha+'& {:5.1f} & {:s}'.format(st.vol, spg)
+
+    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT',  a, 
+        b, c)+alpha+'& {:5.1f} & {:s}'.format(st.vol, spg)
 
 
 
