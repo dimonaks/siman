@@ -2158,7 +2158,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     it_folder = None, choose_outcar = None, choose_image = None, 
     cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None):
+    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None, style_dic = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -2218,6 +2218,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         fitplot_args - additional arguments for fit_and_plot function
 
+        style_dic - passed to plot_mep()
 
         - ise_new - dummy
         - inherit_option - dummy
@@ -2861,7 +2862,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
-            _, diff_barrier = plot_mep(atom_pos, mep_energies, show = 0, fitplot_args = fitplot_args)
+            _, diff_barrier = plot_mep(atom_pos, mep_energies, plot = 0, show = 0, fitplot_args = fitplot_args, style_dic = style_dic)
 
             results_dic['barrier'] = diff_barrier
             cl1.barrier = diff_barrier
@@ -2876,7 +2877,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     show_flag = True
                 else:
                     show_flag = False
-                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_args = fitplot_args)
+                plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_args = fitplot_args,  style_dic = style_dic)
 
 
 
@@ -2884,7 +2885,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
             if push2archive:
-                path2saved, _ = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my')
+                path2saved, _ = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my', fitplot_args = fitplot_args, style_dic = style_dic)
                 push_figure_to_archive(local_figure_path = path2saved, caption = description_for_archive)
 
 

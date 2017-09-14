@@ -34,7 +34,7 @@ from small_functions import makedir
 from geo import replic
 
 
-def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, fitplot_args = None, style_dic = None):
+def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, plot = 1, fitplot_args = None, style_dic = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path,
@@ -45,6 +45,8 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
         'p' - style of points
         'l' - style of labels
         'label' - label of points
+
+    plot - if plot or not
 
     """
 
@@ -79,9 +81,10 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
 
     # if '_mep' not in calc:
-    calc['_mep'] = [atom_pos, mep_energies]
+    calc['_mep'] = [atom_pos, mep_energies] # just save in temp list to use the results in neb_wrapper
 
-
+    if hasattr(header, 'plot_mep_invert') and header.plot_mep_invert: # for vacancy
+        mep_energies = list(reversed(mep_energies) )
 
     mine = min(mep_energies)
     eners = np.array(mep_energies)-mine
@@ -123,13 +126,13 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     # sys.exit()
 
 
-
-
-    path2saved = fit_and_plot(orig = (mep_pos, eners, style_dic['p'], style_dic['label']), 
-        spline = (xnew, ynew, style_dic['l'], None), 
-        xlim = (-0.05, None  ),
-    xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, filename = filename, show = show, 
-    fig_format = 'eps', **fitplot_args)
+    path2saved = None
+    if plot:
+        path2saved = fit_and_plot(orig = (mep_pos, eners, style_dic['p'], style_dic['label']), 
+            spline = (xnew, ynew, style_dic['l'], None), 
+            xlim = (-0.05, None  ),
+        xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, filename = filename, show = show, 
+        fig_format = 'eps', **fitplot_args)
 
 
     return path2saved, diff_barrier
@@ -194,8 +197,17 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
 
     if 1:
 
+        if hasattr(header, 'first'):
+            first = header.first
+
+        if hasattr(header, 'last'):
+            last  = header.last
+        print('fit_and_plot, first and last', first, last)
+
         if first:
             plt.figure(figsize=figsize)
+        
+
         if title: 
             plt.title(title)
         plt.ylabel(ylabel)
