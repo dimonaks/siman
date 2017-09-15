@@ -385,6 +385,12 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     # print x_central
 
     #print len(xcart)
+    if only_elements:
+        only_elements = list(set(only_elements))
+        # print(only_elements)
+        # sys.exit()
+
+
     zlist = [int(st.znucl[t-1]) for t in st.typat]
     
 

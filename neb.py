@@ -8,7 +8,7 @@ from operator import itemgetter
 from header import print_and_log, printlog, runBash
 import header
 from calc_manage import add_loop, res_loop, add_des, inherit_ngkpt
-from functions import  return_atoms_to_cell, push_to_server
+from functions import  return_atoms_to_cell, push_to_server, invert
 from inout import write_xyz
 
 from small_functions import is_list_like
@@ -90,6 +90,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     inherit_option  = None, mag_config = None, i_void_start = None, i_void_final = None, 
     atom_to_insert = None,
     atom_to_move   = None,
+    end_pos_types_z = None,
     replicate = None,
     it_new_folder = None,
     inherit_magmom = False,
@@ -124,6 +125,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - it_new_folder  (str) - section folder
         - inherit_option (str) - passed only to add_loop
         - inherit_magmom (bool) - if True than magmom from starting_calc is used, else from set
+
+        - end_pos_types_z (list of int) - list of Z - type of atoms, which could be considered as final positions in vacancy creation mode
 
         - calc_method (list)
             - 'neb'
@@ -295,12 +298,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                             atoms_to_move_types.append(typ)
 
             if  atoms_to_move:
-
+                # print()
                 if not atom_to_move:
                     atom_to_move = atoms_to_move_types[0] # taking first found element
                     if len(atoms_to_move_types) > 1:
                         printlog('Error! More than one type of atoms available for moving detected', atoms_to_move_types,
-                            'please specify needed atom with *atoms_to_move*')
+                            'please specify needed atom with *atom_to_move*')
 
                 type_atom_to_move = atom_to_move #atoms_to_move[0][1]
 
@@ -435,13 +438,14 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             print_and_log( 'Type of atom to move = ', type_atom_to_move, imp = 'y')
             # print 'List of left atoms = ', np.array(st.leave_only(type_atom_to_move).xcart)
 
-            sur = local_surrounding(x_m, st.leave_only(type_atom_to_move) , n_neighbours = 8, control = 'atoms', 
+            sur = local_surrounding(x_m, st, n_neighbours = 8, control = 'atoms', 
+                only_elements = [invert(type_atom_to_move)]+end_pos_types_z,
                 periodic  = True) #exclude the atom itself
 
             # print(sur)
             print_and_log(
             'I can suggest you '+str (len(sur[0][1:]) )+' end positions. The distances to them are : ',np.round(sur[3][1:], 2), ' A\n ',
-            'They are all', type_atom_to_move, 'atoms, use *i_void_final* to choose required: 1, 2, 3 ..', imp = 'y')
+            'They are ', type_atom_to_move, [invert(z) for z in end_pos_types_z], 'atoms, use *i_void_final* to choose required: 1, 2, 3 ..', imp = 'y')
 
 
             if not i_void_final:
