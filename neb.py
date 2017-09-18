@@ -90,6 +90,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     inherit_option  = None, mag_config = None, i_void_start = None, i_void_final = None, 
     atom_to_insert = None,
     atom_to_move   = None,
+    rep_moving_atom = None,
     end_pos_types_z = None,
     replicate = None,
     it_new_folder = None,
@@ -134,7 +135,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         - x_start, x_final (array) - explicit xcart coordinates of moving atom for starting and final positions, combined with atom_to_insert
         - xr_start, xr_final (array) - explicit xred
-
+        - rep_moving_atom (str)- replace moving atom by needed atom - can be useful than completly different atom is needed. 
 
         - upload_vts (bool) - if True upload Vasp.pm and nebmake.pl to server
         - run (bool)  - run on server
@@ -641,7 +642,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         if not it_new_folder:
             printlog('Error! please provide *it_new_folder* - folder for your new calculation', important = 'Y')
 
-
+    if rep_moving_atom:
+        it_new += 'r'+rep_moving_atom
 
     if it_new not in struct_des:
         add_des(struct_des, it_new, it_new_folder, 'Automatically created and added from '+obtained_from  )
@@ -664,7 +666,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     # st1, _, _ = st1.remove_close_lying()
     # st2, _, _ = st2.remove_close_lying()
-
+    i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
+    i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
+    
+    if rep_moving_atom:
+        st1 = st1.replace_atoms([i1], rep_moving_atom)
+        st2 = st2.replace_atoms([i2], rep_moving_atom)
+ 
 
     cl.end = st1
     ver_new = 1
@@ -690,11 +698,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     
     cl.write_siman_geo(geotype = 'end', description = 'Final conf. for neb from '+obtained_from, override = True)
 
-
-    i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
-    i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
-    st1s = st1.replace_atoms([i1], 'Pu')
-    st2s = st2.replace_atoms([i2], 'Pu')
+    if not rep_moving_atom:
+        st1s = st1.replace_atoms([i1], 'Pu')
+        st2s = st2.replace_atoms([i2], 'Pu')
+    else:
+        st1s = copy.deepcopy(st1)
+        st2s = copy.deepcopy(st2)
     vec = st1.center_on(i1)
     st1s = st1s.shift_atoms(vec)
     st2s = st2s.shift_atoms(vec)

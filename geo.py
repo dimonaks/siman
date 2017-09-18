@@ -450,8 +450,12 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
 
         if only_elements:
-
-            temp = temp[0:1]+[t for t in temp if t[4] in only_elements] #including central; included two times if only elements are and central are the same
+            centr_type = temp[0][4]
+            if centr_type in only_elements:
+                first = []
+            else:
+                first = temp[0:1]
+            temp = first+[t for t in temp if t[4] in only_elements] #including central; included ionce even if only elements are and central are the same
 
         if only_numbers:
             temp = temp[0:1]+[t for t in temp if t[3] in only_numbers]
