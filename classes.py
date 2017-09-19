@@ -3455,8 +3455,11 @@ class CalculationVasp(Calculation):
                             print_and_log('Warning! Somthing wrong with occ matrix:', line)
                     if spin_polarized:
                         for i in range(nm):
-                            spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )
-                                        
+                            try:
+                                spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )
+                            except:
+                                printlog('Attention! Could not read spin2, probably no spaces')
+                                spin2.append(0)        
 
                     occ_matrices[i_at-1] = spin1+spin2
                     # print (np.array(spin1) )
