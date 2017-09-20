@@ -1335,6 +1335,14 @@ class Calculation(object):
         # printlog('Calculation object succesfully read from ', filename)
         return self
 
+
+    def get_kpoints_density(self):
+        """
+        Number of k-points per atom
+        """
+        print(self.NKPTS*self.end.natom) #KPPRA - k-points per reciprocal atom? 
+
+
     @property
     def sfolder(self):
         self._x = header.struct_des[self.id[0]].sfolder
@@ -3376,7 +3384,7 @@ class CalculationVasp(Calculation):
                 if "Elapsed time" in line:
                     self.time = float(line.split()[3])
                 if re_nkpts.search(line):
-                    self.NKPTS = float(line.split()[3])
+                    self.NKPTS = int(line.split()[3])
                 if "WARNING" in line:
                     warnings += 1#line
 
@@ -3480,12 +3488,21 @@ class CalculationVasp(Calculation):
 
 
                 if 'TOTAL ELASTIC MODULI' in line:
+                    eltensor = []
                     for i in range(9):
                         line = outcarlines[i_line+i]
                         print(line.strip())
+                        if i > 2:
+                            eltensor.append([float(c)/10 for c in line.split()[1:]])
 
+                    eltensor = np.asarray(eltensor)
+                    # print(eltensor)
+                    w, v = np.linalg.eig(eltensor)
+                    printlog('Eigenvalues are:', w, imp = 'y')
+                            # eltensor
 
-
+                # if 'irreducible k-points:': in line:
+                #     self.nkpt = int(line.split()[1])
 
 
 
