@@ -165,6 +165,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     if not add_loop_dic:
         add_loop_dic = {}
 
+    if not end_pos_types_z:
+        end_pos_types_z = []
+
     if not hasattr(calc_method, '__iter__'):
         calc_method = [calc_method]
 
@@ -669,10 +672,17 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
     i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
     
-    if rep_moving_atom:
+    if rep_moving_atom: #replace the moving atom by required
         st1 = st1.replace_atoms([i1], rep_moving_atom)
         st2 = st2.replace_atoms([i2], rep_moving_atom)
- 
+    else:
+        #allows to make correct order for nebmake.pl
+        st1 = st1.replace_atoms([i1], type_atom_to_move)
+        st2 = st2.replace_atoms([i2], type_atom_to_move)
+
+    i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3) # the positions were changed
+    i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
+
 
     cl.end = st1
     ver_new = 1
@@ -704,6 +714,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     else:
         st1s = copy.deepcopy(st1)
         st2s = copy.deepcopy(st2)
+    
+
     vec = st1.center_on(i1)
     st1s = st1s.shift_atoms(vec)
     st2s = st2s.shift_atoms(vec)

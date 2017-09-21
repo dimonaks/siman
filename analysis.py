@@ -19,12 +19,14 @@ except:
     ase_flag = False
 
 
-def calc_redox(cl1, cl2, energy_ref = None, value = 0):
+def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None):
     """
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
     cl2 (Calculation) - structure with lower concentration
     energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
+    
+    temperature (float) - potential at temperature, self.F is expected from phonopy calculations
     """
     if cl1 is None or cl2 is None:
         printlog('cl1 or cl2 is none; return')
@@ -84,8 +86,20 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0):
 
     # print(energy_ref)
     # print(cl1.energy_sigma0, cl2.energy_sigma0, mul)
+    
+    e1 = cl1.energy_sigma0 
+    e2 = cl2.energy_sigma0
+    if temp != None:
+        #temperature corrections
+        e1 += cl1.F(temp)
+        e2 += cl2.F(temp)
+        print(cl1.F(temp), cl2.F(temp))
+        # print(e1, cl1.energy_sigma0)
+        # print(e2, cl2.energy_sigma0)
+
+
     if abs(mul) > 0:
-        redox = -(  ( cl1.energy_sigma0 / n1 - cl2.energy_sigma0 / n2 ) / mul  -  energy_ref  )
+        redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  )
     else:
         redox = 0
 

@@ -4288,15 +4288,20 @@ class CalculationVasp(Calculation):
         return header.calc[child]
 
 
-    def read_pdos_using_phonopy(self, mode = 'pdos'):
+    def read_pdos_using_phonopy(self, mode = 'pdos', plot = 1):
         """
         mode - 
             pdos
             band
+            free - thermal properties
         """
 
+        if plot == 1:
+            p = ' -p '
+        else:
+            p = ''
 
-        from calc_manage import create_phonopy_conf_file
+        from calc_manage import create_phonopy_conf_file, read_phonopy_data
 
         self.get_chg_file('vasprun.xml', nametype = 'asoutcar')
         create_phonopy_conf_file(self.end, path = self.dir)
@@ -4327,6 +4332,17 @@ class CalculationVasp(Calculation):
         if mode == 'band':
             print('phonopy -c '+os.path.basename(self.path['poscar'])+' -p band.conf --readfc ')
             runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -p band.conf --readfc ')
+
+        if mode == 'free':
+            print('phonopy -c '+os.path.basename(self.path['poscar'])+' -t -p mesh.conf --readfc ')
+
+            runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -t' +p+' mesh.conf --readfc ')
+
+
+            Trange, func = read_phonopy_data('thermal_properties.yaml', convert = 1)
+
+            self.F = func # free energy function
+            # print(self.id, self.F)
 
 
         os.chdir(cwd)

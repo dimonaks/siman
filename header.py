@@ -140,6 +140,7 @@ Ha_Bohr_to_eV_A = 51.4220641868956
 kB_to_GPa = 0.1
 eV_A_to_J_m = 16.021765
 THz2eV = 0.00413566553853599
+kJ_mol2eV = 1.0364e-2
 
 
 kB = 8.617e-5 # eV/K

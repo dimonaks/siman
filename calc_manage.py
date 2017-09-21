@@ -2979,6 +2979,47 @@ def read_phonopy_dat_file(filename):
 
     return dos
 
+
+def read_phonopy_data(filename, key = "free_energy", convert = False):
+    """
+    convert (bool) - convert kJ/mol to eV
+
+    """
+    # with open(filename, 'r') as f:
+    #     f.readline()
+    F = []
+    T = []
+    #     for line in f:
+    #         T.append(float(line.split()[0]))
+    #         F.append(float(line.split()[1]))
+    #     # print T, F
+    import yaml
+
+    if convert:
+        mul = header.kJ_mol2eV
+    else:
+        mul = 1
+    # print(mul)
+
+    f = open(filename)
+    # use safe_load instead load
+    dataMap = yaml.safe_load(f)
+    f.close()
+    prop = dataMap['thermal_properties']
+    for i in range(len(prop)):
+        T.append( prop[i]['temperature'] )
+        F.append( prop[i][key]*mul     )
+
+    coeffs1 = np.polyfit(T, F, 8)
+    fit_func = np.poly1d(coeffs1)
+    T_range = np.linspace(min(T), max(T))
+    print_and_log( 'I return', key)
+
+    return T_range, fit_func
+
+
+
+
 def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], additional = None):
     #creates file for phonopy, run phonopy
     #new_id - will add this calculation or read; if string then interpreted as filename of thermal_properties.yaml
@@ -2988,31 +3029,6 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
     mpstr = " ".join(map(str, mp))
 
-    def read_phonopy_data(filename, key = "free_energy" ):
-        # with open(filename, 'r') as f:
-        #     f.readline()
-        F = []
-        T = []
-        #     for line in f:
-        #         T.append(float(line.split()[0]))
-        #         F.append(float(line.split()[1]))
-        #     # print T, F
-        import yaml
-        f = open(filename)
-        # use safe_load instead load
-        dataMap = yaml.safe_load(f)
-        f.close()
-        prop = dataMap['thermal_properties']
-        for i in range(len(prop)):
-            T.append( prop[i]['temperature'] )
-            F.append( prop[i][key]     )
-
-        coeffs1 = np.polyfit(T, F, 8)
-        fit_func = np.poly1d(coeffs1)
-        T_range = np.linspace(min(T), max(T))
-        print_and_log( 'I return', key)
-
-        return T_range, fit_func
 
 
 
