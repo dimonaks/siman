@@ -35,7 +35,7 @@ from header import printlog, print_and_log, runBash, plt
 
 from small_functions import cat_files, grep_file, red_prec, list2string
 from functions import (read_vectors, read_list, words,
-     element_name_inv, calculate_voronoi,
+     element_name_inv, invert, calculate_voronoi,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
 from inout import write_xyz, write_lammps, read_xyz
 from small_functions import makedir
@@ -218,7 +218,16 @@ class Structure():
         
         return self.xcart[i]
 
-
+    def get_transition_elements(self):
+        """Returns transition elements in the structure"""
+        el = self.get_elements()
+        tra = []
+        
+        for e in el:
+            for t in header.TRANSITION_ELEMENTS:
+                if e == invert(t):
+                    tra.append(e)
+        return tra
 
 
     def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False):
@@ -805,7 +814,7 @@ class Structure():
 
 
         info = {}
-        info['numbers'] = out[0]
+        info['numbers'] = out_or[2]
         info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9])
         info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
         info['sum(A-O,F)'] = local_surrounding(x, self, n, 'sum', True, only_elements = [8,9])
