@@ -3085,441 +3085,449 @@ class CalculationVasp(Calculation):
 
 
         if "4" in self.state:
-            if 0: #please use this only for linux or create cross-platform way
-                nw = runBash('sed -n "/NPAR = approx SQRT( number of cores)/=" '+path_to_outcar) #remove warinig
-                tmp = path_to_outcar+".tmp"
-                if nw:
-                    nw = int(nw)
-                    runBash("sed '"+str(nw-11)+","+str(nw+8)+"d' "+path_to_outcar+">"+tmp+";mv "+tmp+" "+path_to_outcar)
-
-
-            with open(path_to_outcar, 'r') as outcar:
-                
-                printlog("Start reading from "+ path_to_outcar, imp = 'n')
-                outcarlines = outcar.readlines()
-
-
-
-
-            re_lengths = re.compile("length of vectors")
-            re_eltime = re.compile("Elapsed time")
-            re_nkpts = re.compile("NKPTS")
-
-            i_line = 0
-            iterat = 0
-            self.mdstep = 1
-            warnings = 0#""
-            self.time = 0
-            nscflist = []; mdstep_old = 1; niter_old = 0
-            maxforce = []; average = [];  gstress =[]
-            # mforce = []
-            self.list_e_sigma0 = []
-            self.list_e_without_entr = []
-            try:
-                self.end = copy.deepcopy(self.init) # below needed end values will be updated
-            except:
-                self.end = Structure()
-
-            # if not hasattr(self.end, "natom"): 
-            #     self.end.natom = self.natom
-            #Structure() #create structure object with end values after calculation
-            #self.end.typat = self.typat
-            #self.end.znucl = self.znucl
-            self.end.name = self.name+'.end'
-            self.end.list_xcart = []
-            self.energy = empty_struct()
-
-            nsgroup = None
-            magnitudes = []
-            self.mag_sum = [] #toatal mag summed by atoms, +augmentation
-
-            tot_mag_by_atoms = [] #magnetic moments by atoms on each step
-            tot_chg_by_atoms = []
-            tot_mag_by_mag_atoms = []
-
-
-            ldauu = None
-            e_sig0 = 0 #energy sigma 0 every scf iteration
-            occ_matrices = {} # the number of atom is the key
-
-            #which kind of forces to use
-            if ' CHAIN + TOTAL  (eV/Angst)\n' in outcarlines:
-                force_keyword = 'CHAIN + TOTAL  (eV/Angst)'
-                ff  = (0, 1, 2)
-                force_prefix = ' chain+tot '
-
-            else:
-                force_keyword = 'TOTAL-FORCE'
-                ff  = (3, 4, 5)
-                force_prefix = ' tot '
-
-
-
-            # try:
-            #     spin_polarized = self.set.spin_polarized # again it will be better to determine this from outcar 
-            # except:
-            #     spin_polarized = None
-
-
-
-            self.potcar_lines = []
-            self.stress = None
-            self.intstress = None
-            spin_polarized = None
-            for line in outcarlines:
-
-                #Check bands
-
-                # if 'band No.' in line:
-                #     kpoint = float(outcarlines[i_line-1].split()[1])
-                #     lastocc = float(outcarlines[i_line+self.nbands].split()[2])
-                #     lastbandno = outcarlines[i_line+self.nbands].split()[0]
-                #     if lastocc > 0:
-                #         print "Warning!!! at kpoint ", kpoint, " last band No. ",lastbandno, " is not empty ", lastocc
-
-                if 'TITEL' in line:
-                    self.potcar_lines.append( line.split()[2:] )
-
-
-                if 'ions per type =' in line:
-                    self.end.nznucl = [int(n) for n in line.split()[4:]]
-                    self.end.ntypat = len(self.end.nznucl)
-
-                    self.end.natom  = sum(self.end.nznucl)
-
-                    #correction of bug; Take into account that VASP changes typat by sorting impurities of the same type.
-                    self.end.typat = []
-                    for i, nz in enumerate(self.end.nznucl):
-                        for j in range(nz):
-                            self.end.typat.append(i+1)
-                    #correction of bug
-
-
-
-                    # print(self.potcar_lines)
-                    elements = [t[1].split('_')[0] for t in self.potcar_lines]
-                    # printlog('I read ',elements, 'from outcar')
-                    self.end.znucl = [element_name_inv(el) for el in elements]
-                    # print (self.end.znucl)
-
-                    ifmaglist, _ = self.end.get_maglist()
-
-
-                if 'ISPIN' in line:
-                    if line.split()[2] == '2':
-                        spin_polarized = True
-                        self.spin_polarized = spin_polarized
-                    else:
-                        spin_polarized = False
-                        self.spin_polarized = False
-
-
-                if "TOO FEW BANDS" in line:
-                    print_and_log("Warning! TOO FEW BANDS!!!\n\n\nWarning! TOO FEW BANDS!!!\n")
-
-
-
-                #Check W(q)
-                if 'operators is LMAX' in line:
-                    lmax = int(line.split()[7])
-                    # print 'lmax', lmax
-                if "W(low)/X(q)" in line:
-                    kk = 1; low = []; high = [];
-                    while kk < 100:
-                        if 'Optimization' in outcarlines[i_line + kk] or len(outcarlines[i_line + kk].split() ) != 7: break
-                        # print 'line', outcarlines[i_line + kk]
-
-                        low.append(  float(outcarlines[i_line + kk].split()[4]) )
-                        high.append( float(outcarlines[i_line + kk].split()[5]) )
-                        kk+=1
-
-
-                    if any(v > 1e-3 for v in low+high):
-                        print_and_log("W(q)/X(q) are too high, check output!\n")
-                        print_and_log('Low + high = ', low+high, imp = 'Y' )
-                        print_and_log([v > 1e-3 for v in low+high], imp = 'Y' )
-                if "direct lattice vectors" in line:
-                    for v in 0,1,2:
-                        self.end.rprimd[v] = np.asarray( [float(ri) for ri in outcarlines[i_line+1+v].split()[0:3]   ] )
-                    #print self.end.rprimd
-                    #print self.rprimd
-                if "POSITION" in line:
-                    if not contcar_exist or out_type == 'xcarts':
-                        self.end.xcart = [] #clean xcart before filling
-                        for i in range(self.end.natom):
-                            #print outcarlines[i_line+1+i].split()[0:3] 
-                            xcart = np.asarray ( 
-                                        [   float(x) for x in outcarlines[i_line+2+i].split()[0:3]   ] 
-                                    )
-                            
-                            self.end.xcart.append( xcart )
-                            #self.end.xred.append ( xcart2xred( xcart, self.end.rprimd) )
-                
-                        if out_type == 'xcarts':
-                            self.end.list_xcart.append(self.end.xcart) #xcart at each step only for dimer
-
-                        #the change of typat is accounted below
-
-                if "number of electron " in line:
-                    # print line
-                    # print line.split()[-1]
-                    try:
-                        self.magn1 = float(line.split()[-1])
-                    except:
-                        self.magn1 = 0
-
-                if "augmentation part " in line:
-                    try:
-                        self.magn2 = float(line.split()[-1])
-                    except:
-                        self.magn2 = 0
-
-
-                if force_keyword in line:
-                    # Calculate forces here...
-                    forces = []
-                    magnitudes = []
-
-                    for j in range(self.end.natom):
-                        parts = outcarlines[i_line+j+2].split()
-                        # print "parts", parts
-                        x = float(parts[ff[0]])
-                        y = float(parts[ff[1]])
-                        z = float(parts[ff[2]])
-                        forces.append([x,y,z])
-                        magnitudes.append(math.sqrt(x*x + y*y + z*z))
-                    average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
-                    imax = np.asarray(magnitudes).argmax()
-                    maxforce.append( [imax, round(magnitudes[imax] * 1000)]  )
-                    # mforce.append( round(magnitudes[imax] * 1000))
-                    
-               
-
-                #Check total drift
-                if "total drift:" in line:
-                    #print line
-                    tdrift = [float(d) for d in line.split()[2:5]]
-                    #if any(d > 0.001 and d > max(magnitudes) for d in tdrift):
-                        #print_and_log("Total drift is too high = "+str(tdrift)+", check output!\n")
-                        #pass
-
-
-                if "g(Stress)" in line:
-                    #print line
-                    gstress.append( round( float(line.split()[4])*1000 *100, 3 )  )
-                #if "Total" in line:
-                    #gstress.append( red_prec(float(line.split()[4])*1000 *100, 1000 )  )
-                if "volume of cell" in line:
-                    try:                     
-                        self.end.vol = float(line.split()[4])
-                    except ValueError: 
-                        print_and_log("Warning! Cant read volume in calc "+self.name+"\n")
-                    #print self.vol      
-
-                if "generate k-points for:" in line: 
-                    self.ngkpt = tuple(  [int(n) for n in line.split()[3:]]  )
-                    #print self.set.ngkpt
-
-                  # Kohn-Sham hamiltonian: http://en.wikipedia.org/wiki/Kohn%E2%80%93Sham_equations
-                  #kinetic energy
-                  #+ the external potential + the exchange-correlation energy +
-                  #+ Hartree (or Coulomb) energy
-                # print line
-                
-                if  "alpha Z        PSCENC" in line:
-                    # print line
-                    self.energy.alpha = float(line.split()[-1]) # the electrostatic interaction of the ions in a compensating electron gas.
-
-                if  "Ewald energy   TEWEN" in line:
-                    self.energy.ewald = float(line.split()[-1]) # the electrostatic interaction of the ions in a compensating electron gas.
-                    # print self.energy.ewald
-                if  "-1/2 Hartree   DENC" in line or "-Hartree energ DENC" in line:
-                    self.energy.hartree = float(line.split()[-1]) #Coulomb electron-electron energy
-                    # print self.energy.hartree
-                if  "-V(xc)+E(xc)   XCENC" in line:
-                    self.energy.xc = float(line.split()[-1]) # Kohn-Sham exchange-correlation energy
-                if  "PAW double counting" in line:
-                    self.energy.pawdc1 = float(line.split()[-2]) #
-                    self.energy.pawdc2 = float(line.split()[-1]) #
-                if  "eigenvalues    EBANDS" in line:
-                    self.energy.bands = float(line.split()[-1]) # - Kohn Sham eigenvalues - include kinetic energy , but not exactly
-                if  "atomic energy  EATOM" in line:
-                    self.energy.atomic = float(line.split()[-1]) #energy of atoms in the box
-
-
-
-                if "energy  without entropy=" in line:
-                    #self.energy = float(line.split()[4])
-                    self.e_without_entr = float(line.split()[3]) #
-                    self.energy_sigma0 = float(line.split()[6]) #energy(sigma->0)
-                    self.e0 = self.energy_sigma0
-                    self.list_e_sigma0.append(  self.energy_sigma0  )
-                    self.list_e_without_entr.append(  self.e_without_entr  )
-
-                if "energy without entropy =" in line:
-                    e_sig0_prev = e_sig0
-                    try:
-                        e_sig0 = float(line.split()[7])
-                    except:
-                        e_sig0 = 0
-
-
-                if "free  energy   TOTEN  =" in line:
-                    #self.energy = float(line.split()[4])
-                    self.energy_free = float(line.split()[4]) #F free energy
-                
-
-
-
-
-                if re_lengths.search(line):
-                    self.vlength = [red_prec( float(l),1000 ) for l in outcarlines[i_line + 1].split()[0:3]]
-                    #print self.vlength
-                if "in kB" in line:
-                    self.stress = [float(i)*100 for i in line.split()[2:]]  # in MPa 
-                if "Total  " in line:
-                    self.intstress = [int(float(i)*1000) for i in line.split()[1:]] #stress in internal units; can be regarded as forces
-                
-                if "external pressure =" in line: 
-                    #print iterat
-                    self.extpress = float(line.split()[3]) * 100 # in MPa 
-                    if self.mdstep == 1 : self.extpress_init = self.extpress
-
-                if "E-fermi :" in line: 
-                    # print line
-                    self.efermi = float(line.split()[2]) # in eV
-
-
-                if "Elapsed time" in line:
-                    self.time = float(line.split()[3])
-                if re_nkpts.search(line):
-                    self.NKPTS = int(line.split()[3])
-                if "WARNING" in line:
-                    warnings += 1#line
-
-
-                if "Subroutine DYNSYM returns" in line and not nsgroup:
-                    nsgroup = line.split()[4]#number of space group operations
-                # if nsgroup == None:
-                if "Subroutine GETGRP returns:" in line and not nsgroup:
-                    nsgroup = line.split()[4]    
-
-
-                if "Iteration" in line:
-                    self.mdstep = int(line.split('(')[0].split()[2].strip())
-                    iterat +=1
-                    # print self.mdstep
-                    # print line
-                    if mdstep_old != self.mdstep:
-                        nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
-                    niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
-                    mdstep_old = self.mdstep
-
-
-                if 'number of electron ' in line:
-                    # print (line)
-                    try:
-                        self.mag_sum.append( [float(line.split()[5]), 0])
-                    except:
-                        pass
-
-                if 'augmentation part' in line:
-                    # print (line)
-                    try:
-                        self.mag_sum[-1][1]= float(line.split()[4])
-                    except:
-                        pass
-
-                if 'total charge ' in line:
-                    chg = []
-                    for j in range(self.end.natom):
-                        chg.append( float(outcarlines[i_line+j+4].split()[4]) )
-                    
-                    tot_chg_by_atoms.append(np.array(chg))#[ifmaglist])                    
-
-
-                if 'magnetization (x)' in line:
-                    mags = []
-                    for j in range(self.end.natom):
-                        mags.append( float(outcarlines[i_line+j+4].split()[4]) )
-                    
-                    tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
-                    # print(ifmaglist)
-                    tot_mag_by_mag_atoms.append(np.array(mags)[ifmaglist])
-                    # print tot_mag_by_atoms
-                    # magnetic_elements
-                    # ifmaglist
-                    # self.tot_mag_by_atoms = tot_mag_by_atoms
-
-
-
-                if 'LDAUU' in line:
-                    ldauu = line
-
-
-                if 'onsite density matrix' in line:
-                    i_at = int( outcarlines[i_line-2].split()[2]  ) #starting from one
-                    l_at = int( outcarlines[i_line-2].split()[8]  )
-                    # print (spin_polarized)
-                    spin1 = []
-                    spin2 = []
-                    nm = 2*l_at+1
-                    for i in range(nm):
-                        line = outcarlines[i_line+4+i]
-                        try:
-                            spin1.append( np.array(line.split()).astype(float) )
-                        except:
-                            print_and_log('Warning! Somthing wrong with occ matrix:', line)
-                    if spin_polarized:
-                        for i in range(nm):
-                            try:
-                                spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )
-                            except:
-                                printlog('Attention! Could not read spin2, probably no spaces')
-                                spin2.append(0)        
-
-                    occ_matrices[i_at-1] = spin1+spin2
-                    # print (np.array(spin1) )
-
-
-                if 'freq' in show:
-
-                    if 'Eigenvectors and eigenvalues of the dynamical matrix' in line:
-                        freq = []
-
-                        i = 0
-                        while 'ELASTIC MODULI CONTR FROM IONIC RELAXATION' not in line:
-                            i+=1
-                            line = outcarlines[i_line+i]
-                            if 'f  =' in line:
-                                freq.append(float(line.split()[3]) ) #THz
-                                # print(line)
-
-
-                if 'TOTAL ELASTIC MODULI' in line:
-                    eltensor = []
-                    for i in range(9):
-                        line = outcarlines[i_line+i]
-                        print(line.strip())
-                        if i > 2:
-                            eltensor.append([float(c)/10 for c in line.split()[1:]])
-
-                    eltensor = np.asarray(eltensor)
-                    # print(eltensor)
-                    w, v = np.linalg.eig(eltensor)
-                    printlog('Eigenvalues are:', w, imp = 'y')
-                            # eltensor
-
-                # if 'irreducible k-points:': in line:
-                #     self.nkpt = int(line.split()[1])
-
-
-
-
-                i_line += 1
-            # sys.exit()
-            #Check total drift
             
+            read = 1
+            if read:
+                if 0: #please use this only for linux or create cross-platform way
+                    nw = runBash('sed -n "/NPAR = approx SQRT( number of cores)/=" '+path_to_outcar) #remove warinig
+                    tmp = path_to_outcar+".tmp"
+                    if nw:
+                        nw = int(nw)
+                        runBash("sed '"+str(nw-11)+","+str(nw+8)+"d' "+path_to_outcar+">"+tmp+";mv "+tmp+" "+path_to_outcar)
+
+
+                with open(path_to_outcar, 'r') as outcar:
+                    
+                    printlog("Start reading from "+ path_to_outcar, imp = 'n')
+                    outcarlines = outcar.readlines()
+
+
+
+
+                re_lengths = re.compile("length of vectors")
+                re_eltime = re.compile("Elapsed time")
+                re_nkpts = re.compile("NKPTS")
+
+                i_line = 0
+                iterat = 0
+                self.mdstep = 1
+                warnings = 0#""
+                self.time = 0
+                nscflist = []; mdstep_old = 1; niter_old = 0
+                maxforce = []; average = [];  gstress =[]
+                # mforce = []
+                self.list_e_sigma0 = []
+                self.list_e_without_entr = []
+                try:
+                    self.end = copy.deepcopy(self.init) # below needed end values will be updated
+                except:
+                    self.end = Structure()
+
+                # if not hasattr(self.end, "natom"): 
+                #     self.end.natom = self.natom
+                #Structure() #create structure object with end values after calculation
+                #self.end.typat = self.typat
+                #self.end.znucl = self.znucl
+                self.end.name = self.name+'.end'
+                self.end.list_xcart = []
+                self.energy = empty_struct()
+
+                nsgroup = None
+                magnitudes = []
+                self.mag_sum = [] #toatal mag summed by atoms, +augmentation
+
+                tot_mag_by_atoms = [] #magnetic moments by atoms on each step
+                tot_chg_by_atoms = []
+                tot_mag_by_mag_atoms = []
+
+
+                ldauu = None
+                e_sig0 = 0 #energy sigma 0 every scf iteration
+                occ_matrices = {} # the number of atom is the key
+
+                #which kind of forces to use
+                if ' CHAIN + TOTAL  (eV/Angst)\n' in outcarlines:
+                    force_keyword = 'CHAIN + TOTAL  (eV/Angst)'
+                    ff  = (0, 1, 2)
+                    force_prefix = ' chain+tot '
+
+                else:
+                    force_keyword = 'TOTAL-FORCE'
+                    ff  = (3, 4, 5)
+                    force_prefix = ' tot '
+
+
+
+                # try:
+                #     spin_polarized = self.set.spin_polarized # again it will be better to determine this from outcar 
+                # except:
+                #     spin_polarized = None
+
+
+
+                self.potcar_lines = []
+                self.stress = None
+                self.intstress = None
+                spin_polarized = None
+                for line in outcarlines:
+
+                    #Check bands
+
+                    # if 'band No.' in line:
+                    #     kpoint = float(outcarlines[i_line-1].split()[1])
+                    #     lastocc = float(outcarlines[i_line+self.nbands].split()[2])
+                    #     lastbandno = outcarlines[i_line+self.nbands].split()[0]
+                    #     if lastocc > 0:
+                    #         print "Warning!!! at kpoint ", kpoint, " last band No. ",lastbandno, " is not empty ", lastocc
+
+                    if 'TITEL' in line:
+                        self.potcar_lines.append( line.split()[2:] )
+
+
+                    if 'ions per type =' in line:
+                        self.end.nznucl = [int(n) for n in line.split()[4:]]
+                        self.end.ntypat = len(self.end.nznucl)
+
+                        self.end.natom  = sum(self.end.nznucl)
+
+                        #correction of bug; Take into account that VASP changes typat by sorting impurities of the same type.
+                        self.end.typat = []
+                        for i, nz in enumerate(self.end.nznucl):
+                            for j in range(nz):
+                                self.end.typat.append(i+1)
+                        #correction of bug
+
+
+
+                        # print(self.potcar_lines)
+                        elements = [t[1].split('_')[0] for t in self.potcar_lines]
+                        # printlog('I read ',elements, 'from outcar')
+                        self.end.znucl = [element_name_inv(el) for el in elements]
+                        # print (self.end.znucl)
+
+                        ifmaglist, _ = self.end.get_maglist()
+
+
+                    if 'ISPIN' in line:
+                        if line.split()[2] == '2':
+                            spin_polarized = True
+                            self.spin_polarized = spin_polarized
+                        else:
+                            spin_polarized = False
+                            self.spin_polarized = False
+
+
+                    if "TOO FEW BANDS" in line:
+                        print_and_log("Warning! TOO FEW BANDS!!!\n\n\nWarning! TOO FEW BANDS!!!\n")
+
+
+
+                    #Check W(q)
+                    if 'operators is LMAX' in line:
+                        lmax = int(line.split()[7])
+                        # print 'lmax', lmax
+                    if "W(low)/X(q)" in line:
+                        kk = 1; low = []; high = [];
+                        while kk < 100:
+                            if 'Optimization' in outcarlines[i_line + kk] or len(outcarlines[i_line + kk].split() ) != 7: break
+                            # print 'line', outcarlines[i_line + kk]
+
+                            low.append(  float(outcarlines[i_line + kk].split()[4]) )
+                            high.append( float(outcarlines[i_line + kk].split()[5]) )
+                            kk+=1
+
+
+                        if any(v > 1e-3 for v in low+high):
+                            print_and_log("W(q)/X(q) are too high, check output!\n")
+                            print_and_log('Low + high = ', low+high, imp = 'Y' )
+                            print_and_log([v > 1e-3 for v in low+high], imp = 'Y' )
+                    if "direct lattice vectors" in line:
+                        for v in 0,1,2:
+                            self.end.rprimd[v] = np.asarray( [float(ri) for ri in outcarlines[i_line+1+v].split()[0:3]   ] )
+                        #print self.end.rprimd
+                        #print self.rprimd
+                    if "POSITION" in line:
+                        if not contcar_exist or out_type == 'xcarts':
+                            self.end.xcart = [] #clean xcart before filling
+                            for i in range(self.end.natom):
+                                #print outcarlines[i_line+1+i].split()[0:3] 
+                                xcart = np.asarray ( 
+                                            [   float(x) for x in outcarlines[i_line+2+i].split()[0:3]   ] 
+                                        )
+                                
+                                self.end.xcart.append( xcart )
+                                #self.end.xred.append ( xcart2xred( xcart, self.end.rprimd) )
+                    
+                            if out_type == 'xcarts':
+                                self.end.list_xcart.append(self.end.xcart) #xcart at each step only for dimer
+
+                            #the change of typat is accounted below
+
+                    if "number of electron " in line:
+                        # print line
+                        # print line.split()[-1]
+                        try:
+                            self.magn1 = float(line.split()[-1])
+                        except:
+                            self.magn1 = 0
+
+                    if "augmentation part " in line:
+                        try:
+                            self.magn2 = float(line.split()[-1])
+                        except:
+                            self.magn2 = 0
+
+
+                    if force_keyword in line:
+                        # Calculate forces here...
+                        forces = []
+                        magnitudes = []
+
+                        for j in range(self.end.natom):
+                            parts = outcarlines[i_line+j+2].split()
+                            # print "parts", parts
+                            x = float(parts[ff[0]])
+                            y = float(parts[ff[1]])
+                            z = float(parts[ff[2]])
+                            forces.append([x,y,z])
+                            magnitudes.append(math.sqrt(x*x + y*y + z*z))
+                        average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
+                        imax = np.asarray(magnitudes).argmax()
+                        maxforce.append( [imax, round(magnitudes[imax] * 1000)]  )
+                        # mforce.append( round(magnitudes[imax] * 1000))
+                        
+                   
+
+                    #Check total drift
+                    if "total drift:" in line:
+                        #print line
+                        tdrift = [float(d) for d in line.split()[2:5]]
+                        #if any(d > 0.001 and d > max(magnitudes) for d in tdrift):
+                            #print_and_log("Total drift is too high = "+str(tdrift)+", check output!\n")
+                            #pass
+
+
+                    if "g(Stress)" in line:
+                        #print line
+                        gstress.append( round( float(line.split()[4])*1000 *100, 3 )  )
+                    #if "Total" in line:
+                        #gstress.append( red_prec(float(line.split()[4])*1000 *100, 1000 )  )
+                    if "volume of cell" in line:
+                        try:                     
+                            self.end.vol = float(line.split()[4])
+                        except ValueError: 
+                            print_and_log("Warning! Cant read volume in calc "+self.name+"\n")
+                        #print self.vol      
+
+                    if "generate k-points for:" in line: 
+                        self.ngkpt = tuple(  [int(n) for n in line.split()[3:]]  )
+                        #print self.set.ngkpt
+
+                      # Kohn-Sham hamiltonian: http://en.wikipedia.org/wiki/Kohn%E2%80%93Sham_equations
+                      #kinetic energy
+                      #+ the external potential + the exchange-correlation energy +
+                      #+ Hartree (or Coulomb) energy
+                    # print line
+                    
+                    if  "alpha Z        PSCENC" in line:
+                        # print line
+                        self.energy.alpha = float(line.split()[-1]) # the electrostatic interaction of the ions in a compensating electron gas.
+
+                    if  "Ewald energy   TEWEN" in line:
+                        self.energy.ewald = float(line.split()[-1]) # the electrostatic interaction of the ions in a compensating electron gas.
+                        # print self.energy.ewald
+                    if  "-1/2 Hartree   DENC" in line or "-Hartree energ DENC" in line:
+                        self.energy.hartree = float(line.split()[-1]) #Coulomb electron-electron energy
+                        # print self.energy.hartree
+                    if  "-V(xc)+E(xc)   XCENC" in line:
+                        self.energy.xc = float(line.split()[-1]) # Kohn-Sham exchange-correlation energy
+                    if  "PAW double counting" in line:
+                        self.energy.pawdc1 = float(line.split()[-2]) #
+                        self.energy.pawdc2 = float(line.split()[-1]) #
+                    if  "eigenvalues    EBANDS" in line:
+                        self.energy.bands = float(line.split()[-1]) # - Kohn Sham eigenvalues - include kinetic energy , but not exactly
+                    if  "atomic energy  EATOM" in line:
+                        self.energy.atomic = float(line.split()[-1]) #energy of atoms in the box
+
+
+
+                    if "energy  without entropy=" in line:
+                        #self.energy = float(line.split()[4])
+                        self.e_without_entr = float(line.split()[3]) #
+                        self.energy_sigma0 = float(line.split()[6]) #energy(sigma->0)
+                        self.e0 = self.energy_sigma0
+                        self.list_e_sigma0.append(  self.energy_sigma0  )
+                        self.list_e_without_entr.append(  self.e_without_entr  )
+
+                    if "energy without entropy =" in line:
+                        e_sig0_prev = e_sig0
+                        try:
+                            e_sig0 = float(line.split()[7])
+                        except:
+                            e_sig0 = 0
+
+
+                    if "free  energy   TOTEN  =" in line:
+                        #self.energy = float(line.split()[4])
+                        self.energy_free = float(line.split()[4]) #F free energy
+                    
+
+
+
+
+                    if re_lengths.search(line):
+                        self.vlength = [red_prec( float(l),1000 ) for l in outcarlines[i_line + 1].split()[0:3]]
+                        #print self.vlength
+                    if "in kB" in line:
+                        self.stress = [float(i)*100 for i in line.split()[2:]]  # in MPa 
+                    if "Total  " in line:
+                        self.intstress = [int(float(i)*1000) for i in line.split()[1:]] #stress in internal units; can be regarded as forces
+                    
+                    if "external pressure =" in line: 
+                        #print iterat
+                        self.extpress = float(line.split()[3]) * 100 # in MPa 
+                        if self.mdstep == 1 : self.extpress_init = self.extpress
+
+                    if "E-fermi :" in line: 
+                        # print line
+                        self.efermi = float(line.split()[2]) # in eV
+
+
+                    if "Elapsed time" in line:
+                        self.time = float(line.split()[3])
+                    if re_nkpts.search(line):
+                        self.NKPTS = int(line.split()[3])
+                    if "WARNING" in line:
+                        warnings += 1#line
+
+
+                    if "Subroutine DYNSYM returns" in line and not nsgroup:
+                        nsgroup = line.split()[4]#number of space group operations
+                    # if nsgroup == None:
+                    if "Subroutine GETGRP returns:" in line and not nsgroup:
+                        nsgroup = line.split()[4]    
+
+
+                    if "Iteration" in line:
+                        self.mdstep = int(line.split('(')[0].split()[2].strip())
+                        iterat +=1
+                        # print self.mdstep
+                        # print line
+                        if mdstep_old != self.mdstep:
+                            nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
+                        niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
+                        mdstep_old = self.mdstep
+
+
+                    if 'number of electron ' in line:
+                        # print (line)
+                        try:
+                            self.mag_sum.append( [float(line.split()[5]), 0])
+                        except:
+                            pass
+
+                    if 'augmentation part' in line:
+                        # print (line)
+                        try:
+                            self.mag_sum[-1][1]= float(line.split()[4])
+                        except:
+                            pass
+
+                    if 'total charge ' in line:
+                        chg = []
+                        for j in range(self.end.natom):
+                            chg.append( float(outcarlines[i_line+j+4].split()[4]) )
+                        
+                        tot_chg_by_atoms.append(np.array(chg))#[ifmaglist])                    
+
+
+                    if 'magnetization (x)' in line:
+                        mags = []
+                        for j in range(self.end.natom):
+                            mags.append( float(outcarlines[i_line+j+4].split()[4]) )
+                        
+                        tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
+                        # print(ifmaglist)
+                        tot_mag_by_mag_atoms.append(np.array(mags)[ifmaglist])
+                        # print tot_mag_by_atoms
+                        # magnetic_elements
+                        # ifmaglist
+                        # self.tot_mag_by_atoms = tot_mag_by_atoms
+
+
+
+                    if 'LDAUU' in line:
+                        ldauu = line
+
+
+                    if 'onsite density matrix' in line:
+                        i_at = int( outcarlines[i_line-2].split()[2]  ) #starting from one
+                        l_at = int( outcarlines[i_line-2].split()[8]  )
+                        # print (spin_polarized)
+                        spin1 = []
+                        spin2 = []
+                        nm = 2*l_at+1
+                        for i in range(nm):
+                            line = outcarlines[i_line+4+i]
+                            try:
+                                spin1.append( np.array(line.split()).astype(float) )
+                            except:
+                                print_and_log('Warning! Somthing wrong with occ matrix:', line)
+                        if spin_polarized:
+                            for i in range(nm):
+                                try:
+                                    spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )
+                                except:
+                                    printlog('Attention! Could not read spin2, probably no spaces')
+                                    spin2.append(0)        
+
+                        occ_matrices[i_at-1] = spin1+spin2
+                        # print (np.array(spin1) )
+
+
+                    if 'freq' in show:
+
+                        if 'Eigenvectors and eigenvalues of the dynamical matrix' in line:
+                            freq = []
+
+                            i = 0
+                            while 'ELASTIC MODULI CONTR FROM IONIC RELAXATION' not in line:
+                                i+=1
+                                line = outcarlines[i_line+i]
+                                if 'f  =' in line:
+                                    freq.append(float(line.split()[3]) ) #THz
+                                    # print(line)
+
+
+                    if 'TOTAL ELASTIC MODULI' in line:
+                        eltensor = []
+                        for i in range(9):
+                            line = outcarlines[i_line+i]
+                            print(line.strip())
+                            if i > 2:
+                                eltensor.append([float(c)/10 for c in line.split()[1:]])
+
+                        eltensor = np.asarray(eltensor)
+                        # print(eltensor)
+                        w, v = np.linalg.eig(eltensor)
+                        printlog('Eigenvalues are:', w, imp = 'y')
+                                # eltensor
+
+                    # if 'irreducible k-points:': in line:
+                    #     self.nkpt = int(line.split()[1])
+
+
+
+
+                    i_line += 1
+                # sys.exit()
+                #Check total drift
+                
+
+
+
+
+
 
             try:
                 toldfe = self.set.toldfe*1000  # meV
@@ -4245,7 +4253,8 @@ class CalculationVasp(Calculation):
             cl.state = '3. In queue'
    
         else:
-            cl.state = '2. Unknown'
+            ''
+            # cl.state = '2. Unknown'
 
         return cl.state 
 

@@ -1534,8 +1534,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                         shutil.copyfile(params['occmatrix'], dir_2+'/OCCMATRIX' ) # file is provided explicitly
 
                     else:
-                        shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
-    
+                        try:
+                            shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
+                        except:
+                            printlog('Attention! no OCCMATRIX file was found!!!')
 
 
         # if cl.des:
@@ -2199,6 +2201,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             - en  - convergence of total energy vs max force
             - mep - neb path
             - fo  - max force on each md step
+            - polaron - determine polaron positon, write local surroundin
+            - mig_path - write migration path xyz
+
+
 
         energy_ref - energy in eV; substracted from energy diffs
         
@@ -2333,7 +2339,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 continue #pass non existing calculations
             cl = calc[id]
            
-            if check_job:
+            if readfiles and check_job:
                 if '3' in cl.check_job_state():
                     printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
                     # cl.res()
@@ -2373,7 +2379,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             
 
 
-
+            # print(id)
+            # sys.exit()
             e = calc[id].energy_sigma0
             n_m = calc[id].end.nznucl[0] # number of matrix atoms
 
@@ -2506,6 +2513,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
         if id not in calc or '4' not in calc[id].state:
+            # printlog(calc[id].state, imp = 'Y')
             print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',cl.dir, imp = 'Y')
             return {}, []
         
@@ -2783,6 +2791,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             # print( vlist)
             mep_energies = []
             atom_pos     = []
+
+
+
             pols = []
             sts = []
             for v in vlist:
@@ -2798,34 +2809,36 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 atom_pos.append( cli.end.xcart[atom_num] )
 
                 # Find polaron positions
+                if 'polaron' in show:
+                    pol, mag = find_polaron(cli.end, atom_num)
+                    if pol:
+                        for key in pol:
+                            if np.any(pol[key]):
+                                for n in pol[key]:
+                                    if n not in pols:
+                                        pols.append(n)
+                    else:
+                        ''
+                        # print('Mag_moments on trans,', mag.round(1))
+                
+                    #visualization of path
+                    st = cli.end
+                    st_loc = st.nn(atom_num, 6, from_one = False, silent = 1)['st']
+                    # st_loc = st_loc.shift
+                    if v == vlist[0]:
+                        vec = st.center_on(atom_num)
+                    st_loc = st_loc.shift_atoms(vec)
+                    st_loc.write_xyz()
 
-                pol, mag = find_polaron(cli.end, atom_num)
-                if pol:
-                    for key in pol:
-                        if np.any(pol[key]):
-                            for n in pol[key]:
-                                if n not in pols:
-                                    pols.append(n)
-                else:
-                    ''
-                    # print('Mag_moments on trans,', mag.round(1))
-            
-                #visualization of path
-                st = cli.end
-                st_loc = st.nn(atom_num, 6, from_one = False, silent = 1)['st']
-                # st_loc = st_loc.shift
-                if v == vlist[0]:
-                    vec = st.center_on(atom_num)
-                st_loc = st_loc.shift_atoms(vec)
-                st_loc.write_xyz()
-
-                sts.append(st.shift_atoms(vec))
+                    sts.append(st.shift_atoms(vec))
 
 
-                av = st.nn(atom_num, 2, from_one = False, silent = 1)['av(A-O,F)']
-                print('Average_distance A-O', av, 'A')
+                    av = st.nn(atom_num, 2, from_one = False, silent = 1)['av(A-O,F)']
+                    print('Average_distance A-O', av, 'A')
 
-            write_xyz(sts = sts) # write traectory
+            if 'mig_path' in show: #migration path
+
+                write_xyz(sts = sts) # write traectory
 
 
             if len(pols) > 0:
