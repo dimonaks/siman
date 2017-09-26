@@ -4053,17 +4053,24 @@ class CalculationVasp(Calculation):
 
         # print(path_to_chg)
         # print(self.cluster_address)
-
+        # print(self.project_path_cluster+'/')
+        # sys.exit()
+        path2file_cluster = self.project_path_cluster+'/'+path_to_chg
         if os.path.exists(path_to_chg) and 'up2' not in up: 
             out = None
         else:
-            out = get_from_server(path_to_chg, os.path.dirname(path_to_chg), addr = self.cluster_address)
+            out = get_from_server(path2file_cluster, os.path.dirname(path_to_chg), addr = self.cluster_address)
 
 
         if out:
-            printlog('File', path_to_chg, 'was not found, trying scratch', imp = 'Y')
+            printlog('File', path2file_cluster, 'was not found, trying scratch', imp = 'Y')
             # printlog('Charge file', path_to_chg, 'was not found')
-            path_to_chg_scratch = '/scratch/amg/aksenov/'+path_to_chg
+            try:
+                pp = self.project_path_cluster.replace(self.cluster_home, '') #project path without home
+            except:
+                pp = ''
+            # print(pp)
+            path_to_chg_scratch = '/scratch/amg/aksenov/'+pp+'/'+path_to_chg
 
             out = get_from_server(path_to_chg_scratch, os.path.dirname(path_to_chg), addr = self.cluster_address)
             

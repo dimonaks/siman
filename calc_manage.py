@@ -1479,6 +1479,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         # if header.copy_to_cluster_flag:
         cl.cluster_address      = header.cluster_address
         cl.project_path_cluster = header.project_path_cluster
+        cl.cluster_home = header.cluster_home
         cl.corenum = header.corenum 
         cl.schedule_system = header.schedule_system
 
