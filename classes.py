@@ -2877,7 +2877,7 @@ class CalculationVasp(Calculation):
                 f.write('sleep 5\n')
                 # runBash('chmod +x run')
             elif schedule_system == 'PBS':
-                f.write("cd "+self.dir+"\n")
+                f.write("cd "+header.PATH2PROJECT+'/'+self.dir+"\n")
                 f.write("qsub "+run_name.split('/')[-1]+"\n") 
                 f.write("cd -\n")
                 f.write('sleep 5\n')                        
@@ -4254,7 +4254,8 @@ class CalculationVasp(Calculation):
    
         else:
             ''
-            # cl.state = '2. Unknown'
+            if '3' in cl.state:
+                cl.state = '2. Unknown'
 
         return cl.state 
 

@@ -1397,7 +1397,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         printlog('add_calculation():',str(calc[id].name), " has been already created and has state: ", str(calc[id].state),)# imp = 'y')
 
         # print(cl.state)
-        # print(check_job)
+
         if check_job:
             if '2' in cl.state or '5' in cl.state:
                 status = "ready"
@@ -1408,7 +1408,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             if "3" in cl.state: #attention, should be protected from running the same calculation once again
                 status = "running"
                 cl.res(check_job = check_job, show = params['show'])
-                if check_job: 
+                # print(check_job)
+                # sys.exit()
+                if '3' in cl.state and check_job: 
                     return
 
             elif "4" in cl.state: 
@@ -2809,7 +2811,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 atom_pos.append( cli.end.xcart[atom_num] )
 
                 # Find polaron positions
-                if 'polaron' in show:
+                if 1 or 'polaron' in show:
                     pol, mag = find_polaron(cli.end, atom_num)
                     if pol:
                         for key in pol:
@@ -2836,7 +2838,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     av = st.nn(atom_num, 2, from_one = False, silent = 1)['av(A-O,F)']
                     print('Average_distance A-O', av, 'A')
 
-            if 'mig_path' in show: #migration path
+            if 1 or 'mig_path' in show: #migration path
 
                 write_xyz(sts = sts) # write traectory
 
