@@ -145,7 +145,7 @@ def find_moving_atom(st1, st2):
         d1, d2 = image_distance(x1, x2, st1.rprimd)
         diffn.append(d1)
 
-
+    # print('max', max(diffn))
 
     return np.argmax(diffn) # number of atom moving along the path
 
@@ -361,7 +361,8 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
     - control - type of output; 
               sum - sum of distances, 
-              av - av distance, 
+              av - average distance, 
+              avsq - average squared dist
               'mavm': #min, av, max, av excluding min and max
               av_dev - return (average deviation, maximum deviation) from average distance in mA.
               list - list of distances; 
@@ -422,6 +423,14 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         n_neighbours = float(n_neighbours)
         dav = sum(dlistnn)/n_neighbours
         output = round(dav, 2)
+
+    elif control == 'avsq':
+        n_neighbours = float(n_neighbours)
+        # print(dlistnn)
+        davsq = sum([d*d for d in dlistnn])/n_neighbours
+        davsq = davsq**(0.5)
+        output = round(davsq, 2)
+
 
     elif control == 'mavm': #min, av, max
         dsort = sorted(dlistnn)

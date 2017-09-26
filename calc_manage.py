@@ -2786,7 +2786,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             cl2 = calc[cl.id[0], cl.id[1], 2]
             
 
-            atom_num = find_moving_atom(cl1.init, cl2.init)
+            atom_num = find_moving_atom(cl1.end, cl2.end)
 
             #prepare lists
             ni = cl.set.vasp_params['IMAGES']
@@ -2825,19 +2825,31 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                         # print('Mag_moments on trans,', mag.round(1))
                 
                     #visualization of path
+                    # print(atom_num)
                     st = cli.end
+                    # print('moving_atom', st.xcart[atom_num])
                     st_loc = st.nn(atom_num, 6, from_one = False, silent = 1)['st']
+                    # print(st_loc.xcart)
                     # st_loc = st_loc.shift
                     if v == vlist[0]:
                         vec = st.center_on(atom_num)
+                    # print(vec)
                     st_loc = st_loc.shift_atoms(vec)
                     st_loc.write_xyz()
 
                     sts.append(st.shift_atoms(vec))
 
+                    info = st.nn(atom_num, 2, from_one = False, silent = 1)
+                    print('Average_distance A-2(O,F)', info['av(A-O,F)'], 'A')
 
-                    av = st.nn(atom_num, 2, from_one = False, silent = 1)['av(A-O,F)']
-                    print('Average_distance A-O', av, 'A')
+                    av = st.nn(atom_num, 2, from_one = False, silent = 1)['avsq(A-O,F)']
+                    print('Average squared distance A-2(O,F)', av, 'A')
+
+                    info = st.nn(atom_num, 4, from_one = False, silent = 1)
+                    print('Average_distance A-4(O,F)', info['av(A-O,F)'], 'A')
+                    print('Elements are ', info['el'])
+
+
 
             if 1 or 'mig_path' in show: #migration path
 

@@ -815,7 +815,10 @@ class Structure():
 
         info = {}
         info['numbers'] = out_or[2]
+        el = self.get_elements()
+        info['el'] = [el[i] for i in out_or[2]]
         info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9])
+        info['avsq(A-O,F)'] = local_surrounding(x, self, n, 'avsq', True, only_elements = [8,9])
         info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
         info['sum(A-O,F)'] = local_surrounding(x, self, n, 'sum', True, only_elements = [8,9])
 
