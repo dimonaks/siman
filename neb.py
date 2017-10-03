@@ -316,6 +316,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                     numbers = [[i_atom_to_move]]
                     i_void_start = 1
                 else:
+                    printlog('add_neb(): determine_symmetry_positions ...', imp ='y')
+
                     numbers = determine_symmetry_positions(st, atom_to_move)
 
                 # print(numbers)
