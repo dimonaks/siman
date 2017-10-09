@@ -90,7 +90,11 @@ def makedir(path):
 
 
 def latex_chem(formula):
-    return re.sub("([0-9])", "$_\\1$", formula)
+    """ """
+    # print(formula)
+    if '$' not in formula:
+        formula =re.sub("([0-9])", "$_\\1$", formula)
+    return formula
 
 def latex_spg(spg):
     spg = spg.replace('_1', '$_1$')

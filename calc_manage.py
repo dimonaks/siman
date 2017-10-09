@@ -2849,7 +2849,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     print('Average_distance A-4(O,F)', info['av(A-O,F)'], 'A')
                     print('Elements are ', info['el'])
 
-
+                    info = st.nn(atom_num, 6, from_one = False, silent = 1)
+                    print('Average_distance A-6(O,F)', info['av(A-O,F)'], 'A')
+                    print('Average_deviation A-6(O,F)', info['avdev(A-O,F)'], 'mA')
+                    print('Elements are ', info['el'])
 
             if 1 or 'mig_path' in show: #migration path
 
