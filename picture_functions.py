@@ -259,7 +259,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
                     del con['fmt']
 
 
-
+                # print(con)
                 plt.plot(*xyf, linewidth = linewidth, markersize = markersize, alpha = alpha, **con)
 
 
@@ -303,7 +303,8 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
 
 
 
-        if xlog: plt.xscale('log')
+        if xlog: 
+            plt.xscale('log')
         if ylog: 
             if "sym" in str(ylog):
                 plt.yscale('symlog', linthreshx=0.1)
@@ -314,6 +315,7 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
 
         if legend: 
             plt.legend(loc = legend, scatterpoints = scatterpoints, ncol = ncol)
+            # plt.legend()
 
 
         plt.tight_layout()

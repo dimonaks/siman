@@ -84,8 +84,13 @@ def write_batch_header(batch_script_filename = None,
         if schedule_system == 'PBS':
             f.write("#!/bin/bash   \n")
             f.write("#PBS -N "+job_name+"\n")
-            f.write("#PBS -l walltime=72:00:00 \n")
-            f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            if header.WALLTIME_LIMIT:
+                f.write("#PBS -l walltime=72:00:00 \n")
+            # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            if header.PBS_PROCS:
+                f.write("#PBS -l procs="+str(number_cores)+"\n")
+            else: # 1 node option 
+                f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
             # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
             f.write("#PBS -r n\n")
             f.write("#PBS -j eo\n")
@@ -809,7 +814,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     def add_loop_inherit():
         
-        nonlocal  it, setlist, id_base
+        nonlocal  it, setlist, id_base, it_suffix
         struct_des = header.struct_des
 
         printlog('add_loop: starting add_loop_inherit ...', imp ='n')
@@ -852,6 +857,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             if it_suffix: # override default behaviour
                 it_new = it+'.'+it_suffix
+                it_suffix = None
 
 
 
@@ -1169,6 +1175,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         nonlocal it
         struct_des = header.struct_des
 
+        # print(it)
+        # sys.exit()
         if it_suffix:
             it = it+'.'+it_suffix
 
@@ -2998,6 +3006,15 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10], filetype = 'mesh'
 
 
 def read_phonopy_dat_file(filename):
+
+    """
+    read .dat file from phonopy
+    for reading yaml see self.read_phonopy_data()
+    should be probably combined
+
+    freq - frequency in THz
+    tot - total energy for freq
+    """
 
     dos = {'tot':[], 'freq':[]}
 

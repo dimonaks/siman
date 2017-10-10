@@ -2880,6 +2880,9 @@ class CalculationVasp(Calculation):
                 f.write('sleep 5\n')
                 # runBash('chmod +x run')
             elif schedule_system == 'PBS':
+                if header.PATH2PROJECT == '':
+                    header.PATH2PROJECT = '.'
+
                 f.write("cd "+header.PATH2PROJECT+'/'+self.dir+"\n")
                 f.write("qsub "+run_name.split('/')[-1]+"\n") 
                 f.write("cd -\n")
@@ -4347,8 +4350,8 @@ class CalculationVasp(Calculation):
             self.path['poscar'] = self.path['output'].replace('OUTCAR','POSCAR')
 
         if mode == 'pdos':
-            print('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
-            runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -p mesh.conf --readfc ')
+            print('phonopy -c '+os.path.basename(self.path['poscar'])+p+'  mesh.conf --readfc ')
+            runBash('phonopy -c '+os.path.basename(self.path['poscar'])+p+' mesh.conf --readfc ')
 
         from calc_manage import read_phonopy_dat_file
 
@@ -4370,7 +4373,7 @@ class CalculationVasp(Calculation):
 
             Trange, func = read_phonopy_data('thermal_properties.yaml', convert = 1)
 
-            self.F = func # free energy function
+            self.F = func # free energy function in eV, still for the whole supercell!
             # print(self.id, self.F)
 
 
