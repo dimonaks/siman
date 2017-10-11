@@ -4336,7 +4336,8 @@ class CalculationVasp(Calculation):
         from calc_manage import create_phonopy_conf_file, read_phonopy_data
 
         self.get_chg_file('vasprun.xml', nametype = 'asoutcar')
-        create_phonopy_conf_file(self.end, path = self.dir)
+        create_phonopy_conf_file(self.end, mp = [10, 10, 10], path = self.dir)
+        # create_phonopy_conf_file(self.end, mp = [36, 36, 36], path = self.dir) #almost no difference was found for Na2X
         create_phonopy_conf_file(self.end, path = self.dir, filetype = 'band') #create band file
 
 

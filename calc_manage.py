@@ -3061,6 +3061,10 @@ def read_phonopy_data(filename, key = "free_energy", convert = False):
     coeffs1 = np.polyfit(T, F, 8)
     fit_func = np.poly1d(coeffs1)
     T_range = np.linspace(min(T), max(T))
+    
+
+    fit_and_plot(d1 = (T, F, 'b-', 'orig'), d2 = (T_range, fit_func(T_range), 'r--', 'fit'), show = 1)
+
     print_and_log( 'I return', key)
 
     return T_range, fit_func
