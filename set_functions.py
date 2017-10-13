@@ -108,6 +108,8 @@ vasp_other_keys = [
 'EINT',
 'LWAVE',
 'GGA',
+'IALGO',
+'LSCALAPACK',
 ]
 
 siman_keys = [

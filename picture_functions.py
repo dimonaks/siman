@@ -157,34 +157,58 @@ def process_fig_filename(image_name, fig_format):
 
     return path2saved, path2saved_png
 
-def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel", 
+def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     image_name = None, filename = None,
     show = None, fontsize = None,
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  
     linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
-    ver_lines = None, alpha = 0.8, first = True, last = True, 
+    ver_lines = None, alpha = 0.8, first = True, last = True, convex = None, corner_letter = None,
     **data):
-    """Should be used in two below sections!
-    Creates one plot with two dependecies and fit them;
-    return minimum fitted value of x2 and corresponding value of y2; 
-    if name == "" image will not be plotted
+    """
+    Plot multiple plots on one axes using *data*
+    
+    return filename of saved plot
+
+    ax (axes) - matplotlib axes object - to create multiple axes plots
+
+    data - each entry should be 
+        (X, Y, fmt) 
+        or 
+        (X, Y, fmt, label) 
+        or
+        {'x':,'y':, 'fmt':, 'label', 'xticks' }    not implemented for powers and scatter yet
+        or
+        (X, Y, R, fmt) - for scatter = 1, R - size of spots
+
+    first, last - allows to call this function multiple times to put several plots on one axes. Use first = 1, last = 0 for the first plot, 0, 0 for intermidiate, and 0, 1 for last
+
+    power (int) - the power of polynom, turn on fitting
+
+    scatter (bool) - plot scatter points - the data format is slightly different - see *data*
+
+    convex (bool) - plot convex hull around points like in ATAT
+
+
     filename (str) - name of file with figure, image_name - deprecated
-
-    power - the power of polynom
-    ncol - number of legend coluns
-
-    fig_format - format of saved file.
+    fig_format (str) - format of saved file.
     dpi    - resolution of saved file
-    ver_lines - list of vertical lines (x, type)
-    data - each entry should be (X, Y, 'r-') or (X, Y, 'r-', label) 
-    or dict {'x':,'y':, 'fmt':, 'label', 'xticks' }    not implemented for powers yet
 
-    first, last - sometimes multiple plots are required. Use first = 1, last =0 for the first plot, 0, 0 for intermidiate, and 0, 1 for last
+
+    ver_lines - list of vertical lines (x, type)
+
+
+
+    ncol - number of legend columns
+
+    corner_letter - letter in the corner of the plot
+
+    TODO:
+    remove some arguments that can be provided in data dict
+
 
     """
 
-    # print data
 
     if image_name == None:
         image_name  = filename
@@ -195,150 +219,188 @@ def fit_and_plot(power = None, xlabel = "xlabel", ylabel = "ylabel",
         header.mpl.rc('legend', fontsize= fontsize) 
 
 
-    if 1:
 
-        if hasattr(header, 'first'):
-            first = header.first
+    if hasattr(header, 'first'):
+        first = header.first
 
-        if hasattr(header, 'last'):
-            last  = header.last
-        print('fit_and_plot, first and last', first, last)
+    if hasattr(header, 'last'):
+        last  = header.last
+    # print('fit_and_plot, first and last', first, last)
 
+
+
+    
+    if ax == None:
         if first:
+            # fig, ax = plt.subplots(1,1,figsize=figsize)
             plt.figure(figsize=figsize)
+
+        ax = plt.gca() # get current axes )))
+        # ax  = fig.axes
+
+
+    if title: 
+        ax.title(title)
+    
+    # print(dir(plt))
+    # print(ax)
+
+    # plt.ylabel(ylabel, axes = ax)
+    # print(ylabel)
+    if ylabel != None:
+
+        ax.set_ylabel(ylabel)
+    
+
+    if xlabel != None:
+        ''
+        # plt.xlabel(xlabel, axes = ax)
+        ax.set_xlabel(xlabel)
+
+
+
+
+    if corner_letter:
+        # print(corner_letter)
+        sz = header.mpl.rcParams['font.size']
+        ax.text(0.05, 0.85, corner_letter, size = sz*1.5, transform=ax.transAxes) # transform = None - by default in data coordinates!
+
+        # text(x, y, s, bbox=dict(facecolor='red', alpha=0.5))
+
+
+    if convex:
+        from scipy.spatial import ConvexHull
+
+
+
+    for key in sorted(data):
+
+        if scatter:
+            
+            ax.scatter(data[key][0], data[key][1],  s = data[key][2], c = data[key][-1], alpha = alpha, label = key)
         
+        else:
 
-        if title: 
-            plt.title(title)
-        plt.ylabel(ylabel)
-        if xlabel != None:
-            plt.xlabel(xlabel)
+            con = data[key]
+            # print(con)
+            # sys.exit()
+            if type(con) == list or type(con) == tuple:
+                try:
+                    label = con[3]
+                except:
+                    label = key
 
-
-
-        scatterpoints = 1
-        for key in sorted(data):
-
-
-
-            if scatter:
-                
-                plt.scatter(data[key][0], data[key][1],  s = data[key][2], c = data[key][-1], alpha = alpha, label = key)
-            else:
+                try:
+                    fmt = con[2]
+                except:
+                    fmt = ''
 
 
+                xyf = [con[0], con[1], fmt]
+                con = {'label':label} #fmt -color style
 
-                con = data[key]
+            elif type(con) == dict:
+                if 'fmt' not in con:
+                    con['fmt'] = ''
                 # print(con)
-                # sys.exit()
-                if type(con) == list or type(con) == tuple:
-                    try:
-                        label = con[3]
-                    except:
-                        label = key
 
-                    xyf = [con[0], con[1], con[2]]
-                    con = {'label':label} #fmt -color style
+                if 'x' not in con:
+                    l = len(con['y'])
+                    con['x'] = range(l)
 
-                elif type(con) == dict:
-                    if 'fmt' not in con:
-                        con['fmt'] = ''
-                    # print(con)
+                if 'xticks' in con:
+                    plt.xticks(con['x'], con['xticks'])
+                    del con['xticks']
 
-                    if 'x' not in con:
-                        l = len(con['y'])
-                        con['x'] = range(l)
+                xyf = [con['x'], con['y'], con['fmt']]
+                del con['x']
+                del con['y']
+                del con['fmt']
 
-                    if 'xticks' in con:
-                        plt.xticks(con['x'], con['xticks'])
-                        del con['xticks']
+            ax.plot(*xyf, linewidth = linewidth, markersize = markersize, alpha = alpha, **con)
 
-                    xyf = [con['x'], con['y'], con['fmt']]
-                    del con['x']
-                    del con['y']
-                    del con['fmt']
+            if convex:
+                points = np.asarray(list(zip(xyf[0], xyf[1])))
+                hull = ConvexHull(points)
+                for simplex in hull.simplices:
+                    if max(points[simplex, 1]) > 0:
+                        continue
+                    ax.plot(points[simplex, 0], points[simplex, 1], 'k-')
 
+    if power:
+        for key in data:
+            coeffs1 = np.polyfit(data[key][0], data[key][1], power)        
+            
+            fit_func1 = np.poly1d(coeffs1)
+            x_range = np.linspace(min(data[key][0]), max(data[key][0]))
+            fit_y1 = fit_func1(x_range); 
+     
+            ax.plot(x_range, fit_y1, data[key][-1][0], )
 
-                # print(con)
-                plt.plot(*xyf, linewidth = linewidth, markersize = markersize, alpha = alpha, **con)
-
-
-
-
-
-        if hor: 
-            plt.axhline(color = 'k') #horizontal line
-
-        plt.axvline(color='k')
-        if xlim: 
-            plt.xlim(xlim)
-            # axes = plt.gca()
-            # axes.set_xlim([xmin,xmax])
-            # axes.set_ylim([ymin,ymax])
-        if ylim:
-            plt.ylim(ymin=ylim[0])
-            if ylim[1]: plt.ylim(ymax=ylim[1])
+            # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
+            # y_min  = fit_func2(x_min)
+            slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(data[key][0], data[key][1])
+            # print 'R^2 = ', r_value**2, key
 
 
-        if power:
-            for key in data:
-                coeffs1 = np.polyfit(data[key][0], data[key][1], power)        
-                
-                fit_func1 = np.poly1d(coeffs1)
-                x_range = np.linspace(min(data[key][0]), max(data[key][0]))
-                fit_y1 = fit_func1(x_range); 
-         
-                plt.plot(x_range, fit_y1, data[key][-1][0], )
+    if hor: 
+        ax.axhline(color = 'k') #horizontal line
 
-                # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
-                # y_min  = fit_func2(x_min)
-                slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(data[key][0], data[key][1])
-                # print 'R^2 = ', r_value**2, key
+    ax.axvline(color='k') # vertical line at 0 always 
 
-        if ver_lines:
-            for line in ver_lines:
-                plt.axvline(**line)
+    if ver_lines:
+        for line in ver_lines:
+            ax.axvline(**line)
+
+    if xlim: 
+        ax.set_xlim(xlim)
+
+    if ylim:
+        ax.set_ylim(ymin=ylim[0])
+        if ylim[1]: 
+            ax.set_ylim(ymax=ylim[1])
+
+
+    if xlog: 
+        ax.xscale('log')
+
+    if ylog: 
+        if "sym" in str(ylog):
+            ax.yscale('symlog', linthreshx=0.1)
+        else:
+            ax.yscale('log')
 
 
 
+    if legend: 
+        scatterpoints = 1 # for legend
+
+        ax.legend(loc = legend, scatterpoints = scatterpoints, ncol = ncol)
+        # plt.legend()
 
 
-        if xlog: 
-            plt.xscale('log')
-        if ylog: 
-            if "sym" in str(ylog):
-                plt.yscale('symlog', linthreshx=0.1)
-            else:
-                plt.yscale('log')
+    plt.tight_layout()
+
+    path2saved = ''
+    
+    if last:
+        if image_name:
+
+            path2saved, path2saved_png = process_fig_filename(image_name, fig_format)
+
+            plt.savefig(path2saved, dpi = dpi, format=fig_format)
+            plt.savefig(path2saved_png, dpi = 300)
+            
+            print_and_log("Image saved to ", path2saved, imp = 'y')
 
 
-
-        if legend: 
-            plt.legend(loc = legend, scatterpoints = scatterpoints, ncol = ncol)
-            # plt.legend()
-
-
-        plt.tight_layout()
-        path2saved = ''
-        
-        if last:
-            if image_name:
-
-                path2saved, path2saved_png = process_fig_filename(image_name, fig_format)
-
-                plt.savefig(path2saved, dpi = dpi, format=fig_format)
-                plt.savefig(path2saved_png, dpi = 300)
-                
-                print_and_log("Image saved to ", path2saved, imp = 'y')
-
-
-            elif show is None:
-                show = True
-            # print_and_log(show)
-            if show:
-                plt.show()
-            plt.clf()
-            plt.close('all')
+        elif show is None:
+            show = True
+        # print_and_log(show)
+        if show:
+            plt.show()
+        plt.clf()
+        plt.close('all')
 
 
     return path2saved
