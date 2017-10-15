@@ -2832,6 +2832,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                         ''
                         # print('Mag_moments on trans,', mag.round(1))
                 
+                if 1 or 'neb_geo' in show:
                     #visualization of path
                     # print(atom_num)
                     st = cli.end
@@ -2862,9 +2863,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     print('Average_deviation A-6(O,F)', info['avdev(A-O,F)'], 'mA')
                     print('Elements are ', info['el'])
 
-            if 1 or 'mig_path' in show: #migration path
-
-                write_xyz(sts = sts) # write traectory
+                    write_xyz(sts = sts) # write traectory
 
 
             if len(pols) > 0:

@@ -282,6 +282,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             atoms_to_move = []
             atoms_to_move_types = []
             
+            # print(i_atom_to_move)
+            # sys.exit()
+
             if i_atom_to_move:
                 typ = st.get_elements()[i_atom_to_move]
                 printlog('add_neb(): atom', typ, 'will be moved', imp = 'y')
@@ -302,7 +305,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                             atoms_to_move_types.append(typ)
 
             if  atoms_to_move:
-                # print()
+                # print(atom_to_move)
+                # sys.exit()
                 if not atom_to_move:
                     atom_to_move = atoms_to_move_types[0] # taking first found element
                     if len(atoms_to_move_types) > 1:
@@ -310,6 +314,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                             'please specify needed atom with *atom_to_move*')
 
                 type_atom_to_move = atom_to_move #atoms_to_move[0][1]
+
+                # printlog('atom ', type_atom_to_move, 'will be moved', imp ='y')
 
                 if i_atom_to_move:
                     printlog('add_neb(): *i_atom_to_move* = ', i_atom_to_move, 'is used', imp ='y')
