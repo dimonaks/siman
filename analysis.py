@@ -403,10 +403,11 @@ def around_alkali(st, nn, alkali_ion_number):
 
 
 
-def find_polaron(st, i_alk_ion):
+def find_polaron(st, i_alk_ion, out_prec = 1):
+    """
     #using magmom, find the transition atoms that have different magnetic moments
     #i_alk_ion - number of ion from 0 to calculate distances to transition metals
-
+    out_prec (int) - precision of magmom output
 
 
     # maglist = cli.end.get_maglist()
@@ -420,6 +421,8 @@ def find_polaron(st, i_alk_ion):
 
     # m_av = sum(mtm)/len(mtm)
     # print(mtm-m_av)
+    """
+
 
     def zscore(s):
         # print(np.std(s))
@@ -457,12 +460,12 @@ def find_polaron(st, i_alk_ion):
                 d, _ = st.image_distance(x1, x2)
                 d_to_pols.append(d)
             print('polarons are detected on atoms', [i+1 for i in i_pols], 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
-            print('mag moments on trans. atoms:', magmom_tm.round(1))
+            print('mag moments on trans. atoms:', magmom_tm.round(out_prec))
             
             pol[key] = i_pols
         else:
             print('no polarons is detected with nstd', nstd)
-            print('mag moments on trans. atoms:', magmom_tm.round(1))
+            print('mag moments on trans. atoms:', magmom_tm.round(out_prec))
             # print(' deviations                :', dev.round(1))
             pol[key] = None
     return pol, magmom_tm

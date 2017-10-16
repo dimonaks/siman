@@ -976,7 +976,12 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
             # st_as.name+='_as_'+str(k)+'_with_atoms_'+str(a[0]+1)+'_and_'+str(a[1]+1)+'_swapped'
             st_as.name+='_'+suf
             st_as.magmom = None
+            
+            st_as.i_el1 = a[0]
+            st_as.i_el2 = a[1]             
+
             i+=1
+
             structures.append(st_as)
             st_as.write_xyz()
     st.write_xyz()
