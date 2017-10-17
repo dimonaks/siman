@@ -186,7 +186,10 @@ class Structure():
         return spg
 
     def sg(self,symprec = None, silent = 0):
-        s = self.get_space_group_info(symprec)
+        try:
+            s = self.get_space_group_info(symprec)
+        except:
+            s = 'error'
         if not silent:
             print(s)
         return s
@@ -218,15 +221,26 @@ class Structure():
         
         return self.xcart[i]
 
-    def get_transition_elements(self):
-        """Returns transition elements in the structure"""
+    def get_transition_elements(self, fmt = 'names'):
+        """Returns list of transition elements (chemical names or z) in the structure
+        fmt - 
+            'names'
+            'z'
+            'n' - numbers of atoms
+        """
         el = self.get_elements()
         tra = []
-        
-        for e in el:
+        ns = []
+        for i, e in enumerate(el):
             for t in header.TRANSITION_ELEMENTS:
                 if e == invert(t):
                     tra.append(e)
+                    ns.append(i)
+        
+        if fmt == 'z':
+            tra = [invert(t) for t in tra]
+        elif fmt == 'n':
+            tra = ns
         return tra
 
 
@@ -552,12 +566,12 @@ class Structure():
                     st = st.del_atom(i)
 
                     st = st.add_atoms([xcart], element = el_new)
-                    print(st.natom)
-                    print(st.get_elements())
+                    # print(st.natom)
+                    # print(st.get_elements())
 
-                    print(st.natom)
+                    # print(st.natom)
 
-                    print(st.get_elements())
+                    # print(st.get_elements())
                     del numbers[i]
 
                     break
@@ -801,16 +815,16 @@ class Structure():
         out[1] = [invert(zn[o-1]) for o in out[1]]
         out[2] = [o+1 for o in out[2]]
 
-        out = [out[2], out[1], out[3]]
+        out_tab = [range(0, len(out[2])), out[2], out[1], out[3]]
 
-        tab = np.asarray(out).T.tolist()
+        tab = np.asarray(out_tab).T.tolist()
 
  
         # df = pd.DataFrame(tab)
         # print(df)
         if not silent:
             print('Neighbors around atom', i+1, self.get_elements()[i],':')
-            print( tabulate(tab[1:], headers = ['No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
+            print( tabulate(tab[1:], headers = ['nn', 'No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
 
 
         info = {}
@@ -3249,7 +3263,12 @@ class CalculationVasp(Calculation):
                             print_and_log([v > 1e-3 for v in low+high], imp = 'Y' )
                     if "direct lattice vectors" in line:
                         for v in 0,1,2:
-                            self.end.rprimd[v] = np.asarray( [float(ri) for ri in outcarlines[i_line+1+v].split()[0:3]   ] )
+                            line = outcarlines[i_line+1+v]
+                            line = line.replace('-', ' -')
+                            # print(line)
+                            self.end.rprimd[v] = np.asarray( [float(ri) for ri in line.split()[0:3]   ] )
+
+
                         #print self.end.rprimd
                         #print self.rprimd
                     if "POSITION" in line:

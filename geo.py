@@ -713,20 +713,28 @@ def remove_atoms(st, atoms_to_remove):
     return st
 
 
-def remove_one_atom(st, element, del_pos = 1, iat = 0):
+def remove_one_atom(st, element, del_pos = None, iat = 0):
     """
     removes one atom of element type from position del_pos
     iat - number of atom inside subset
     """
-    if not del_pos:
-        del_pos = 1
+    # if not del_pos:
+    #     del_pos = 1
     positions = determine_symmetry_positions(st, element)
+    
+    if not del_pos and len(positions) > 1:
+        printlog('Error! More than one symmetry position is found, please choose del position')
+    elif len(positions) == 1:
+        del_pos = 1
+    else:
+        printlog('Position', del_pos, 'was chosen', imp = 'y')
+
     pos = positions[ del_pos - 1 ]
     i_del = pos[iat]
     st = st.del_atom(i_del) # remove just iat atom
     st.name += '.'+element+str(i_del)+'del'
     st.magmom = [None]
-    return st
+    return st, i_del
 
 def create_deintercalated_structure(st, element, del_pos = 1):
 

@@ -746,6 +746,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     
     read structure in add_loop, to add calculation provied only structure, mat_proj_st_id pass in structure
 
+    - occmatrix in params better to rename to occfile or something like this, 
+
 
     """
 
@@ -1530,7 +1532,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if cl.path["input_geo"]:
 
             calc_geofile_path = os.path.join(cl.dir, os.path.basename(cl.path["input_geo"]) )
-       
+            
+            # sys.exit()
             if cl.path["input_geo"] != calc_geofile_path: # copy initial geo file and other files to calc folder
 
                 makedir(calc_geofile_path)
@@ -1540,15 +1543,16 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 #copy OCCMATRIX file as well             
                 dir_1 = os.path.dirname(cl.path["input_geo"] )
                 dir_2 = cl.dir
-                if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1:
-                    if 'occmatrix' in params:
-                        shutil.copyfile(params['occmatrix'], dir_2+'/OCCMATRIX' ) # file is provided explicitly
+                # sys.exit()
+        if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1: #copy occfile
+            if 'occmatrix' in params:
+                shutil.copyfile(params['occmatrix'], cl.dir+'/OCCMATRIX' ) # file is provided explicitly
 
-                    else:
-                        try:
-                            shutil.copyfile(dir_1+'/OCCMATRIX', dir_2+'/OCCMATRIX' )
-                        except:
-                            printlog('Attention! no OCCMATRIX file was found!!!')
+            else:
+                try:
+                    shutil.copyfile(dir_1+'/OCCMATRIX', cl.dir+'/OCCMATRIX' )
+                except:
+                    printlog('Attention! no OCCMATRIX file was found!!!')
 
 
         # if cl.des:

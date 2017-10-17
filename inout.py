@@ -641,6 +641,8 @@ def write_lammps(st, filename = '', charges = None):
 
 def write_occmatrix(occs, folder):
     #create OCCMATRIX 
+    
+    makedir(folder)
     printlog('I create OCCMATRIX in ', folder, imp = 'y')
     filename = folder+'/OCCMATRIX'
     with open(filename, 'w', newline = '') as f:
