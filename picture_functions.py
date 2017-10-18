@@ -163,7 +163,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  
     linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
-    ver_lines = None, alpha = 0.8, first = True, last = True, convex = None, corner_letter = None,
+    ver_lines = None, alpha = 0.8, first = True, last = True, convex = None, corner_letter = None, hide_ylabels = None,
     **data):
     """
     Plot multiple plots on one axes using *data*
@@ -197,7 +197,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     ver_lines - list of vertical lines (x, type)
 
-
+    hide_ylabels - just hide
 
     ncol - number of legend columns
 
@@ -370,7 +370,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         else:
             ax.yscale('log')
 
-
+    if hide_ylabels:
+        ax.yaxis.set_major_formatter(plt.NullFormatter())
+        # ax.yaxis.set_ticklabels([])
 
     if legend: 
         scatterpoints = 1 # for legend
@@ -385,6 +387,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     
     if last:
         if image_name:
+            # plt.subplots_adjust(hspace=0.1)
 
             path2saved, path2saved_png = process_fig_filename(image_name, fig_format)
 
