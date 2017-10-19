@@ -989,7 +989,7 @@ class Structure():
         cif = CifWriter(st_mp_prim, symprec = symprec)
         cif_name =  filename+'.cif'
         cif.write_file( cif_name  )
-        printlog('Writing cif', cif_name, imp = 'n')
+        printlog('Writing cif', cif_name, imp = 'y')
 
 
     def write_xyz(self, *args, **kwargs):
