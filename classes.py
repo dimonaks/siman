@@ -3152,6 +3152,10 @@ class CalculationVasp(Calculation):
                 self.end.list_xcart = []
                 self.energy = empty_struct()
 
+                de_each_md = 0 # to control convergence each md step
+                de_each_md_list = []
+
+
                 nsgroup = None
                 magnitudes = []
                 self.mag_sum = [] #toatal mag summed by atoms, +augmentation
@@ -3384,13 +3388,16 @@ class CalculationVasp(Calculation):
                         self.list_e_sigma0.append(  self.energy_sigma0  )
                         self.list_e_without_entr.append(  self.e_without_entr  )
 
+                        de_each_md_list.append(de_each_md)
+
+
                     if "energy without entropy =" in line:
                         e_sig0_prev = e_sig0
                         try:
                             e_sig0 = float(line.split()[7])
                         except:
                             e_sig0 = 0
-
+                        de_each_md = e_sig0_prev - e_sig0
 
                     if "free  energy   TOTEN  =" in line:
                         #self.energy = float(line.split()[4])
@@ -3500,11 +3507,14 @@ class CalculationVasp(Calculation):
                                 print_and_log('Warning! Somthing wrong with occ matrix:', line)
                         if spin_polarized:
                             for i in range(nm):
-                                try:
-                                    spin2.append( np.array(outcarlines[i_line+7+nm+i].split()).astype(float) )
-                                except:
-                                    printlog('Attention! Could not read spin2, probably no spaces')
-                                    spin2.append(0)        
+                                # try:
+                                line = outcarlines[i_line+7+nm+i]
+                                # print(line)
+                                line = line.replace('-', ' -')
+                                spin2.append( np.array(line.split()).astype(float) )
+                                # except:
+                                #     printlog('Attention! Could not read spin2, probably no spaces')
+                                #     spin2.append(0)        
 
                         occ_matrices[i_at-1] = spin1+spin2
                         # print (np.array(spin1) )
@@ -3538,6 +3548,14 @@ class CalculationVasp(Calculation):
                         printlog('Eigenvalues are:', w, imp = 'y')
                                 # eltensor
 
+                    if 'average eigenvalue GAMMA=' in line:
+                        # print(line)
+                        gamma = float(line.split()[-1])
+                        if gamma > 1 and 'conv' in show:
+                            printlog('average eigenvalue GAMMA >1', gamma, imp = 'y')
+                        # sys.exit()
+
+
                     # if 'irreducible k-points:': in line:
                     #     self.nkpt = int(line.split()[1])
 
@@ -3555,7 +3573,7 @@ class CalculationVasp(Calculation):
 
 
             try:
-                toldfe = self.set.toldfe*1000  # meV
+                toldfe = self.set.toldfe  # eV
             except:
                 toldfe = 0
 
@@ -3579,7 +3597,7 @@ class CalculationVasp(Calculation):
             #if any(d > 0.001 and d > max_magnitude for d in tdrift):
             if max_tdrift > 0.001 and max_tdrift > max_magnitude:
                 
-                #print_and_log( ("Total drift is too high! At the end one component is %0.f %% of the maximum force, check output!\n") %(maxdrift)  )
+                printlog( "Total drift is too high! At the end one component is {:0.f} of the maximum force, check output!\n".format(maxdrift)  )
                 pass
             #else: maxdrift = 
             # print magn
@@ -3669,12 +3687,18 @@ class CalculationVasp(Calculation):
 
             e_diff = (e_sig0_prev - e_sig0)*1000 #meV
 
-            if abs(e_diff) > toldfe:
+            if abs(e_diff) > toldfe*1000:
                 toldfe_warning = '!'
                 print_and_log("Attention!, SCF was not converged to desirable prec", 
-                    round(e_diff,3), '>', toldfe, 'meV', imp = 'n')
+                    round(e_diff,3), '>', toldfe*1000, 'meV', imp = 'y')
             else:
                 toldfe_warning = ''
+
+            if 'conv' in show:
+                for i, de in enumerate(de_each_md_list ):
+                    if de/toldfe > 1.01:
+                        printlog('Attention! bad SCF convergence {:6.1g} eV for MD step {:}; toldfe = {:6.0g} eV'.format(de, i+1, toldfe))
+
 
             #  Construct beatifull table
             #self.a1 = float(v[0])/2 ; self.a2 = float(v[1])/2/math.sqrt(0.75); self.c = float(v[2])  # o1b
@@ -3778,6 +3802,16 @@ class CalculationVasp(Calculation):
             #print outstring_kp_ec
             # print show
             # print 'force' in show
+
+
+            if 'conv' in show:
+                # print('asdf', de_each_md_list)
+                # show achived convergence every step with respect to toldfe, should be less than 1
+                # np.set_printoptions(linewidth=150, formatter={'float':lambda x: "%3.0f->" % x}) #precision=1,
+                np.set_printoptions(precision=0, linewidth=150, )
+                printlog('Conv each step, de/toldfe (toldfe = {:.0g} eV) =  \n{:};'.format(toldfe, np.array([de/toldfe for de in de_each_md_list ])), imp = 'Y')
+            
+
 
 
             if 'fo' in show:
