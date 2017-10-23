@@ -3597,7 +3597,7 @@ class CalculationVasp(Calculation):
             #if any(d > 0.001 and d > max_magnitude for d in tdrift):
             if max_tdrift > 0.001 and max_tdrift > max_magnitude:
                 
-                printlog( "Total drift is too high! At the end one component is {:0.f} of the maximum force, check output!\n".format(maxdrift)  )
+                printlog( "Total drift is too high! At the end one component is {:2.1f} of the maximum force, check output!\n".format(max_tdrift)  )
                 pass
             #else: maxdrift = 
             # print magn

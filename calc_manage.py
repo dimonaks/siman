@@ -2836,7 +2836,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                         ''
                         # print('Mag_moments on trans,', mag.round(1))
                 
-                if 1 or 'neb_geo' in show:
+                if 0 or 'neb_geo' in show:
                     #visualization of path
                     # print(atom_num)
                     st = cli.end
