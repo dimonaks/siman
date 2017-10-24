@@ -2811,6 +2811,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
             pols = []
             sts = []
+
+            dAO = [] # A-(O,F) distance for each image
+
             for v in vlist:
                 cli = calc[cl.id[0], cl.id[1], v]
                 # print(cl.id[0], cl.id[1], v, cli.state)
@@ -2836,7 +2839,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                         ''
                         # print('Mag_moments on trans,', mag.round(1))
                 
-                if 0 or 'neb_geo' in show:
+                if 1 or 'neb_geo' in show:
                     #visualization of path
                     # print(atom_num)
                     st = cli.end
@@ -2848,26 +2851,34 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                         vec = st.center_on(atom_num)
                     # print(vec)
                     st_loc = st_loc.shift_atoms(vec)
-                    st_loc.write_xyz()
+                    # st_loc.write_xyz()
 
                     sts.append(st.shift_atoms(vec))
 
-                    info = st.nn(atom_num, 2, from_one = False, silent = 1)
-                    print('Average_distance A-2(O,F)', info['av(A-O,F)'], 'A')
+                    info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
+                    print('Average_distance A-2(O,F)', info1['av(A-O,F)'], 'A')
 
-                    av = st.nn(atom_num, 2, from_one = False, silent = 1)['avsq(A-O,F)']
-                    print('Average squared distance A-2(O,F)', av, 'A')
+                    if 0:
+                        av = st.nn(atom_num, 2, from_one = False, silent = 1)['avsq(A-O,F)']
+                        print('Average squared distance A-2(O,F)', av, 'A')
 
-                    info = st.nn(atom_num, 4, from_one = False, silent = 1)
-                    print('Average_distance A-4(O,F)', info['av(A-O,F)'], 'A')
-                    print('Elements are ', info['el'])
+                        info2 = st.nn(atom_num, 4, from_one = False, silent = 1)
+                        print('Average_distance A-4(O,F)', info2['av(A-O,F)'], 'A')
+                        print('Elements are ', info2['el'])
 
-                    info = st.nn(atom_num, 6, from_one = False, silent = 1)
-                    print('Average_distance A-6(O,F)', info['av(A-O,F)'], 'A')
-                    print('Average_deviation A-6(O,F)', info['avdev(A-O,F)'], 'mA')
-                    print('Elements are ', info['el'])
+                        info3 = st.nn(atom_num, 6, from_one = False, silent = 1)
+                        print('Average_distance A-6(O,F)', info3['av(A-O,F)'], 'A')
+                        print('Average_deviation A-6(O,F)', info3['avdev(A-O,F)'], 'mA')
+                        print('Elements are ', info3['el'])
 
                     write_xyz(sts = sts) # write traectory
+
+
+                    dAO.append (info1['av(A-O,F)'])
+
+            if dAO: # find maximum change of distance during migration
+                dAO_change = abs(min(dAO) - max(dAO))
+                results_dic['dAO_change'] = dAO_change
 
 
             if len(pols) > 0:

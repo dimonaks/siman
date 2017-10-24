@@ -350,7 +350,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
 
 
 
-def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = False, only_elements = None, only_numbers = None):
+def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = False, only_elements = None, only_numbers = None, round_flag = 1):
     """
     Return list of distances to n closest atoms around central atom. (By defauld sum of distances)
     
@@ -373,7 +373,20 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         - *only_elements* - list of z of elements to which only the distances are needed; 
         - only_numbers  (list of int) - calc dist only to this atoms 
 
+    round_flag (bool) - if 1 than reduce distance prec to 2 points
+
+
+    #TODO:
+    the periodic boundary conditions realized very stupid by replicating the cell!
+
     """
+    
+    if not round_flag:
+        # overwrite round function with wrapper that do nothing
+        def round(a, b):
+            return a
+
+
     st_original = copy.deepcopy(st)
     st.init_numbers = None
     if periodic:
@@ -417,6 +430,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         output = dlistnn
 
     elif control == 'sum':
+        
         output = round(sum(dlistnn), 2)
     
     elif control == 'av':

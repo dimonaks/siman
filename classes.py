@@ -790,12 +790,14 @@ class Structure():
 
         return st, x1_del, x2_del
 
-    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True):
+    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True, more_info = 0):
         """
         show neigbours
         i - number of central atom, from 1 or 0 (from_one = True or False)
         ndict (dic) - number of specific neigbour atoms
         only - list of interesting z neighbours
+
+        more_info - return more output - takes time
 
         out
         numbers from 1!!!!!
@@ -831,10 +833,12 @@ class Structure():
         info['numbers'] = out_or[2]
         el = self.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
-        info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9])
-        info['avsq(A-O,F)'] = local_surrounding(x, self, n, 'avsq', True, only_elements = [8,9])
-        info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
-        info['sum(A-O,F)'] = local_surrounding(x, self, n, 'sum', True, only_elements = [8,9])
+        info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9], round_flag = 0)
+        
+        if more_info:
+            info['avsq(A-O,F)'] = local_surrounding(x, self, n, 'avsq', True, only_elements = [8,9])
+            info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
+            info['sum(A-O,F)'] = local_surrounding(x, self, n, 'sum', True, only_elements = [8,9])
 
         t = set(out_or[2])
         s = set(range(self.natom)) 
@@ -4332,13 +4336,15 @@ class CalculationVasp(Calculation):
         from calc_manage import res_loop
         res_loop(*self.id, **argv)
 
-    def run(self, ise, iopt = 'full_nomag', up = 'up1', *args, **kwargs):
+    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, *args, **kwargs):
         """
         Wrapper for add_loop (in development)
         By default inherit self.end
         ise - new ise
 
         iopt - inherit_option
+
+        vers - list of version for which the inheritance is done
 
         TODO:
         1. if ise is not provided continue in the same folder under the same name,
@@ -4363,7 +4369,10 @@ class CalculationVasp(Calculation):
                 # self.children = list(set(self.children))
                 child = idd
             # if len(self.children) == 0:
-            it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
+            if not vers:
+                vers = [self.id[2]]
+
+            it_new = add_loop(*self.id[:2], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
             # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
             child = (it_new, ise, self.id[2])
             if child not in self.children:
