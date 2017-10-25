@@ -850,6 +850,8 @@ class Structure():
         st_left = self.remove_atoms(d)
         st_left.name+='_loc'
         # sys.exit()
+        st_left.dlist = out_or[3] # distances to neighbours
+        st_left.ellist = info['el'] # types of neighbours
         info['st'] = st_left
 
         if ndict:

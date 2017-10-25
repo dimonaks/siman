@@ -2811,7 +2811,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
             pols = []
             sts = []
-
+            sts_loc = []
             dAO = [] # A-(O,F) distance for each image
 
             for v in vlist:
@@ -2842,9 +2842,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 if 1 or 'neb_geo' in show:
                     #visualization of path
                     # print(atom_num)
-                    st = cli.end
+                    st = copy.deepcopy(cli.end)
                     # print('moving_atom', st.xcart[atom_num])
-                    st_loc = st.nn(atom_num, 6, from_one = False, silent = 1)['st']
+                    info = st.nn(atom_num, st.natom-1, from_one = False, silent = 1)
+                    st.moving_atom_i = atom_num
+                    st_loc = info['st']
+
+
                     # print(st_loc.xcart)
                     # st_loc = st_loc.shift
                     if v == vlist[0]:
@@ -2852,11 +2856,12 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     # print(vec)
                     st_loc = st_loc.shift_atoms(vec)
                     # st_loc.write_xyz()
-
+                    sts_loc.append(st_loc)
                     sts.append(st.shift_atoms(vec))
 
                     info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
                     print('Average_distance A-2(O,F)', info1['av(A-O,F)'], 'A')
+
 
                     if 0:
                         av = st.nn(atom_num, 2, from_one = False, silent = 1)['avsq(A-O,F)']
@@ -2871,6 +2876,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                         print('Average_deviation A-6(O,F)', info3['avdev(A-O,F)'], 'mA')
                         print('Elements are ', info3['el'])
 
+
+                    # info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
+
                     write_xyz(sts = sts) # write traectory
 
 
@@ -2879,6 +2887,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if dAO: # find maximum change of distance during migration
                 dAO_change = abs(min(dAO) - max(dAO))
                 results_dic['dAO_change'] = dAO_change
+
+            results_dic['sts_loc'] = sts_loc # list of local structures, each structure contains dlist - distances from central cation to anions, and ellist - types of elements
+            results_dic['sts'] = sts # list of mep structures, each structure contains moving_atom_i - number of moving atom
 
 
             if len(pols) > 0:
