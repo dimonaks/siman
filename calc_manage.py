@@ -2844,7 +2844,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     # print(atom_num)
                     st = copy.deepcopy(cli.end)
                     # print('moving_atom', st.xcart[atom_num])
-                    info = st.nn(atom_num, st.natom-1, from_one = False, silent = 1)
+                    info = st.nn(atom_num, 15, from_one = False, silent = 1)
                     st.moving_atom_i = atom_num
                     st_loc = info['st']
 
@@ -2855,7 +2855,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                         vec = st.center_on(atom_num)
                     # print(vec)
                     st_loc = st_loc.shift_atoms(vec)
-                    # st_loc.write_xyz()
+                    st_loc.write_xyz()
+
                     sts_loc.append(st_loc)
                     sts.append(st.shift_atoms(vec))
 
