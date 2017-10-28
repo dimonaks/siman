@@ -428,7 +428,12 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
         # print(np.std(s))
         return (s - np.mean(s)) / np.std(s)
 
+
+
     magmom = np.array(st.magmom)
+    if len(magmom) == 0 :
+        printlog('Error! magmom is empty')
+
     _, mag_numbers = st.get_maglist()
 
     pol = {}
@@ -441,6 +446,8 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
     for key in mag_numbers:
         printlog('Looking at polarons on transition atoms: ',invert(key) )
         numbs = np.array(mag_numbers[key])
+        # print(numbs)
+        # print(magmom)
         magmom_tm = magmom[numbs]
         dev = np.absolute(  zscore(magmom_tm) )
         # print(magmom_tm)

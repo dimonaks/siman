@@ -172,8 +172,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     image_name = None, filename = None,
     show = None, fontsize = None,
     xlim = None, ylim = None, title = None, figsize = None,
-    xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = 10,  
-    linewidth = 3, hor = False, fig_format = 'eps', dpi = 300,
+    xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = None,  
+    linewidth = None, hor = False, fig_format = 'eps', dpi = 300,
     ver_lines = None, alpha = 0.8, first = True, last = True, convex = None, corner_letter = None, hide_ylabels = None,
     **data):
     """
@@ -213,6 +213,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     ncol - number of legend columns
 
     corner_letter - letter in the corner of the plot
+
+    linewidth - was 3 !
+    markersize - was 10
 
     TODO:
     remove some arguments that can be provided in data dict
@@ -327,8 +330,13 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 del con['x']
                 del con['y']
                 del con['fmt']
+                # if 'lw' in 
+                if linewidth:
+                    con['lw'] = linewidth
+                if markersize:
+                    con['ms'] = markersize
 
-            ax.plot(*xyf, linewidth = linewidth, markersize = markersize, alpha = alpha, **con)
+            ax.plot(*xyf, alpha = alpha, **con)
 
             if convex:
                 points = np.asarray(list(zip(xyf[0], xyf[1])))

@@ -3480,6 +3480,7 @@ class CalculationVasp(Calculation):
 
 
                     if 'magnetization (x)' in line:
+                        # print(line)
                         mags = []
                         for j in range(self.end.natom):
                             mags.append( float(outcarlines[i_line+j+4].split()[4]) )
