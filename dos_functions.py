@@ -522,4 +522,4 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     printlog("------End plot_dos()-----\n\n")
 
 
-    return {'name':cl1.name}
+    return {'name':cl1.name, 'filename':image_name}
