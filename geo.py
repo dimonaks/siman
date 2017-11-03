@@ -669,8 +669,9 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
     return sc
 
 
-
-
+def supercell(st, ortho_sizes):
+    mul_matrix = ortho_vec(st.rprimd, ortho_sizes)
+    return create_supercell(st, mul_matrix)
 
 def determine_symmetry_positions(st, element, silent = 0):
     """
