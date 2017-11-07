@@ -183,6 +183,11 @@ class Structure():
         else:
             p = self.convert2pymatgen()
             spg = p.get_space_group_info(symprec)
+        # p = self.convert2pymatgen()
+
+        # print(p.get_symmetry_operations(symprec))
+
+
         return spg
 
     def sg(self,symprec = None, silent = 0):

@@ -670,6 +670,9 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01)
 
 
 def supercell(st, ortho_sizes):
+    """
+    wrapper
+    """
     mul_matrix = ortho_vec(st.rprimd, ortho_sizes)
     return create_supercell(st, mul_matrix)
 
