@@ -331,11 +331,12 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 del con['y']
                 del con['fmt']
                 # if 'lw' in 
-                if linewidth:
-                    con['lw'] = linewidth
-                if markersize:
-                    con['ms'] = markersize
+            if linewidth:
+                con['lw'] = linewidth
+            if markersize:
+                con['ms'] = markersize
 
+            # print('key is ', key)
             ax.plot(*xyf, alpha = alpha, **con)
 
             if convex:
@@ -354,7 +355,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             x_range = np.linspace(min(data[key][0]), max(data[key][0]))
             fit_y1 = fit_func1(x_range); 
      
-            ax.plot(x_range, fit_y1, data[key][-1][0], )
+
+
+            ax.plot(x_range, fit_y1, data[key][2][0], )
 
             # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
             # y_min  = fit_func2(x_min)

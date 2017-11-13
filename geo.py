@@ -822,7 +822,7 @@ def create_replaced_structure(st, el1, el2, rep_pos = 1, only_one = False):
 
 
 
-def create_antisite_defect(st, cation_positions = None):
+def create_antisite_defect_old(st, cation_positions = None):
     """
     exchange cation and transition metal
     st (Structure)
@@ -1020,6 +1020,9 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
 
     return structures
 
+
+
+create_antisite_defect = create_antisite_defect3
 
 
 def calc_k_point_mesh(rprimd, kspacing):
