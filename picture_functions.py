@@ -50,6 +50,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     """
 
+
+    from analysis import determine_barrier
+
     #Create
     if not style_dic:
         style_dic = {'p':'ro', 'l':'b-', 'label':None}
@@ -106,31 +109,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     ynew = spl(xnew)
 
-    #minimum now is always zero,
-    spl_der = spl.derivative()
-
-    mi = min(xnew)
-    ma = max(xnew)
-    r = spl_der.roots()
-
-
-    r = r[ np.logical_and(mi<r, r<ma) ] # only roots inside the interval are interesting
-
-
-
-    if len(spl(r)) > 0:
-        diff_barrier = max( spl(r) ) # the maximum value 
-        print('roots are at ', r, spl(r))
-
-    else:
-        print_and_log('Warning! no roots')
-        diff_barrier = 0
-    mine = min(eners)
-    maxe = max(eners)
-    de = abs(mine - maxe)
-    if de > diff_barrier:
-        diff_barrier = de
-
+    diff_barrier = determine_barrier(mep_pos, eners)
 
 
     print_and_log('plot_mep(): Diffusion barrier =',round(diff_barrier, 2),' eV', imp = 'y')

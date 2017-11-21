@@ -6,7 +6,6 @@ from header import printlog, mpl
 from functions import element_name_inv, invert
 from geo import determine_symmetry_positions, local_surrounding
 from database import push_figure_to_archive
-from picture_functions import fit_and_plot
 from header import db
 from small_functions import is_list_like, makedir
 
@@ -17,6 +16,90 @@ try:
 except:
     print('ase is not avail; run   pip install ase')
     ase_flag = False
+
+
+
+def determine_barrier(positions = None, energies = None):
+
+    """
+    The sign of barrier determined by the curvuture at saddle point. Minimum at saddle point corresponds to negative barrier
+    The saddle point is determined as maximum deviation from energy in initial position
+
+    """
+
+    import scipy
+    import matplotlib.pyplot as plt
+
+    if positions == None:
+        positions = range(len(energies))
+
+    if energies == None:
+        printlog('Error! Please provide at least energies')
+
+
+    spl = scipy.interpolate.PchipInterpolator(positions, energies)
+
+    spl_der = spl.derivative()
+    spl_der2 = spl_der.derivative()
+    mi = min(positions)
+    ma = max(positions)
+    r = spl_der.roots()
+
+
+    # print(r)
+    r = r[ np.logical_and(mi<r, r<ma) ] # only roots inside the interval are interesting
+
+
+    e_at_roots = spl(r)
+    if len(e_at_roots) > 0:
+        # diff_barrier = max( e_at_roots ) # the maximum value 
+        print('roots are at ', r, e_at_roots)
+
+        #find r for saddle point. the energy at saddle point is most far away from the energy at initial position by definition
+        de_s = np.abs(e_at_roots-energies[0])
+        i_r_de_max = np.argmax(de_s)
+        print(de_s)
+        print(i_r_de_max)
+
+
+        r_de_max = r[i_r_de_max]
+        e = spl(r_de_max)
+        curvuture_at_saddle = spl_der2(r_de_max)
+        
+        sign =  - np.sign(curvuture_at_saddle)
+        if curvuture_at_saddle < 0:
+            critical_point_type = 'max'
+        elif curvuture_at_saddle > 0:
+            critical_point_type = 'min'
+        else:
+            critical_point_type = 'undefined'
+
+
+        print('saddle point at ', r_de_max, e, 'is a local', critical_point_type)
+
+
+    else:
+        print_and_log('Warning! no roots')
+        # diff_barrier = 0
+        sign = 1
+
+
+    mine = min(energies)
+    maxe = max(energies)
+    de = abs(mine - maxe)
+    # if de > diff_barrier:
+    diff_barrier = de * sign
+
+    print('diff_barrier', diff_barrier)
+    # plt.plot(spl(np.linspace(0, ma, 1000)))
+    # plt.show()
+
+    return diff_barrier
+
+
+
+
+
 
 
 def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
@@ -300,6 +383,7 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
     # e, v, emin, vmin       = plot_conv( conv[n], calc,  "fit_gb_volume2")
 
 
+    from picture_functions import fit_and_plot
 
     alist = []
     vlist = []
