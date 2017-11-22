@@ -148,7 +148,7 @@ kB_to_GPa = 0.1
 eV_A_to_J_m = 16.021765
 THz2eV = 0.00413566553853599
 kJ_mol2eV = 1.0364e-2
-
+J2eV = 6.242e+18
 
 kB = 8.617e-5 # eV/K
 TRANSITION_ELEMENTS = [22, 23, 25, 26, 27, 28]

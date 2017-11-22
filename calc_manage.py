@@ -2930,6 +2930,12 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             _, diff_barrier = plot_mep(atom_pos, mep_energies, plot = 0, show = 0, fitplot_args = fitplot_args, style_dic = style_dic)
 
             results_dic['barrier'] = diff_barrier
+            
+            middle_image = len(vlist) // 2
+            results_dic['dEm1']    = mep_energies[middle_image] - mep_energies[0]
+            
+
+
             cl1.barrier = diff_barrier
             cl2.barrier = diff_barrier
 
