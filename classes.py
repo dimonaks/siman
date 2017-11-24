@@ -168,6 +168,26 @@ class Structure():
     def convert2pymatgen(self):
         return pymatgen.Structure(self.rprimd, self.get_elements(), self.xred)
 
+    def update_from_pymatgen(self, stpm):
+        """
+        stpm - pymatgen structure
+        update the current structure from pymatgen structure
+        only rprimd, xred and xcart are updated now!!!!!
+
+        TODO:
+        please update also atomic types!!!!
+
+        """
+        st = copy.deepcopy(self)
+        st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
+        st.xred   = [np.array(site._fcoords) for site in stpm._sites]
+        st.update_xcart()
+        if st.natom != len(st.xred):
+            printlog('Error! number of atoms was changed, please improve this method')
+
+        st.name+='_pmg'
+        return st
+
     def printme(self):
         print(self.convert2pymatgen())
         return 

@@ -27,7 +27,7 @@ from header import printlog
 from picture_functions import fit_and_plot
 from functions import element_name_inv, smoother
 from geo import local_surrounding, determine_symmetry_positions
-
+from small_functions import latex_chem
 
 
 
@@ -217,6 +217,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     """2. Plot dos for different cases"""
     if dostype == 'total':
         # print(dos[0].dos)
+        ylabel = "DOS (states/eV)"
 
         if spin_pol:
             dosplot = {'Tot up':(dos[0].energy, smoother(dos[0].dos[0], 10), 'b-'), 'Tot down':(dos[0].energy, -smoother(dos[0].dos[1], 10), 'r-')}
@@ -228,6 +229,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             **dosplot)
 
     elif dostype == 'diff_total': #no spin-polarized!!!!
+        ylabel = "DOS (states/eV)"
 
         if len(dos) > 1:    
             #calculate dos diff 
@@ -250,6 +252,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         #1  p carbon,  d Ti
         #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
        
+        ylabel = "PDOS (states/atom/eV)"
+
+
         try:
             dos[0].site_dos(0, 4)
         except:
@@ -398,7 +403,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 if labels:
                     formula = labels[i]
                 else:
-                    formula = n.split('.')[0]
+                    formula = latex_chem(n.split('.')[0])
+
+
+
                 i+=1
                 if spin_pol:
                     nam+=''
@@ -455,7 +463,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))
 
-        fit_and_plot(show = show, image_name = image_name, xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", hor = True,
+        fit_and_plot(show = show, image_name = image_name, xlabel = "Energy (eV)", ylabel = ylabel, hor = True,
         # title = cl1.name.split('.')[0]+'; V='+str(round(cl1.vol) )+' $\AA^3$; Impurity: '+el,
         **plot_param, 
         **args

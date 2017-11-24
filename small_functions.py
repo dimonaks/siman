@@ -97,10 +97,13 @@ def latex_chem(formula):
     return formula
 
 def latex_spg(spg):
-    spg = spg.replace('_1', '$_1$')
+
+    # print(spg)
+    # spg = spg.replace('_1', '$_1$')
     spg = spg.replace('p', 'P')
     if '-' in spg:
         pos = spg.find('-')
         dig = spg[pos+1]
-        spg = spg.replace('-'+dig, '$\\bar{'+dig+'}$')
+        spg = spg.replace('-'+dig, '\\bar{'+dig+'}')
+    spg = '$'+spg+'$'
     return spg
