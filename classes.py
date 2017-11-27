@@ -825,7 +825,7 @@ class Structure():
         more_info - return more output - takes time
 
         out
-        numbers from 1!!!!!
+            'numbers' from 0 in the new version!!!!!
         """
         import itertools
         from functions import invert
@@ -856,6 +856,8 @@ class Structure():
 
         info = {}
         info['numbers'] = out_or[2]
+
+
         el = self.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
         info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9], round_flag = 0)

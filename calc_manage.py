@@ -922,6 +922,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
             v = verlist[0]
+            # printlog('add_loop_scale(): version is ', v)
+            # sys.exit()
+
 
             # if up != 'up3':
             print_and_log('add_loop_scale(): Preparing   scale  calculation ... ', imp = 'Y')
@@ -1305,6 +1308,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     # id1 = (it, setlist[0], verlist[0])
 
     add_loop_prepare()
+
+    # print(verlist)
 
     mat_proj_st_id = add_loop_take_from_database()
     
