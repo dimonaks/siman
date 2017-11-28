@@ -1001,7 +1001,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 cl_temp = CalculationVasp(varset[inputset], id_s)
 
                 for i, s in enumerate(sts):
-                    ver_new = i+v
+                    ver_new = i+ 1 # start from 1; before it was v+i
                     s.name = it_new+'.'+s.name
                     cl_temp.init = s
                     cl_temp.version = ver_new

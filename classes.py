@@ -349,6 +349,22 @@ class Structure():
             return st
 
 
+    def add_atom(self, xr = None, element = 'Pu', xc = None,):
+        """
+        wrapper 
+        allows to add one atom using reduced coordinates
+        """
+        if xr:
+            ''
+            xc = xred2xcart([xr], self.rprimd)[0]
+        elif xc:
+            ''
+
+        else:
+            ''
+            printlog('Error! Provide reduced *xr* or cartesian *xc* coordinates!')
+        st = self.add_atoms([xc], element = element)
+        return st 
 
     def reorder_for_vasp(self, inplace = False):
         """
@@ -919,6 +935,8 @@ class Structure():
        
         if not filename:
             filename = ('xyz/POSCAR_'+st.name).replace('.', '_')
+
+        makedir(filename)
 
         printlog('Starting writing POSCAR', filename, 'Vasp5:', vasp5)
 
@@ -1869,6 +1887,10 @@ class CalculationVasp(Calculation):
                     pass
 
         """Process magnetic moments"""
+        if 'afm_ordering' in self.calc_method:
+            self.init.magmom = [None]
+
+
 
         if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and any(self.init.magmom):
 
@@ -1922,19 +1944,26 @@ class CalculationVasp(Calculation):
                 print_and_log('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
                 ns = len(spec_mom_is); 
                 number_of_ord = math.factorial(ns) / math.factorial(0.5 * ns)**2
-                if number_of_ord > 100:
-                    print_and_log('Attention! Number of orderings is more than 100 - I will check only first 100', imp = 'y')
-                else:
+                
+                if 1:
+                    nords = 10
+
+                    if number_of_ord > nords:
+                        print_and_log('Attention! Number of orderings is more than', nords, ' - I will check only first ', nords, imp = 'y')
+                # else:
 
                     ls = [0]*len(spec_mom_is)
                     # print ls
                     orderings = []
                     
+
+
+
                     def spin(ls, i):
                         """
                         Find recursivly all possible orderings
                         """
-                        if len(orderings) < 100:
+                        if len(orderings) < nords:
 
                             for s in 1,-1:
                                 ls[i] = s
@@ -1949,7 +1978,6 @@ class CalculationVasp(Calculation):
 
                     mag_orderings = []
                     mag_orderings.append(magmom)
-                    nords = 71
                     printlog('Only '+str(nords)+' orderings are checked !')
 
                     for j, order in enumerate(orderings):
