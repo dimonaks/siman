@@ -1887,7 +1887,7 @@ class CalculationVasp(Calculation):
                     pass
 
         """Process magnetic moments"""
-        if 'afm_ordering' in self.calc_method:
+        if self.calc_method and 'afm_ordering' in self.calc_method:
             self.init.magmom = [None]
 
 
@@ -2164,7 +2164,7 @@ class CalculationVasp(Calculation):
 
                     f.write("Automatic Mesh\n") #Comment
                     f.write("0 \n")#Number of points; 0-Auto
-                    if self.set.vasp_params["KGAMMA"] == ".TRUE.": 
+                    if 'KGAMMA' in self.set.vasp_params and self.set.vasp_params["KGAMMA"] in (1,'.TRUE.', 'True', '1'): 
                         f.write("Gamma\n")
                     else: 
                         f.write("Monkhorst Pack\n")

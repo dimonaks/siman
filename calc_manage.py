@@ -1328,7 +1328,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     input_folder = add_loop_choose_input_folder()
 
 
-
     for inputset in setlist:
 
         prevcalcver = None # version of previous calculation in verlist

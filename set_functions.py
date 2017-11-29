@@ -692,7 +692,7 @@ def init_default_sets():
 
 
     setname = 'opt'
-    if setname  in varset: #init only once
+    if setname not in varset: #init only once
         # sys.exit()
         s = InputSet(setname) 
         s.kpoints_file = True
@@ -708,6 +708,8 @@ def init_default_sets():
             'ISMEAR'    : 2,
             'KSPACING'  : 0.2,
             }
+        s.potdir = copy.deepcopy(header.nu_dict)
+        
         s.update()
         header.varset[setname] = copy.deepcopy(s)
     # print(header.varset[setname], setname)
