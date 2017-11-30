@@ -142,7 +142,7 @@ def process_fig_filename(image_name, fig_format):
     else:
         path2saved = str(image_name)+'.'+fig_format
     
-    path2saved_png = os.path.dirname(image_name)+'/png/'+os.path.basename(image_name)+'.png'
+    path2saved_png = os.path.dirname(image_name)+'./png/'+os.path.basename(image_name)+'.png'
     makedir(path2saved_png)
 
     return path2saved, path2saved_png

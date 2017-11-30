@@ -13,12 +13,12 @@ PATH2PROJECT = '' # path to project on cluster relative to home folder
 
 
 CLUSTERS['cee'] = {
-'address':'aksenov@10.30.16.62',
+'address':'aksenov@10.30.16.62', # command for ssh
 'homepath':'/home/aksenov/',
 'schedule':'SLURM',
 'corenum':16,
 'pythonpath':'/usr/lib64/python2.7/site-packages/numpy',
-'vasp_com':'prun /opt/vasp/bin/vasp5.4.1MPI',
+'vasp_com':'prun /opt/vasp/bin/vasp5.4.1MPI', # path to vasp binary
 }
 
 CLUSTERS['skol'] = {

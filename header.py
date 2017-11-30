@@ -17,28 +17,33 @@ TODO:
 """
 
 import os, subprocess, sys, shelve
+try:
+    import matplotlib as mpl
 
-import matplotlib as mpl
 
 
+    """Global matplotlib control"""
+    # size = 22 #for one coloumn figures
+    size = 16 #for DOS
+    # size = 16 #for two coloumn figures
+    mpl.rc('font',family='Serif')
+    # mpl.rc('xtick', labelsize= size) 
+    # mpl.rc('ytick', labelsize= size) 
+    # mpl.rc('axes', labelsize = size) 
+    # mpl.rc('legend', fontsize= size) 
+    # mpl.rc('Axes.annotate', fontsize= size) #does not work
+    mpl.rcParams.update({'font.size': size})
+    mpl.rcParams.update({'mathtext.fontset': "stix"})
+    # plt.rcParams['mathtext.fontset'] = "stix"
 
-"""Global matplotlib control"""
-# size = 22 #for one coloumn figures
-size = 16 #for DOS
-# size = 16 #for two coloumn figures
-mpl.rc('font',family='Serif')
-# mpl.rc('xtick', labelsize= size) 
-# mpl.rc('ytick', labelsize= size) 
-# mpl.rc('axes', labelsize = size) 
-# mpl.rc('legend', fontsize= size) 
-# mpl.rc('Axes.annotate', fontsize= size) #does not work
-mpl.rcParams.update({'font.size': size})
-mpl.rcParams.update({'mathtext.fontset': "stix"})
-# plt.rcParams['mathtext.fontset'] = "stix"
+    #paths to libraries needed by siman
+    # sys.path.append('/home/dim/Simulation_wrapper/ase') #
+    import matplotlib.pyplot as plt
 
-#paths to libraries needed by siman
-# sys.path.append('/home/dim/Simulation_wrapper/ase') #
-
+except:
+    mpl = None
+    plt = None
+    print('Warning! matplotlib is not installed! Some functions will not work!')
 
 history = []
 
@@ -65,7 +70,6 @@ except:
     warnings = 'yY'
 
 
-import matplotlib.pyplot as plt
 
 
 calc_database = 'only_calc.gdbm3'
