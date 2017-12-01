@@ -38,8 +38,7 @@ try:
 
     #paths to libraries needed by siman
     # sys.path.append('/home/dim/Simulation_wrapper/ase') #
-    import matplotlib.pyplot as plt
-
+    # plt = None
 except:
     mpl = None
     plt = None
@@ -69,8 +68,10 @@ except:
     history.append('separate run')
     warnings = 'yY'
 
-
-
+try:
+    import matplotlib.pyplot as plt
+except:
+    plt = None
 
 calc_database = 'only_calc.gdbm3'
 

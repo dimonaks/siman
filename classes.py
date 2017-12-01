@@ -166,7 +166,17 @@ class Structure():
         return ifmaglist, mag_numbers
 
     def convert2pymatgen(self):
-        return pymatgen.Structure(self.rprimd, self.get_elements(), self.xred)
+
+
+        if hasattr(self, 'magmom') and any(self.magmom):
+            site_properties = {"magmom":self.magmom}
+        
+            # print(self.magmom)
+        else:
+            site_properties = None
+
+
+        return pymatgen.Structure(self.rprimd, self.get_elements(), self.xred, site_properties = site_properties)
 
     def update_from_pymatgen(self, stpm):
         """
@@ -1018,7 +1028,24 @@ class Structure():
         return
 
 
-    def write_cif(self, filename):
+    def write_cif(self, filename, mcif = False):
+        """
+        Find primitive cell and write it in cif format
+        
+
+        mcif (bool) - if True, than write mcif file with magnetic moments included, primitive cell is not supported
+
+
+        
+
+        """
+        
+        if mcif:
+            m = 'm'
+        else:
+            m = ''
+
+
         makedir(filename)
         symprec = 0.1
         st_mp = self.convert2pymatgen()
@@ -1036,9 +1063,13 @@ class Structure():
             st_mp_prim = st_mp
             symprec = 0.01
 
-
-        cif = CifWriter(st_mp_prim, symprec = symprec)
-        cif_name =  filename+'.cif'
+        if mcif:
+            cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif)
+        else:
+            cif = CifWriter(st_mp_prim, symprec = symprec, write_magmoms=mcif)
+        
+        cif_name =  filename+'.'+m+'cif'
+        
         cif.write_file( cif_name  )
         printlog('Writing cif', cif_name, imp = 'y')
 

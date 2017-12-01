@@ -418,7 +418,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     # print('local_surrounding(): dlist', dlist)
 
 
-    if abs(dlist[0]) < 0.01:
+    if len(dlist) > 0 and abs(dlist[0]) < 0.01:
         dlistnn = dlist[1:n_neighbours+1] #without first impurity which is x_central
     else:
         dlistnn = dlist[:n_neighbours]
