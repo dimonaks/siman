@@ -4432,6 +4432,8 @@ class CalculationVasp(Calculation):
         ise - new ise
 
         iopt - inherit_option
+            'full_nomag'
+            'full'
 
         vers - list of version for which the inheritance is done
 
