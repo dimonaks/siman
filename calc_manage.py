@@ -430,13 +430,13 @@ def get_file_by_version(geofilelist, version):
 
 
 
-def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None):
+def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None, filename = None):
     """
     Wrapper for reading geometry files
     calcul (Calculation()) - object to which the path and version read
 
     curver (int) - version of file to be read
-    input_geo_file (str) - explicitly provided input file, has higher priority
+    input_geo_file or filename (str) - explicitly provided input file, has higher priority
     input_folder (str)   - folder with several input files, the names doesnot matter only versions
     input_geo_format (str) - explicitly provided format of input file 
 
@@ -447,7 +447,8 @@ def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_g
 
     search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'cif':'*.cif'}
 
-
+    if filename:
+        input_geo_file = filename
 
     if input_geo_file:
 

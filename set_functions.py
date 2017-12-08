@@ -22,6 +22,7 @@ import header
 from header import print_and_log, printlog;
 import copy
 from small_functions import is_list_like
+from functions import invert
 #Vasp keys
 vasp_electronic_keys = [
 'ALGO',
@@ -110,6 +111,10 @@ vasp_other_keys = [
 'GGA',
 'IALGO',
 'LSCALAPACK',
+'AMIN',
+'IDIPOL',
+'LDIPOL',
+'DIPOL',
 ]
 
 siman_keys = [
@@ -411,11 +416,18 @@ class InputSet():
         self.compare_with += arg+" "
 
 
-    def set_potential(self,znucl, arg):
+    def set_potential(self,znucl, arg = ''):
         # print arg
+        
+        if not arg:
+            arg = header.PATH2POTENTIALS+'/'+invert(znucl)
+            printlog('Attention!, Default potentials is chosen from ',header.PATH2POTENTIALS, 'for',invert(znucl) , imp ='Y')
+
         if type(arg) not in (str,):
             # sys.exit("\nset_potential error\n")
             raise RuntimeError
+
+
 
         if znucl in self.potdir:
             if arg == self.potdir[znucl]:
