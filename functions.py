@@ -3,6 +3,7 @@ from __future__ import division, unicode_literals, absolute_import
 import os, tempfile, copy, math, itertools, sys
 import numpy as np
 from operator import itemgetter
+from itertools import product
 
 
 import header
@@ -681,3 +682,43 @@ def words(fileobj):
         for word in line.split():
             yield word
 
+
+
+
+def server_cp(copy_file, to, gz = True, scratch = False):
+    
+    if scratch:
+        copy_file = '/scratch/amg/aksenov/' + copy_file
+    else:
+        copy_file = header.project_path_cluster + '/' + copy_file
+
+
+    if gz:
+        command = 'cp '+copy_file + ' ' + to +'/CHGCAR.gz' '; gunzip -f '+ to+ '/CHGCAR.gz'
+    else:
+        command = 'cp '+copy_file + ' ' + to +'/CHGCAR' 
+
+
+
+    printlog(command, imp = 'y')
+    out = run_on_server(command, addr = header.cluster_address)
+    printlog(out, imp = 'y')                
+    return out
+
+
+
+def wrapper_cp_on_server(file, to):
+    """
+    tries iterativly scratch and gz
+    """
+    copy_to   = to
+
+    copy_file = file
+
+    for s, gz in product([0,1], ['', '.gz']):
+        printlog('scratch, gz:', s, gz)
+        out = server_cp(copy_file+gz, to = to, gz = gz, scratch = s)
+        if out == '':
+            printlog('Succesfully copied', imp = 'y')
+            break
+    return

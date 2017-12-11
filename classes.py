@@ -362,12 +362,14 @@ class Structure():
     def add_atom(self, xr = None, element = 'Pu', xc = None,):
         """
         wrapper 
-        allows to add one atom using reduced coordinates
+        allows to add one atom using reduced coordinates or cartesian
         """
-        if xr:
+
+        if xr is not None:
             ''
             xc = xred2xcart([xr], self.rprimd)[0]
-        elif xc:
+        
+        elif xc is not None:
             ''
 
         else:

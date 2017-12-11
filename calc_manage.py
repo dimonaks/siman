@@ -27,7 +27,9 @@ from header import print_and_log, runBash, mpl, plt
 from small_functions import is_list_like, makedir, list2string
 from classes import Calculation, CalculationVasp, Description
 from functions import (gb_energy_volume, element_name_inv 
-     , get_from_server,  run_on_server, push_to_server)
+     , get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
+
+
 from inout import write_xyz, write_occmatrix
 
 from picture_functions import plot_mep, fit_and_plot, plot_conv
@@ -816,13 +818,17 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
     def add_loop_inherit():
-        
+        """
+
+        inherit options:
+        full_chg - including chg file
+        """
         nonlocal  it, setlist, id_base, it_suffix
         struct_des = header.struct_des
 
         printlog('add_loop: starting add_loop_inherit ...', imp ='n')
         #inherit option
-        inh_opt_ngkpt = ['full', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
+        inh_opt_ngkpt = ['full', 'full_chg', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
         inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
         # if inherit_option in inh_opt_ngkpt+inh_opt_other:
         omit_inh_opt = ['inherit_xred', 'continue']
@@ -835,7 +841,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             if inherit_option == 'full':
                 it_new = iti+'.if'
-
+            
+            if inherit_option == 'full_chg':
+                it_new = iti+'.ifc'
+            
             elif inherit_option == 'full_nomag':
                 it_new = iti+'.ifn'
 
@@ -1246,42 +1255,30 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             
             # calc[id_base].path["charge"]
 
-            def server_cp(copy_file, gz = True, scratch = False):
-                
-                if scratch:
-                    copy_file = '/scratch/amg/aksenov/' + copy_file
-                else:
-                    copy_file = header.project_path_cluster + '/' + copy_file
 
 
-                if gz:
-                    command = 'cp '+copy_file + ' ' + copy_to +'/CHGCAR.gz' '; gunzip -f '+ copy_to+ '/CHGCAR.gz'
-                else:
-                    command = 'cp '+copy_file + ' ' + copy_to +'/CHGCAR' 
-
-
-
-                printlog(command, imp = 'y')
-                out = run_on_server(command, addr = header.cluster_address)
-                printlog(out, imp = 'y')                
-                return out
 
 
             printlog('Coping CHGCAR for band structure', imp = 'y')
-            copy_to   = header.project_path_cluster + '/' + calc[id].dir + '/'
-
-            copy_file = calc[id_base].path["chgcar"]
-            for s, gz in product([0,1], ['', '.gz']):
-                printlog('scratch, gz:', s, gz)
-                out = server_cp(copy_file+gz, gz = gz, scratch = s)
-                if out == '':
-                    printlog('Succesfully copied', imp = 'y')
-                    break
+            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/')
 
 
 
-            if 'cannot stat' in out:
-                copy_file = '/scratch/amg/aksenov/' + calc[id_base].path["chgcar"]+'.gz'
+
+        if inherit_option  == 'full_chg':
+
+
+            # cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
+
+            # print(calc[id_base].path)
+
+            printlog('Coping CHGCAR for band structure', imp = 'y')
+
+            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/')
+
+
+
+
 
 
 
@@ -1689,6 +1686,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         
         inherit_type = '':
             full          - full inheritance of final state
+            full_chg      - full + chg file, works only if chg file is on the same cluster
             'full_nomag'  - full except magmom which are set to None
             r2r3          - use r2 and r3 from id_from
             r1r2r3        - use r1, r2 and r3 from id_from
@@ -1880,12 +1878,16 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         st.update_xcart() #calculate new xcart from xred, because rprimd was changed
 
 
-    elif inherit_type == "full":
+    elif inherit_type in ["full", ]:
         # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
         des = 'Fully inherited from the final state of '+cl_base.name
 
 
+    elif inherit_type  == 'full_chg':
 
+        des = 'Fully inherited (including chg file ) from the final state of '+cl_base.name
+
+        # The file is copied in add_loop_finalize !!!
 
     elif inherit_type == "full_nomag":
         # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");

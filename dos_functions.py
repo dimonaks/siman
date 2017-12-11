@@ -102,7 +102,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12,
-    lts2 = '--', split_type = 'octa', ):
+    lts2 = '--', split_type = 'octa', plot_spin_pol = 1):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -110,7 +110,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         'diff_total' - difference of total dos, use cl2 for second calculation
         'partial' - partial dos
 
-    orbitals (list of str) - any from 's, p, d, py, pz, px, dxy, dyz, dz2, dxz, dx2' where 'p' and 'd' are sums of projections
+    orbitals (list of str) - 
+        any from 's, p, d, py, pz, px, dxy, dyz, dz2, dxz, dx2' where 'p' and 'd' are sums of projections
+        also to sum around neigbours use p6 and d6 and neighbors parameter
+
     up - 'up2' allows to download the file once again
     labels - two manual labels for cl1 and cl2 instead of auto
 
@@ -119,7 +122,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     show (bool) - whether to show the dos 
     path (str)  - path to folder with images
 
-    neighbors - number of neighbours around iatom to plot dos on them
+    neighbors - number of neighbours around iatom to plot dos on them using p6 or d6; only p6 is implemented to the moment in plot section
 
     xlim, ylim (tuple)- limits for plot
 
@@ -134,6 +137,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     split_type - 
         octa  - the names are t2g and eg
         tetra - the names are t2 and e
+
+
+    plot_spin_pol -
+        0 - spin-polarized components are summed up
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
@@ -163,7 +170,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             printlog('cl1: Atom numbers:', eld1, imp = 'y')
             printlog('cl1:', determine_symmetry_positions(cl1.end, eld1[iatom]), imp = 'y')
 
+            # print(cl2)
             if cl2:
+                if not iatom2:
+                    printlog('Error! provide iatom2!')
                 printlog('cl2: Atom', iatom2, 'of type', eld2[iatom2], 'is choosen', imp = 'y')
 
 
@@ -185,7 +195,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     """1. Read dos"""
     printlog("------Start plot_dos()-----", imp = 'Y')
-    dos = []
+    
+
+    dos = [] # main list for cl1 and cl2
+
+
     for cl in cl1, cl2:
         if cl == None: 
             continue
@@ -277,16 +291,16 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         local_atoms = local_surrounding(surround_center, cl1.end, neighbors, control = 'atoms', periodic = True)
 
-        numbers = local_atoms[2] # first atom is impurity if exist
+        numbers = local_atoms[2] 
         printlog("Numbers of local atoms:", [n+1 for n in numbers], imp = 'Y' )
         printlog("List of distances", [round(d,2) for d in local_atoms[3]], imp = 'Y' )
 
 
-        iX = numbers[0]
+        iX = numbers[0]# first atom is impurity if exist
         # printlog
         numbers_list = [numbers]
         if cl2:
-            numbers_list.append([iatom2])
+            numbers_list.append([iatom2]) # for cl2 only one atom is supported
 
 
 
@@ -294,31 +308,45 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             
             d.p = [] #central and and surrounding
             d.d = []
+            d.p_up = []
+            d.p_down = []
             d.p_down = [] #central and and surrounding
+            d.d_up = [] #central atom and surrounding atoms
             d.d_down = [] #central atom and surrounding atoms
             d.t2g_up = []
             d.t2g_down = []
             d.eg_up = []
             d.eg_down = []
-            d.d6 = 0 #sum by six atoms
+            # d.d6 = 0 #sum by surrounding atoms atoms
 
             for i in numbers: #Now for surrounding atoms in numbers list:
 
                 if spin_pol:
-                    plist = [d.site_dos(i, l)  for l in (2,4,6) ]
+                    plist_up   = [d.site_dos(i, l)  for l in (2,4,6) ]
                     plist_down = [d.site_dos(i, l)  for l in (3,5,7) ]
-                    d.p_down.append( [ sum(x) for x in zip(*plist_down) ] )
+                    d.p_up.append(   [ sum(x)  for x in zip(*plist_up)   ] )
+                    d.p_down.append( [ sum(x)  for x in zip(*plist_down) ] )
+                    plist = plist_up + plist_down
+
+                    d.p.append(  [ sum(x) for x in zip(*plist) ] )
+
 
                 else:
                     plist = [d.site_dos(i, l)  for l in (1,2,3) ]
-                d.p.append( [ sum(x) for x in zip(*plist) ] )
-
+                    d.p.append(  [ sum(x) for x in zip(*plist) ] )
 
 
 
                 if spin_pol:
-                    dlist      = [d.site_dos(i, l)  for l in (8,10,12,14,16) ] #
+                    dlist_up   = [d.site_dos(i, l)  for l in (8,10,12,14,16) ] #
                     dlist_down = [d.site_dos(i, l)  for l in (9,11,13,15,17) ] #
+                    
+                    dlist = dlist_up + dlist_down
+
+                    d.d.append(  [ sum(x) for x in zip(*dlist) ] )
+
+
+                    d.d_up.append(  [ sum(x) for x in zip(*dlist_up) ]   )
                     d.d_down.append(  [ sum(x) for x in zip(*dlist_down) ]   )
 
                     t2g_down = [d.site_dos(i, l)  for l in (9, 11, 15) ]
@@ -337,9 +365,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                 else:
                     dlist = [d.site_dos(i, l)  for l in (4,5,6,7,8) ] #
-                
-                d.d.append(  [ sum(x) for x in zip(*dlist) ]   )
-            
+                    d.d.append(  [ sum(x) for x in zip(*dlist) ] )
+
+
 
             d.p6 = [ sum(pi) for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
             d.d6 = [ sum(di) for di in zip(*d.d) ] #sum over neighbouring atoms
@@ -378,6 +406,19 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             atoms.append(iatom2)
             els.append(eld2[iatom2+1])
 
+ 
+
+        if not spin_pol:
+            plot_spin_pol = 0 # could not plot spin polarization for non-spin polarization plot
+
+        if 'dashes' in plot_param:
+            dashes = plot_param['dashes']
+            del plot_param['dashes']
+        else:
+            dashes=(5, 1)
+
+
+
         energy1 = dos[0].energy
         args = {}
         if spin_pol:
@@ -386,7 +427,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         else:
             i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
-        color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g'}
+        color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g', 'p6':'m'}
         # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
 
         for orb in orbitals:
@@ -414,25 +455,41 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 nam+=suf
                 nam_down+=suf
 
+
+
+
                 if orb == 'p':
-                    if 'dashes' in plot_param:
-                        dashes = plot_param['dashes']
-                        del plot_param['dashes']
-                    else:
-                        dashes=(5, 1)
-                    # dashes=None
-                    args[nam] = {'x':d.energy, 'y':smoother(d.p[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
-                    if spin_pol:
+
+
+                    if plot_spin_pol:
+                        args[nam] = {'x':d.energy, 'y':smoother(d.p_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
+
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
                         color[orb] = 'c'
-                
+
+                    else:
+                        args[nam] = {'x':d.energy, 'y':smoother(d.p[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
+
+                elif orb == 'p6':
+
+                    # now spin-polarized components could not be shown
+                    args[nam] = {'x':d.energy, 'y':smoother(d.p6, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+
+
+
 
                 elif orb == 'd':
-                    args[nam] = {'x':d.energy, 'y':smoother(d.d[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
-                    if spin_pol:
+                    
+                    if plot_spin_pol:
+                        args[nam] = {'x':d.energy, 'y':smoother(d.d_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.d_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
                         color[orb] = 'm'
-                
+
+                    else:
+                        args[nam] = {'x':d.energy, 'y':smoother(d.d[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+
+
+
                 elif orb == 't2g':
                     if split_type == 'octa':
                         orb_name = orb
