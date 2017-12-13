@@ -3267,7 +3267,8 @@ def get_structure_from_cee_database(it, it_folder, ver, section = 'CEStorage', c
     it_base = it.split('.')[0]
     print_and_log("Taking structure "+it_base+" from CEE CREI database of Skoltech ...", imp = 'Y')
 
-    database_server = 'aksenov@10.30.100.28'
+    # database_server = 'aksenov@10.30.100.28'
+    database_server = 'sd'
     # database_path   = '/home/Data/CEStorage/'
     database_path   = '/home/Data/'+section+'/'
 

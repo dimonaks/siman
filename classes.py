@@ -146,6 +146,14 @@ class Structure():
         #return list of elements names
         return [self.znucl[t-1] for t in self.typat]
 
+    def get_elements_zval(self):
+        #return list with number of valence electrons for each element
+        zvals = []
+        for z in self.get_elements_z():
+            i = self.znucl.index(z)
+            zv = self.zval[i]
+            zvals.append(zv)
+        return zvals
 
     def get_maglist(self):
         #return bool list of which  elements are magnetic (here all transition metals are searched!)
@@ -935,8 +943,13 @@ class Structure():
         return dv
 
 
-    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True):
-        
+    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None):
+        """
+        write 
+
+        charges (bool) - write charges, self.charges should be available
+        energy - write total energy
+        """
         st = self
         to_ang = 1
         rprimd = st.rprimd
@@ -944,7 +957,9 @@ class Structure():
         xcart  = st.xcart
         typat = st.typat  
         znucl = st.znucl
-       
+        els   = st.get_elements()
+
+
         if not filename:
             filename = ('xyz/POSCAR_'+st.name).replace('.', '_')
 
@@ -956,14 +971,30 @@ class Structure():
         """1. Generate correct nznucl and zxred and zxcart"""
         zxred  = [[] for i in znucl]
         zxcart = [[] for i in znucl]
+        zchar = [[] for i in znucl]
+        zelem = [[] for i in znucl]
         # nznucl = []
         if len(typat) != len(xred) or len(xred) != len(xcart):
             raise RuntimeError
-        for t, xr, xc in zip(typat, xred, xcart):
+        
+        for t, xr, xc, el in zip(typat, xred, xcart, els):
             # print "t ", t, xr
             zxred[ t-1].append(xr)
             zxcart[t-1].append(xc)
+            zelem[t-1].append(el)
         
+
+
+        # print(charges)
+        if charges:
+            charg = self.charges
+
+            for t, ch in zip(typat, charg):
+                zchar[t-1].append(ch)
+
+
+
+
         nznucl = [len(xred) for xred in zxred]
 
 
@@ -973,7 +1004,12 @@ class Structure():
 
         with open(filename,'w', newline = '') as f:
             """Writes structure (POSCAR) in VASP format """
-            f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; ')
+            if energy:
+                energy_string = 'e0='+str(energy)+' ; '
+            else:
+                energy_string = ''
+
+            f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; '+energy_string)
             
             if hasattr(self, 'tmap'):
                 f.write('tmap=[{:s}] ; '.format(list2string(st.tmap).replace(' ', ',') ))
@@ -1016,15 +1052,28 @@ class Structure():
 
             elif "dir" in coord_type:
                 f.write("Direct\n")
-                for xred in zxred:
-                    for x in xred:
-                        f.write("  {:18.16f}  {:18.16f}  {:18.16f}\n".format(x[0], x[1], x[2]) )
+                
+                if charges:
+                    for xred, elem, char in zip(zxred, zelem, zchar):
+                        for x, el, ch in zip(xred, elem, char):
+                            f.write("  {:12.10f}  {:12.10f}  {:12.10f}  {:2s}  {:6.3f}\n".format(x[0], x[1], x[2], el, ch) )
+                else:
+                    for xred in zxred:
+                        for x in xred:
+                            f.write("  {:18.16f}  {:18.16f}  {:18.16f}\n".format(x[0], x[1], x[2]) )
+
+
+            
+
+
             elif 'None' in coord_type:
                 pass
 
             else:
                 print_and_log("Error! The type of coordinates should be 'car' or 'dir' ")
                 raise NameError
+        
+
         f.close()
         print_and_log("POSCAR was written to", filename, imp = 'y')
         return
@@ -1905,8 +1954,20 @@ class CalculationVasp(Calculation):
 
                     new = []
                     for el in el_list:
+                        
                         if el in vp[key]:
                             val = vp[key][el]
+                            
+                            if 'S' in el_list:  # use another value in the format of Fe/S
+                                kk = el+'/S' 
+                                if kk in vp[key]:
+                                    val = vp[key][kk]
+                    
+
+
+
+
+
                         else:
                             if key == 'LDAUL':
                                 val = -1
@@ -1914,9 +1975,11 @@ class CalculationVasp(Calculation):
                                 val =  0
 
                         new.append(val)
+                    
                     vp[key] = new
+                
                 except AttributeError:
-                    printlog('LDAU* were not processed')
+                    printlog('Error! LDAU* were not processed')
                     pass
 
         """Process magnetic moments"""
@@ -1976,13 +2039,16 @@ class CalculationVasp(Calculation):
             if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
                 print_and_log('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
                 ns = len(spec_mom_is); 
-                number_of_ord = math.factorial(ns) / math.factorial(0.5 * ns)**2
+                number_of_ord = int(math.factorial(ns) / math.factorial(0.5 * ns)**2)
                 
                 if 1:
                     nords = 10
+                    use_each = number_of_ord // nords  # spin() should be improved to find the AFM state based on the number of configuration 
+                    if use_each == 0:
+                        use_each = 1
 
                     if number_of_ord > nords:
-                        print_and_log('Attention! Number of orderings is more than', nords, ' - I will check only first ', nords, imp = 'y')
+                        print_and_log('Attention! Number of orderings is', number_of_ord, ' more than', nords, ' - I will check only each first ', imp = 'y')
                 # else:
 
                     ls = [0]*len(spec_mom_is)
@@ -1995,34 +2061,52 @@ class CalculationVasp(Calculation):
                     def spin(ls, i):
                         """
                         Find recursivly all possible orderings
+                        ls - initial list of mag moments
+                        i - index in ls  
+
                         """
+                        nonlocal i_current
                         if len(orderings) < nords:
 
                             for s in 1,-1:
+                                
                                 ls[i] = s
+                                
                                 if i < len(ls)-1:
+                                
                                     spin(ls, i+1)
+                                
                                 else:
                                     if sum(ls) == 0:
-                                        orderings.append(copy.deepcopy(ls) )            
+                                        i_current+=1  
+                                        # print (i_current)
+
+                                        if 1: #  i_current % use_each == 0:  # every use_each will be calculated; two slow even for sampling!
+                                            orderings.append(copy.deepcopy(ls) )  
+                                            # print (i_current)
                         return
 
+                    i_current = 0
                     spin(ls, 0)
 
                     mag_orderings = []
                     mag_orderings.append(magmom)
-                    printlog('Only '+str(nords)+' orderings are checked !')
+                    printlog('Only '+str(nords)+' orderings equally sampled along the whole space are checked !')
+
+
+
 
                     for j, order in enumerate(orderings):
-                        # print order
-                        if j >nords:
-                            break
+                        
+                        # if j >nords: # old behaviour - just first ten orderings were checked
+                        #     break
 
                         new_magmom = copy.deepcopy(magmom)
                         for i, s in zip(spec_mom_is, order):
                             # print i
                             new_magmom[i] = s * magmom[i]
                         
+
                         printlog(j, new_magmom,)
                         
                         mag_orderings.append(new_magmom)

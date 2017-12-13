@@ -316,6 +316,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 # if 'lw' in 
             if linewidth:
                 con['lw'] = linewidth
+
+            # print(con)
+                
             if markersize:
                 con['ms'] = markersize
 

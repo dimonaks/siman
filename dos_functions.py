@@ -32,8 +32,31 @@ from small_functions import latex_chem
 
 
 
+def det_gravity2(energy, dos, Erange = (-100, 0)):
+    """Determine center of gravity for DOS and return values of energy for dos
+    INPUT:
+    energy - list of energies
+    dos    - list of corresponding dos
+    Erange - window of energy to determine center of gravity
+    """
 
+    sum_dos   = 0
+    sum_dos_E = 0
 
+    for i, E in enumerate(energy):
+        
+        if E < Erange[0]: 
+            continue
+
+        if E > Erange[1]: 
+            break
+        
+        sum_dos   += dos[i] 
+        sum_dos_E += dos[i]*E 
+
+    gc = sum_dos_E/sum_dos
+
+    return gc
 
 def det_gravity(dos, Erange = (-100, 0)):
     """Determine center of gravity for DOS and return values of energy for d6 orbitals in list
@@ -47,12 +70,21 @@ def det_gravity(dos, Erange = (-100, 0)):
     sum_dos_E['d6'] = 0
 
     for i, E in enumerate(dos.energy):
-        if E < Erange[0]: continue
-        if E > Erange[1]: break
+        
+        if E < Erange[0]: 
+            continue
+
+        if E > Erange[1]: 
+            break
+        
         sum_dos['d6']   += dos.d6[i] 
         sum_dos_E['d6'] += dos.d6[i]*E 
 
     d6_gc = sum_dos_E['d6']/sum_dos['d6']
+
+
+
+
 
     if 0: #old
         nn =13
@@ -102,7 +134,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12,
-    lts2 = '--', split_type = 'octa', plot_spin_pol = 1):
+    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = ''):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -141,6 +173,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     plot_spin_pol -
         0 - spin-polarized components are summed up
+
+    show_gravity (str) - print gravity centers 
+        'p6' - for p orbitals of neighbors
+
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
@@ -427,7 +463,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         else:
             i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
-        color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g', 'p6':'m'}
+        color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g', 'p6':'k'}
         # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
 
         for orb in orbitals:
@@ -473,7 +509,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 elif orb == 'p6':
 
                     # now spin-polarized components could not be shown
-                    args[nam] = {'x':d.energy, 'y':smoother(d.p6, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                    args[nam] = {'x':d.energy, 'y':smoother(d.p6, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' p sum', 'dashes':dashes}
 
 
 
@@ -528,6 +564,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         # printlog("Writing file", image_name, imp = 'Y')
 
         """Additional dos analysis; to be refined"""
+        if show_gravity:
+            if show_gravity == 'p6':
+                erange = (-100, 0)
+                gc = det_gravity2(d1.energy, d1.p6, erange)
+                printlog('Gravity center for cl1 for p6 for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
+                gc = det_gravity2(d1.energy, d1.d[0], erange)
+                printlog('Gravity center for cl1 for d for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
+
 
         if 0:
             """Calculate d DOS at Fermi level"""

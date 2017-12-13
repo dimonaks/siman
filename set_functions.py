@@ -317,8 +317,12 @@ class InputSet():
         #     self.vasp_params['ENCUT'] = self.ecut * c1* self.dilatmx * self.dilatmx
         #     self.vasp_params['ENAUG'] = self.mul_enaug * self.vasp_params['ENCUT']
         # self.vasp_params['SIGMA'] = self.tsmear * c1
-
-        self.tsmear = self.vasp_params['SIGMA'] / c1
+        vp = self.vasp_params
+        if 'SIGMA' in vp and vp['SIGMA']:
+            self.tsmear = vp['SIGMA'] / c1
+        else:
+            self.tsmear = None
+        
         self.tolmxf = - self.vasp_params['EDIFFG'] / c2
         self.toldfe = self.vasp_params['EDIFF'] / c1
         # self.vasp_params['EDIFF'] = self.toldfe * c1
