@@ -116,6 +116,7 @@ vasp_other_keys = [
 'LDIPOL',
 'DIPOL',
 ]
+vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
 siman_keys = [
 'u_ramping_region', #deprecated
@@ -142,14 +143,10 @@ def read_vasp_sets(user_vasp_sets, override_global = False):
         - user_vasp_sets (list)
 
     """
-    # print varset.keys()
-    # varset['9'].printme()
-    # print varset['9ml'].history
-    # print varset['9'].history
+
 
     varset = header.varset
 
-    vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
     bfolder = '' #by default no blockfolder
     for l in user_vasp_sets:
         if override_global or 'over' in l[-1]: 
@@ -169,55 +166,8 @@ def read_vasp_sets(user_vasp_sets, override_global = False):
 
             s = inherit_iset(l[0], l[1], varset, override = override, newblockfolder = bfolder) 
             # print param
-            for key in param:
-                
-                if key in vasp_keys:
-                    s.set_vaspp(key, param[key])
-
-                elif key == 'set_potential':
-                    for key2 in param[key]:
-                        # print key2, 'key2'
-                        s.set_potential(key2, param[key][key2])
-
-                elif key == 'add_nbands':
-                    # print param[key]
-
-                    s.set_add_nbands(param[key])
-
-                elif key == 'ngkpt':
-                    s.set_ngkpt(param[key])
-
-
-                elif key == 'bfolder':
-                    print_and_log( 'New blockfolder', param[key])
-
-                elif key in siman_keys:
-                    s.set_attrp(key, param[key] )
-                
-                else:
-                    print_and_log('Error! Uknown key: '+key)
-                    raise RuntimeError
-             
-
-                if key == 'set_sequence':
-                    sets = []
-                    for se in s.set_sequence:
-                        sets.append(copy.deepcopy(varset[se]))
-
-                    s.set_sequence = sets  #put objects instead of names
-
-            # if hasattr(s, 'set_sequence') and s.set_sequence:
-            #     sets = []
-            #     for se in s.set_sequence:
-            #         if type(se) == str:
-            #             sets.append(copy.deepcopy(varset[se]))
-            #         else:
-            #             sets.append(copy.deepcopy(se))
-
-            #     s.set_sequence = sets  #put objects instead of names
-
-
-
+            s = s.load(param)
+            
         header.varset = varset
 
     return varset
@@ -247,6 +197,11 @@ class InputSet():
     self.path_to_potcar (str) - explicit path to potcar, can be used instead of self.potdir
 
     self.set_sequence (list)  - list of InputSet() objects to make multiset runs. The current set is used as a first one.
+
+
+    TODO
+    Describe the difference between update() and load() methods !
+
 
     """
     def __init__(self, ise, path_to_potcar = None):
@@ -341,6 +296,71 @@ class InputSet():
             self.spin_polarized = True
         else:
             self.spin_polarized = False
+
+
+    def load(self,param, inplace = False):
+        """
+        Update parameters of set from dict param
+        """
+        if inplace:
+            s = self
+        else:
+            s = copy.deepcopy(self)
+            
+        for key in param:
+            
+            if key in vasp_keys:
+                s.set_vaspp(key, param[key])
+
+            elif key == 'set_potential':
+                for key2 in param[key]:
+                    # print key2, 'key2'
+                    s.set_potential(key2, param[key][key2])
+
+            elif key == 'add_nbands':
+                # print param[key]
+
+                s.set_add_nbands(param[key])
+
+            elif key == 'ngkpt':
+                s.set_ngkpt(param[key])
+
+
+            elif key == 'bfolder':
+                print_and_log( 'New blockfolder', param[key])
+
+            elif key in siman_keys:
+                s.set_attrp(key, param[key] )
+            
+            else:
+                print_and_log('Error! Uknown key: '+key)
+                raise RuntimeError
+         
+
+            if key == 'set_sequence':
+                sets = []
+                for se in s.set_sequence:
+                    sets.append(copy.deepcopy(varset[se]))
+
+                s.set_sequence = sets  #put objects instead of names
+
+            # if hasattr(s, 'set_sequence') and s.set_sequence:
+            #     sets = []
+            #     for se in s.set_sequence:
+            #         if type(se) == str:
+            #             sets.append(copy.deepcopy(varset[se]))
+            #         else:
+            #             sets.append(copy.deepcopy(se))
+
+            #     s.set_sequence = sets  #put objects instead of names
+        return s
+
+
+
+
+
+
+
 
 
 

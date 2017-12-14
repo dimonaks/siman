@@ -734,6 +734,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         - params (dic) - dictionary of additional parameters, please move here numerous arguments
             - 'occmatrix' - explicit path to occmatrix file
+            - 'update_set_dic' (dict) - additional parameters to override the existing set
+
 
 
     Comments:
@@ -1403,6 +1405,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     if 'show' not in params:
         params['show'] = ''
 
+    if 'update_set_dic' not in params:
+        params['update_set_dic'] = {}
+
+
+
     if id in calc: 
         cl = calc[id]
         status = "exist"
@@ -1455,6 +1462,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             cl_prev = copy.deepcopy(calc[id])
 
         calc[id] = CalculationVasp( varset[id[1]] )
+        
         cl = calc[id]
 
         cl.id = id 
@@ -1569,9 +1577,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         cl.check_kpoints()    
         
+
         for curset in setseq:
             if len(setseq) > 1:
                 printlog('sequence set mode: set', curset.ise,':', end = '\n')
+            curset.load(params['update_set_dic'], inplace = True)
             cl.actualize_set(curset)
 
 

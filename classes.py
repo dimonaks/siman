@@ -33,7 +33,7 @@ import numpy as np
 import header
 from header import printlog, print_and_log, runBash, plt
 
-from small_functions import cat_files, grep_file, red_prec, list2string
+from small_functions import cat_files, grep_file, red_prec, list2string, is_list_like
 from functions import (read_vectors, read_list, words,
      element_name_inv, invert, calculate_voronoi,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
@@ -173,8 +173,10 @@ class Structure():
 
         return ifmaglist, mag_numbers
 
-    def convert2pymatgen(self):
-
+    def convert2pymatgen(self, oxidation = None):
+        """
+        oxidation (dict) - {'Ti':'Ti3+'}
+        """
 
         if hasattr(self, 'magmom') and any(self.magmom):
             site_properties = {"magmom":self.magmom}
@@ -183,8 +185,14 @@ class Structure():
         else:
             site_properties = None
 
+        if oxidation is None:
+            elements = self.get_elements()
+        else:
+            elements = [oxidation[el] for el in self.get_elements()]
 
-        return pymatgen.Structure(self.rprimd, self.get_elements(), self.xred, site_properties = site_properties)
+
+
+        return pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
     def update_from_pymatgen(self, stpm):
         """
@@ -2190,7 +2198,7 @@ class CalculationVasp(Calculation):
                     elif key == 'KSPACING' and self.set.kpoints_file: #attention! for k-points only the base set is used!!
                         '' # since VASP has higher priority of KSPACING param, it should not be written 
 
-                    elif type(vp[key]) == list:
+                    elif is_list_like(vp[key]):
                         lis = vp[key]
                         f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
                    
