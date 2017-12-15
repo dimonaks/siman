@@ -30,7 +30,7 @@ from functions import (gb_energy_volume, element_name_inv
      , get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 
 
-from inout import write_xyz, write_occmatrix
+from inout import write_xyz, read_xyz, write_occmatrix
 
 from picture_functions import plot_mep, fit_and_plot, plot_conv
 from analysis import calc_redox, matrix_diff, fit_a
@@ -352,14 +352,16 @@ def cif2poscar(cif_file, poscar_file):
 
 def determine_file_format(input_geo_file):
 
-    supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif',} #format name:format specifier
+    supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif', 'xyz':'.xyz'} #format name:format specifier
 
     if 'POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file:
         input_geo_format = 'vasp'
-    elif 'cif' in input_geo_file:
+    elif '.cif' in input_geo_file:
         input_geo_format = 'cif'
-    elif 'geo' in input_geo_file:
+    elif '.geo' in input_geo_file:
         input_geo_format = 'abinit'
+    elif '.xyz' in input_geo_file:
+        input_geo_format = 'xyz'
     else:
         printlog("Attention! File format of",input_geo_file ,"is unknown, should be from ", supported_file_formats, 'skipping')
         input_geo_format = None
@@ -432,7 +434,7 @@ def get_file_by_version(geofilelist, version):
 
 
 
-def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None, filename = None):
+def smart_structure_read(filename = None, curver = 1, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None, ):
     """
     Wrapper for reading geometry files
     calcul (Calculation()) - object to which the path and version read
@@ -508,9 +510,16 @@ def smart_structure_read(curver = 1, calcul = None, input_folder = None, input_g
         input_geo_file = input_geo_file.replace('.cif', '.POSCAR')
         cl.read_poscar(input_geo_file)
 
-   
+    elif input_geo_format == 'xyz':
+        #version = 1
+        st = cl.init
+        st = read_xyz(st, input_geo_file)
+        cl.init = st
+        cl.path["input_geo"] = input_geo_file
+        cl.version = 1
+
     else:
-        print_and_log("Error! smart_structure_read(): File format is unknown")
+        print_and_log("Error! smart_structure_read(): File format", input_geo_format, "is unknown")
 
 
     if cl.path["input_geo"] == None: 
@@ -2192,7 +2201,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     it_folder = None, choose_outcar = None, choose_image = None, 
     cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None, style_dic = None):
+    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None, style_dic = None, params = None):
     """Read results
     INPUT:
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
@@ -2263,6 +2272,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         - savefile - dummy
         - cluster - dummy
         -override - dummy
+        - params - dummy
 
     RETURN:
         (results_dic,    result_list)

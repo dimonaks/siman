@@ -208,12 +208,13 @@ class Structure():
         st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
         st.xred   = [np.array(site._fcoords) for site in stpm._sites]
         st.update_xcart()
+        
         if st.natom != len(st.xred):
             printlog('Error! number of atoms was changed, please improve this method')
 
         st.name+='_pmg'
         return st
-
+        
     def printme(self):
         print(self.convert2pymatgen())
         return 

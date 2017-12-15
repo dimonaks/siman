@@ -1066,3 +1066,134 @@ def calc_k_point_mesh(rprimd, kspacing):
 
 
 
+
+
+def remove_half_based_on_symmetry(st, sg = None):
+    """
+    Generate all possible configurations by removing half of atoms
+    sg (int) - give back structure with specific space group
+    
+    return list of structures with sg space groups
+
+
+    """
+    from collections import Counter
+
+    def spin(ls, i):
+        """
+        Find recursivly all possible orderings
+        ls - initial list of atoms 
+        i - index in ls  
+
+        """
+        for s in 1,-1:
+            
+            ls[i] = s
+            
+            if i < len(ls)-1:
+            
+                spin(ls, i+1)
+            
+            else:
+                if sum(ls) == 0:
+                    orderings.append(copy.deepcopy(ls) )  
+        return
+
+
+    structures = []
+    orderings = []
+    ls = [0]*st.natom
+    spin(ls, 0)
+    symmetries = []
+    for order in orderings:
+        atoms_to_remove = [i for i, s in enumerate(order) if s < 0]
+        # print(atoms_to_remove)
+        st_rem = st.remove_atoms(atoms_to_remove)
+        nm = st_rem.sg(silent = True)[1]
+        # if nm > 50:
+            # print(nm)
+        symmetries.append(nm)
+        if nm == sg:
+            # st_rem.jmol()
+            # sc = supercell(st_rem, [14,14,14])
+            # sc.jmol()
+            # sc.write_poscar('xyz/POSCAR_SC2_half')
+            # sc.write_cif('xyz/POSCAR_SC2_half')
+            # sys.exit()
+            structures.append(st_rem)
+
+    # print(len(orderings))
+    print('The following space groups were found', Counter(symmetries))
+
+    return structures
+
+
+
+def remove_half(st, el, sg = None):
+    """
+    # works only for 
+
+    sg - required space group
+
+    TODO
+    1. Take care about matching the initial cell and supercell from primitive
+    Now the manual shift is done
+
+    2. Make full conversion from pymat structure to mine
+
+    """
+
+
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    from pymatgen.io.vasp.inputs import Poscar
+    from calc_manage import smart_structure_read
+    st_ohne_el = st.remove_atoms([el])
+
+
+
+    st_only_el = st.leave_only(el)
+
+    st_mp = st_only_el.convert2pymatgen()
+
+    sf = SpacegroupAnalyzer(st_mp)
+
+    st_mp_prim = sf.find_primitive() # find primitive based only on element el
+
+
+    #convert back to my format! please improve!!!
+    p = Poscar(st_mp_prim)
+    p.write_file('xyz/POSCAR')
+    st_prim = smart_structure_read('xyz/POSCAR')
+
+
+    sts = remove_half_based_on_symmetry(st_prim, sg)
+
+
+
+    st_only_el_half = sts[0]   # now only first configuration is taken, they could be different
+
+
+
+    mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
+    mul_matrix = np.array(mul_matrix_float)
+    mul_matrix = mul_matrix.round(0)
+    mul_matrix = mul_matrix.astype(int)
+
+
+
+    sc_only_el_half = create_supercell(st_only_el_half, mul_matrix = mul_matrix)
+
+    sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
+    sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
+
+
+    # st_only_el.write_poscar('xyz/POSCAR1')
+    # sc_only_el_half.write_poscar('xyz/POSCAR2')
+
+
+    st_half = st_ohne_el.add_atoms(sc_only_el_half.xcart, el)
+
+    st_half.name+='_half'+str(sg)
+    
+    return st_half
+
