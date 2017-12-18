@@ -103,10 +103,75 @@ class Structure():
         self.xcart = []
         self.xred = []
         self.magmom = []
+        self.select = [] # flags for selective dynamics
 
 
     def new(self):
         return Structure()
+
+    def selective_all(self):
+        st = copy.deepcopy(self)
+        # if hasattr(self, 'select'):
+        st.select = []
+        for i in range(st.natom):
+            st.select.append([True,True,True])
+        return st 
+
+    def check_selective(self):
+        """
+        check if some atoms should be frozen
+        """
+        selective_dyn = False
+        for sel in self.select:
+            if not all(sel):
+                selective_dyn = True
+        return selective_dyn
+
+
+    def fix_layers(self, xred_range, highlight = False):
+        """
+        fix atoms in layers normal to R3
+
+        xred_range (list) [from, to]
+        highlight - replace with Pu to check
+
+        """
+        st = copy.deepcopy(self)
+        if not hasattr(st, 'select'):
+            st = st.selective_all()
+        fixed = []
+        for i, xr in enumerate(st.xred):
+            if xred_range[0]  < xr[2] < xred_range[1]:
+                st.select[i] = [0, 0, 0] # fix
+                fixed.append(i)
+        if highlight:
+            st = st.replace_atoms(fixed, 'Pu')
+
+
+        st.name+='_fix'
+        return st
+
+    def get_layers_pos(self, xred_range):
+        #return layer positions along vector 3 in xred_range
+        st = self
+        zred_req = []
+        
+        for i, xr in enumerate(st.xred):
+            z =xr[2]
+            if xred_range[0]  < z < xred_range[1]:
+                if len(zred_req) == 0:
+                    zred_req.append(z)
+
+                m = min(np.abs(np.array(zred_req) - z))
+                if m > 0.11/np.linalg.norm(st.rprimd[2]): #tolerance 0.1 A
+                    zred_req.append(round(xr[2], 2))
+        z_unique = sorted(zred_req)
+        return z_unique
+
+
+
+
+
 
     def xcart2xred(self,):
         self.xred = xcart2xred(self.xcart, self.rprimd)
@@ -208,13 +273,13 @@ class Structure():
         st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
         st.xred   = [np.array(site._fcoords) for site in stpm._sites]
         st.update_xcart()
-        
+
         if st.natom != len(st.xred):
             printlog('Error! number of atoms was changed, please improve this method')
 
         st.name+='_pmg'
         return st
-        
+
     def printme(self):
         print(self.convert2pymatgen())
         return 
@@ -296,11 +361,12 @@ class Structure():
         return tra
 
 
-    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False):
+    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None):
         """
         appends at the end if element is new. Other case insertered according to VASP conventions
         Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
         atoms_xcart (list of ndarray)
+        selective (list of lists) - selective dynamics
 
         magmom is appended with 0.6, please improve me! by using other values for magnetic elements 
 
@@ -309,11 +375,17 @@ class Structure():
             Returns Structure(), int - place of insertion of first atom
         else:
             Structure()
+       
+
+
         """
 
         printlog('self.add_atoms(): adding atom ', element, imp = 'y')
 
         st = copy.deepcopy(self)
+
+        if not hasattr(st, 'select'):
+            st = st.selective_all()
 
         natom_to_add = len(atoms_xcart)
 
@@ -341,6 +413,9 @@ class Structure():
             
             st.typat.extend( [typ]*natom_to_add )
 
+            if selective is not None:
+                st.select.extend(selective)
+
             if magmom_flag:
                 st.magmom.extend( [0.6]*natom_to_add  )
 
@@ -365,18 +440,29 @@ class Structure():
             
             st.typat[j_ins:j_ins] = [typ]*natom_to_add
 
+            if selective is not None:
+
+                st.select[j_ins:j_ins] = selective
+
+
             if magmom_flag:
                 st.magmom[j_ins:j_ins] =  [0.6]*natom_to_add 
 
 
         st.xcart2xred()
+        
+
+
+
+
+
         if return_ins:
             return st, j_ins
         else:
             return st
 
 
-    def add_atom(self, xr = None, element = 'Pu', xc = None,):
+    def add_atom(self, xr = None, element = 'Pu', xc = None, selective = None):
         """
         wrapper 
         allows to add one atom using reduced coordinates or cartesian
@@ -392,7 +478,12 @@ class Structure():
         else:
             ''
             printlog('Error! Provide reduced *xr* or cartesian *xc* coordinates!')
-        st = self.add_atoms([xc], element = element)
+
+
+        if selective is not None:
+            selective = [selective]
+
+        st = self.add_atoms([xc], element = element, selective = selective)
         return st 
 
     def reorder_for_vasp(self, inplace = False):
@@ -476,6 +567,7 @@ class Structure():
         del st.xcart[i]
 
         # print ('Magmom deleted?')
+        # print(st.magmom)
         if hasattr(st, 'magmom') and any(st.magmom):
             del st.magmom[i]
             # print ('Yes!')
@@ -505,6 +597,11 @@ class Structure():
 
 
         return st
+
+
+
+
+
 
 
     def mov_atoms(self, iat = None, to_x = None):
@@ -613,9 +710,34 @@ class Structure():
         # print(st.get_elements())
         return st
 
+
+    def del_layers(self, xred_range,):
+        """
+        fix atoms in layers normal to R3
+
+        xred_range (list) [from, to]
+        highlight - replace with Pu to check
+
+        """
+        st = copy.deepcopy(self)
+        dels = []
+        for i, xr in enumerate(st.xred):
+            if xred_range[0]  < xr[2] < xred_range[1]:
+                dels.append(i)
+        # print(dels)
+        st = st.remove_atoms(dels)
+        st.name+='_del'
+        return st
+
+
+
+
+
+
     def replace_atoms(self, atoms_to_replace, el_new):
         """
         atoms_to_replace - list of atom numbers starting from 0
+        el_new - new element
         """
         st = copy.deepcopy(self)
 
@@ -952,13 +1074,32 @@ class Structure():
         return dv
 
 
-    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None):
+    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None, selective_dynamics = False):
         """
         write 
 
         charges (bool) - write charges, self.charges should be available
         energy - write total energy
+
+        selective dynamics - 
+            if at least one F is found than automatically switched on
+            !works only for coord_type = 'dir' and charges = False
+
+
+        TODO
+            selective_dynamics for coord_type = 'cart'
         """
+
+        def b2s(i):
+            #bool to vasp str
+            if i:
+                s = 'T'
+            else:
+                s = 'F'
+
+            return s
+
+
         st = self
         to_ang = 1
         rprimd = st.rprimd
@@ -967,6 +1108,17 @@ class Structure():
         typat = st.typat  
         znucl = st.znucl
         els   = st.get_elements()
+
+        try:
+            select = st.select
+        except:
+            st = st.selective_all()
+            select = st.select
+
+        if selective_dynamics is False:
+            selective_dynamics = st.check_selective()
+
+        # print(select)
 
 
         if not filename:
@@ -982,15 +1134,17 @@ class Structure():
         zxcart = [[] for i in znucl]
         zchar = [[] for i in znucl]
         zelem = [[] for i in znucl]
+        zselect = [[] for i in znucl]
         # nznucl = []
         if len(typat) != len(xred) or len(xred) != len(xcart):
             raise RuntimeError
         
-        for t, xr, xc, el in zip(typat, xred, xcart, els):
+        for t, xr, xc, el, s in zip(typat, xred, xcart, els, select):
             # print "t ", t, xr
             zxred[ t-1].append(xr)
             zxcart[t-1].append(xc)
             zelem[t-1].append(el)
+            zselect[t-1].append(s)
         
 
 
@@ -1044,6 +1198,11 @@ class Structure():
 
             f.write('\n')
 
+            if selective_dynamics:
+                f.write("Selective dynamics\n")
+
+
+
             if "car" in coord_type:
                 print_and_log("Warning! may be obsolete!!! and incorrect", imp = 'Y')
                 f.write("Cartesian\n")
@@ -1063,13 +1222,13 @@ class Structure():
                 f.write("Direct\n")
                 
                 if charges:
-                    for xred, elem, char in zip(zxred, zelem, zchar):
+                    for xred, elem, char in zip(zxred, zelem, zchar, zselect):
                         for x, el, ch in zip(xred, elem, char):
                             f.write("  {:12.10f}  {:12.10f}  {:12.10f}  {:2s}  {:6.3f}\n".format(x[0], x[1], x[2], el, ch) )
                 else:
-                    for xred in zxred:
-                        for x in xred:
-                            f.write("  {:18.16f}  {:18.16f}  {:18.16f}\n".format(x[0], x[1], x[2]) )
+                    for xred, select in zip(zxred, zselect):
+                        for x, s in zip(xred, select):
+                            f.write("  {:19.16f}  {:19.16f}  {:19.16f}  {:s} {:s} {:s}\n".format(x[0], x[1], x[2], b2s(s[0]), b2s(s[1]), b2s(s[2])) )
 
 
             
@@ -1150,12 +1309,17 @@ class Structure():
         return read_xyz(self, *args, **kwargs)
 
 
-    def jmol(self):
+    def jmol(self, shift = None):
         # self.write_poscar('CONTCAR', vasp5 = 1)
-        filename, _ = self.write_xyz()
+        st = self
+        if shift:
+            st = st.shift_atoms(shift)
+
+
+        filename, _ = st.write_xyz()
         # print(filename)
         runBash('jmol '+filename, detached = True)
-
+        return
 
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation

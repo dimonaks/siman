@@ -220,7 +220,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 
 
 def write_xyz(st = None, path = None, filename = None, file_name = None,
-    include_vectors = True, repeat = 1, shift = 1.0, replications = None, full_cell = False, 
+    include_vectors = True, repeat = 1, shift_2view = 1.0, replications = None, full_cell = False, 
     analysis = None, show_around = None, show_around_x = None,  nnumber = 6, only_elements = None,
     gbpos2 = None, gbwidth = 1, withgb = False, include_boundary = 2,
     imp_positions = [], imp_sub_positions = None,
@@ -229,7 +229,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     """Writes st structure in xyz format in the folder xyz/path
 
     if repeat == 2: produces jmol script
-    shift - in rprimd[1][1] - shift of the second view
+    shift_2view - in rprimd[1][1] - shift of the second view
     gbpos2 - position of grain boundary in A
     gbwidth - atoms aroung gbpos2 will be colored differently
 
@@ -523,7 +523,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         pngfile = os.getcwd()+'/'+bn+".png"
         
         printlog( 'imp_positions = ',imp_positions)
-        write_jmol(xyzfile, pngfile, scriptfile, atomselection, rprimd =rprimd, shift = shift, label = [(pos[3], pos[4]) for pos in imp_positions], 
+        write_jmol(xyzfile, pngfile, scriptfile, atomselection, rprimd =rprimd, shift = shift_2view, label = [(pos[3], pos[4]) for pos in imp_positions], 
             specialcommand = specialcommand, **jmol_args)
 
 

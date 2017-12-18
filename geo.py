@@ -237,7 +237,8 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
     inv = 0 - cell is replicated in both directions by mul[i];  2 still gives -1 0 1 but 3 gives -2 -1 0 1 2; for 'only_matrix' may work not correctly
 
 
-    only_atoms - allows to replicate only specific atoms; now 'only_matrix'
+    only_atoms - allows to replicate only specific atoms; now 
+        'only_matrix'
 
     cut_one_cell - allows to cut only one cell with replicated edge atoms
     include_boundary (A) - the width of region to include additional edge atoms (bottom, up)
@@ -280,9 +281,11 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
             st.xcart += [ x + inv_loc*k*st.rprimd[i] for x, t in zip(st.xcart[:], st.typat[:]) for k in axis_mul[1:] if t == 1] # fill by axis i by blocks
             
             st.typat += [ t                  for t in st.typat[:] for k in axis_mul[1:] if t == 1]
+            st.magmom += [ t                  for t in st.magmom[:] for k in axis_mul[1:] if t == 1]
         else:
             st.xcart = [ x + inv_loc*k*st.rprimd[i] for x in st.xcart[:] for k in axis_mul ] # fill by axis i by blocks
             st.typat = [ t                  for t in st.typat[:] for k in axis_mul ]
+            st.magmom = [ t                  for t in st.magmom[:] for k in axis_mul ]
             numbers = [n for n in numbers[:] for k in axis_mul]
             # print numbers
             # assert len(st.xcart) == abs(st.natom * reduce(lambda x, y: x*y, mul) )
@@ -317,6 +320,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
         new_xred = []
         new_xcart = []
         new_typat = []
+        new_mgmom = []
 
         precb = include_boundary[0]#/max(st.rprimd[2])
         precu = include_boundary[1]#/max(st.rprimd[2])
@@ -329,15 +333,17 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
 
         n = 0 
         # print st.xred
-        for t, xr in  zip(st.typat, st.xcart):
+        for t, xr, m in  zip(st.typat, st.xcart, st.magmom):
             for j in 0,1,2:
                 if (xr[j]  < xmin[j] - precb) or (xr[j]  > xmax[j] + precu): break  
             else:
                 new_xcart.append(xr)
                 new_typat.append(t)
+                new_magmom.append(m)
 
         st.typat = new_typat
         st.xcart = new_xcart
+        st.magmom = new_magmom
         print_and_log('After removing, cell has ', len(st.xred) )
         # print st.xred
         # st.xcart = xred2xcart(st.xred, st.rprimd)
