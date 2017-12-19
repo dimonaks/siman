@@ -155,7 +155,7 @@ class Structure():
         #return layer positions along vector 3 in xred_range
         st = self
         zred_req = []
-        
+
         for i, xr in enumerate(st.xred):
             z =xr[2]
             if xred_range[0]  < z < xred_range[1]:
@@ -163,8 +163,9 @@ class Structure():
                     zred_req.append(z)
 
                 m = min(np.abs(np.array(zred_req) - z))
-                if m > 0.11/np.linalg.norm(st.rprimd[2]): #tolerance 0.1 A
-                    zred_req.append(round(xr[2], 2))
+                # print()
+                if m > 0.05/np.linalg.norm(st.rprimd[2]): #tolerance 0.1 A
+                    zred_req.append(xr[2])
         z_unique = sorted(zred_req)
         return z_unique
 
@@ -723,6 +724,7 @@ class Structure():
         dels = []
         for i, xr in enumerate(st.xred):
             if xred_range[0]  < xr[2] < xred_range[1]:
+                # print(xred_range[0], xr[2], xred_range[1])
                 dels.append(i)
         # print(dels)
         st = st.remove_atoms(dels)
