@@ -166,7 +166,7 @@ def read_vasp_sets(user_vasp_sets, override_global = False):
 
             s = inherit_iset(l[0], l[1], varset, override = override, newblockfolder = bfolder) 
             # print param
-            s = s.load(param)
+            s.load(param, inplace = True)
             
         header.varset = varset
 
@@ -340,7 +340,7 @@ class InputSet():
             if key == 'set_sequence':
                 sets = []
                 for se in s.set_sequence:
-                    sets.append(copy.deepcopy(varset[se]))
+                    sets.append(copy.deepcopy(header.varset[se]))
 
                 s.set_sequence = sets  #put objects instead of names
 

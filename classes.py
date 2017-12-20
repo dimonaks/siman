@@ -556,7 +556,7 @@ class Structure():
 
         # print_and_log('Warning! Method del_atoms() was not carefully tested ')
         st = copy.deepcopy(self)
-
+        # print(st.nznucl)
 
         i = iat
 
@@ -596,6 +596,7 @@ class Structure():
                     st.typat[i]-=1
 
 
+        # print(st.nznucl)
 
         return st
 
@@ -686,6 +687,7 @@ class Structure():
         from_one (int)- if 1 the numbers of atoms in provided list are starting from one
         """
         st = copy.deepcopy(self)
+        # print(st.nznucl)
 
         numbers = list(range(st.natom))
 
@@ -708,6 +710,9 @@ class Structure():
                 atom_exsist = False
         printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
         st.magmom = [None]
+
+        # print(st.nznucl)
+
         # print(st.get_elements())
         return st
 
@@ -721,6 +726,8 @@ class Structure():
 
         """
         st = copy.deepcopy(self)
+        # print(st.nznucl)
+
         dels = []
         for i, xr in enumerate(st.xred):
             if xred_range[0]  < xr[2] < xred_range[1]:
@@ -729,6 +736,8 @@ class Structure():
         # print(dels)
         st = st.remove_atoms(dels)
         st.name+='_del'
+        # print(st.nznucl)
+        
         return st
 
 
@@ -1111,6 +1120,9 @@ class Structure():
         znucl = st.znucl
         els   = st.get_elements()
 
+        # print(st.convert2pymatgen())
+
+        # print()
         try:
             select = st.select
         except:
@@ -1120,7 +1132,7 @@ class Structure():
         if selective_dynamics is False:
             selective_dynamics = st.check_selective()
 
-        # print(select)
+        # print(selective_dynamics)
 
 
         if not filename:
@@ -1141,13 +1153,20 @@ class Structure():
         if len(typat) != len(xred) or len(xred) != len(xcart):
             raise RuntimeError
         
-        for t, xr, xc, el, s in zip(typat, xred, xcart, els, select):
-            # print "t ", t, xr
+
+        # print(xred)
+        # print(typat)
+
+        for t, xr, xc, el in zip(typat, xred, xcart, els ):
+            # print ("t ", t-1, xr)
             zxred[ t-1].append(xr)
             zxcart[t-1].append(xc)
             zelem[t-1].append(el)
-            zselect[t-1].append(s)
         
+        for s in select:
+            zselect[t-1].append(s)
+
+        # print(zxred)
 
 
         # print(charges)
@@ -1161,7 +1180,8 @@ class Structure():
 
 
         nznucl = [len(xred) for xred in zxred]
-
+        # print(nznucl)
+        # sys.exit()
 
         elnames = [element_name_inv(z) for z in znucl]
 
@@ -1197,7 +1217,7 @@ class Structure():
 
             for n in nznucl:    
                 f.write(str(n)+' ')
-
+                # print(str(n)+' ')
             f.write('\n')
 
             if selective_dynamics:
@@ -1227,11 +1247,14 @@ class Structure():
                     for xred, elem, char in zip(zxred, zelem, zchar, zselect):
                         for x, el, ch in zip(xred, elem, char):
                             f.write("  {:12.10f}  {:12.10f}  {:12.10f}  {:2s}  {:6.3f}\n".format(x[0], x[1], x[2], el, ch) )
-                else:
+                elif selective_dynamics:
                     for xred, select in zip(zxred, zselect):
                         for x, s in zip(xred, select):
                             f.write("  {:19.16f}  {:19.16f}  {:19.16f}  {:s} {:s} {:s}\n".format(x[0], x[1], x[2], b2s(s[0]), b2s(s[1]), b2s(s[2])) )
-
+                else:
+                    for xred  in zxred :
+                        for x in xred :
+                            f.write("  {:19.16f}  {:19.16f}  {:19.16f}\n".format(x[0], x[1], x[2]))
 
             
 
@@ -2030,7 +2053,7 @@ class CalculationVasp(Calculation):
         printlog('Potentials from ', path2pot, 'are taken')
 
         if self.set.potdir:
-            
+            # print (self.set.potdir)
             for z in self.init.znucl:
                 
                 potcar_files.append(os.path.join(path2pot, self.set.potdir[ int(z) ], 'POTCAR') )
@@ -2084,11 +2107,18 @@ class CalculationVasp(Calculation):
                 for i in range(self.init.ntypat):
                     # print self.init.zval
                     tve += self.init.zval[i] * self.init.nznucl[i] #number of electrons 
-                
+                    # print(self.init.zval[i], self.init.nznucl[i])
                 nbands_min = math.ceil(tve / 2.)
                 self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
+                # print(self.nbands)
+                
+
                 vp['NBANDS'] = self.nbands
                 printlog('I found that at least', nbands_min, ' bands are required. I will use', self.nbands, 'bands; add_nbands = ', curset.add_nbands)
+
+
+
+
 
             if 'LSORBIT' in vp and vp['LSORBIT']:
                 # print (vp)

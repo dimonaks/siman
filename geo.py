@@ -349,7 +349,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
         # st.xcart = xred2xcart(st.xred, st.rprimd)
         st.xred = xcart2xred(st.xcart, st.rprimd)
 
-
+    st.get_nznucl()
     st.natom = len(st.xcart)
     # print 'Structure is replicated; now', st.natom,'atoms' 
     return st
