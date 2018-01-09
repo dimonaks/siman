@@ -16,10 +16,15 @@ try:
 except:
     print('pandas is not avail')
 
+# import pymatgen
+# sys.exit()
+
 try:
     import pymatgen
     from pymatgen.io.cif import CifWriter
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    from pymatgen.core.surface import Slab
+
     pymatgen_flag = True
 except:
     print('pymatgen is not avail')
@@ -239,9 +244,11 @@ class Structure():
 
         return ifmaglist, mag_numbers
 
-    def convert2pymatgen(self, oxidation = None):
+    def convert2pymatgen(self, oxidation = None, slab = False):
         """
         oxidation (dict) - {'Ti':'Ti3+'}
+
+        slab - if True return slab object is returned - limited functional is implemented
         """
 
         if hasattr(self, 'magmom') and any(self.magmom):
@@ -256,9 +263,20 @@ class Structure():
         else:
             elements = [oxidation[el] for el in self.get_elements()]
 
+        if slab:
+            # print(dir(pymatgen.core))
+            pm = Slab(self.rprimd, elements, self.xred, 
+                miller_index = [0,0,1], oriented_unit_cell = None, shift = None, scale_factor = None,reorient_lattice = False,
+                site_properties = site_properties)
+        else:
+            pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
 
-        return pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
+        return pm
+
+
+
+
 
     def update_from_pymatgen(self, stpm):
         """
@@ -831,7 +849,7 @@ class Structure():
 
         st.update_xred()
         st.name+='_vac'
-        st.write_xyz()
+        # st.write_xyz()
         return st
 
 

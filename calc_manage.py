@@ -6,10 +6,9 @@ from itertools import product
 
 import numpy as np
 
-
 try:
     # pmg config --add VASP_PSP_DIR $VASP_PSP_DIR MAPI_KEY $MAPI_KEY
-    from pymatgen.matproj.rest import MPRester
+    from pymatgen.ext.matproj import MPRester
     from pymatgen.io.vasp.inputs import Poscar
     from pymatgen.io.cif import CifParser
     pymatgen_flag = True 
