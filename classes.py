@@ -127,9 +127,11 @@ class Structure():
         check if some atoms should be frozen
         """
         selective_dyn = False
-        for sel in self.select:
-            if not all(sel):
-                selective_dyn = True
+        if self.select is not None:
+            for sel in self.select:
+                # print (not all(sel))
+                if not all(sel):
+                    selective_dyn = True
         return selective_dyn
 
 
@@ -399,7 +401,7 @@ class Structure():
 
         """
 
-        printlog('self.add_atoms(): adding atom ', element, imp = 'y')
+        printlog('self.add_atoms(): adding atom ', element, imp = 'n')
 
         st = copy.deepcopy(self)
 
@@ -434,6 +436,9 @@ class Structure():
 
             if selective is not None:
                 st.select.extend(selective)
+            else:
+                st.select.extend( [[1,1,1] for i in range(natom_to_add)] )
+
 
             if magmom_flag:
                 st.magmom.extend( [0.6]*natom_to_add  )
@@ -462,10 +467,11 @@ class Structure():
             if selective is not None:
 
                 st.select[j_ins:j_ins] = selective
-
+            else:
+                st.select[j_ins:j_ins] = [[1,1,1] for i in range(natom_to_add)]
 
             if magmom_flag:
-                st.magmom[j_ins:j_ins] =  [0.6]*natom_to_add 
+                st.magmom[j_ins:j_ins] =  [1,1,1]*natom_to_add
 
 
         st.xcart2xred()
@@ -1119,9 +1125,9 @@ class Structure():
             selective_dynamics for coord_type = 'cart'
         """
 
-        def b2s(i):
+        def b2s(b):
             #bool to vasp str
-            if i:
+            if b:
                 s = 'T'
             else:
                 s = 'F'
@@ -1146,6 +1152,8 @@ class Structure():
         except:
             st = st.selective_all()
             select = st.select
+
+        # print(select)
 
         if selective_dynamics is False:
             selective_dynamics = st.check_selective()
@@ -1181,9 +1189,11 @@ class Structure():
             zxcart[t-1].append(xc)
             zelem[t-1].append(el)
         
-        for s in select:
-            zselect[t-1].append(s)
+        if selective_dynamics:
+            for t, s in zip(typat, select):
+                zselect[t-1].append(s)
 
+        # print(zselect)
         # print(zxred)
 
 
@@ -1268,6 +1278,7 @@ class Structure():
                 elif selective_dynamics:
                     for xred, select in zip(zxred, zselect):
                         for x, s in zip(xred, select):
+                            # print(x,s)
                             f.write("  {:19.16f}  {:19.16f}  {:19.16f}  {:s} {:s} {:s}\n".format(x[0], x[1], x[2], b2s(s[0]), b2s(s[1]), b2s(s[2])) )
                 else:
                     for xred  in zxred :
@@ -1747,6 +1758,9 @@ class CalculationVasp(Calculation):
     def read_poscar(self, filename, version = None):
         """Read POSCAR file
         """
+
+        selective_dynamics = None
+
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
         self.path["poscar"] = filename
@@ -1814,6 +1828,7 @@ class CalculationVasp(Calculation):
             st.nznucl = []
 
             ilist = f.readline().split() #nznucl of elements?
+            
             try:
                 int(ilist[0])
                 vasp5 = False
@@ -1836,12 +1851,22 @@ class CalculationVasp(Calculation):
             for z in ilist:
                 st.nznucl.append( int(z)  )
 
-            type_of_coordinates = f.readline()
+
+            temp_line = f.readline()
+
+            if temp_line[0] in ['s', 'S']:
+                printlog('selective dynamics detected') 
+                selective_dynamics = True
+                temp_line = f.readline()
+
+            type_of_coordinates = temp_line
+
 
             st.xred = []
 
-
             coordinates = []
+            select = []
+
 
             if len(elements_list) > 0:
                 read_elements = 0
@@ -1859,6 +1884,10 @@ class CalculationVasp(Calculation):
                         if vec[3] not in elements_list:
                             elements_list.append(vec[3])
                     
+                    if selective_dynamics:
+                        select.append(vec[3:6])
+
+            st.select = select
             if "Car" in type_of_coordinates or 'car' in type_of_coordinates:
                 st.xcart  = coordinates
                 st.xred = xcart2xred(st.xcart, st.rprimd)
@@ -4024,7 +4053,7 @@ class CalculationVasp(Calculation):
                             self.end.xred = []
                             for i in range(self.end.natom):
                                 try:
-                                    xr = np.asarray ( [float(x) for x in contcar.readline().split()] )
+                                    xr = np.asarray ( [float(x) for x in contcar.readline().split()[0:3]] )
                                     self.end.xred.append( xr )
                                 except:
                                     self.end.xred.append( [0,0,0] )
