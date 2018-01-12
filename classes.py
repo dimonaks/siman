@@ -471,7 +471,7 @@ class Structure():
                 st.select[j_ins:j_ins] = [[1,1,1] for i in range(natom_to_add)]
 
             if magmom_flag:
-                st.magmom[j_ins:j_ins] =  [1,1,1]*natom_to_add
+                st.magmom[j_ins:j_ins] =  [0.6]*natom_to_add
 
 
         st.xcart2xred()

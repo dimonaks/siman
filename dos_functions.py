@@ -406,6 +406,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
             d.p6 = [ sum(pi) for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
+            
+            if spin_pol:
+                d.p6_up   = [ sum(pi) for pi in zip(*d.p_up)   ] #sum over neighbouring atoms now only for spin up
+                d.p6_down = [ sum(pi) for pi in zip(*d.p_down) ] #sum over neighbouring atoms now only for spin up
+            
+
+
+
             d.d6 = [ sum(di) for di in zip(*d.d) ] #sum over neighbouring atoms
 
             # t2g = [dos[0].site_dos(iTi, l)  for l in 4,5,7] #  Now only for first Ti atom
@@ -509,7 +517,13 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 elif orb == 'p6':
 
                     # now spin-polarized components could not be shown
-                    args[nam] = {'x':d.energy, 'y':smoother(d.p6, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' p sum', 'dashes':dashes}
+                    if plot_spin_pol:
+                        args[nam]      = {'x':d.energy, 'y':smoother(d.p6_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' p sum', 'dashes':dashes}
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p6_down, nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
+
+
+                    else:
+                        args[nam] = {'x':d.energy, 'y':smoother(d.p6, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' p sum', 'dashes':dashes}
 
 
 
