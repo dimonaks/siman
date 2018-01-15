@@ -1816,7 +1816,7 @@ class CalculationVasp(Calculation):
 
             # st.name = self.name
             # print(f.readline())
-            mul = float( f.readline() )
+            mul = float( f.readline().split('!')[0] )
             # print 'mul', mul
 
 
