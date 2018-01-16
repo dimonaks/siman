@@ -386,12 +386,13 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     the periodic boundary conditions realized very stupid by replicating the cell!
 
     """
-    
+    # round_orig = round
     if not round_flag:
         # overwrite round function with wrapper that do nothing
-        def round(a, b):
+        def my_round(a, b):
             return a
-
+    else:
+        my_round = round
 
     st_original = copy.deepcopy(st)
     st.init_numbers = None
@@ -437,27 +438,27 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
     elif control == 'sum':
         
-        output = round(sum(dlistnn), 2)
+        output = my_round(sum(dlistnn), 2)
     
     elif control == 'av':
         n_neighbours = float(n_neighbours)
         dav = sum(dlistnn)/n_neighbours
-        output = round(dav, 2)
+        output = my_round(dav, 2)
 
     elif control == 'avsq':
         n_neighbours = float(n_neighbours)
         # print(dlistnn)
         davsq = sum([d*d for d in dlistnn])/n_neighbours
         davsq = davsq**(0.5)
-        output = round(davsq, 2)
+        output = my_round(davsq, 2)
 
 
     elif control == 'mavm': #min, av, max
         dsort = sorted(dlistnn)
         if n_neighbours > 2:
-            output = (round(dsort[0], 2), sum(dsort[1:-1])/(n_neighbours-2), round(dsort[-1], 2) ) #min, av excluding min and max, max
+            output = (my_round(dsort[0], 2), sum(dsort[1:-1])/(n_neighbours-2), my_round(dsort[-1], 2) ) #min, av excluding min and max, max
         else:
-            output = (round(dsort[0], 2), 0, round(dsort[-1], 2) ) #min, av excluding min and max, max
+            output = (my_round(dsort[0], 2), 0, my_round(dsort[-1], 2) ) #min, av excluding min and max, max
 
        
     elif control == 'av_dev':
@@ -465,7 +466,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         dav = sum(dlistnn)/n_neighbours
         av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
         max_dev = max([abs(d-dav) for d in dlistnn])
-        output = (round(av_dev*1000, 0), round(max_dev*1000, 0))
+        output = (my_round(av_dev*1000, 0), my_round(max_dev*1000, 0))
 
     elif control == 'atoms':
         # print dlist_unsort

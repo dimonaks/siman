@@ -2890,15 +2890,15 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     print('Average_distance A-2(O,F)', info1['av(A-O,F)'], 'A')
 
 
-                    if 0:
-                        av = st.nn(atom_num, 2, from_one = False, silent = 1)['avsq(A-O,F)']
+                    if 1 or 'neb_geo' in show:
+                        av = st.nn(atom_num, 2, from_one = False, silent = 1, more_info = 1)['avsq(A-O,F)']
                         print('Average squared distance A-2(O,F)', av, 'A')
 
                         info2 = st.nn(atom_num, 4, from_one = False, silent = 1)
                         print('Average_distance A-4(O,F)', info2['av(A-O,F)'], 'A')
                         print('Elements are ', info2['el'])
 
-                        info3 = st.nn(atom_num, 6, from_one = False, silent = 1)
+                        info3 = st.nn(atom_num, 6, from_one = False, silent = 1, more_info = 1)
                         print('Average_distance A-6(O,F)', info3['av(A-O,F)'], 'A')
                         print('Average_deviation A-6(O,F)', info3['avdev(A-O,F)'], 'mA')
                         print('Elements are ', info3['el'])
