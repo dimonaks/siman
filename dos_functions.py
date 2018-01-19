@@ -134,7 +134,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12,
-    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = ''):
+    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None,):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -174,8 +174,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     plot_spin_pol -
         0 - spin-polarized components are summed up
 
-    show_gravity (str) - print gravity centers 
-        'p6' - for p orbitals of neighbors
+    show_gravity (list) - print gravity centers (i, type, range, ); i - 1 or 2 cl
+        type (str)
+            'p6' - for p orbitals of neighbors
+            'p'
 
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
@@ -334,7 +336,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         iX = numbers[0]# first atom is impurity if exist
         # printlog
-        numbers_list = [numbers]
+        numbers_list = [numbers] # numbers_list is list of lists
         if cl2:
             numbers_list.append([iatom2]) # for cl2 only one atom is supported
 
@@ -354,7 +356,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             d.eg_up = []
             d.eg_down = []
             # d.d6 = 0 #sum by surrounding atoms atoms
-
+            n_sur = len(numbers)
             for i in numbers: #Now for surrounding atoms in numbers list:
 
                 if spin_pol:
@@ -405,11 +407,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
 
-            d.p6 = [ sum(pi) for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
+            d.p6 = [ sum(pi)/n_sur for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
             
             if spin_pol:
-                d.p6_up   = [ sum(pi) for pi in zip(*d.p_up)   ] #sum over neighbouring atoms now only for spin up
-                d.p6_down = [ sum(pi) for pi in zip(*d.p_down) ] #sum over neighbouring atoms now only for spin up
+                d.p6_up   = [ sum(pi)/n_sur for pi in zip(*d.p_up)   ] #sum over neighbouring atoms now only for spin up
+                d.p6_down = [ sum(pi)/n_sur for pi in zip(*d.p_down) ] #sum over neighbouring atoms now only for spin up
             
 
 
@@ -439,6 +441,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         lts = ['-',] #linetypes
         if cl2:
             ds.append(dos[1])
+            d2 = dos[1]
             
             # if labels:
             #     names.append(labels[1])
@@ -471,13 +474,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         else:
             i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
-        color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g', 'p6':'k'}
+        # color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g', 'p6':'k'}
+        color = {'s':'k', 'p':'#FF0018', 'd':'#138BFF', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'#138BFF', 'eg':'#8E12FF', 'p6':'#FF0018'} #http://paletton.com/#uid=54-100kwi++bu++hX++++rd++kX
         # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
 
         for orb in orbitals:
             i = 0
             for n, l, iat, el, d in zip(names, lts, atoms,els, ds):
-                if el in ['Fe', 'Co', 'V', 'Mn'] and orb == 'p':
+                if el in ['Fe', 'Co', 'V', 'Mn'] and orb in[ 'p', 's']:
                     continue
                 if el == 'O' and orb in ('d', 't2g', 'eg', 'dxy', 'dyz', 'dxz', 'dz2', 'dx2'):
                     continue
@@ -568,23 +572,53 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                         # args[nam_down] = (d.energy, -smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), color[orb]+l)
 
+
+
+        """Additional dos analysis; to be refined"""
+        if show_gravity:
+            if show_gravity[0] == 1:
+                d = d1
+            elif show_gravity[0] == 2:
+                d = d2
+
+            if show_gravity[2]:
+                erange = show_gravity[2]
+            else:
+                erange = (-100, 0)
+
+            if show_gravity[1] == 'p6':
+                
+                gc = det_gravity2(d.energy, d.p6, erange)
+                printlog('Gravity center for cl1 for p6 for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
+                # gc = det_gravity2(d.energy, d.d[0], erange)
+                # printlog('Gravity center for cl1 for d for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
+            
+
+            if show_gravity[1] == 'p':
+                gc = det_gravity2(d.energy, d.p[0], erange) # for first atom for cl2
+            
+            plot_param['ver_lines'] = [{'x':gc, 'c':'k', 'ls':'--'}]
+
+        """Plot everything"""
+
         image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))
 
-        fit_and_plot(show = show, image_name = image_name, xlabel = "Energy (eV)", ylabel = ylabel, hor = True,
+
+        if 'xlabel' not in plot_param:
+            plot_param['xlabel'] = "Energy (eV)"
+
+        if 'ylabel' not in plot_param:
+            plot_param['ylabel'] = ylabel
+
+
+        fit_and_plot(show = show, image_name = image_name, hor = True, fill = True,
         # title = cl1.name.split('.')[0]+'; V='+str(round(cl1.vol) )+' $\AA^3$; Impurity: '+el,
         **plot_param, 
         **args
         )
         # printlog("Writing file", image_name, imp = 'Y')
 
-        """Additional dos analysis; to be refined"""
-        if show_gravity:
-            if show_gravity == 'p6':
-                erange = (-100, 0)
-                gc = det_gravity2(d1.energy, d1.p6, erange)
-                printlog('Gravity center for cl1 for p6 for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
-                gc = det_gravity2(d1.energy, d1.d[0], erange)
-                printlog('Gravity center for cl1 for d for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
+
 
 
         if 0:

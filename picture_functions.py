@@ -153,11 +153,16 @@ def process_fig_filename(image_name, fig_format):
 
 def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     image_name = None, filename = None,
-    show = None, fontsize = None,
+    show = None, fontsize = None, pad = None,
     xlim = None, ylim = None, title = None, figsize = None,
-    xlog = False,ylog = False, scatter = False, legend = False, ncol = 1, markersize = None,  
+    xlog = False,ylog = False, scatter = False, 
+    legend = False, ncol = 1, legend_fontsize=None, markersize = None,  
     linewidth = None, hor = False, fig_format = 'eps', dpi = 300,
-    ver_lines = None, alpha = 0.8, first = True, last = True, convex = None, corner_letter = None, hide_ylabels = None,
+    ver_lines = None, 
+    alpha = 0.8, fill = False,
+    first = True, last = True, 
+    convex = None, 
+    corner_letter = None, hide_ylabels = None, hide_xlabels= None,
     **data):
     """
     Plot multiple plots on one axes using *data*
@@ -183,19 +188,22 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     convex (bool) - plot convex hull around points like in ATAT
 
+    fill (bool) - fill under the curves
 
     filename (str) - name of file with figure, image_name - deprecated
     fig_format (str) - format of saved file.
     dpi    - resolution of saved file
 
 
-    ver_lines - list of vertical lines (x, type)
+    ver_lines - list of dic args for  vertical lines {'x':, 'c', 'lw':, 'ls':}
 
-    hide_ylabels - just hide
+    hide_ylabels - just hide numbers
 
     ncol - number of legend columns
 
     corner_letter - letter in the corner of the plot
+
+    pad - additional padding, experimental
 
     linewidth - was 3 !
     markersize - was 10
@@ -213,7 +221,10 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     if fontsize:
         header.mpl.rcParams.update({'font.size': fontsize+4})
-        header.mpl.rc('legend', fontsize= fontsize) 
+        if legend_fontsize is None:
+            legend_fontsize = fontsize
+
+        header.mpl.rc('legend', fontsize= legend_fontsize) 
 
 
 
@@ -325,6 +336,11 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             # print('key is ', key)
             ax.plot(*xyf, alpha = alpha, **con)
 
+            if fill:
+                ''
+                ax.fill(xyf[0], xyf[1], facecolor = con['c'], alpha = 0.6)
+
+
             if convex:
                 points = np.asarray(list(zip(xyf[0], xyf[1])))
                 hull = ConvexHull(points)
@@ -381,6 +397,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     if hide_ylabels:
         ax.yaxis.set_major_formatter(plt.NullFormatter())
         # ax.yaxis.set_ticklabels([])
+    if hide_xlabels:
+        ax.xaxis.set_major_formatter(plt.NullFormatter())
+
 
     if legend: 
         scatterpoints = 1 # for legend
@@ -388,8 +407,15 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         ax.legend(loc = legend, scatterpoints = scatterpoints, ncol = ncol)
         # plt.legend()
 
+    # plt.tight_layout(pad = 2, h_pad = 0.5)
+
 
     plt.tight_layout()
+
+    if pad:
+        plt.subplots_adjust(left=0.13, bottom=None, right=None, top=None,
+                        wspace=None, hspace=None)
+
 
     path2saved = ''
     

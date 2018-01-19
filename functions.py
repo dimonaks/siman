@@ -4,7 +4,7 @@ import os, tempfile, copy, math, itertools, sys
 import numpy as np
 from operator import itemgetter
 from itertools import product
-
+import scipy
 
 import header
 from header import print_and_log, printlog, runBash
@@ -30,23 +30,46 @@ def unique_elements(seq, idfun=None):
 
 
 
-def smoother(x, n, mul = 1):
+def smoother(x, n, mul = 1, align = 1):
     #mul - additionally multiplies values
-     x_smooth = []
-     L = len(x)
-     store = np.zeros((n,1),float)
-     for u in range(L-n):
+    #align - find first non-zero point and return it to zero
+
+    algo = 'gaus'
+
+    if algo == 'my':
+        x_smooth = []
+        L = len(x)
+        store = np.zeros((n,1),float)
+        for u in range(L-n):
           for v in range(n):
                store[v] = x[u+v]
           av = float(sum(store)) / n
           x_smooth.append(av*mul)
-     
-     for u in range(L-n,L):
+
+        for u in range(L-n,L):
           for v in range(L-u-1):
                store[v] = x[u+v]
           av = float(sum(store)) / n
           x_smooth.append(av*mul)
-     return np.asarray(x_smooth)
+    
+
+    elif algo == 'gaus':
+        x_smooth =x
+        # x_smooth = scipy.ndimage.filters.median_filter(x,size =4)
+        x_smooth = scipy.ndimage.filters.gaussian_filter1d(x_smooth, 4, order =0)
+        # x_smooth = scipy.ndimage.interpolation.spline_filter1d(x, 4)
+
+    else:
+        x_smooth = x
+
+    if align:
+        # print(x_smooth[0])
+        x_smooth[0] = 0
+        # sys.exit()
+
+
+
+    return np.asarray(x_smooth)
 
 
 
