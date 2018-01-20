@@ -330,6 +330,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         local_atoms = local_surrounding(surround_center, cl1.end, neighbors, control = 'atoms', periodic = True)
 
         numbers = local_atoms[2] 
+        el_sur = cl1.end.get_elements()[numbers[1]] # element of surrounding type
         printlog("Numbers of local atoms:", [n+1 for n in numbers], imp = 'Y' )
         printlog("List of distances", [round(d,2) for d in local_atoms[3]], imp = 'Y' )
 
@@ -431,9 +432,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         d1 = dos[0]
         ds = [d1]
         names = []
-        # if labels:
-        #     names.append(labels[0])
-        # else:
+
+
+
         names = [cl1.id[0]+'_at_'+eld1[iatom+1]+str(iatom+1)]
         
         atoms = [iatom]
@@ -522,12 +523,12 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                     # now spin-polarized components could not be shown
                     if plot_spin_pol:
-                        args[nam]      = {'x':d.energy, 'y':smoother(d.p6_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' p sum', 'dashes':dashes}
+                        args[nam]      = {'x':d.energy, 'y':smoother(d.p6_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el_sur+suf2+' p', 'dashes':dashes}
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.p6_down, nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
 
 
                     else:
-                        args[nam] = {'x':d.energy, 'y':smoother(d.p6, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' p sum', 'dashes':dashes}
+                        args[nam] = {'x':d.energy, 'y':smoother(d.p6, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el_sur+suf2+' p', 'dashes':dashes}
 
 
 
@@ -566,7 +567,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.eg_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
 
                 else:
-                    args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
+                    # args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
+                    args[nam] = {'x':d.energy, 'y':smoother(d.site_dos(iat, i_orb[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                    
                     if spin_pol:
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':None}
 
@@ -611,7 +614,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             plot_param['ylabel'] = ylabel
 
 
-        fit_and_plot(show = show, image_name = image_name, hor = True, fill = True,
+        fit_and_plot(show = show, image_name = image_name, hor = True,
         # title = cl1.name.split('.')[0]+'; V='+str(round(cl1.vol) )+' $\AA^3$; Impurity: '+el,
         **plot_param, 
         **args
