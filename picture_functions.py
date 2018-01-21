@@ -161,7 +161,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     ver_lines = None, 
     alpha = 0.8, fill = False,
     first = True, last = True, 
-    convex = None, 
+    convex = None, dashes = None,
     corner_letter = None, hide_ylabels = None, hide_xlabels= None,
     **data):
     """
@@ -335,7 +335,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
             # print('key is ', key)
             ax.plot(*xyf, alpha = alpha, **con)
-
+            # print(key)
+            # print(con)
             if fill:
                 ''
                 ax.fill(xyf[0], xyf[1], facecolor = con['c'], alpha = 0.6)
