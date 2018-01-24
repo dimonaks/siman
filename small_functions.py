@@ -107,3 +107,10 @@ def latex_spg(spg):
         spg = spg.replace('-'+dig, '\\bar{'+dig+'}')
     spg = '$'+spg+'$'
     return spg
+
+
+
+
+# def find_transition_atom(elements):
+#     #return list of unique transition elements
+#     for elements

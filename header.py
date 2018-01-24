@@ -118,6 +118,20 @@ class CalcDict(dict):
                 # print(self)
                 return str(key) in d
 
+    def items(self):
+
+        keys = []
+
+        with shelve.open(calc_database, protocol = 3) as d:
+            for key in d:
+                key = key.replace("'", "").replace('(', '').replace(')', '') #remove unnessary symbols from string
+                l = key.split(',') # go back to tuple
+
+                if len(l) == 3 and l[2].strip().isdigit():
+                    keyt = (l[0].strip(), l[1].strip(), int(l[2]))
+                    keys.append(keyt)
+
+            return keys
 
 
 #Global variables

@@ -24,7 +24,7 @@ try:
     from pymatgen.io.cif import CifWriter
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     from pymatgen.core.surface import Slab
-
+    from pymatgen.core.composition import Composition
     pymatgen_flag = True
 except:
     print('pymatgen is not avail')
@@ -276,9 +276,46 @@ class Structure():
 
         return pm
 
+    def get_pm_composition(self):
+        ''
+        pm = self.convert2pymatgen()
+        cm = Composition(pm.formula)
+        return cm
 
 
+    def get_reduced_formula(self):
+        ''
+        pm = self.convert2pymatgen()
+        cm = Composition(pm.formula)
+        # cm = Composition(self.get_elements())
+        return cm.reduced_formula
 
+    def get_formula(self):
+        ''
+        # pm = self.convert2pymatgen()
+        # cm = Composition(pm.formula)
+        # cm = Composition(self.get_elements())
+        return self.convert2pymatgen().formula
+
+    def get_reduced_composition(self):
+        ''
+        pm = self.convert2pymatgen()
+        cm = Composition(pm.formula)
+        # cm = Composition(self.get_elements())
+        return cm.reduced_composition
+
+    def get_reduced_formula_and_factor(self):
+        pm = self.convert2pymatgen()
+        cm = Composition(pm.formula)
+        # cm = Composition(self.get_elements())
+        return cm.get_reduced_formula_and_factor()
+
+    def get_fractional_composition(self):
+        pm = self.convert2pymatgen()
+
+        cm = Composition(pm.formula)
+        # cm = Composition(self.get_elements())
+        return cm.fractional_composition
 
     def update_from_pymatgen(self, stpm):
         """
@@ -380,6 +417,34 @@ class Structure():
         elif fmt == 'n':
             tra = ns
         return tra
+
+    def get_specific_elements(self, required_elements = None, fmt = 'names', ):
+        """Returns list of transition elements (chemical names or z) in the structure
+        fmt - 
+            'names'
+            'z'
+            'n' - numbers of atoms
+        
+        required_elements - list of elements of interest
+
+        """
+        el = self.get_elements()
+        tra = []
+        ns = []
+        for i, e in enumerate(el):
+            for t in required_elements:
+                if e == invert(t):
+                    tra.append(e)
+                    ns.append(i)
+        
+        if fmt == 'z':
+            tra = [invert(t) for t in tra]
+        elif fmt == 'n':
+            tra = ns
+        return tra
+
+
+
 
 
     def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None):
@@ -3637,6 +3702,13 @@ class CalculationVasp(Calculation):
                     if 'TITEL' in line:
                         self.potcar_lines.append( line.split()[2:] )
 
+                    if 'LEXCH  =' in line:
+                        # print(line)
+                        self.xc_pot = line.split()[2].strip() #xc from potential 
+
+                    if 'GGA     =' in line:
+                        # print(line)
+                        self.xc_inc = line.split()[2].strip() #xc from incar
 
                     if 'ions per type =' in line:
                         self.end.nznucl = [int(n) for n in line.split()[4:]]
@@ -4618,7 +4690,7 @@ class CalculationVasp(Calculation):
         CHGCAR_sum = path+v+".CHGCAR_sum"
         baderlog =  path+v+".bader.log"
         ACF      = path+v+'.ACF.dat'
-
+        self.path['acf'] = ACF
 
 
 

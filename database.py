@@ -2,6 +2,8 @@
 from __future__ import division, unicode_literals, absolute_import 
 
 import shelve, sys, datetime, shutil, tempfile, os, json, re, glob
+import json
+
 
 import pandas as pd
 
@@ -131,8 +133,28 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
 
     # if header.RAMDISK:
     #     databasefile3 = header.RAMDISK+databasefile3
+    size = os.path.getsize
 
-    shutil.copyfile(databasefile3, 'calc_copy.gdbm3')
+    if 0: #please run me from time to time to reduce the size of the database file
+        import dbm
+        with dbm.open(databasefile3, 'w') as d:
+            d.reorganize()
+    
+
+
+
+
+    if size(databasefile3) < size('calc_copy.gdbm3')-100000:
+
+        print(size(databasefile3), size('calc_copy.gdbm3'))
+        printlog('Error! actual database file is smaller than reserve copy, something is wrong! Check')
+
+    else:
+        ''
+        shutil.copyfile(databasefile3, 'calc_copy.gdbm3')
+    
+
+
     if 0:
         d = shelve.open('calc.s', protocol=1) #Write database of calculations
         d[calc_key]       = calc
@@ -176,8 +198,9 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
                 # print(key)
                 d[str(key)] = header.calc[key]
         
-        # with dbm.open(header.calc_database, 'w') as d:
-        #     d.reorganize()
+        if 0: #please run me from time to time to reduce the size of the database file
+            with dbm.open(header.calc_database, 'w') as d:
+                d.reorganize()
 
 
     printlog("\nEnd of work at "+str(datetime.datetime.now())+'\n')
@@ -348,24 +371,92 @@ def add_to_archive_database(cl, subgroup):
     subgroup (str) - subgroup folder
 
     """
+
+    from pymatgen.core.composition import Composition
+    from pymatgen.io.cif import CifWriter
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+
     join = os.path.join
+    basename = os.path.basename
+
+
 
     save_format = 'azh'
     dbpath = header.PATH2DATABASE
     it = cl.id[0]
-    material = header.struct_des[it].sfolder.split('/')[0]
-    sfolder = os.path.join(dbpath, material)
 
-    name = []
+    # print(cl.path)
+    sub_folder = cl.path['output'].split('/')[0] # usually basic chemical formula
+    # sub_folder = header.struct_des[it].sfolder.split('/')[0] # usually basic chemical formula
 
-    if 'azh' in save_format:
-        #1. Single point calculation of total energy
-        # print(sfolder)
-        makedir( join( sfolder, 'dummy')  )
+    print( 'Processing ', cl.id)
+    cl.read_results()
 
+    if '4' not in cl.state:
+        return
+    st = cl.end
+
+    # print(cl.end.typat)
+    # sys.exit()
+
+
+    if 1:
+        #determine x
+        #universal method, supports several alkali elements
+        #requires cl.base_formula in 'Na2FePO4F' format
+        #requires pymatgen, would be nice to remove dependency
+        cmb = Composition(cl.base_formula)
+        cm  = st.get_pm_composition()
+
+        rc = cl.end.get_reduced_composition().as_dict() #reduced composition dict
+        rcb = cmb.reduced_composition.as_dict()   
+        
+        # print(rc, rcb)
+
+        alk = list(set(st.get_specific_elements(header.ALKALI_ION_ELEMENTS))) # list of unique alkali elements
+        tra = list(set(st.get_specific_elements(header.TRANSITION_ELEMENTS)))
+        # print(alk, tra)
+        el_for_norm = tra[0] #first element used for normalization
+
+        nnb = rcb[el_for_norm] #number of norm elements in base
+        nn  = rc[el_for_norm]      #number of norm elements in interesting structure 
+        # print(nb, n)
+        mul = nn/nnb # multiplier that garanties normalization
+
+        # print(rcb)
+        nab = sum([rcb[invert(z)] for z in header.ALKALI_ION_ELEMENTS if invert(z) in rcb])
+        
+
+        na  = sum([rc[el] for el in alk])
+        x = na / mul / nab
+
+        # determine formula
+        # cm = st.get_pm_composition() #get pymatgen composition class
+        # print( (cm/4).formula)
+
+        # print('Material detected:', formula, 'sub_folder:', sub_folder)
+
+        #obtain base without alk
+        formula = (cm.reduced_composition/mul).formula
+        # formula = formula.replace('1 ', '').replace(' ', '')
+        # print(formula)
+        cl.formula = formula
+        # print(Composition('Na0.75'))
+        print('Material detected:', formula, 'sub_folder:', sub_folder)
+
+        # sys.exit()
+
+
+
+
+
+    if 0:
+        #Old method, not robust at all!
         #determine x for alkali ion from structure name
-        parsed = re.findall(r'([A-Z][a-z]*)(\d*)', it)
+        parsed = re.findall(r'([A-Z][a-z]*)(\d*)', formula)
         parsed = [(el, x if x else '1') for (el, x) in parsed ]
+        print(parsed)
         print('detected element is ', parsed[0][0])
 
         if parsed[0][0] in [invert(z) for z in header.ALKALI_ION_ELEMENTS]:
@@ -378,22 +469,62 @@ def add_to_archive_database(cl, subgroup):
 
         else:
             x = '0'
-        name.append('x'+x)
 
-        cl.read_results()
+
+
+
+    
+
+    sfolder = os.path.join(dbpath, sub_folder)
+
+    name = []
+
+    if 'azh' in save_format:
+        #1. Single point calculation of total energy
+        # print(sfolder)
+        makedir( join( sfolder, 'dummy')  )
+
+        if x < 1:
+            x = int(round(100*x, 0))
+        else:
+            x = int(round(x, 0))
+
+        print('Concentration x:', x)
+
+        name.append('x'+str(x))
+        # sys.exit()
         
-        if material in ['LiCoO2', 'LiTiO2', 'LiFePO4', 'NaFePO4', 'LiMnPO4', 
-        'LiNiO2', 'LiTiS2', 'LiMn2O4', 'LiVP2O7', 'LiVPO4F', 
-        'NaMnAsO4', 'Na2FePO4F', 'Na2FeVF7', 'KFeSO4F', 'NaLiCoPO4F', 'KVPO4F' ]: 
-            sfolder = join(sfolder, subgroup)
-            makedir( join(sfolder,'dummy') )
+        # if formula in ['LiCoO2', 'LiTiO2', 'LiFePO4', 'NaFePO4', 'LiMnPO4', 
+        # 'LiNiO2', 'LiTiS2', 'LiMn2O4', 'LiVP2O7', 'LiVPO4F', 
+        # 'NaMnAsO4', 'Na2FePO4F', 'Na2FeVF7', 'KFeSO4F', 'NaLiCoPO4F', 'KVPO4F' ]: 
+        sfolder = join(sfolder, subgroup)
+        makedir( join(sfolder,'dummy') )
 
         cl.set.update()
 
 
+        # print(cl.potcar_lines)
+        potcar1_m = cl.potcar_lines[0][0]
 
+        if '_' in potcar1_m:
+            (pot, _) = potcar1_m.split('_')
+        else:
+            pot = potcar1_m
 
-        (pot, func) = cl.potcar_lines[0][0].split('_')
+        xc = cl.xc_inc
+        if '-' in xc:
+            xc = cl.xc_pot
+
+        if xc == 'PE':
+            func = 'PBE'
+        elif xc == 'CA':
+            func = 'LDA'
+        elif xc == 'PS':
+            func = 'PBEsol'
+        else:
+            print('uknown xc type:', xc)
+            sys.exit()
+
         
         if cl.set.spin_polarized:
             func = 'U'+func #unrestricted
@@ -411,7 +542,7 @@ def add_to_archive_database(cl, subgroup):
         # print(func)
         name.append(func)
 
-        name.extend(it.split('.')[1:]+[cl.id[1]]+[str(cl.id[2])])
+        name.extend([it.replace('.', '_')]+[cl.id[1]]+[str(cl.id[2])])
 
         name_str = '_'.join(name)
         # print('_'.join(name) )
@@ -426,7 +557,7 @@ def add_to_archive_database(cl, subgroup):
 
         cl.end.write_xyz(path = sfolder, filename =  name_str)
 
-        pickle_file = cl.serialize(os.path.join(sfolder, 'dat', name_str) )
+        pickle_file = cl.serialize(os.path.join(sfolder, 'bin', name_str) )
         # cl
 
 
@@ -441,7 +572,6 @@ def add_to_archive_database(cl, subgroup):
         sg_before =  st_mp.get_space_group_info() 
         # from pymatgen.symmetry.finder import SymmetryFinder
         # sf = SymmetryFinder(st_mp_prim)
-        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
         symprec = 0.1
         sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
 
@@ -465,7 +595,6 @@ def add_to_archive_database(cl, subgroup):
             symprec = 0.01
 
         if st_mp_prim:
-            from pymatgen.io.cif import CifWriter
             cif = CifWriter(st_mp_prim, symprec = symprec)
             cif_name =  name_str+'.cif'
             cif.write_file(  join(sfolder, cif_name)  )
@@ -497,23 +626,66 @@ def add_to_archive_database(cl, subgroup):
                 shutil.copyfile(path_to_chg, join( sfolder, 'bin', name_str+'.chg'+gz)  )
 
 
+        #write dos
+        if subgroup in ['dos', 'DOS']:
+            DOSCAR = cl.get_file('DOSCAR', nametype = 'asoutcar'); 
+            if DOSCAR:
+                printlog('path to DOSCAR', DOSCAR)
+                gz = '.gz'
+                if gz not in path_to_chg:
+                    gz = ''
+                shutil.copyfile(DOSCAR, join( sfolder, 'bin', name_str+'.dos'+gz)  )                
+
+        if subgroup in ['BAD']: #bader
+            cl.get_bader_ACF()
+            acf = cl.get_file(basename(cl.path['acf']))
+            # print(acf)
+            # sys.exit() 
+            if acf:
+                shutil.copyfile(acf, join( sfolder, 'bin', name_str+'.acf')  )                
+
+
+
+        if subgroup in ['ph', 'PH']: #bader
+            # cl.get_bader_ACF()
+            xml = cl.get_file('vasprun.xml', nametype = 'asoutcar')
+            # print(acf)
+            # sys.exit() 
+            if xml:
+                shutil.copyfile(xml, join( sfolder, 'bin', name_str+'.xml')  )                
+
+
+
+
+
+
+
+
+
+
         #make dat
         #incars
         makedir(  join(sfolder, 'dat','dummy')  )
         incars = glob.glob(  join(cl.dir, '*INCAR*')  )
         # print(incars)
         for inc in incars:
-            shutil.copy(  inc, join(sfolder, 'dat')  )
+
+            dest = join(sfolder, 'dat')
+            # inc_name = 
+            if not os.path.exists(join(dest, basename(inc) )):
+                shutil.copy(  inc, dest  )
 
 
         #kpoints
-        import json
-        with open(  join(sfolder, 'dat', 'kpoints_for_kspacings.json'), 'w', newline = '') as fp:
-            json.dump(header.struct_des[it].ngkpt_dict_for_kspacings, fp,)
-
+        if it in header.struct_des:
+            with open(  join(sfolder, 'dat', 'kpoints_for_kspacings.json'), 'w', newline = '') as fp:
+                json.dump(header.struct_des[it].ngkpt_dict_for_kspacings, fp,)
+        else:
+            printlog('Warning!, it not in struct_des:',it )
         # print(cl.set.toJSON())
 
 
         #prepare for neb
         # makedir(sfolder+'neb_'+name_str+'/dummy')
 
+    return
