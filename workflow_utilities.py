@@ -12,7 +12,7 @@ from header import print_and_log as printlog
 from header import calc, db
 from picture_functions import fit_and_plot
 from small_functions import merge_dics
-from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, add_to_database
+from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive
 from neb import add_neb
 from classes import Calculation
 from analysis import calc_redox,  matrix_diff

@@ -379,7 +379,7 @@ def add_to_archive_database(cl, subgroup):
 
     join = os.path.join
     basename = os.path.basename
-
+    dirname  = os.path.dirname
 
 
     save_format = 'azh'
@@ -529,11 +529,15 @@ def add_to_archive_database(cl, subgroup):
         if cl.set.spin_polarized:
             func = 'U'+func #unrestricted
 
-
+        u_ramping_flag = False
         if hasattr(cl.set, 'u_ramping_nstep') and cl.set.u_ramping_nstep:
             func += '-UR'
+            u_ramping_flag = True
+
         elif cl.set.dftu:
             func += '-U'
+        else:
+            func += '-'
 
         func+=pot.lower()
         ecut = str(round(cl.set.ecut ))
@@ -555,7 +559,22 @@ def add_to_archive_database(cl, subgroup):
 
         shutil.copyfile(cl.path["output"], join(sfolder, outcar_name)  )
 
+        if u_ramping_flag:
+            print(cl.associated_outcars)
+            for i, u_outcar in enumerate(cl.associated_outcars[:-1]): # except the last one, which was copied above
+                u = u_outcar.split('.')[1]
+                # print(u)
+                path_to_outcar = join( dirname(cl.path["output"]), u_outcar )
+
+                cl.read_results(load = 'o', choose_outcar = i+1, only_load  = 1)
+                
+                shutil.copyfile(path_to_outcar, join(sfolder, name_str+'_'+u+'.out')  )
+
+            # sys.exit()
+
+
         cl.end.write_xyz(path = sfolder, filename =  name_str)
+
 
         pickle_file = cl.serialize(os.path.join(sfolder, 'bin', name_str) )
         # cl

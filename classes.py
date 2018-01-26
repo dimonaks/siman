@@ -3455,7 +3455,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def read_results(self, load = '', out_type = '', voronoi = False, show = '', choose_outcar = None, alkali_ion_number = None):
+    def read_results(self, load = '', out_type = '', voronoi = False, show = '', choose_outcar = None, alkali_ion_number = None, only_load = False):
 
         """
         Download and Read VASP OUTCAR file
@@ -3469,6 +3469,7 @@ class CalculationVasp(Calculation):
                 also controls reading of OUTCAR
                 'xcarts' read xcart every relaxation step and write into self.end.list_xcart
 
+            - only_load (bool) - if true - only load the files (used for database)
 
         ###RETURN:
             ?
