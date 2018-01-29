@@ -273,7 +273,7 @@ def form_en(sources, products, norm_el = None):
 
 
 
-def chgsum(cll, el, site):
+def chgsum(cll, el, site, silent = 1):
     """
     calculate sum of Bader charges for particular atoms
     """
@@ -290,9 +290,9 @@ def chgsum(cll, el, site):
             cl.get_bader_ACF()
         # determine_symmetry_positions(cl.end, el, silent = 0)
 
-    print('')
+    # print('')
     try:
-        pos = determine_symmetry_positions(cll[0].end, el, silent = 0)
+        pos = determine_symmetry_positions(cll[0].end, el, silent = 1)
     except:
         printlog('chgsum() Warning!', cll[0].id, 'is broken!')
         return 0
@@ -308,7 +308,8 @@ def chgsum(cll, el, site):
         
             # print('{:5.3f}'.format(cl.charges[p]), end = '  ')
         # print('')
-    print('Sum of charges for ', el+str(site+1), ':')
+    if not silent:
+        print('Sum of charges for ', el+str(site+1), ':')
     
 
     el_ind = cl.init.znucl.index(invert(el)) # index of element in znucl and zval and nznucl
@@ -323,9 +324,11 @@ def chgsum(cll, el, site):
 
         if cl == cll[0]:
             chgsum_ref = chgsum
+        if not silent:
 
-        print('{:5.2f}({:4.2f})'.format(chgsum, chgsum_ref-chgsum), end = '  ')
-    print('\n')
+            print('{:5.2f}({:4.2f})'.format(chgsum, chgsum_ref-chgsum), end = '  ')
+    if not silent:
+        print('\n')
 
     # print(cl.charges)
     return chgsum

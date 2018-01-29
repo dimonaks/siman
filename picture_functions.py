@@ -314,10 +314,12 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
                 if 'x' not in con:
                     l = len(con['y'])
-                    con['x'] = range(l)
+                    con['x'] = list(range(l))
 
                 if 'xticks' in con:
-                    plt.xticks(con['x'], con['xticks'])
+                    # print(con['xticks'])
+                    ax.set_xticklabels(con['xticks'])
+                    ax.set_xticks(con['x'])
                     del con['xticks']
 
                 xyf = [con['x'], con['y'], con['fmt']]
@@ -334,6 +336,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 con['ms'] = markersize
 
             # print('key is ', key)
+            # print('x ', xyf[0])
             ax.plot(*xyf, alpha = alpha, **con)
             # print(key)
             # print(con)
@@ -415,7 +418,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     if pad:
         plt.subplots_adjust(left=0.13, bottom=None, right=None, top=None,
-                        wspace=None, hspace=None)
+                        wspace=0.07, hspace=None)
 
 
     path2saved = ''
