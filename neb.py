@@ -450,7 +450,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             print_and_log( 'Type of atom to move = ', type_atom_to_move, imp = 'y')
             # print 'List of left atoms = ', np.array(st.leave_only(type_atom_to_move).xcart)
 
-            sur = local_surrounding(x_m, st, n_neighbours = 8, control = 'atoms', 
+            sur = local_surrounding(x_m, st, n_neighbours = 12, control = 'atoms', 
                 only_elements = [invert(type_atom_to_move)]+end_pos_types_z,
                 periodic  = True) #exclude the atom itself
 
