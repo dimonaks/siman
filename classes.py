@@ -4,7 +4,7 @@ from __future__ import division, unicode_literals, absolute_import, print_functi
 import itertools, os, copy, math, glob, re, shutil, sys, pickle
 import re
 
-from small_functions import angle
+from small_functions import angle, is_string_like
 
 #additional packages
 try:
@@ -205,7 +205,9 @@ class Structure():
         return self.recip
 
     def get_nznucl(self):
-        """list of numbers of atoms of each type"""
+        """list of numbers of atoms of each type, order is not important
+            updated directly
+        """
         self.nznucl = []
         for typ in range(1,self.ntypat+1):
             self.nznucl.append(  self.typat.count(typ) )
@@ -317,6 +319,36 @@ class Structure():
         # cm = Composition(self.get_elements())
         return cm.fractional_composition
 
+    def update_types(self, elements):
+        # update typat, ntypat, znucl, nznucl from elements - list of elements names
+        st = copy.deepcopy(self)
+        st.ntypat = len(set(elements))
+
+        st.typat = []
+        st.znucl = []
+        unique = []
+        curtyp = 0
+        types = {}
+        for el in elements:
+            if el not in unique:
+                curtyp += 1
+                types[el] = curtyp
+                if is_string_like(el):
+                    z = invert(el)
+                else:
+                    z = el
+
+                st.znucl.append(z)
+                # nznucl.append(0)
+                unique.append(el)
+            st.typat.append(types[el])
+        
+        st.get_nznucl()
+
+        # print(st.ntypat, st.typat, st.nznucl, st.znucl)
+
+        return st
+
     def update_from_pymatgen(self, stpm):
         """
         stpm - pymatgen structure
@@ -324,18 +356,28 @@ class Structure():
         only rprimd, xred and xcart are updated now!!!!!
 
         TODO:
-        please update also atomic types!!!!
+        please update magmom also!!!!
 
         """
         st = copy.deepcopy(self)
         st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
         st.xred   = [np.array(site._fcoords) for site in stpm._sites]
+        # print(elements)
         st.update_xcart()
+
+        # s = stpm._sites[0]
+        # print( dir(s.specie) )
+        # print( s.specie )
+        elements = [s.specie.name for s in stpm._sites]
+        st = st.update_types(elements)
+
+        st.natom = len(st.typat)
+        # sys.exit()
 
         if st.natom != len(st.xred):
             printlog('Error! number of atoms was changed, please improve this method')
 
-        st.name+='_pmg'
+        st.name+='_from_pmg'
         return st
 
     def printme(self):
@@ -470,8 +512,9 @@ class Structure():
 
         st = copy.deepcopy(self)
 
-        if not hasattr(st, 'select'):
+        if not hasattr(st, 'select') or st.select is None:
             st = st.selective_all()
+
 
         natom_to_add = len(atoms_xcart)
 

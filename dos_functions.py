@@ -340,8 +340,13 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         local_atoms = local_surrounding(surround_center, cl1.end, neighbors, control = 'atoms', periodic = True)
 
         numbers = local_atoms[2] 
-        el_sur = cl1.end.get_elements()[numbers[1]] # element of surrounding type
+        els = cl1.end.get_elements()
+        el_sur = els[numbers[1]] # element of surrounding type
+        
         printlog("Numbers of local atoms:", [n+1 for n in numbers], imp = 'Y' )
+        
+        printlog("Elements of local atoms:", [els[i] for i in numbers], imp = 'Y' )
+
         printlog("List of distances", [round(d,2) for d in local_atoms[3]], imp = 'Y' )
 
 
