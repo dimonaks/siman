@@ -19,6 +19,10 @@ except:
 
 
 
+
+
+
+
 def determine_barrier(positions = None, energies = None):
 
     """
@@ -563,3 +567,15 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
             # print(' deviations                :', dev.round(1))
             pol[key] = None
     return pol, magmom_tm
+
+
+
+def calc_oxidation_states(cl):
+
+    st = cl.end
+    z_vals = []
+    for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
+        ox = z_val - cl.charges[j]
+        z_vals.append(ox)
+        print(el, '{:3.1f}'.format(ox))
+    # print(list(zip(z_vals, self.end.get_elements())))

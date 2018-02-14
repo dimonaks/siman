@@ -3666,9 +3666,10 @@ class CalculationVasp(Calculation):
                 re_lengths = re.compile("length of vectors")
                 re_eltime = re.compile("Elapsed time")
                 re_nkpts = re.compile("NKPTS")
-
-                i_line = 0
                 iterat = 0
+                i_line = 0
+                mdstep_prev = 0
+                dipol = None
                 self.mdstep = 1
                 warnings = 0#""
                 self.time = 0
@@ -4101,6 +4102,22 @@ class CalculationVasp(Calculation):
                         if gamma > 1 and 'conv' in show:
                             printlog('average eigenvalue GAMMA >1', gamma, imp = 'y')
                         # sys.exit()
+
+
+
+                    # if 'DIPCOR: dipole corrections for dipol' in line:
+                    if self.mdstep > mdstep_prev:
+                        # print(self.mdstep, dipol)
+                        mdstep_prev = self.mdstep
+
+                    if 'dipolmoment' in line:
+                        self.dipol = line
+                        # print(line)
+
+                        # for i in range(1,4):
+                        #     line = outcarlines[i_line+i]
+                        #     print(line)
+
 
 
                     # if 'irreducible k-points:': in line:
@@ -4716,7 +4733,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def get_bader_ACF(self):
+    def get_bader_ACF(self, p = 0):
         #Make bader on server
         #assumes that bader is installed
         self.res()
@@ -4790,7 +4807,7 @@ class CalculationVasp(Calculation):
         self.charges = charges
 
         # print(charges[[1,2]])
-        if 0:
+        if p:
             print(list(zip(charges, self.end.get_elements())))
 
 
