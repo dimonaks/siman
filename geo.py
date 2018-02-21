@@ -748,7 +748,7 @@ def remove_one_atom(st, element, del_pos = None, iat = 0):
     positions = determine_symmetry_positions(st, element)
     
     if not del_pos and len(positions) > 1:
-        printlog('Error! More than one symmetry position is found, please choose del position')
+        printlog('Error! More than one symmetry position is found, please choose del position starting from 1')
     elif len(positions) == 1:
         del_pos = 1
     else:

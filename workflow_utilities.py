@@ -160,7 +160,8 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
                 # print(occfile)
 
                 # sys.exit()
-
+            else:
+                occfile = None
 
 
         elif 'rep' in option:

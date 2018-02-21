@@ -1,13 +1,16 @@
 from __future__ import division, unicode_literals, absolute_import 
+import os, copy, shutil
 import numpy as np
 
 import header
 from header import printlog, mpl
-from functions import element_name_inv, invert
-from geo import determine_symmetry_positions, local_surrounding
+from functions import element_name_inv, invert, get_from_server
+from picture_functions import plot_mep
+from geo import determine_symmetry_positions, local_surrounding, find_moving_atom, image_distance
 from database import push_figure_to_archive
 from header import db
 from small_functions import is_list_like, makedir
+from inout import write_xyz, read_xyz, write_occmatrix
 
 try:
     # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library
@@ -579,3 +582,301 @@ def calc_oxidation_states(cl):
         z_vals.append(ox)
         print(el, '{:3.1f}'.format(ox))
     # print(list(zip(z_vals, self.end.get_elements())))
+
+
+
+
+
+
+
+def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None, results_dic = None, fitplot_args = None, style_dic = None, params = None):
+    """
+    Analyse traectories and polarons
+
+    params
+        mep_shift_vector
+    """
+    if results_dic is None:
+        results_dic = {}
+
+    calc = header.calc
+    path2mep_s = cl.project_path_cluster+'/'+cl.dir+'/mep.eps'
+    itise = cl.id[0]+'.'+cl.id[1]
+    # print(cl.ldauu)
+    # sys.exit()
+    name_without_ext = 'mep.'+itise+'.U'+str(max(cl.ldauu))
+    path2mep_l = cl.dir+name_without_ext+'.eps'
+    # print(path2mep_l)
+    if not os.path.exists(path2mep_l) or '2' in up:
+        ''
+        get_from_server(files = path2mep_s, to_file = path2mep_l, addr = cl.cluster_address, )
+        movie_to = cl.dir+'/movie.xyz'
+        get_from_server(files = cl.project_path_cluster+'/'+cl.dir+'/movie.xyz', to_file = movie_to, addr = cl.cluster_address, )
+        
+        if os.path.exists(movie_to):
+            shutil.copyfile(movie_to, 'figs/'+name_without_ext+'.xyz')
+
+
+
+    # trying to get one image closest to the saddle point
+    if old_behaviour and cl.version == 2: #old behaviour, now created automatically in add callc
+        im = cl.set.vasp_params['IMAGES']
+        # if im % 2 > 0: #odd
+        #     i = im//2 + 1
+        # else:
+        #     i = im/2
+        # if choose_image:
+        #     i = choose_image
+
+        for i in range(im):
+            i+=1
+            cl_i = copy.deepcopy(cl)
+            cl_i.version+=i
+            cl_i.id = (cl.id[0], cl.id[1], cl_i.version)
+            cl_i.name = str(cl_i.id[0])+'.'+str(cl_i.id[1])+'.'+str(cl_i.id[2])
+            # print cl_i.name
+            cl_i.path["output"] = cl_i.dir+'0'+str(i)+"/OUTCAR"
+            # for i in range():
+
+            cl_i.associated_outcars = [ aso[2:] for aso in cl_i.associated_outcars  ]
+
+            # print cl_i.path["output"] 
+            cl_i.state = '2. Ready to read outcar'
+            # if not os.path.exists(cl_i.path["output"]):
+            #     load = 'o'
+            outst2 = ("%s"%cl_i.name).ljust(name_field_length)
+            if readfiles:
+                print(outst2+'|'+cl_i.read_results(loadflag, show = show, choose_outcar = choose_outcar) )
+            else:
+                print_and_log(outst2+' | File was not read')
+            
+
+            if cl_i.id in calc: #move creation of calcs with images to add_neb
+                ''
+                # print_and_log('Please test code below this message to save prev calcs')
+                # if cl_i != calc[cl_i.id]
+                #     if hasattr(calc[cl_i.id], 'prev') and calc[cl_i.id].prev:
+                #         prevlist = calc[cl_i.id].prev
+                #     else:
+                #         prevlist = [calc[cl_i.id]]
+                #     cl_i.prev = prevlist
+                #     calc[cl_i.id] = cl_i
+            else:
+                calc[cl_i.id] = cl_i
+
+
+
+
+
+
+    # print path2mep_l
+    if 0:
+        if os.path.exists(path2mep_l):
+            # get_from_server(file = path2mep_s, to = path2mep_l, addr = cluster_address)
+
+            runBash('evince '+path2mep_l)
+        else:
+            a =  glob.glob(cl.dir+'*mep*')
+            if a:
+                runBash('evince '+a[0])
+
+
+    
+
+
+    cl1 = calc[cl.id[0], cl.id[1], 1]
+    cl2 = calc[cl.id[0], cl.id[1], 2]
+    
+
+    atom_num = find_moving_atom(cl1.end, cl2.end)
+
+    #prepare lists
+    ni = cl.set.vasp_params['IMAGES']
+    vlist = [1]+list(range(3, ni+3) )+[2]
+    # print( vlist)
+    mep_energies = []
+    atom_pos     = []
+
+
+
+    pols = []
+    sts = []
+    sts_loc = []
+    dAO = [] # A-(O,F) distance for each image
+
+    for v in vlist:
+        cli = calc[cl.id[0], cl.id[1], v]
+        # print(cl.id[0], cl.id[1], v, cli.state)
+        if '4' not in cli.state and 'un' not in up:
+            printlog('Attention! res_loop(): analys_type == neb, Calc',cli.id,'is not finished; return')
+            return {}, []
+        # print cli.id
+        # cli.end = return_to_cell(cli.end)
+        # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy - not very good, sometimes unconverged energy could be lower! 
+        mep_energies.append(  cli.energy_sigma0   ) #use last energy 
+        atom_pos.append( cli.end.xcart[atom_num] )
+
+        # Find polaron positions
+        if 1 or 'polaron' in show:
+            pol, mag = find_polaron(cli.end, atom_num)
+            if pol:
+                for key in pol:
+                    if np.any(pol[key]):
+                        for n in pol[key]:
+                            if n not in pols:
+                                pols.append(n)
+            else:
+                ''
+                # print('Mag_moments on trans,', mag.round(1))
+        
+        if 1 or 'neb_geo' in show:
+            #visualization of path
+            # print(atom_num)
+            st = copy.deepcopy(cli.end)
+            # print('moving_atom', st.xcart[atom_num])
+            info = st.nn(atom_num, 15, from_one = False, silent = 1)
+            st.moving_atom_i = atom_num
+            st_loc = info['st']
+
+
+            # print(st_loc.xcart)
+            # st_loc = st_loc.shift
+            
+            if v == vlist[0]:
+                vec = st.center_on(atom_num)
+            
+                if 'mep_shift_vector' in params:
+                    # vec += np.array([0.11,0.11,0]) # path4
+                    vec += np.array(params['mep_shift_vector']) # path4
+
+            # print(vec)
+            st_loc = st_loc.shift_atoms(vec)
+            st_loc.write_xyz()
+
+            sts_loc.append(st_loc)
+
+
+            sts.append(st.shift_atoms(vec))
+
+
+            info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
+            print('Average_distance A-2(O,F)', info1['av(A-O,F)'], 'A')
+
+
+            if 0 or 'neb_geo' in show:
+                av = st.nn(atom_num, 2, from_one = False, silent = 1, more_info = 1)['avsq(A-O,F)']
+                print('Average squared distance A-2(O,F)', av, 'A')
+
+                info2 = st.nn(atom_num, 4, from_one = False, silent = 1)
+                print('Average_distance A-4(O,F)', info2['av(A-O,F)'], 'A')
+                print('Elements are ', info2['el'])
+
+                info3 = st.nn(atom_num, 6, from_one = False, silent = 1, more_info = 1)
+                print('Average_distance A-6(O,F)', info3['av(A-O,F)'], 'A')
+                print('Average_deviation A-6(O,F)', info3['avdev(A-O,F)'], 'mA')
+                print('Elements are ', info3['el'])
+
+
+            # info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
+
+            write_xyz(sts = sts) # write traectory
+
+
+            dAO.append (info1['av(A-O,F)'])
+
+    if dAO: # find maximum change of distance during migration
+        dAO_change = abs(min(dAO) - max(dAO))
+        results_dic['dAO_change'] = dAO_change
+
+    results_dic['sts_loc'] = sts_loc # list of local structures, each structure contains dlist - distances from central cation to anions, and ellist - types of elements
+    results_dic['sts'] = sts # list of mep structures, each structure contains moving_atom_i - number of moving atom
+
+
+    if len(pols) > 0:
+        print('During migration of alkali ions polarons are detected on atoms:', pols)
+    elif len(pols) > 1:
+        printlog('Attention! polaron is moving during migration! Obtained barrier is ambiguous')
+    else:
+        printlog('Compare magnetic moments above! In principle should be the same!')
+
+
+    # print np.array(atom_pos)
+
+    #test if the distances between points are not spoiled by PBC 
+    nbc = range(-1, 2)
+    jj=0
+    for x in atom_pos:
+
+        x2 = atom_pos[jj+1]
+        r = cl.end.rprimd
+        d1, _ = image_distance(x, x2, r, order = 1) #minimal distance
+        x2_gen = (x2 + (r[0] * i  +  r[1] * j  +  r[2] * k) for i in nbc for j in nbc for k in nbc) #generator over PBC images
+        x2c = copy.deepcopy(x2)
+        ii = 0
+        while  np.linalg.norm(x - x2c) > d1: #find the closest PBC image position
+            if ii > 100:
+                break
+            ii+=1
+            x2c = next(x2_gen)
+        atom_pos[jj+1] = x2c
+        jj+=1
+        if jj == len(atom_pos)-1: # the last point is not needed, we could not use slice since we need to use changed atom_pos in place
+            break
+        # print np.linalg.norm(x - x2c), d1
+
+
+
+    _, diff_barrier = plot_mep(atom_pos, mep_energies, plot = 0, show = 0, fitplot_args = fitplot_args, style_dic = style_dic)
+
+    results_dic['barrier'] = diff_barrier
+    
+    middle_image = len(vlist) // 2
+    results_dic['dEm1']    = mep_energies[middle_image] - mep_energies[0]
+    
+
+
+    cl1.barrier = diff_barrier
+    cl2.barrier = diff_barrier
+
+
+
+
+
+    if 'mep' in show:
+        if 'mepp' in show:
+            show_flag = True
+        else:
+            show_flag = False
+        plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_args = fitplot_args,  style_dic = style_dic)
+
+
+
+
+
+
+    if push2archive:
+        path2saved, _ = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my', fitplot_args = fitplot_args, style_dic = style_dic)
+        push_figure_to_archive(local_figure_path = path2saved, caption = description_for_archive)
+
+
+
+
+
+
+
+
+        if 0: #copy files according to chosen outcar to run nebresults locally 
+            wd = cl_i.dir
+            out_i = cl_i.associated_outcars[choose_outcar-1]
+            out_1 = calc[cl.id[0],cl.id[1], 1].associated_outcars[choose_outcar-1]
+            out_2 = calc[cl.id[0],cl.id[1], 2].associated_outcars[choose_outcar-1]
+            # print out_1
+            # print out_2 
+            shutil.copyfile(wd+out_1, wd+'00/OUTCAR')
+            shutil.copyfile(wd+out_2, wd+'04/OUTCAR')
+            for d in ['01/','02/','03/' ]:
+                shutil.copyfile(wd+d+out_i, wd+d+'OUTCAR')
+
+                # print wd+d+out_i
+
+    return results_dic
