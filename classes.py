@@ -3389,11 +3389,12 @@ class CalculationVasp(Calculation):
 
             
             if k < nsets-1 and contcar_file:
-                if neb_flag and mode == 'footer':
-                    for n_st in subfolders:
-                        f.write('cp '+n_st+'/'+contcar_file+' '+n_st+'/POSCAR  # sequence_set: preparation of input geo for next neb set\n' )
-                else:
-                    f.write('cp '+contcar_file+' POSCAR  #sequence_set: preparation of input geo for next set\n')
+                if 'o' in savefile:
+                    if neb_flag and mode == 'footer':
+                        for n_st in subfolders:
+                            f.write('cp '+n_st+'/'+contcar_file+' '+n_st+'/POSCAR  # sequence_set: preparation of input geo for next neb set\n' )
+                    else:
+                        f.write('cp '+contcar_file+' POSCAR  #sequence_set: preparation of input geo for next set\n')
 
 
 
@@ -4702,6 +4703,7 @@ class CalculationVasp(Calculation):
                 path_to_chg = None
            
         printlog('File', path_to_chg, ' was download', imp = 'e')
+        
         return path_to_chg
 
     def get_file(self, *args, **kwargs):
