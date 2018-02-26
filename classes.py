@@ -1430,13 +1430,22 @@ class Structure():
         makedir(filename)
         symprec = 0.1
         st_mp = self.convert2pymatgen()
-        sg_before =  st_mp.get_space_group_info() 
 
-        sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
+        print(st_mp)
 
-        st_mp_prim = sf.find_primitive()
+        try:
+            sg_before =  st_mp.get_space_group_info() 
 
-        sg_after = st_mp_prim.get_space_group_info()
+
+            sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
+
+            st_mp_prim = sf.find_primitive()
+
+            sg_after = st_mp_prim.get_space_group_info()
+
+        except:
+            sg_before = [None]
+            sg_after = [None]
 
         if sg_before[0] != sg_after[0]:
             printlog('Attention! the space group was changed after primitive cell searching', sg_before, sg_after)
@@ -1447,7 +1456,8 @@ class Structure():
         if mcif:
             cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif)
         else:
-            cif = CifWriter(st_mp_prim, symprec = symprec, write_magmoms=mcif)
+            # cif = CifWriter(st_mp_prim, symprec = symprec, write_magmoms=mcif)
+            cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif)
         
         cif_name =  filename+'.'+m+'cif'
         

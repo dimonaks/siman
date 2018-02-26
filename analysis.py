@@ -743,6 +743,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             # st_loc = st_loc.shift
             
             if v == vlist[0]:
+
+                st1 = copy.deepcopy(st)
                 vec = st.center_on(atom_num)
             
                 if 'mep_shift_vector' in params:
@@ -751,10 +753,12 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
             # print(vec)
             st_loc = st_loc.shift_atoms(vec)
-            st_loc.write_xyz()
+            if 0:
+                st_loc.write_xyz()
 
             sts_loc.append(st_loc)
 
+            st1 = st1.add_atom(st.xred[atom_num], 'Rb')
 
             sts.append(st.shift_atoms(vec))
 
@@ -778,11 +782,16 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
             # info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
-
-            write_xyz(sts = sts) # write traectory
-
-
             dAO.append (info1['av(A-O,F)'])
+            st.write_cif('xyz/'+st.name)
+
+    write_xyz(sts = sts) # write traectory
+    
+    st1 = st1.shift_atoms(vec)
+    st1.name +='_all'
+    # st1.write_cif('xyz/'+st1.name)
+    st1.write_xyz()
+
 
     if dAO: # find maximum change of distance during migration
         dAO_change = abs(min(dAO) - max(dAO))
