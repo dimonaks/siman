@@ -1431,7 +1431,7 @@ class Structure():
         symprec = 0.1
         st_mp = self.convert2pymatgen()
 
-        print(st_mp)
+        # print(st_mp)
 
         try:
             sg_before =  st_mp.get_space_group_info() 

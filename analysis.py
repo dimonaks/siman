@@ -747,7 +747,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
                 st1 = copy.deepcopy(st)
                 vec = st.center_on(atom_num)
             
-                if 'mep_shift_vector' in params:
+                if params is not None and 'mep_shift_vector' in params:
                     # vec += np.array([0.11,0.11,0]) # path4
                     vec += np.array(params['mep_shift_vector']) # path4
 

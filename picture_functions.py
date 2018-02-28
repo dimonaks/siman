@@ -53,6 +53,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     from analysis import determine_barrier
 
+    if filename is None:
+        filename = image_name
+
     #Create
     if not style_dic:
         style_dic = {'p':'ro', 'l':'b-', 'label':None}
@@ -123,6 +126,18 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
             xlim = (-0.05, None  ),
         xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, filename = filename, show = show, 
         fig_format = 'eps', **fitplot_args)
+
+        # print(image_name, filename)
+        with open(filename+'.txt', 'w') as f:
+            f.write('DFT points:\n')
+            for m, e in zip(mep_pos, eners):
+                f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
+            f.write('Spline:\n')
+            for m, e in zip(xnew, ynew):
+                f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
+
+
+
 
 
     return path2saved, diff_barrier
@@ -213,7 +228,6 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
     """
-
 
     if image_name == None:
         image_name  = filename
@@ -331,6 +345,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 con['lw'] = linewidth
 
             # print(con)
+            # sys.exit()
                 
             if markersize:
                 con['ms'] = markersize
