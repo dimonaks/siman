@@ -1,4 +1,4 @@
-
+create_deintercalated_structure
 import sys, copy, itertools, math
 from operator import itemgetter
 

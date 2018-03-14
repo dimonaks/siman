@@ -121,6 +121,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     path2saved = None
     if plot:
+        # print(image_name)
         path2saved = fit_and_plot(orig = (mep_pos, eners, style_dic['p'], style_dic['label']), 
             spline = (xnew, ynew, style_dic['l'], None), 
             xlim = (-0.05, None  ),

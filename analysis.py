@@ -748,11 +748,12 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
                 vec = st.center_on(atom_num)
-                vec = np.asarray([0,0,0])
+                # vec = np.asarray([0.,0.,0.])
 
             
                 if params is not None and 'mep_shift_vector' in params:
                     # vec += np.array([0.11,0.11,0]) # path4
+                    # print(params['mep_shift_vector'])
                     vec += np.array(params['mep_shift_vector']) # path4
 
             # print(vec)
@@ -860,6 +861,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             show_flag = True
         else:
             show_flag = False
+        # sys.exit()
+
         plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = show_flag, fitplot_args = fitplot_args,  style_dic = style_dic)
 
 
