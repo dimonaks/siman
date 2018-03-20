@@ -15,7 +15,7 @@ from small_functions import red_prec
 
 
 
-def image_distance(x1, x2, r, order = 1, sort_flag = True):
+def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = False):
     """
     Calculate smallest distance and the next smallest distance between two atoms 
     correctly treating periodic boundary conditions and oblique cells.
@@ -25,6 +25,9 @@ def image_distance(x1, x2, r, order = 1, sort_flag = True):
     for cubic cells, order = 1 always provide correct result.
     For highly oblique cell you should test and find the needed value of 'order' after which results are the same.
     sort_flag (bool) - use False if you do not need sorting of distances 
+
+    return_n_distances(bool) - returns required number of smallest distances, depending on order
+
     return d1, d2 - the smallest and next smallest distances between atoms
 
     """
@@ -39,7 +42,11 @@ def image_distance(x1, x2, r, order = 1, sort_flag = True):
         d.sort()
     #print d
     # assert d[0] == min(d)
-    return d[0], d[1] #, math.sqrt(dxl[0]**2 + dxl[1]**2 + dxl[2]**2)
+
+    if return_n_distances:
+        return d[0:return_n_distances]
+    else:
+        return d[0], d[1] # old behaviour
 
 
 def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_calc_name = None, ):
