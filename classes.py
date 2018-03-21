@@ -254,13 +254,16 @@ class Structure():
 
         slab - if True return slab object is returned - limited functional is implemented
         """
+        site_properties = {}
 
         if hasattr(self, 'magmom') and any(self.magmom):
-            site_properties = {"magmom":self.magmom}
-        
-            # print(self.magmom)
-        else:
-            site_properties = None
+            site_properties["magmom"] = self.magmom
+
+
+
+
+
+
 
         if oxidation is None:
             elements = self.get_elements()
@@ -274,6 +277,18 @@ class Structure():
                 site_properties = site_properties)
         else:
             pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
+
+
+        if hasattr(self, 'charges') and any(self.charges):
+
+            if 1: #normalize charges
+                t = sum(self.charges)/len(self.charges)
+                chg = [c-t for c in self.charges ]
+                # print(t)
+            else:
+                chg = self.charges
+
+            pm.add_oxidation_state_by_site(chg)
 
 
         return pm
@@ -365,10 +380,16 @@ class Structure():
         # print(elements)
         st.update_xcart()
 
-        # s = stpm._sites[0]
+        s = stpm._sites[0]
         # print( dir(s.specie) )
         # print( s.specie )
         elements = [s.specie.name for s in stpm._sites]
+        charges = [s.specie.oxi_state for s in stpm._sites]
+        # print(elements)
+        # print(charges)
+        # sys.exit()
+        st.charges = charges
+
         st = st.update_types(elements)
 
         st.natom = len(st.typat)
