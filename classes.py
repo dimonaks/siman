@@ -1401,7 +1401,7 @@ class Structure():
                 f.write("Direct\n")
                 
                 if charges:
-                    for xred, elem, char in zip(zxred, zelem, zchar, zselect):
+                    for xred, elem, char in zip(zxred, zelem, zchar, ):
                         for x, el, ch in zip(xred, elem, char):
                             f.write("  {:12.10f}  {:12.10f}  {:12.10f}  {:2s}  {:6.3f}\n".format(x[0], x[1], x[2], el, ch) )
                 elif selective_dynamics:

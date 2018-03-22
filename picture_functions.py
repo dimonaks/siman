@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 from __future__ import division, unicode_literals, absolute_import 
 import sys, os
-
+import copy
 # import header
 # from operator import itemgetter
 # from classes import res_loop , add_loop
@@ -24,6 +24,14 @@ except:
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
+
+try:
+    from adjustText import adjust_text
+    adjustText_installed = True
+except:
+    adjustText_installed = False
+
+
 
 import header
 from header import print_and_log, printlog
@@ -178,7 +186,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
     convex = None, dashes = None,
-    corner_letter = None, hide_ylabels = None, hide_xlabels= None,
+    corner_letter = None, hide_ylabels = None, hide_xlabels= None, annotate = None,
     **data):
     """
     Plot multiple plots on one axes using *data*
@@ -220,6 +228,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     corner_letter - letter in the corner of the plot
 
     pad - additional padding, experimental
+
+    annotate - annotate each point, 'annotates' list should be in data dic!
 
     linewidth - was 3 !
     markersize - was 10
@@ -338,9 +348,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                     del con['xticks']
 
                 xyf = [con['x'], con['y'], con['fmt']]
-                del con['x']
-                del con['y']
-                del con['fmt']
+
                 # if 'lw' in 
             if linewidth:
                 con['lw'] = linewidth
@@ -353,7 +361,71 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
             # print('key is ', key)
             # print('x ', xyf[0])
-            ax.plot(*xyf, alpha = alpha, **con)
+
+
+
+
+
+
+            con_other_args = copy.deepcopy(con)
+            for k in ['x', 'y', 'fmt', 'annotates']:
+                if k in con_other_args:
+                    del con_other_args[k]
+
+            ax.plot(*xyf, alpha = alpha, **con_other_args)
+
+            if power:
+                coeffs1 = np.polyfit(xyf[0], xyf[1], power)        
+                
+                fit_func1 = np.poly1d(coeffs1)
+                x_range = np.linspace(min(xyf[0]), max(xyf[0]))
+                fit_y1 = fit_func1(x_range); 
+         
+
+                ax.plot(x_range, fit_y1, xyf[2][0], )
+
+                # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
+                # y_min  = fit_func2(x_min)
+                slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(xyf[0], xyf[1])
+                print ('R^2 = {:5.2f} for {:s}'.format(r_value**2, key))
+
+
+
+
+
+
+
+            if annotate:
+                if adjustText_installed:
+
+                    ts = []
+                    for t, x, y in zip(con['annotates'], con['x'], con['y']):
+                        ts.append(ax.text(x, y, t, size = 10, alpha = 0.5, color = con['fmt'][0]))
+                    adjust_text(ts, ax = ax,
+                        # force_points=10, force_text=10, force_objects = 0.5, 
+                        # expand_text=(2, 2), 
+                        # expand_points=(2, 2), 
+                        # lim = 150,
+                        expand_align=(2, 2), 
+                        # expand_objects=(0, 0),
+                        text_from_text=1, text_from_points=1,
+                        # arrowprops=dict(arrowstyle='->', color='black')
+                        )
+
+
+                else:
+                    for name, x, y in zip(con['annotates'], con['x'], con['y']):
+                        ax.annotate(name, xy=(x, y),
+                            xytext=(-20, 20), fontsize = 9,
+                        textcoords='offset points', ha='center', va='bottom',
+                        # bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
+                        arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5', 
+                                        color='black'))            
+
+
+
+
+
             # print(key)
             # print(con)
             if fill:
@@ -369,22 +441,6 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                         continue
                     ax.plot(points[simplex, 0], points[simplex, 1], 'k-')
 
-    if power:
-        for key in data:
-            coeffs1 = np.polyfit(data[key][0], data[key][1], power)        
-            
-            fit_func1 = np.poly1d(coeffs1)
-            x_range = np.linspace(min(data[key][0]), max(data[key][0]))
-            fit_y1 = fit_func1(x_range); 
-     
-
-
-            ax.plot(x_range, fit_y1, data[key][2][0], )
-
-            # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
-            # y_min  = fit_func2(x_min)
-            slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(data[key][0], data[key][1])
-            # print 'R^2 = ', r_value**2, key
 
 
     if hor: 
@@ -410,9 +466,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     if ylog: 
         if "sym" in str(ylog):
-            ax.yscale('symlog', linthreshx=0.1)
+            ax.set_yscale('symlog', linthreshx=0.1)
         else:
-            ax.yscale('log')
+            ax.set_yscale('log')
 
     if hide_ylabels:
         ax.yaxis.set_major_formatter(plt.NullFormatter())
