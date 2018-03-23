@@ -455,6 +455,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 periodic  = True) #exclude the atom itself
 
             # print(sur)
+
+            # st.nn()
             print_and_log(
             'I can suggest you '+str (len(sur[0][1:]) )+' end positions. The distances to them are : ',np.round(sur[3][1:], 2), ' A\n ',
             'They are ', type_atom_to_move, [invert(z) for z in end_pos_types_z], 'atoms, use *i_void_final* to choose required: 1, 2, 3 ..', imp = 'y')
@@ -471,7 +473,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             printlog('xcart of atom to delete', x_del)
             i_del = st.find_atom_num_by_xcart(x_del)
             # print(st.xcart)
-            print_and_log( 'number of atom to delete = ', i_del)
+            print_and_log( 'number of atom to delete = ', i_del, imp = 'y')
             if i_del == None:
                 printlog('add_neb(): Error! I could find atom to delete!')
 

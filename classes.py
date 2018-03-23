@@ -158,6 +158,10 @@ class Structure():
         st.name+='_fix'
         return st
 
+
+
+
+
     def get_layers_pos(self, xred_range):
         #return layer positions along vector 3 in xred_range
         st = self

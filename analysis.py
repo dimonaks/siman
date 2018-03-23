@@ -735,6 +735,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             st = copy.deepcopy(cli.end)
             # print('moving_atom', st.xcart[atom_num])
             info = st.nn(atom_num, 15, from_one = False, silent = 1)
+            
+
             st.moving_atom_i = atom_num
             st_loc = info['st']
 
@@ -760,6 +762,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             st_loc = st_loc.shift_atoms(vec)
             if 0:
                 st_loc.write_xyz()
+            # st.write_cif('xyz/'+st.name)
 
             sts_loc.append(st_loc)
 
@@ -768,8 +771,10 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             sts.append(st.shift_atoms(vec))
 
 
-            info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
-            print('Average_distance A-2(O,F)', info1['av(A-O,F)'], 'A')
+            if 0:
+                info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
+                print('Average_distance A-2(O,F)', info1['av(A-O,F)'], 'A')
+                dAO.append (info1['av(A-O,F)'])
 
 
             if 0 or 'neb_geo' in show:
@@ -786,12 +791,10 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
                 print('Elements are ', info3['el'])
 
 
-            # info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
-            dAO.append (info1['av(A-O,F)'])
-            st.write_cif('xyz/'+st.name)
 
     write_xyz(sts = sts) # write traectory
-    
+    write_xyz(sts = sts_loc) # write traectory
+
     st1 = st1.shift_atoms(vec)
     st1.name +='_all'
     # st1.write_cif('xyz/'+st1.name)
@@ -896,3 +899,12 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
                 # print wd+d+out_i
 
     return results_dic
+
+
+
+def set_oxidation_states(st):
+    pm = st.convert2pymatgen()
+    pm.add_oxidation_state_by_guess()
+    st = st.update_from_pymatgen(pm)
+    # print(pm)
+    return st

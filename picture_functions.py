@@ -263,7 +263,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
     
-    if ax == None:
+    if ax is None:
         if first:
             # fig, ax = plt.subplots(1,1,figsize=figsize)
             plt.figure(figsize=figsize)
@@ -403,8 +403,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                         ts.append(ax.text(x, y, t, size = 10, alpha = 0.5, color = con['fmt'][0]))
                     adjust_text(ts, ax = ax,
                         # force_points=10, force_text=10, force_objects = 0.5, 
-                        # expand_text=(2, 2), 
-                        # expand_points=(2, 2), 
+                        expand_text=(2, 2), 
+                        expand_points=(2, 2), 
                         # lim = 150,
                         expand_align=(2, 2), 
                         # expand_objects=(0, 0),
@@ -462,7 +462,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
     if xlog: 
-        ax.xscale('log')
+        ax.set_xscale('log')
 
     if ylog: 
         if "sym" in str(ylog):
