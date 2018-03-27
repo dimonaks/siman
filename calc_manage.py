@@ -1753,7 +1753,6 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     Comments: 
         changes len_units of new to Angstrom!!!
         !nznucl is not calculated, since only geo is created here!
-        take care of magmom, not implemented
         make use of new methods for atom manipulation
         add to des which type of st is used: 'end', 'init'
 

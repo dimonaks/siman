@@ -388,11 +388,16 @@ class Structure():
         # print( dir(s.specie) )
         # print( s.specie )
         elements = [s.specie.name for s in stpm._sites]
-        charges = [s.specie.oxi_state for s in stpm._sites]
+        # print(s.specie.oxi_state)
+        if hasattr(s.specie, 'oxi_state'):
+            charges = [s.specie.oxi_state for s in stpm._sites]
+            st.charges = charges
+        # print(st.charges)
+        # else:
+        #     charges = [None]
         # print(elements)
         # print(charges)
         # sys.exit()
-        st.charges = charges
 
         st = st.update_types(elements)
 
