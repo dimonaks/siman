@@ -1778,12 +1778,13 @@ class Calculation(object):
 
             f.write("version "+str(self.version)+"\n")
             
-            try: st.magmom
+            try: 
+                st.magmom
             except AttributeError:
                 st.magmom = [None]
             # print st.magmom 
             # sys.exit()
-            if any(st.magmom):
+            if not None in st.magmom:
                 f.write("magmom "+' '.join(np.array(st.magmom).astype(str)) +"\n")
 
 
@@ -2388,7 +2389,11 @@ class CalculationVasp(Calculation):
 
 
 
-        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and any(self.init.magmom):
+        # print(hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom)
+        # print(self.init.magmom)
+        # print(None in self.init.magmom)
+        # sys.exit()
+        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom:
 
             print_and_log('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
