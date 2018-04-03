@@ -72,6 +72,23 @@ Calculation Structure():
 """
 
 
+class cd:
+    """Context manager for changing the current working directory"""
+    def __init__(self, newPath):
+        self.newPath = os.path.expanduser(newPath)
+
+    def __enter__(self):
+        self.savedPath = os.getcwd()
+        os.chdir(self.newPath)
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.savedPath)
+
+
+
+
+
+
 class Description():
     """
     Objects of this class include just folder and description of specific calculation.
@@ -2446,7 +2463,9 @@ class CalculationVasp(Calculation):
                 ns = len(spec_mom_is); 
                 number_of_ord = int(math.factorial(ns) / math.factorial(0.5 * ns)**2)
                 
-                if 1:
+                if number_of_ord > 10000:
+                    printlog('Attention! Too much orderings (1000), skipping ...')
+                else:
                     nords = 10
                     use_each = number_of_ord // nords  # spin() should be improved to find the AFM state based on the number of configuration 
                     if use_each == 0:

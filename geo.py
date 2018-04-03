@@ -604,7 +604,7 @@ def ortho_vec(rprim, ortho_sizes = None):
 
 
 
-def create_supercell(st, mul_matrix, test_overlap = False, mp = 2, bound = 0.01): 
+def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01): 
     """ 
     st (Structure) -  
     mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 

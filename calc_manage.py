@@ -1846,7 +1846,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
     new.len_units = 'Angstrom' #! Because from VASP
 
-
+    # print(id_base_st_type)
+    # sys.exit()
 
     new.version = ver_new
 
@@ -1854,6 +1855,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         st = new.init
     elif id_base_st_type == 'end':
         st = new.end
+        if not hasattr(st, 'znucl'):
+            printlog('Error! end structure of', new.id, 'is empty! Use either init or finish calculation!')
 
     # print(st.typat)
 
@@ -2194,7 +2197,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
 def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'no', b_id = None, 
-    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = '', 
+    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fo', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
     ortho = None, mat_proj_cell = None,

@@ -3,7 +3,7 @@ from __future__ import division, unicode_literals, absolute_import, print_functi
 import copy, sys, os
 import numpy as np
 from operator import itemgetter
-
+import shutil
 
 from header import print_and_log, printlog, runBash
 import header
@@ -11,8 +11,8 @@ from calc_manage import add_loop, res_loop, add_des, inherit_ngkpt
 from functions import  return_atoms_to_cell, push_to_server, invert
 from inout import write_xyz
 
-from small_functions import is_list_like
-from classes import CalculationVasp
+from small_functions import is_list_like, makedir
+from classes import CalculationVasp, cd
 from impurity import find_pores
 from tabulate import tabulate
 from geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
@@ -735,9 +735,22 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     st1s.write_poscar('xyz/POSCAR1')
     st2s.write_poscar('xyz/POSCAR2')
-    a = runBash('cd xyz; '+header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
     # print(a)
-    runBash('cd xyz; mkdir '+it_new+'_all;'+"""for i in {00..04}; do cp $i/POSCAR """+ it_new+'_all/POSCAR$i; done; rm -r 00 01 02 03 04')
+    # runBash('cd xyz; mkdir '+it_new+'_all;'+"""for i in {00..04}; do cp $i/POSCAR """+ it_new+'_all/POSCAR$i; done; rm -r 00 01 02 03 04')
+    
+    with cd('xyz'):
+        a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
+        
+        dst = it_new+'_all'
+        makedir(dst)
+        for f in ['00', '01', '02', '03', '04']:
+            shutil.move(f+'/POSCAR', dst+'/POSCAR'+f)
+            shutil.rmtree(f)
+
+
+
+
+
     #prepare calculations
     # sys.exit()
 

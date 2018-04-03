@@ -269,7 +269,9 @@ Need: import subprocess
     printlog('running in BASH:', cmd)
     my_env = os.environ.copy()
     # my_env["PATH"] = "/opt/local/bin:/opt/local/sbin:" + my_env["PATH"]
-    p = subprocess.Popen(cmd, executable='/bin/bash', shell=True, stdout=stdout, stderr = stderr, stdin = None, env = my_env)
+    p = subprocess.Popen(cmd, 
+        # executable='/bin/bash', 
+        shell=True, stdout=stdout, stderr = stderr, stdin = None, env = my_env)
     # print (cmd)
     # print 'Bash output is\n'+out
     # print ( str(out, 'utf-8') ) 
@@ -286,3 +288,17 @@ Need: import subprocess
 
 
 
+def run_win_cmd(cmd):
+    #example for windows
+    result = []
+    process = subprocess.Popen(cmd,
+                               shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    for line in process.stdout:
+        result.append(line)
+    errcode = process.returncode
+    for line in result:
+        print(line)
+    if errcode is not None:
+        raise Exception('cmd %s failed, see above for details', cmd)
