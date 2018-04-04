@@ -162,7 +162,7 @@ class Structure():
         optional save flag-changed atoms to cif (to check the result)
 
         """
-        st1 = self
+        st1 = copy.deepcopy(self)
         if freeze == 'missing':
             flag_change = [True, True, True]
             flag_default = [False, False, False]
@@ -176,19 +176,19 @@ class Structure():
 
         totNatom1 = len(st1.typat)
         totNatom2 = len(st1.typat)
-        if totNatom2 > totNatom2:
-            print('Warning! struct to compare with has more atoms than original struct!')
+        if totNatom2 > totNatom1:
+            printlog('Warning! struct to compare with has more atoms than original struct!')
 
         st1.select = [flag_default] * totNatom1
 
-        natom1 = {}
+        natom1 = {} # dictionary of atom types (by znucl); each entry contains list of atom nubers of certain type
         for i, atype in enumerate(st1.typat):
             if st1.znucl[atype-1] in natom1:
                 natom1[st1.znucl[atype-1]].append(i)
             else:
                 natom1[st1.znucl[atype-1]] = [i]
 
-        natom2 = {}
+        natom2 = {}  # dictionary of atom types (by znucl); each entry contains list of atom nubers of certain type
         for i, atype in enumerate(st2.typat):
             if st2.znucl[atype-1] in natom2:
                 natom2[st2.znucl[atype-1]].append(i)
@@ -198,10 +198,11 @@ class Structure():
         for ztype in natom2:
             for i2 in natom2[ztype]:
                 for k, i1 in enumerate(natom1[ztype]):
-                    dist = np.sum(np.square(st1.xred[i1] - st2.xred[i2]))
+                    dist = np.sum(np.square(st1.xred[i1] - st2.xred[i2])) # square distance between compared atoms
                     if dist < tol:
-                        st1.select[i1] = flag_change
+                        st1.select[i1] = flag_change # change SD flags for if the atoms are identical
                         del (natom1[ztype][k])
+        return st1
 
     def fix_layers(self, xred_range, highlight = False):
         """
