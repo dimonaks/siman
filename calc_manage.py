@@ -1690,7 +1690,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     i_atom_to_remove = None, 
     id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
-    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, override = None
+    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, override = None, use_init = None,
     ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
@@ -1737,7 +1737,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
         - it_folder - section folder
         
-
+        - use_init (bool) use init structure if end is empty
 
     Result: 
         new geo file in the input geo folder
@@ -1856,7 +1856,13 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     elif id_base_st_type == 'end':
         st = new.end
         if not hasattr(st, 'znucl'):
-            printlog('Error! end structure of', new.id, 'is empty! Use either init or finish calculation!')
+            if use_init:
+                st = new.init
+                printlog('Attention! *use_init* flag detected, init is used instead of end')
+
+            else:
+
+                printlog('Error! end structure of', new.id, 'is empty! Use either init or finish calculation, check *use_init* flag!')
 
     # print(st.typat)
 

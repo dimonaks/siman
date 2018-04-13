@@ -763,7 +763,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             if 0:
                 st_loc.write_xyz()
             # st.write_cif('xyz/'+st.name)
-
+            st.shift_atoms(vec).write_xyz()
             sts_loc.append(st_loc)
 
             st1 = st1.add_atom(st.xred[atom_num], 'Rb')
