@@ -119,7 +119,10 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     temperature (float) - potential at temperature, self.F is expected from phonopy calculations
     """
     if cl1 is None or cl2 is None:
-        printlog('cl1 or cl2 is none; return')
+        printlog('Warning! cl1 or cl2 is none; return')
+        return
+    if not hasattr(cl1.end, 'znucl') or not hasattr(cl2.end, 'znucl') :
+        printlog('Warning! cl1 or cl2 is bad')
         return
 
     energy_ref_dict = {3:-1.9,  11:-1.31,  19:-1.02, 37:-0.93}
