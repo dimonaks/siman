@@ -36,7 +36,8 @@ vasp_electronic_keys = [
 'NELM',
 'NELMIN',
 'NELMDL',
-'MAXMIX'
+'MAXMIX',
+'NELECT'
 ]
 
 vasp_ionic_keys = [
