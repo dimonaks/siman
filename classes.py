@@ -3979,9 +3979,14 @@ class CalculationVasp(Calculation):
                         for j in range(self.end.natom):
                             parts = outcarlines[i_line+j+2].split()
                             # print "parts", parts
-                            x = float(parts[ff[0]])
-                            y = float(parts[ff[1]])
-                            z = float(parts[ff[2]])
+                            if self.end.select:
+                                x = float(parts[ff[0]])*self.end.select[j][0]
+                                y = float(parts[ff[1]])*self.end.select[j][1]
+                                z = float(parts[ff[2]])*self.end.select[j][2]
+                            else:
+                                x = float(parts[ff[0]])
+                                y = float(parts[ff[1]])
+                                z = float(parts[ff[2]])
                             forces.append([x,y,z])
                             magnitudes.append(math.sqrt(x*x + y*y + z*z))
                         average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
