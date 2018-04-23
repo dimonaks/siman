@@ -207,6 +207,9 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
         cl_v = calc[id_new]
         if '4' not in cl.state:
             cl.res()
+        if not hasattr(cl_v, 'e0'):
+            printlog('Warning', cl_v.id, 'is bad')
+            return
         calc_redox(cl_v, cl)
         # print(cl_v.end.vol, cl.end.vol)
         dE = None

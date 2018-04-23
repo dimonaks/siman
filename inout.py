@@ -293,7 +293,8 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         name = st.name
 
 
-
+    if sts:
+        name+='_traj'
 
     
     printlog("write_xyz(): Name is", name, important = 'n')
