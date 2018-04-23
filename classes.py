@@ -2103,12 +2103,12 @@ class CalculationVasp(Calculation):
                             elements_list.append(vec[3])
                     
                     if selective_dynamics:
-			# convert 'T'/'F' to True/False
+                        # convert 'T'/'F' to True/False
                         flagset = [True, True, True]
                         for fi, flag in enumerate(vec[3:6]):
                             if flag == 'F':
                                 flagset[fi] = False
-                        select.append(vec[3:6])
+                        select.append(flagset)
 
             st.select = select
             if "Car" in type_of_coordinates or 'car' in type_of_coordinates:
@@ -2467,7 +2467,7 @@ class CalculationVasp(Calculation):
         # print(self.init.magmom)
         # print(None in self.init.magmom)
         # sys.exit()
-        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom:
+        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
 
             print_and_log('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
