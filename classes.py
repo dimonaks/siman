@@ -2103,6 +2103,11 @@ class CalculationVasp(Calculation):
                             elements_list.append(vec[3])
                     
                     if selective_dynamics:
+			# convert 'T'/'F' to True/False
+                        flagset = [True, True, True]
+                        for fi, flag in enumerate(vec[3:6]):
+                            if flag == 'F':
+                                flagset[fi] = False
                         select.append(vec[3:6])
 
             st.select = select
