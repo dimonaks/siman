@@ -741,10 +741,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     with cd('xyz'):
         a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
         
-        dst = it_new+'_all/'
-        makedir(dst)
+        dst = it_new+'_all'
+        makedir(dst+'/any')
         for f in ['00', '01', '02', '03', '04']:
-            shutil.move(f+'/POSCAR', dst+'POSCAR'+f)
+            shutil.move(f+'/POSCAR', dst+'/POSCAR'+f)
             shutil.rmtree(f)
 
 
