@@ -182,7 +182,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     xlog = False,ylog = False, scatter = False, 
     legend = False, ncol = 1, legend_fontsize=None, markersize = None,  
     linewidth = None, hor = False, fig_format = 'eps', dpi = 300,
-    ver_lines = None, 
+    ver_lines = None, xy_line = None, x_nbins = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
     convex = None, dashes = None,
@@ -233,6 +233,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     linewidth - was 3 !
     markersize - was 10
+
+    x_nbins - number of ticks
 
     TODO:
     remove some arguments that can be provided in data dict
@@ -451,6 +453,17 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     if ver_lines:
         for line in ver_lines:
             ax.axvline(**line)
+
+    if xy_line:
+        ylim = ax.get_ylim()
+        # print(ylim)
+        x = np.linspace(*ylim)
+        # print(x)
+        ax.plot(x,x)
+
+    if x_nbins:
+        ax.locator_params(nbins=x_nbins, axis='x')
+
 
     if xlim: 
         ax.set_xlim(xlim)
