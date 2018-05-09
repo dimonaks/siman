@@ -125,7 +125,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     print_and_log('plot_mep(): Diffusion barrier =',round(diff_barrier, 2),' eV', imp = 'y')
     # sys.exit()
-
+    # print()
 
     path2saved = None
     if plot:
@@ -137,13 +137,14 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
         fig_format = 'eps', **fitplot_args)
 
         # print(image_name, filename)
-        with open(filename+'.txt', 'w') as f:
-            f.write('DFT points:\n')
-            for m, e in zip(mep_pos, eners):
-                f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
-            f.write('Spline:\n')
-            for m, e in zip(xnew, ynew):
-                f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
+        if 0:
+            with open(filename+'.txt', 'w') as f:
+                f.write('DFT points:\n')
+                for m, e in zip(mep_pos, eners):
+                    f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
+                f.write('Spline:\n')
+                for m, e in zip(xnew, ynew):
+                    f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
 
 
 
@@ -527,7 +528,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             plt.show()
         plt.clf()
         plt.close('all')
-
+    else:
+        printlog('Attention! last = False, no figure is saved')
 
     return path2saved
 

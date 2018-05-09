@@ -2466,7 +2466,7 @@ class CalculationVasp(Calculation):
                 if number_of_ord > 10000:
                     printlog('Attention! Too much orderings (1000), skipping ...')
                 else:
-                    nords = 10
+                    nords = 71
                     use_each = number_of_ord // nords  # spin() should be improved to find the AFM state based on the number of configuration 
                     if use_each == 0:
                         use_each = 1
