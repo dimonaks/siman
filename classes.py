@@ -151,6 +151,58 @@ class Structure():
                     selective_dyn = True
         return selective_dyn
 
+    def selective_byCompare(self, st2, tol = 0.0001, freeze = 'present' ):
+        """
+        set selective dynamics falgs in the calling structure (self) by freezing the atoms that are present (or missing) in the supplied structure (st2)
+        tol - tolerance for finding the same atoms in the two structures
+        freeze = 'present' or 'missing'
+
+        TODO:
+        read st2 from file
+        optional save flag-changed atoms to cif (to check the result)
+
+        """
+        st1 = copy.deepcopy(self)
+        if freeze == 'missing':
+            flag_change = [True, True, True]
+            flag_default = [False, False, False]
+        else:
+            flag_change = [False, False, False]
+            flag_default = [True, True, True]
+            if freeze != 'present':
+                print('Warning! incorrect \'freeze\' argument, \'presnt\' is used')
+
+        tol = tol ** 2  # ^2 tol instead sqrt(dist)
+
+        totNatom1 = len(st1.typat)
+        totNatom2 = len(st1.typat)
+        if totNatom2 > totNatom1:
+            printlog('Warning! struct to compare with has more atoms than original struct!')
+
+        st1.select = [flag_default] * totNatom1
+
+        natom1 = {} # dictionary of atom types (by znucl); each entry contains list of atom nubers of certain type
+        for i, atype in enumerate(st1.typat):
+            if st1.znucl[atype-1] in natom1:
+                natom1[st1.znucl[atype-1]].append(i)
+            else:
+                natom1[st1.znucl[atype-1]] = [i]
+
+        natom2 = {}  # dictionary of atom types (by znucl); each entry contains list of atom nubers of certain type
+        for i, atype in enumerate(st2.typat):
+            if st2.znucl[atype-1] in natom2:
+                natom2[st2.znucl[atype-1]].append(i)
+            else:
+                natom2[st2.znucl[atype-1]] = [i]
+
+        for ztype in natom2:
+            for i2 in natom2[ztype]:
+                for k, i1 in enumerate(natom1[ztype]):
+                    dist = np.sum(np.square(st1.xred[i1] - st2.xred[i2])) # square distance between compared atoms
+                    if dist < tol:
+                        st1.select[i1] = flag_change # change SD flags for if the atoms are identical
+                        del (natom1[ztype][k])
+        return st1
 
     def fix_layers(self, xred_range, highlight = False):
         """
@@ -2051,7 +2103,12 @@ class CalculationVasp(Calculation):
                             elements_list.append(vec[3])
                     
                     if selective_dynamics:
-                        select.append(vec[3:6])
+                        # convert 'T'/'F' to True/False
+                        flagset = [True, True, True]
+                        for fi, flag in enumerate(vec[3:6]):
+                            if flag == 'F':
+                                flagset[fi] = False
+                        select.append(flagset)
 
             st.select = select
             if "Car" in type_of_coordinates or 'car' in type_of_coordinates:
@@ -2410,7 +2467,7 @@ class CalculationVasp(Calculation):
         # print(self.init.magmom)
         # print(None in self.init.magmom)
         # sys.exit()
-        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom:
+        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
 
             print_and_log('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
@@ -3277,7 +3334,7 @@ class CalculationVasp(Calculation):
                 else:
                     
                     if run_tool_flag:
-                        f.write('export PATH=$PATH:'+header.project_path_cluster+'/tools/vts/\n')
+                        f.write('export PATH=$PATH:'+header.cluster_home+'/tools/vts/\n') #header.project_path_cluster
 
                         f.write('nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
 
@@ -3927,9 +3984,14 @@ class CalculationVasp(Calculation):
                         for j in range(self.end.natom):
                             parts = outcarlines[i_line+j+2].split()
                             # print "parts", parts
-                            x = float(parts[ff[0]])
-                            y = float(parts[ff[1]])
-                            z = float(parts[ff[2]])
+                            if self.end.select:
+                                x = float(parts[ff[0]])*self.end.select[j][0]
+                                y = float(parts[ff[1]])*self.end.select[j][1]
+                                z = float(parts[ff[2]])*self.end.select[j][2]
+                            else:
+                                x = float(parts[ff[0]])
+                                y = float(parts[ff[1]])
+                                z = float(parts[ff[2]])
                             forces.append([x,y,z])
                             magnitudes.append(math.sqrt(x*x + y*y + z*z))
                         average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
