@@ -1444,6 +1444,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             elif "4" in cl.state: 
                 status = "compl"
+                if up == 'up2':
+                    cl.init.select = None
                 cl.res(check_job = check_job, show = params['show']) 
                 # sys.exit()
 

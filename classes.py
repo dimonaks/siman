@@ -137,6 +137,8 @@ class Structure():
         st.select = []
         for i in range(st.natom):
             st.select.append([True,True,True])
+            # print('9')
+        # print(st.select)
         return st 
 
     def check_selective(self):
@@ -611,9 +613,12 @@ class Structure():
 
         st = copy.deepcopy(self)
 
-        if not hasattr(st, 'select') or st.select is None:
-            st = st.selective_all()
-
+        # print(st.select)
+        if selective: 
+            if not hasattr(st, 'select') or st.select is None or len(st.select) == 0:
+                st = st.selective_all()
+        # print(st.select)
+        # sys.exit()
 
         natom_to_add = len(atoms_xcart)
 
@@ -643,9 +648,12 @@ class Structure():
 
             if selective is not None:
                 st.select.extend(selective)
-            else:
-                st.select.extend( [[1,1,1] for i in range(natom_to_add)] )
+            elif st.select and len(st.select) > 0:
+                # printlog('adding default selective', imp = 'y')
 
+                st.select.extend( [[True,True,True] for i in range(natom_to_add)] )
+            else:
+                ''
 
             if magmom_flag:
                 st.magmom.extend( [0.6]*natom_to_add  )
@@ -671,11 +679,17 @@ class Structure():
             
             st.typat[j_ins:j_ins] = [typ]*natom_to_add
 
+            # print(st.select)
+            # sys.exit()
             if selective is not None:
+                printlog('adding selective', imp = '')
 
                 st.select[j_ins:j_ins] = selective
+            elif st.select and len(st.select) > 0:
+                printlog('adding default selective', imp = '')
+                st.select[j_ins:j_ins] = [[True,True,True] for i in range(natom_to_add)]
             else:
-                st.select[j_ins:j_ins] = [[1,1,1] for i in range(natom_to_add)]
+                ''
 
             if magmom_flag:
                 st.magmom[j_ins:j_ins] =  [0.6]*natom_to_add
@@ -685,6 +699,7 @@ class Structure():
         
 
 
+        # print(st.select)
 
 
 
@@ -3920,10 +3935,18 @@ class CalculationVasp(Calculation):
                         lmax = int(line.split()[7])
                         # print 'lmax', lmax
                     if "W(low)/X(q)" in line:
-                        kk = 1; low = []; high = [];
+                        kk = 1; 
+                        low = []; 
+                        high = [];
+                        
                         while kk < 100:
-                            if 'Optimization' in outcarlines[i_line + kk] or len(outcarlines[i_line + kk].split() ) != 7: break
-                            # print 'line', outcarlines[i_line + kk]
+                            if 'Optimization' in outcarlines[i_line + kk] or len(outcarlines[i_line + kk].split() ) != 7: 
+                                break
+                            if 'PSMAXN' in outcarlines[i_line + kk]:
+                                # print(line)
+                                printlog('Warning! PSMAXN for non-local potential too small')
+                                break
+                            # print( 'line', outcarlines[i_line + kk])
 
                             low.append(  float(outcarlines[i_line + kk].split()[4]) )
                             high.append( float(outcarlines[i_line + kk].split()[5]) )
@@ -3984,6 +4007,8 @@ class CalculationVasp(Calculation):
                         for j in range(self.end.natom):
                             parts = outcarlines[i_line+j+2].split()
                             # print "parts", parts
+                            # print(self.end.select)
+                            # sys.exit()
                             if self.end.select:
                                 x = float(parts[ff[0]])*self.end.select[j][0]
                                 y = float(parts[ff[1]])*self.end.select[j][1]
