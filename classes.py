@@ -4009,7 +4009,7 @@ class CalculationVasp(Calculation):
                             # print "parts", parts
                             # print(self.end.select)
                             # sys.exit()
-                            if self.end.select:
+                            if hasattr(self.end, 'select') and self.end.select:
                                 x = float(parts[ff[0]])*self.end.select[j][0]
                                 y = float(parts[ff[1]])*self.end.select[j][1]
                                 z = float(parts[ff[2]])*self.end.select[j][2]

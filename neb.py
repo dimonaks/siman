@@ -744,7 +744,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         dst = it_new+'_all'
         makedir(dst+'/any')
         for f in ['00', '01', '02', '03', '04']:
-            shutil.move(f+'/POSCAR', dst+'POSCAR'+f)
+            shutil.move(f+'/POSCAR', dst+'/POSCAR'+f)
             shutil.rmtree(f)
 
 

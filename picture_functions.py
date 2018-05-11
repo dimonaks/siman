@@ -178,10 +178,11 @@ def process_fig_filename(image_name, fig_format):
 
 def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     image_name = None, filename = None,
-    show = None, fontsize = None, pad = None,
+    show = None, pad = None,
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, 
-    legend = False, ncol = 1, legend_fontsize=None, markersize = None,  
+    legend = False, ncol = 1, 
+    fontsize = None, legend_fontsize=None, markersize = None,  
     linewidth = None, hor = False, fig_format = 'eps', dpi = 300,
     ver_lines = None, xy_line = None, x_nbins = None,
     alpha = 0.8, fill = False,

@@ -1211,3 +1211,22 @@ def remove_half(st, el, sg = None):
     
     return st_half
 
+
+def primitive(st):
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    
+    st.sg()
+    # st.jmol()
+    st_mp = st.convert2pymatgen()
+    # print(st_mp)
+
+
+    sf = SpacegroupAnalyzer(st_mp)
+
+    st_mp_prim = sf.find_primitive()
+
+    # print(st_mp_prim)
+
+    st  =st.update_from_pymatgen(st_mp_prim)
+    # st.sg()
+    return st
