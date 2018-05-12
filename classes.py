@@ -648,7 +648,7 @@ class Structure():
 
             if selective is not None:
                 st.select.extend(selective)
-            elif st.select and len(st.select) > 0:
+            elif hasattr(st, 'select') and st.select and len(st.select) > 0:
                 # printlog('adding default selective', imp = 'y')
 
                 st.select.extend( [[True,True,True] for i in range(natom_to_add)] )
@@ -685,7 +685,7 @@ class Structure():
                 printlog('adding selective', imp = '')
 
                 st.select[j_ins:j_ins] = selective
-            elif st.select and len(st.select) > 0:
+            elif hasattr(st, 'select') and  st.select and len(st.select) > 0:
                 printlog('adding default selective', imp = '')
                 st.select[j_ins:j_ins] = [[True,True,True] for i in range(natom_to_add)]
             else:
