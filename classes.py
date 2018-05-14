@@ -561,8 +561,8 @@ class Structure():
             tra = ns
         return tra
 
-    def get_specific_elements(self, required_elements = None, fmt = 'names', ):
-        """Returns list of transition elements (chemical names or z) in the structure
+    def get_specific_elements(self, required_elements = None, fmt = 'n', ):
+        """Returns list of specific elements (chemical names or z) in the structure
         fmt - 
             'names'
             'z'
@@ -786,10 +786,56 @@ class Structure():
         return st
 
 
+    def reorder_element_groups(self, order = None, inplace = False):
+        """
+        
+        Group and order atoms by atom types; consistent with VASP
+        order (list) -required order e.g. ['O', 'Li']
+
+        return st
+        """
+
+        st = copy.deepcopy(self)
+
+        # for z in st.znucl:
+        #     print(z)
+        
+        typat = []
+        xcart = []
+        magmom = []
+        znucl = []
+        # st.write_poscar()
 
 
+        els = st.get_elements()
+        t = 1
+        for el in order:
+            if el not in els:
+                printlog('Error! Check *order* list')
+            
+            znucl.append( invert(el) )
 
+            for i in range(st.natom):
+                el_i = els[i]
+                if el_i not in order:
+                    printlog('Error! Check *order* list')
 
+                if el_i == el:
+                    # print(el)
+                    typat.append(t)
+                    xcart.append(st.xcart[i])
+                    magmom.append(st.magmom[i])
+            t+=1
+
+        st.xcart = xcart
+        st.magmom = magmom
+        st.typat = typat
+        st.znucl = znucl
+        st.update_xred()
+        st.name+='_r'
+        # st.write_poscar()
+
+        return st
 
 
     def del_atom(self, iat):

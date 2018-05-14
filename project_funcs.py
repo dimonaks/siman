@@ -1429,6 +1429,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
             if getattr(cl, attr)[3] == state:
                 added = True
+        
         return added and hasat
 
     def calc_added2(cl, attr, state):
@@ -1623,6 +1624,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
             ortho = [10,10,10]
             printlog('Default ortho is used:', ortho)
         nonlocal support_dict_key
+        
         support_dict_key = 'support_'+name_mod_supercell(ortho)
         
         if support_dict_key not in calc:
@@ -1642,7 +1644,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
             # if update or not calc_added(clA0, 'inh_id', 1):
-            if update or not calc_added(clA0, 'inh_id', 1):
+            if update or not calc_added(clA0, 'inh_id', support_dict_key):
                 
 
                 if 'make_ds' in mode: #for DS structures use the same parameters as for IS structures
@@ -1667,7 +1669,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 it_folder = sfolder+'/super/', inherit_option = 'supercell', ortho = ortho,
                 mul_matrix = mul_matrix, ngkpt = ngkpt , **add_loop_dic)
                 
-                clA0.inh_id = [itA, ise_new, base_id[2], 1, 'exist']
+                clA0.inh_id = [itA, ise_new, base_id[2], support_dict_key, 'exist']
 
 
                 if 'normal' in mode:
@@ -1804,6 +1806,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     # print('make_neb:', add_loop_dic)
                     it = add_neb(clB, up = up_add_loop, ise_new = ise_new, images = images, 
                         i_void_start = pd['start_pos'], i_void_final = pd['end_pos'], 
+                        atom_to_insert = atom_to_insert,
                         search_type = search_type, add_loop_dic = add_loop_dic, old_behaviour = old_behaviour, **other_param)                
                 
                 elif 'make_ds' in mode:
@@ -1831,6 +1834,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 
                 if 'map' not in calc: # attempt to create map of calculations of graph of calculations, not working yet
                     calc['map'] = {}
+                    mp = calc['map']
                 else:
                     mp = calc['map']
                 # print(mp)
@@ -2170,6 +2174,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
             if run_sc and idA0:# and name != 'NiO2':
                 
                 make_dummy_calc_obj(idA0)
+
+
                 idA = make_supercell(idA0, cat, updateA)
                 
                 # continue
@@ -2181,6 +2187,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
                     if run_neb and idB:
+
 
                         if 'meps' in dic: # start_pos, end_pos
                             for mep in dic['meps']:

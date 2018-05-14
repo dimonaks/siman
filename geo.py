@@ -401,6 +401,17 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     else:
         my_round = round
 
+
+    def av_dev():
+        nonlocal n_neighbours
+        n_neighbours = float(n_neighbours)
+        dav = sum(dlistnn)/n_neighbours
+        av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
+        max_dev = max([abs(d-dav) for d in dlistnn])
+        
+            
+        return my_round(av_dev*1000, 0), my_round(max_dev*1000, 0)
+
     st_original = copy.deepcopy(st)
     st.init_numbers = None
     if periodic:
@@ -469,11 +480,12 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
        
     elif control == 'av_dev':
-        n_neighbours = float(n_neighbours)
-        dav = sum(dlistnn)/n_neighbours
-        av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
-        max_dev = max([abs(d-dav) for d in dlistnn])
-        output = (my_round(av_dev*1000, 0), my_round(max_dev*1000, 0))
+        output = av_dev()
+
+    elif control == 'sum_av_dev':
+        output = (my_round(sum(dlistnn), 2), av_dev())
+
+
 
     elif control == 'atoms':
         # print dlist_unsort
@@ -534,7 +546,193 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     return output
 
 
+def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = False, only_elements = None, only_numbers = None, round_flag = 1):
+    """
+    !!! Attempt to improve speed of periodic conditions!
+    #control = 'atoms' could work wrong!!! check
 
+    Return list of distances to n closest atoms around central atom. (By defauld sum of distances)
+    
+    Input:
+    - x_central - cartesian coordinates of central atom; vector
+    - st - structure with xcart list of coordinates of all atoms in system
+    - n_neighbours - number of needed closest neighbours
+
+    - control - type of output; 
+              sum - sum of distances, 
+              av - average distance, 
+              avsq - average squared dist
+              'mavm': #min, av, max, av excluding min and max
+              av_dev - return (average deviation, maximum deviation) from average distance in mA.
+              list - list of distances; 
+              atoms  - coordinates of neighbours
+
+    - periodic - if True, then cell is additionaly replicated; needed for small cells
+    Only for control = atoms
+        - *only_elements* - list of z of elements to which only the distances are needed; 
+        - only_numbers  (list of int) - calc dist only to this atoms 
+
+    round_flag (bool) - if 1 than reduce distance prec to 2 points
+
+
+    #TODO:
+    the periodic boundary conditions realized very stupid by replicating the cell!
+
+    """
+    # round_orig = round
+    if not round_flag:
+        # overwrite round function with wrapper that do nothing
+        def my_round(a, b):
+            return a
+    else:
+        my_round = round
+
+
+    def av_dev():
+        nonlocal n_neighbours
+        n_neighbours = float(n_neighbours)
+        dav = sum(dlistnn)/n_neighbours
+        av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
+        max_dev = max([abs(d-dav) for d in dlistnn])
+        
+            
+        return my_round(av_dev*1000, 0), my_round(max_dev*1000, 0)
+
+    st_original = copy.deepcopy(st)
+    st.init_numbers = None
+    if periodic:
+        ''
+        # not needed anymore, since image_distance is used,
+        # however for 'atoms' regime more actions can be needed
+        # st = replic(st, mul = (2,2,2), inv = 1 ) # to be sure that impurity is surrounded by atoms
+        # st = replic(st, mul = (2,2,2), inv = -1 )
+
+    xcart = st.xcart
+    typat = st.typat
+    natom = st.natom
+    # print x_central
+
+    #print len(xcart)
+    if only_elements:
+        only_elements = list(set(only_elements))
+        # print(only_elements)
+        # sys.exit()
+
+
+    zlist = [int(st.znucl[t-1]) for t in st.typat]
+    
+
+    dlist_unsort = [image_distance(x_central, x, st.rprimd)[0] for x in xcart ]# if all (x != x_central)] # list of all distances
+
+    if only_elements:
+        dlist = [image_distance(x_central, x, st.rprimd)[0]  for x, z in zip(xcart, zlist) if z in only_elements]
+    else:
+        dlist = copy.deepcopy(dlist_unsort)
+    dlist.sort()
+    # print('local_surrounding(): dlist', dlist)
+
+
+    if len(dlist) > 0 and abs(dlist[0]) < 0.01:
+        dlistnn = dlist[1:n_neighbours+1] #without first impurity which is x_central
+    else:
+        dlistnn = dlist[:n_neighbours]
+
+    # print('dlistnn', dlistnn)
+    # os._exit(1)
+
+    if control == 'list':
+        output = dlistnn
+
+    elif control == 'sum':
+        
+        output = my_round(sum(dlistnn), 2)
+    
+    elif control == 'av':
+        n_neighbours = float(n_neighbours)
+        dav = sum(dlistnn)/n_neighbours
+        output = my_round(dav, 2)
+
+    elif control == 'avsq':
+        n_neighbours = float(n_neighbours)
+        # print(dlistnn)
+        davsq = sum([d*d for d in dlistnn])/n_neighbours
+        davsq = davsq**(0.5)
+        output = my_round(davsq, 2)
+
+
+    elif control == 'mavm': #min, av, max
+        dsort = sorted(dlistnn)
+        if n_neighbours > 2:
+            output = (my_round(dsort[0], 2), sum(dsort[1:-1])/(n_neighbours-2), my_round(dsort[-1], 2) ) #min, av excluding min and max, max
+        else:
+            output = (my_round(dsort[0], 2), 0, my_round(dsort[-1], 2) ) #min, av excluding min and max, max
+
+       
+    elif control == 'av_dev':
+        output = av_dev()
+
+    elif control == 'sum_av_dev':
+        output = (my_round(sum(dlistnn), 2), av_dev())
+
+
+
+    elif control == 'atoms':
+        # print dlist_unsort
+        if hasattr(st, 'init_numbers') and st.init_numbers:
+            numbers = st.init_numbers
+        else:
+            numbers = range(natom)
+        temp = list(zip(dlist_unsort, xcart, typat, numbers, zlist) )
+        
+        temp.sort(key = itemgetter(0))
+
+
+        if only_elements:
+            centr_type = temp[0][4]
+            if centr_type in only_elements:
+                first = []
+            else:
+                first = temp[0:1]
+            temp = first+[t for t in temp if t[4] in only_elements] #including central; included ionce even if only elements are and central are the same
+
+        if only_numbers:
+            temp = temp[0:1]+[t for t in temp if t[3] in only_numbers]
+
+
+
+        temp2 = list( zip(*temp) )
+        dlist       = temp2[0][:n_neighbours+1]
+        xcart_local = temp2[1][:n_neighbours+1]
+        typat_local = temp2[2][:n_neighbours+1]
+        numbers     = temp2[3][:n_neighbours+1]
+        # print temp2[0][:n_neighbours]
+        # print xcart_local[:n_neighbours]
+        
+
+
+
+
+
+
+        #check if atoms in output are from neighboring cells
+        if 0:
+            xred_local = xcart2xred(xcart_local, st_original.rprimd)
+            # print 'xred_local', xred_local
+            for x_l in xred_local:
+                for i, x in enumerate(x_l):
+                    if x > 1: 
+                        x_l[i]-=1
+                        # print 'returning to prim cell', x,x_l[i]
+                    if x < 0: 
+                        x_l[i]+=1
+                        # print 'returning to prim cell', x,x_l[i]
+            xcart_local = xred2xcart(xred_local, st_original.rprimd)
+
+        # print 'Warning! local_surrounding() can return several atoms in one position due to incomplete PBC implementation; Improve please\n'
+
+        output =  (xcart_local, typat_local, numbers, dlist )
+
+    return output
 
 
 def ortho_vec_old(rprim, ortho_sizes = None):

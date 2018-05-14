@@ -70,7 +70,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
     
     option -
         'vac'  - make vacancy
-        'rep'  - replace one atom with Ti, was used for V-Ti project
+        'rep'  - replace one atom with 'el_rep', 
         'pair' - make vacancy -Ti complex for V-Ti project 
 
     pos - unique position of el if non-eqivalent atoms exist - for vac
@@ -117,7 +117,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
         it_new = cl.id[0].replace('su', 'vac')+str(pos)
 
     id_new, st, it_folder = prepare(it_new, opt_vol, it_folder, ise, cl, st_type, option)
-
+    occfile = None
     if not only_read and (up or id_new not in calc):
         # it_new
 
@@ -132,6 +132,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
             i_tr = st.get_transition_elements(fmt = 'n') 
             # dist = []
             max_d = 0
+            i_max_d = None
             for i in i_tr:
                 d1, d2 = image_distance(st.xcart[i], st.xcart[i_del], st.rprimd)
                 # print(i+1, d1, d2)
@@ -139,8 +140,8 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
                     if d1 > max_d:
                         max_d = d1
                         i_max_d = i
-
-            print('The longest distance to transition metal in current supercell is ', max_d, 'A for atom', i_max_d+1, st.get_elements()[i_max_d])
+            if i_max_d is not None:
+                print('The longest distance to transition metal in current supercell is ', max_d, 'A for atom', i_max_d+1, st.get_elements()[i_max_d])
 
 
             numb = st.nn(i_del, from_one = 0, n = len(tr)+5, only = list(set(tr)))['numbers'][1:]
@@ -165,10 +166,10 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
 
         elif 'rep' in option:
-            st_del1 = st.replace_atoms([pos_rep], el)
-            print('Atom', str(pos_rep),st.get_elements()[pos_rep],' replaced with', el, )
+            st_del1 = st.replace_atoms([pos_rep], el_rep)
+            print('Atom', str(pos_rep),st.get_elements()[pos_rep],' replaced with', el_rep, )
             print(st_del1.get_elements()[pos_rep])
-            st_del1.name+=it_new
+            st_del1.name=it_new
         
         elif 'pair' in option:
             st_del1 = st.replace_atoms([1], el_rep)
@@ -177,7 +178,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
             st_del1 = remove_one_atom(st_del1, el, pos)
             print('Atom 1 replaced with', el,'and atom removed' )
-            st_del1.name+=it_new
+            st_del1.name=it_new
 
 
         st_del1.write_xyz()
