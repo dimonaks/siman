@@ -9,7 +9,7 @@ import scipy
 import header
 from header import print_and_log, printlog, runBash
 from small_functions import is_list_like, is_string_like, gunzip_file, makedir
-
+from header import eV_A_to_J_m
 
 
 def unique_elements(seq, idfun=None): 

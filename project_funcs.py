@@ -1642,7 +1642,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
 
-
+            print(clA0.inh_id)
+            # sys.exit()
             # if update or not calc_added(clA0, 'inh_id', 1):
             if update or not calc_added(clA0, 'inh_id', support_dict_key):
                 
@@ -1669,8 +1670,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 it_folder = sfolder+'/super/', inherit_option = 'supercell', ortho = ortho,
                 mul_matrix = mul_matrix, ngkpt = ngkpt , **add_loop_dic)
                 
+                print([itA, ise_new, base_id[2], support_dict_key, 'exist'])
                 clA0.inh_id = [itA, ise_new, base_id[2], support_dict_key, 'exist']
-
+                print(clA0.inh_id)
 
                 if 'normal' in mode:
                     calc[support_dict_key][cat[0], 'mul_matrix'] = struct_des[itA].mul_matrix               #save for intercalated structure

@@ -971,8 +971,10 @@ def plot_conv(list_of_calculations = None, calc = None,
 
             plt.tight_layout()
             #plt.savefig('images/'+image_name)
-            print_and_log( 'Saving file ...',path_to_images+str(image_name)+'.png', imp = 'y' )
-            plt.savefig(path_to_images+str(image_name)+'.png',format='png', dpi = 300)
+            file = header.path_to_images+'/'+str(image_name)+'.png'
+            makedir(file)
+            print_and_log( 'Saving file ...',file, imp = 'y' )
+            plt.savefig(file,format='png', dpi = 300)
         return fit_func2  
 
 

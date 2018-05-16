@@ -217,6 +217,8 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
 
         if option == 'vac':
+            cl_v.res()
+            cl.res()
             print('Evac = {:3.2f} eV'.format(cl_v.e0 - cl.e0/cl.end.natom*cl_v.end.natom))    
         
         elif option == 'rep':
