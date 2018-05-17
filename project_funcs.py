@@ -1642,7 +1642,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
 
-            print(clA0.inh_id)
+            #print(clA0.inh_id)
             # sys.exit()
             # if update or not calc_added(clA0, 'inh_id', 1):
             if update or not calc_added(clA0, 'inh_id', support_dict_key):

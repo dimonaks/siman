@@ -1179,6 +1179,7 @@ class Structure():
         for i in [0,1,2]:
             if xr_tar[i] < 0:
                 xr_tar[i]+= 1
+                
             if xr_tar[i] >= 1:
                 xr_tar[i]-= 1
         printlog('find_atom_num_by_xcart(): xr_tar after periodic = ', xr_tar)

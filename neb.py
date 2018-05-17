@@ -471,6 +471,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 only_elements = [invert(type_atom_to_move)]+end_pos_types_z,
                 periodic  = True) #exclude the atom itself
 
+            # print(x_m)
             # print(sur)
 
             # st.nn()
@@ -489,7 +490,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             x_del = sur[0][i_void_final]
             printlog('xcart of atom to delete', x_del)
             i_del = st.find_atom_num_by_xcart(x_del)
+            # print(x_del)
             # print(st.xcart)
+            # for x in st.xcart:
+            #     if x[0] > 10:
+            #         print(x)
+
+
             print_and_log( 'number of atom to delete = ', i_del, imp = 'y')
             if i_del == None:
                 printlog('add_neb(): Error! I could find atom to delete!')
