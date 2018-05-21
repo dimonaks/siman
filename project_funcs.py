@@ -1436,6 +1436,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
         """
         Check whether *cl* has attribute *attr* (tuple) and attr[3] is equal to *state*
         """
+        # print(attr, state)
+        # print(cl.neb_id)
+        # sys.exit()
         added = False
         hasat = False
         if hasattr(cl, attr):
@@ -1776,6 +1779,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 # up_res = 'up1'
 
+            # sys.exit()
             if update or not calc_added2(clB, 'neb_id', neb_unique_id):
 
                 other_param = {}
@@ -1859,9 +1863,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 if not hasattr(clB, 'neb_id') or type(clB.neb_id) == list:# temporary for compat
                     clB.neb_id = {} 
-
+                # print(neb_unique_id)
                 clB.neb_id[neb_unique_id] = (it, ise_new, 1)  # additional unique id and state, TODO: maybe move to add_neb 
-            
+                # print(clB.id, clB.neb_id)
 
                 if 'normal' in mode:
                     calc[support_dict_key][sup_key, 'xr_m_ion_start'] = struct_des[it].xr_m_ion_start # xred coordinate of migrating ion in starting position
@@ -3095,7 +3099,7 @@ def alkali_bar2(m, param = None, option = '', plot_type = 'bar', suf = '', reind
 
     # plt.show()
     plt.savefig('figs/'+filename+'.png', dpi = 300)
-    plt.savefig('figs/'+filename+'.eps', dpi = 300)
+    plt.savefig('figs/'+filename+'.pdf', dpi = 300)
     # plt.close('all')
     # plt.clf()
     # plt.show()
