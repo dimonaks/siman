@@ -57,7 +57,7 @@ def prepare(it_new, opt_vol, it_folder, ise, cl, st_type, option):
 def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None, opt_vol = 0, 
     suf = '', it_folder = None,
     el_rep = '', pos_rep = 1, pos_rep2 = None, polaron_pos = None, occ_matrix = None,
-    up = 0, fit = 0,  outcar = None, only_read = 0,
+    up = 0, fit = 0,  outcar = None, only_read = 0, Eref = 0,
     compat1 = False, add_loop_arg = {}):
     """
     Function allow to create point defects and run them
@@ -89,6 +89,8 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
     compat1 - compatability with previous calculations, which were used for Na2FePO4F project
 
+
+    Eref - reference energy for solution energy
 
     TODO: rename to ?_point_defects()
     """
@@ -224,7 +226,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
         elif option == 'rep':
             diffE, diffV = matrix_diff(cl_v, cl)
 
-            print('Esol = {:3.2f} eV'.format(diffE))    
+            print('Esol = {:3.2f} eV'.format(diffE - Eref))    
 
         elif 'pair' in option:
             ''

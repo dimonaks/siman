@@ -1630,6 +1630,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
         
         support_dict_key = 'support_'+name_mod_supercell(ortho)
         
+
+        sc_unique_id = (name_mod_supercell(ortho), ise_new)
+
+
         if support_dict_key not in calc:
             calc[support_dict_key] = {} #create supportive dictionary, which depends on ortho parameter
         
@@ -1645,10 +1649,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
 
-            #print(clA0.inh_id)
+            # print(clA0.inh_id, sc_unique_id)
             # sys.exit()
             # if update or not calc_added(clA0, 'inh_id', 1):
-            if update or not calc_added(clA0, 'inh_id', support_dict_key):
+            if update or not calc_added2(clA0, 'inh_id', sc_unique_id):
                 
 
                 if 'make_ds' in mode: #for DS structures use the same parameters as for IS structures
@@ -1673,9 +1677,14 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 it_folder = sfolder+'/super/', inherit_option = 'supercell', ortho = ortho,
                 mul_matrix = mul_matrix, ngkpt = ngkpt , **add_loop_dic)
                 
-                print([itA, ise_new, base_id[2], support_dict_key, 'exist'])
-                clA0.inh_id = [itA, ise_new, base_id[2], support_dict_key, 'exist']
-                print(clA0.inh_id)
+                # print([itA, ise_new, base_id[2], support_dict_key, 'exist'])
+                # clA0.inh_id = [itA, ise_new, base_id[2], support_dict_key, 'exist']
+                if not hasattr(clA0, 'inh_id') or type(clA0.inh_id) == list:# temporary for compat
+                    clA0.inh_id = {} 
+
+                clA0.inh_id[sc_unique_id] = (itA, ise_new, base_id[2])  # additional unique id and state, TODO: maybe move to add_neb 
+
+                # print(clA0.inh_id)
 
                 if 'normal' in mode:
                     calc[support_dict_key][cat[0], 'mul_matrix'] = struct_des[itA].mul_matrix               #save for intercalated structure
@@ -1684,7 +1693,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
             else:
-                idA = tuple(clA0.inh_id[0:3])
+                idA = clA0.inh_id[sc_unique_id]
                 
                 if func == 'gga':
                     choose_outcar = 1

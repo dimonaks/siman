@@ -224,7 +224,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
 
 def matrix_diff(cl1, cl2, energy_ref = 0):
-    
+    #energy of substitutional impurity
     e = cl1.energy_sigma0
     v = cl1.end.vol
     n_m = cl1.end.nznucl[0]
@@ -539,7 +539,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
 
     # sys.exit()
-
+    magmom_tm = None
     for key in mag_numbers:
         printlog('Looking at polarons on transition atoms: ',invert(key) )
         numbs = np.array(mag_numbers[key])
@@ -617,6 +617,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         get_from_server(files = cl.project_path_cluster+'/'+cl.dir+'/movie.xyz', to_file = movie_to, addr = cl.cluster_address, )
         
         if os.path.exists(movie_to):
+            makedir('figs/'+name_without_ext+'.xyz')
             shutil.copyfile(movie_to, 'figs/'+name_without_ext+'.xyz')
 
 
