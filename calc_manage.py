@@ -33,7 +33,7 @@ from inout import write_xyz, read_xyz, write_occmatrix
 
 from picture_functions import plot_mep, fit_and_plot, plot_conv
 from analysis import calc_redox, matrix_diff, fit_a
-from geo import image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
+from geo import replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 
 
 from set_functions import init_default_sets
@@ -2365,8 +2365,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 else:
                     print_and_log('Warning! Calculation ',b_id, 'was not finished; please check, now skipping ...', important = 'y')
         else:
-            printlog('res_loop(): b_id', b_id, 'does not exist. return {} []')
-            return {}, []
+            printlog('Attention! res_loop(): b_id', b_id, 'does not exist. return {} []')
+            # return {}, []
 
     #define reference values
     e1_r = 0
@@ -2390,7 +2390,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     for inputset in setlist:
         for v in verlist:
             id = (it,inputset,v)
-            
+            # print(id)
             if id not in calc:
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
                 continue #pass non existing calculations
@@ -2433,7 +2433,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     b_id = (b_id[0], b_id[1], id[2] + b_ver_shift)
                 except:
                     b_id = (b_id[0], id[1], id[2] + b_ver_shift)
-            
+                printlog('b_id', b_id)
 
 
             # print(id)
@@ -2468,9 +2468,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
                 # if "4" not in calc[b_id].state:
                 if readfiles:    
+                    # print(b_id)
                     calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
 
-
+                # print(b_id)
                 if "4" in calc[b_id].state:    
 
                     if calc[id].set.ngkpt != calc[b_id].set.ngkpt:
@@ -2612,6 +2613,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 e_seg = (e - e_b * bulk_mul) * 1000
                 v_seg =  v - v_b * bulk_mul
 
+
+                # print(e_seg, e_segmin)
+
                 calc[id1].e_seg = e_seg
                 calc[id1].v_seg = v_seg
             
@@ -2627,7 +2631,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             calc[id1].Xgb = v1 / A # for grain boundary with 1 A width. For other boundaries should be divided by width. 
             #print ("__________________________________________________________________________")
             
-            #print (" At zero pressure: segregation energy is %.0f  meV; Seg. volume is %.1f A^3; excess seg. vol. is %.2f A" %(e_seg, v_seg, v_seg/A ) )
+            # print (" At zero pressure: segregation energy is %.0f  meV; Seg. volume is %.1f A^3; excess seg. vol. is %.2f A" %(e_seg, v_seg, v_seg/A ) )
+            print ("At min: segregation energy is %.0f  meV; Seg. volume is %.1f A^3; excess seg. vol. is %.2f A" %(e_segmin, v_segmin, v_segmin/A ) )
             # print ("%s.fit.pe & %.0f & %.1f & %.2f & %.3f & %.1f" %(id[0]+'.'+id[1], e_seg, v_seg, v_seg/A, 1./A, 1./calc[id].natom * 100  ) )
             
             #Calculate distance from impurity to boundary and number of neighbours for version 2!

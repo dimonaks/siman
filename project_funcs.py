@@ -1641,7 +1641,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
         if base_id:
-            clA0 = calc[base_id]
+            # print(base_id)
+            clA0 = db[base_id]
 
             mul_matrix = None
             ngkpt      = None
@@ -1685,7 +1686,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 clA0.inh_id[sc_unique_id] = (itA, ise_new, base_id[2])  # additional unique id and state, TODO: maybe move to add_neb 
 
                 # print(clA0.inh_id)
-
+                # print(db[('Cu.su', '1lo', 100)].inh_id)
+                # header.db = db
                 if 'normal' in mode:
                     calc[support_dict_key][cat[0], 'mul_matrix'] = struct_des[itA].mul_matrix               #save for intercalated structure
                     calc[support_dict_key][cat[0], 'ngkpt_dict'] = struct_des[itA].ngkpt_dict_for_kspacings #save for intercalated structure

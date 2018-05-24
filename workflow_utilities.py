@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 import header
 from header import print_and_log as printlog
-from header import calc, db
+from header import calc, db, struct_des
 from picture_functions import fit_and_plot
 from small_functions import merge_dics
 from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive
@@ -17,9 +17,10 @@ from neb import add_neb
 from classes import Calculation
 from analysis import calc_redox,  matrix_diff
 from geo import create_deintercalated_structure
-from geo import remove_one_atom
+from geo import remove_one_atom, replic, local_surrounding
 from geo import create_replaced_structure, create_antisite_defect3, determine_symmetry_positions, image_distance
-from inout import write_occmatrix
+from inout import write_occmatrix, write_xyz
+from functions import invert
 
 
 
@@ -324,4 +325,167 @@ def process_modified(cl, mod_dic = None, scale_region = (-4,4), opt_vol = 1, fit
             else:
                 res_loop(*id_new, up = '1', choose_outcar = None, show = 'fo')
         
+    return
+
+
+
+
+
+def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = None, option = None, 
+    precip_folder = None, use_init = False, precision = None):
+    """
+    Written for Ti-Fe project.
+    Allows to create segregation by substituting atoms;
+    dist_gb - distance from gb inside which the atoms are included
+    
+
+    option = 'precip'- adding additional impurities to the already existing at gb. Please use 'precip_folder'
+    use_init - allows to use initial structure.
+
+
+    !Warning PBC are not used in determination of seg positions 
+
+    """
+
+
+    # hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
+    # try:
+    #     if hstring != header.history[-1]: header.history.append( hstring  )
+    # except:
+    #     header.history.append( hstring  )
+    def write_local(cl, it_new, it_new_path, el_sub, main_path ): 
+        cl.version = v
+        # it_new_path   
+        
+        cl.name = it_new
+        cl.des = 'Obtained from end state of '+str((it, ise, v))+' by substitution of one atom near gb with '+el_sub+' impurity '
+        path_new_geo = it_new_path+"/"+it_new+"/"+it_new+'.imp.'+el_sub+'.'+str(cl.version)+'.'+'geo'
+        cl.init.name = it_new+".init."+str(cl.version)
+        xyzpath = it_new_path+"/"+it_new
+        cl.path["input_geo"] = path_new_geo
+        print(path_new_geo)
+        cl.write_geometry("init", cl.des, override = 1)
+        write_xyz(cl.init, xyzpath)
+        return it_new_path
+
+    if 0:
+        res_loop(it, ise, verlist, up = 0)
+
+    cl = header.calc[(it, ise, verlist[0])]
+
+    znucl_sub = 3 #atom to be added
+
+
+    """1. Create list of atoms near gb to substitue"""
+    cl.gbpos = gbpos
+    # print cl.gbpos
+    seg_pos_list = [] # numbers of segregation positions
+    
+    if use_init:
+        st = cl.init
+    else:
+        st = cl.end
+
+
+
+    for i, x in enumerate(st.xcart):
+        z_cur = st.znucl[st.typat[i]-1]
+        print ('z_cur', z_cur)
+        if z_cur == znucl_sub:
+            print_and_log('Skipping znucl_sub atom\n')
+            continue
+        if abs(x[0] - gbpos)< dist_gb:
+            print('adding possible seg position')
+            seg_pos_list.append(i)
+
+
+    """2. Substitue"""
+    el_sub    = invert(znucl_sub)
+    base_name = it
+    main_path = struct_des[it].sfolder
+    based_on = it+'.'+ise
+    des_list = []
+    add_list = []
+
+    cl_list = []
+    sumr_list = []
+
+    i = 0
+    for j, replace_atom in enumerate(seg_pos_list): #
+
+        v = verlist[0] # the first version from list is used
+        cl = calc[(it, ise, v)]
+        cl.gbpos = gbpos
+
+        new = copy.deepcopy(cl)
+        if use_init:
+            new.end = new.init
+        else:
+            new.init = new.end #replace init structure by the end structure
+        
+        if 1: #atom substitution !make function; see TODO
+            
+            if znucl_sub not in new.init.znucl:
+                new.init.znucl.append(znucl_sub)
+                new.init.ntypat+=1
+                new.init.typat[replace_atom] = new.init.ntypat
+            else:
+                ind = new.init.znucl.index(znucl_sub)
+                new.init.typat[replace_atom] = ind + 1
+            new.init.nznucl = []
+            for typ in range(1, new.init.ntypat+1):
+                new.init.nznucl.append(new.init.typat.count(typ) )
+            printlog("Impurity with Z="+str(znucl_sub)+" has been substituted in "+new.name+"\n\n")
+            
+            it_new        = base_name+el_sub+'is'+str(i+1) #interface substitution
+            
+            if option == 'precip':
+                it_new_path = precip_folder
+
+            else:
+                it_new_path = main_path+'/'+base_name+'_segreg'
+            
+
+        #Check if configuration is unique
+        add = 1
+        # for cl in cl_list:
+        st = new.end
+        st_replic = replic(st, (2,2,2))
+        st_replic = replic(st_replic, (2,2,2), -1) #replic in negative direction also
+        sumr = local_surrounding(st.xcart[replace_atom], st_replic, n_neighbours =  6) # sum of distances to surrounding atoms
+        print ("sumr", sumr)
+        for ad_sumr in sumr_list:
+            if abs(ad_sumr-sumr) < precision :
+                add = 0
+                printlog("The void is non-equivalent; skipping\n")
+
+
+        if add:
+            i+=1
+            sumr_list.append(sumr)
+            # cl_list.append(new)
+            write_local(new, it_new, it_new_path, el_sub, main_path) 
+            for v in verlist[1:]: #write files; versions are scaled
+                cl = calc[(it, ise, v)]
+                rprimd_scaled = cl.end.rprimd 
+                new_scaled    = copy.deepcopy(new)
+                new_scaled.init.rprimd = copy.deepcopy(rprimd_scaled)
+                new_scaled.init.xred2xcart()
+                write_local(new_scaled, it_new, it_new_path, el_sub, main_path) 
+            #create names
+            des_list.append(  "struct_des['{0:s}'] = des('{1:s}', 'segregation configurations; made from {2:s}'   )".format(it_new, it_new_path, based_on)      ) 
+            add_list.append(  "add_loop('"+it_new+"','"+ise_new+"',"+"range(1,6)"+", up = 'up1', it_folder = '"+it_new_path+"')"  )
+
+
+
+
+    for d in des_list:
+        print (d)
+
+
+    for d in add_list:
+        print (d)
+
+
+
     return

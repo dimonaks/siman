@@ -1428,3 +1428,4 @@ def primitive(st):
     st  =st.update_from_pymatgen(st_mp_prim)
     # st.sg()
     return st
+
