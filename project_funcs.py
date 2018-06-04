@@ -2028,6 +2028,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
         scale_regions[new_ion] = (-4,4)
         
+        # print(new_ion)
+        # sys.exit()
 
         
         if up:

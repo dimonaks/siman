@@ -302,7 +302,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             else:
                 #try to find automatically among alkali - special case for batteries
                 for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): 
-                    if typ in ['Li', 'Na', 'K', 'Rb']:
+                    if typ in ['Li', 'Na', 'K', 'Rb', 'Mg']:
                         atoms_to_move.append([i, typ, x])
                         if typ not in atoms_to_move_types:
                             atoms_to_move_types.append(typ)
