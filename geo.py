@@ -1429,3 +1429,53 @@ def primitive(st):
     # st.sg()
     return st
 
+
+
+
+
+def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, ):
+    """
+    INPUT:
+        st (Structure) - Initial input structure. Note that to
+                ensure that the miller indices correspond to usual
+                crystallographic definitions, you should supply a conventional
+                unit cell structure.
+
+        miller_index ([h, k, l]): Miller index of plane parallel to
+                        surface. Note that this is referenced to the input structure. If
+                        you need this to be based on the conventional cell,
+                        you should supply the conventional structure.
+
+
+        oxidation (dic) - dictionary of effective oxidation states, e. g. {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'}
+                          allows to calculate dipole moment
+
+        surface_i (int) - choose particular surface 
+
+        min_slab_size (float) - minimum slab size
+
+        min_vacuum_size (float) - vacuum thicknes in A
+
+    """
+
+    from pymatgen.core.surface import SlabGenerator
+    from pymatgen.io.vasp.inputs import Poscar
+    from geo import replic
+
+
+    pm = st.convert2pymatgen(oxidation = oxidation)
+    # pm = st.convert2pymatgen()
+
+
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size)
+    # print(slabgen.oriented_unit_cell)
+    slabs = slabgen.get_slabs()
+
+    printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument\nWriting POSCARs to xyz', imp = 'y')
+
+    for i, slab in enumerate(slabs):
+        pos = Poscar(slab)
+        pos.write_file('xyz/POSCAR_suf'+str(i))
+
+    return slabs[surface_i]
+
