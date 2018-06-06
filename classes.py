@@ -534,6 +534,29 @@ class Structure():
 
 
 
+
+    def get_primitive_cell(self):
+        """
+        return primitive cell 
+        """
+        st_mp = self.convert2pymatgen()
+
+        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
+
+        sc = sf.get_primitive_structure() # magmom are set to None
+
+        st = self.update_from_pymatgen(sc)
+
+
+        return st
+
+
+
+
+
+
+
+
     def printme(self):
         print(self.convert2pymatgen())
         return 
@@ -1623,7 +1646,7 @@ class Structure():
         return
 
 
-    def write_cif(self, filename, mcif = False):
+    def write_cif(self, filename = None, mcif = False):
         """
         Find primitive cell and write it in cif format
         
@@ -1639,6 +1662,9 @@ class Structure():
             m = 'm'
         else:
             m = ''
+
+        if filename == None:
+            filename = 'cif/'+self.name
 
 
         makedir(filename)
