@@ -329,9 +329,14 @@ def cif2poscar(cif_file, poscar_file):
 
     if pymatgen_flag:
         parser = CifParser(cif_file)
-        s = parser.get_structures(primitive=0)[0]
+        s = parser.get_structures(primitive = True)[0]
         
-        # print(s)
+
+        si = s._sites[0]
+
+        print(dir(si))
+        print(si.specie)
+
         # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
         # sf = SpacegroupAnalyzer(s, ) #
         # sc = sf.get_conventional_standard_structure() # magmom are set to None

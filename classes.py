@@ -270,6 +270,23 @@ class Structure():
     def update_xcart(self,):
         self.xcart = xred2xcart(self.xred, self.rprimd)
 
+    def exchange_axes(self, i1_r, i2_r):
+        """
+        
+        """
+        st = copy.deepcopy(self)
+        r = copy.deepcopy(st.rprimd)
+
+        st.rprimd[i1_r] = r[i2_r]
+        st.rprimd[i2_r] = r[i1_r]
+
+        st.update_xred()
+
+        return st
+
+
+
+
     def get_volume(self):
         self.vol = np.dot( self.rprimd[0], np.cross(self.rprimd[1], self.rprimd[2])  ); #volume
         return self.vol
@@ -305,6 +322,12 @@ class Structure():
             zvals.append(zv)
         return zvals
 
+    def determine_symmetry_positions(self, element):
+        from geo import determine_symmetry_positions
+
+        return determine_symmetry_positions(self, element)
+
+
     def get_maglist(self):
         #return bool list of which  elements are magnetic (here all transition metals are searched!)
         #and dictionary with numbers of each transition metal
@@ -322,6 +345,31 @@ class Structure():
         ifmaglist = np.array(ifmaglist)
 
         return ifmaglist, mag_numbers
+
+
+    def set_magnetic_config(self, element, moments):
+        #set magnetic configuration based on symmetry non-equivalent positions
+        # element (str) - elements for which moments should be set 
+        # moments (list) - list of moments for non-equivalent positions - the same order as in determine
+        #                  the length should be the same as number of unique postions
+
+        st = copy.deepcopy(self)
+
+        if not hasattr(st, 'magmom') or None in st.magmom:
+            magmom = [0.6]*st.natom
+        else:
+            magmom = st.magmom
+
+        pos = st.determine_symmetry_positions(element)
+
+        for j, p in enumerate(pos):
+            for i in p:
+                magmom[i] = moments[j]
+
+        # print(magmom)
+        st.magmom = magmom
+
+        return st
 
     def convert2pymatgen(self, oxidation = None, slab = False):
         """
@@ -508,6 +556,38 @@ class Structure():
 
         st.name+='_from_pmg'
         return st
+
+
+    def rotate(self, axis, angle):
+        #axis - list of 3 elements, [0,0,1]
+        #angle in degrees
+        
+        from pymatgen.transformations.standard_transformations import RotationTransformation
+        
+        st = copy.deepcopy(self)
+        rot = RotationTransformation(axis, angle)
+        stpm = st.convert2pymatgen()
+        stpmr1 = rot.apply_transformation(stpm)
+        st_r1 = st.update_from_pymatgen(stpmr1)
+        return st_r1
+
+
+    def invert_axis(self, axis):
+        st = copy.deepcopy(self)
+
+        st.rprimd[axis] *= -1
+        st.update_xred()
+        st = st.return_atoms_to_cell()
+        return st
+
+
+
+
+
+
+
+
+
 
 
     def get_conventional_cell(self):
