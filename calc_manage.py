@@ -677,8 +677,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, 
-    ppn = None
+    run = False, check_job  = 1, params = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
