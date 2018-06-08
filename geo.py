@@ -1,4 +1,3 @@
-
 import sys, copy, itertools, math
 from operator import itemgetter
 
@@ -25,11 +24,8 @@ def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = 
     for cubic cells, order = 1 always provide correct result.
     For highly oblique cell you should test and find the needed value of 'order' after which results are the same.
     sort_flag (bool) - use False if you do not need sorting of distances 
-
     return_n_distances(bool) - returns required number of smallest distances, depending on order
-
     return d1, d2 - the smallest and next smallest distances between atoms
-
     """
     d = [] # list of distances between 1st atom and images of 2nd atom
     for i in range(-order, order+1):
@@ -128,11 +124,7 @@ def scale_cell_by_matrix(st, scale_region = (-4,4), n_scale_images = 7, parent_c
 def find_moving_atom(st1, st2):
     """
     find moving atom
-
     The cells should have the same rprimd!
-
-
-
     return number of atom which moves between two cell
     """
 
@@ -180,7 +172,6 @@ def calc_recip_vectors(rprimd):
 def calc_kspacings(ngkpt, rprimd):
     """Calculate kspacing from ngkpt and rprimd (A)
         ngkpt (list of int) - k-point mesh
-
     """
     kspacing = []
 
@@ -242,15 +233,10 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
     inv - 1 or -1 allows to replicate in different directions
     
     inv = 0 - cell is replicated in both directions by mul[i];  2 still gives -1 0 1 but 3 gives -2 -1 0 1 2; for 'only_matrix' may work not correctly
-
-
     only_atoms - allows to replicate only specific atoms; now 
         'only_matrix'
-
     cut_one_cell - allows to cut only one cell with replicated edge atoms
     include_boundary (A) - the width of region to include additional edge atoms (bottom, up)
-
-
     Return:
     replicated structure
     """
@@ -371,7 +357,6 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     - x_central - cartesian coordinates of central atom; vector
     - st - structure with xcart list of coordinates of all atoms in system
     - n_neighbours - number of needed closest neighbours
-
     - control - type of output; 
               sum - sum of distances, 
               av - average distance, 
@@ -380,18 +365,13 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
               av_dev - return (average deviation, maximum deviation) from average distance in mA.
               list - list of distances; 
               atoms  - coordinates of neighbours
-
     - periodic - if True, then cell is additionaly replicated; needed for small cells
     Only for control = atoms
         - *only_elements* - list of z of elements to which only the distances are needed; 
         - only_numbers  (list of int) - calc dist only to this atoms 
-
     round_flag (bool) - if 1 than reduce distance prec to 2 points
-
-
     #TODO:
     the periodic boundary conditions realized very stupid by replicating the cell!
-
     """
     # round_orig = round
     if not round_flag:
@@ -550,14 +530,12 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
     """
     !!! Attempt to improve speed of periodic conditions!
     #control = 'atoms' could work wrong!!! check
-
     Return list of distances to n closest atoms around central atom. (By defauld sum of distances)
     
     Input:
     - x_central - cartesian coordinates of central atom; vector
     - st - structure with xcart list of coordinates of all atoms in system
     - n_neighbours - number of needed closest neighbours
-
     - control - type of output; 
               sum - sum of distances, 
               av - average distance, 
@@ -566,18 +544,13 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
               av_dev - return (average deviation, maximum deviation) from average distance in mA.
               list - list of distances; 
               atoms  - coordinates of neighbours
-
     - periodic - if True, then cell is additionaly replicated; needed for small cells
     Only for control = atoms
         - *only_elements* - list of z of elements to which only the distances are needed; 
         - only_numbers  (list of int) - calc dist only to this atoms 
-
     round_flag (bool) - if 1 than reduce distance prec to 2 points
-
-
     #TODO:
     the periodic boundary conditions realized very stupid by replicating the cell!
-
     """
     # round_orig = round
     if not round_flag:
@@ -806,8 +779,6 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     """ 
     st (Structure) -  
     mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 
-
-
     bound (float) - shift (A) allows to correctly account atoms on boundaries
     mp    (int)  include additionall atoms before cutting supecell
     test_overlap (bool) - check if atoms are overlapping -  quite slow
@@ -891,9 +862,7 @@ def supercell(st, ortho_sizes):
 def determine_symmetry_positions(st, element, silent = 0):
     """
     determine non-equivalent positions for atoms of type *element*
-
     element (str) - name of element, for example Li
-
     return list of lists -  atom numbers for each non-equivalent position
     """
 
@@ -936,7 +905,6 @@ def remove_atoms(st, atoms_to_remove):
     remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*
     st (Structure)
     atoms_to_remove (list) - list of element names or numbers
-
     """
     st = st.remove_atoms(atoms_to_remove)
 
@@ -970,7 +938,6 @@ def create_deintercalated_structure(st, element, del_pos = 1):
 
     """
     returns deintercalated structures
-
     del_pos(int) - number of position starting from 1
     """
     positions = determine_symmetry_positions(st, element)
@@ -999,7 +966,6 @@ def create_replaced_structure(st, el1, el2, rep_pos = 1, only_one = False):
 
     """
     allow to replace symmetry non-equivalent positions structures
-
     rep_pos(int) - number of position starting from 1
     only_one - replace only one first atom
     """
@@ -1038,9 +1004,7 @@ def create_antisite_defect_old(st, cation_positions = None):
     """
     exchange cation and transition metal
     st (Structure)
-
     cation_positions (list of numpy arrays) - reduced coordinates of deintercalated cation positions
-
     """
 
     #1. Find first alkali ion
@@ -1093,10 +1057,8 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
     st_base (Structure) - basic structure in which defects are created
     st_from (Structure) - structure from which the positions of *cation* are chosen;  st_from should be consistent with st_base 
     cation (str) - element, position of which is extracted from st_from and added to st_base
-
     trans (str) - element name transition metal for exchange
     trans_pos (int) - number of non-equiv position of trans starting from 1
-
     mode - 
         'add_alk' or 'a1' - add alkali cation
         'mov_trs' or 'a2' - mov trans to alkali pos
@@ -1158,7 +1120,6 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
     Looks for all unique antisites for el1 and el2
     
     iatom (int) - create antistes only using this atom number
-
     Todo
     #check that distances through  PBC are two small
     """
@@ -1241,9 +1202,7 @@ def calc_k_point_mesh(rprimd, kspacing):
     """
     rprimd (list of lists 3x3 of floats) - vectors of cell (Angstroms)
     kspacing (float) - required spacing between k-points in reciprocal space (A-1); paramter KSPACING in VASP
-
     the provided optimal k-mesh has the smallest sum of squared deviations of kspacings
-
     returns k-point mesh (list of int)
     """
     N = []
@@ -1286,8 +1245,6 @@ def remove_half_based_on_symmetry(st, sg = None):
     sg (int) - give back structure with specific space group
     
     return list of structures with sg space groups
-
-
     """
     from collections import Counter
 
@@ -1296,7 +1253,6 @@ def remove_half_based_on_symmetry(st, sg = None):
         Find recursivly all possible orderings
         ls - initial list of atoms 
         i - index in ls  
-
         """
         for s in 1,-1:
             
@@ -1344,15 +1300,11 @@ def remove_half_based_on_symmetry(st, sg = None):
 def remove_half(st, el, sg = None):
     """
     # works only for 
-
     sg - required space group
-
     TODO
     1. Take care about matching the initial cell and supercell from primitive
     Now the manual shift is done
-
     2. Make full conversion from pymat structure to mine
-
     """
 
 
@@ -1440,22 +1392,15 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
                 ensure that the miller indices correspond to usual
                 crystallographic definitions, you should supply a conventional
                 unit cell structure.
-
         miller_index ([h, k, l]): Miller index of plane parallel to
                         surface. Note that this is referenced to the input structure. If
                         you need this to be based on the conventional cell,
                         you should supply the conventional structure.
-
-
         oxidation (dic) - dictionary of effective oxidation states, e. g. {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'}
                           allows to calculate dipole moment
-
         surface_i (int) - choose particular surface 
-
         min_slab_size (float) - minimum slab size
-
         min_vacuum_size (float) - vacuum thicknes in A
-
     """
 
     from pymatgen.core.surface import SlabGenerator
@@ -1478,4 +1423,5 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
         pos.write_file('xyz/POSCAR_suf'+str(i))
 
     return slabs[surface_i]
+
 

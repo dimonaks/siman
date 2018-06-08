@@ -351,10 +351,6 @@ class Structure():
                 miller_index = [0,0,1], oriented_unit_cell = None, shift = None, scale_factor = None,reorient_lattice = False,
                 site_properties = site_properties)
         else:
-            # print(elements)
-            # print(len(self.xred))
-            # print(site_properties)
-
             pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
 
@@ -371,12 +367,6 @@ class Structure():
 
 
         return pm
-
-
-
-
-
-
 
     def get_pm_composition(self):
         ''
@@ -462,35 +452,17 @@ class Structure():
         st = copy.deepcopy(self)
         st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
         st.xred   = [np.array(site._fcoords) for site in stpm._sites]
-        
-
         # print(elements)
         st.update_xcart()
 
         s = stpm._sites[0]
-
-        if 'magmom' in s.properties:
-            st.magmom = [site.properties['magmom'] for site in stpm._sites]
-        else:
-            st.magmom = [None]
-        # print( dir(s._lattice) )
-        # print( dir(s) )
-        # print( s.properties )
-        # print( s._properties )
         # print( dir(s.specie) )
-        # print( s.specie.name )
-        # sys.exit()
+        # print( s.specie )
         elements = [s.specie.name for s in stpm._sites]
         # print(s.specie.oxi_state)
         if hasattr(s.specie, 'oxi_state'):
             charges = [s.specie.oxi_state for s in stpm._sites]
             st.charges = charges
-        
-        # if hasattr(s.specie, 'oxi_state'):
-        #     charges = [s.specie.oxi_state for s in stpm._sites]
-        #     st.charges = charges
-
-
         # print(st.charges)
         # else:
         #     charges = [None]
@@ -508,31 +480,6 @@ class Structure():
 
         st.name+='_from_pmg'
         return st
-
-
-    def get_conventional_cell(self):
-        """
-        return conventional cell 
-        """
-        st_mp = self.convert2pymatgen()
-
-        # st_test = self.update_from_pymatgen(st_mp)
-        # st_test.printme()
-
-        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
-
-        sc = sf.get_conventional_standard_structure() # magmom are set to None
-
-        # print(sc)
-        st = self.update_from_pymatgen(sc)
-
-        # print(st.rprimd)
-        # print(len(st.xcart))
-        # print(st.ntypat)
-
-        return st
-
-
 
     def printme(self):
         print(self.convert2pymatgen())
@@ -3150,7 +3097,7 @@ class CalculationVasp(Calculation):
 
         if schedule_system == 'SGE':
             parrallel_run_command = "mpirun -x PATH vasp"
-        elif schedule_system == 'PBS':
+        elif schedule_system == 'PBS' or 'PBS_bsu':
             # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
             # parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
             parrallel_run_command = header.vasp_command #skoltech cluster
@@ -3668,7 +3615,7 @@ class CalculationVasp(Calculation):
                 f.write("qsub -pe 'mpi*' "+str(header.corenum)+" "+header.queue+" "+run_name+"\n") #str(self.set.np) #-l cmmd
                 f.write('sleep 5\n')
                 # runBash('chmod +x run')
-            elif schedule_system == 'PBS':
+            elif schedule_system == 'PBS' or 'PBS_bsu':
                 if header.PATH2PROJECT == '':
                     header.PATH2PROJECT = '.'
 
@@ -5120,7 +5067,8 @@ class CalculationVasp(Calculation):
                 printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
 
             elif 'PBS' in cl.schedule_system:
-                job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
+	            ''	
+                #job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
 
             else:
                 print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')

@@ -105,6 +105,27 @@ def write_batch_header(batch_script_filename = None,
             f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
             f.write("module load ScriptLang/python/2.7\n\n")
 
+
+
+        if schedule_system == 'PBS_bsu':
+            f.write("#!/bin/bash   \n")
+            f.write("#PBS -N "+job_name+"\n")
+            if header.WALLTIME_LIMIT:
+                f.write("#PBS -l walltime=72:00:00 \n")
+            # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            if header.PBS_PROCS:
+                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
+            else: # 1 node option 
+                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
+            # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
+            f.write("#PBS -r n\n")
+            f.write("#PBS -j eo\n")
+            f.write("#PBS -m bea\n")
+            f.write("#PBS -M boev.anton.olegovich@gmail.com\n")
+            f.write("cd $PBS_O_WORKDIR\n")
+            f.write("echo $LD_LIBRARY_PATH \n")
+     
+
         if schedule_system == 'SLURM':
             if '~' in path_to_job:
                 print_and_log('Error! For slurm std err and out you need full paths')
@@ -656,7 +677,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None,
+    run = False, check_job  = 1, params = None, 
+    ppn = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -1539,7 +1561,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 write_batch_header(batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
                     path_to_job = header.project_path_cluster+'/'+cl.dir, 
-                    job_name = cl.id[0]+"."+cl.id[1], number_cores = cl.corenum  )
+                    job_name = cl.id[0]+"."+cl.id[1], number_cores = cl.corenum)
 
 
 
