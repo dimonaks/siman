@@ -827,6 +827,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     sc.xcart = []
     sc.typat = []
     sc.xred  = []
+    sc.magmom  = []
     #find range of multiplication
     mi = np.min(mul_matrix, axis = 0)
     ma = np.max(mul_matrix, axis = 0)
@@ -846,16 +847,16 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
         # print(xcart_mul)
         xred_mul  = xcart2xred(xcart_mul, sc.rprimd)
         
-        for xr, xc,  t in zip(xred_mul, xcart_mul, st.typat):
+        for xr, xc,  t, m in zip(xred_mul, xcart_mul, st.typat, st.magmom):
             
             if all([0-b <= r < 1-b for r, b in zip(xr, bounds)]): #only that in sc.rprimd box are needed
                 sc.xcart.append( xc )
                 sc.xred.append ( xr )
                 sc.typat.append( t  )
+                sc.magmom.append(m)
     
 
     sc.natom = len(sc.xcart)
-    sc.magmom = [None]
 
 
     if abs(sc.natom - sc_natom)>1e-5: #test 1, number of atoms
@@ -1481,7 +1482,7 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
 
 
 
-def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, ):
+def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = ''):
     """
     INPUT:
         st (Structure) - Initial input structure. Note that to
@@ -1515,7 +1516,7 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
     # pm = st.convert2pymatgen()
 
 
-    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size)
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size, primitive = 1)
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs()
 
@@ -1523,6 +1524,6 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
 
     for i, slab in enumerate(slabs):
         pos = Poscar(slab)
-        pos.write_file('xyz/POSCAR_suf'+str(i))
+        pos.write_file('xyz/POSCAR_suf'+str(i)+str(suf))
 
     return slabs

@@ -2221,7 +2221,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fo', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
-    ortho = None, mat_proj_cell = None,
+    ortho = None, mat_proj_cell = None, ngkpt = None,
     it_folder = None, choose_outcar = None, choose_image = None, 
     cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,

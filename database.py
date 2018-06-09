@@ -194,9 +194,11 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
         d.close()   
 
         # print(header.db[('Cu.su', '1lo', 100)].inh_id)
+        printlog('Opening ', header.calc_database, 'for writing')
 
         with shelve.Shelf(dbm.open(header.calc_database, 'w'), protocol = 3) as d:
             for key in header.calc:
+                printlog('saving key:', key,imp = 'n')
                 # print(key)
                 # print(key, header.calc[key].inh_id)
                 d[str(key)] = header.calc[key]

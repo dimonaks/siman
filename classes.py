@@ -5214,37 +5214,43 @@ class CalculationVasp(Calculation):
     def check_job_state(self):
         #check if job in queue or Running
 
-        
         cl = self
-        job_in_queue = ''
-        if hasattr(cl,'schedule_system'):
+        if header.check_job == 1:
+            job_in_queue = ''
+            if hasattr(cl,'schedule_system'):
 
-            check_string =  cl.id[0]+'.'+cl.id[1]
-            if 'SLURM' in cl.schedule_system:
+                check_string =  cl.id[0]+'.'+cl.id[1]
+                if 'SLURM' in cl.schedule_system:
 
-                job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster_address)
-                printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
+                    job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster_address)
+                    printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
 
-            elif 'PBS' in cl.schedule_system:
-                job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
+                elif 'PBS' in cl.schedule_system:
+                    job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
 
+                else:
+                    print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')
+                    job_in_queue = ''
+
+
+            if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster_address) and job_in_queue: 
+                
+                cl.state = '3. Running'
+
+            elif job_in_queue:
+                
+                cl.state = '3. In queue'
+       
             else:
-                print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')
-                job_in_queue = ''
+                ''
+                if '3' in cl.state:
+                    cl.state = '2. Unknown'
 
-
-        if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster_address) and job_in_queue: 
-            
-            cl.state = '3. Running'
-
-        elif job_in_queue:
-            
-            cl.state = '3. In queue'
-   
         else:
-            ''
-            if '3' in cl.state:
-                cl.state = '2. Unknown'
+            cl.state = '2. Unknown'
+
+
+
 
         return cl.state 
 

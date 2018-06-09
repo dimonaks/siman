@@ -137,7 +137,7 @@ first_run = True  # needed to write header of run script
 ssh_object = None # paramiko ssh_object
 show = None
 corenum = 1
-
+check_job = 1 # check job by additional ssh requests
 
 
 calc = CalcDict()
