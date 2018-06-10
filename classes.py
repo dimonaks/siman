@@ -631,6 +631,41 @@ class Structure():
         return st
 
 
+    def get_surface_atoms(self, element, surface = 0, surface_width = 0.5 ):
+        #return numbers of surface atoms
+        #elememt - which element is interesting?
+        #surface_width - which atoms to consider as surface 
+        #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
+        st = self
+        surface_atoms = [[],[]]
+        
+        z1 = 100
+        z2 = -100
+        z = []
+        for x in st.xcart:
+            if z1 > x[2]:
+                z1 = x[2]
+            if z2 < x[2]:
+                z2 = x[2]
+
+        print('Surfaces are ', z1, z2)
+
+        z.append(z1)
+        z.append(z2)
+        els = st.get_elements()
+
+
+        for i, x in enumerate(st.xcart):
+            el = els[i]
+
+            if el == element and z1 <= x[2] < z1+surface_width:
+                surface_atoms[0].append(i)
+
+            if el == element and z2 - surface_width  < x[2] <= z2:
+                surface_atoms[1].append(i)
+
+
+        return surface_atoms[surface]
 
 
 
