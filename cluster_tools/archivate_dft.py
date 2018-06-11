@@ -51,7 +51,7 @@ with open('arhivate_dft.log', 'a') as f:
     """1. Archivate files with rsync"""
     f.write("\nStart rsync at "+str(datetime.datetime.now())+'\n')
     # out = runBash('rsync -r LiCoO2 '+ BACKUP_STORAGE)
-    runBash('rsync -r * .'+ BACKUP_STORAGE)
+    out = runBash('rsync -r * .'+ BACKUP_STORAGE)
     f.write('rsync out: '+out+'\n')
     f.write("Finished rsync at "+str(datetime.datetime.now())+'\n')
 
@@ -75,5 +75,7 @@ with open('arhivate_dft.log', 'a') as f:
             continue
 
         for tem in AUX_FILES_TEMPL:
-            out = runBash('find '+d+' -name '+tem+' ' )
-            print(out)
+            out = runBash('find '+d+' -name '+tem+' -delete' )
+            f.write('find out: '+out+'\n')
+
+            # print(out)
