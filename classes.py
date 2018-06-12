@@ -128,6 +128,9 @@ class Structure():
         self.select = [] # flags for selective dynamics
 
 
+    def copy(self):
+        return copy.deepcopy(self)
+
     def new(self):
         return Structure()
 
