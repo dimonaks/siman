@@ -626,7 +626,7 @@ class Structure():
 
         sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
 
-        sc = sf.get_primitive_structure() # magmom are set to None
+        sc = sf.get_primitive_standard_structure() # magmom are set to None
 
         st = self.update_from_pymatgen(sc)
 
@@ -3974,8 +3974,15 @@ class CalculationVasp(Calculation):
                 self.cluster_address, join(self.project_path_cluster, path_to_outcar) )
             # runBash(command_reduce)
 
-            files = [ self.project_path_cluster+'/'+path_to_outcar, self.project_path_cluster+'/'+path_to_contcar ]
+            if 'un' in load:
+                out_name  = os.path.basename(path_to_outcar)
+                cont_name = os.path.basename(path_to_contcar)
+                path_to_outcar = path_to_outcar.replace(out_name, 'OUTCAR')
+                path_to_contcar = path_to_contcar.replace(cont_name, 'CONTCAR')
 
+            files = [ self.project_path_cluster+'/'+path_to_outcar, self.project_path_cluster+'/'+path_to_contcar ]
+            # print(load)
+            # print(files)
             # get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
             for file in files:
                 self.get_file(os.path.basename(file), up = load)

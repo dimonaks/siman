@@ -813,6 +813,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     test_overlap (bool) - check if atoms are overlapping -  quite slow
     """ 
     sc = st.new() 
+    # st = st.return_atoms_to_cell()
     sc.name = st.name+'_supercell'
     sc.rprimd = list(np.dot(mul_matrix, st.rprimd  ))
     printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
@@ -822,8 +823,17 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
     st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  )
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
+    # print(st.natom)
+
+    if len(st.typat) != len(st.magmom):
+        st.magmom = [None]*st.natom
+        mag_flag = False
+    else:
+        mag_flag = True
+
+
     sc_natom = sc.vol/st.vol*st.natom # test
-    printlog('The supercell should contain', sc_natom, 'atoms ... ', imp = 'y', end = ' ')
+    printlog('The supercell should contain', sc_natom, 'atoms ... \n', imp = 'y', end = ' ')
     sc.xcart = []
     sc.typat = []
     sc.xred  = []
@@ -836,19 +846,26 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     # print(mi, ma)
 
 
+
+
     # find bound values
     lengths = np.linalg.norm(sc.rprimd, axis = 1)
     bounds = bound/lengths # in reduced coordinates
-
-
+    # print(bounds)
+    # print(st.xcart)
+    # print([range(*z) for z in zip(mi-mp, ma+mp)])
+    # print(st.rprimd)
+    # print(sc.rprimd)
     for uvw in itertools.product(*[range(*z) for z in zip(mi-mp, ma+mp)]): #loop over all ness uvw
         # print(uvw)
         xcart_mul = st.xcart + np.dot(uvw, st.rprimd) # coordinates of basis for each uvw
         # print(xcart_mul)
         xred_mul  = xcart2xred(xcart_mul, sc.rprimd)
-        
+
+        # print(len(xred_mul), len(xcart_mul), len(st.typat), len(st.magmom) )
         for xr, xc,  t, m in zip(xred_mul, xcart_mul, st.typat, st.magmom):
-            
+            # if 0<xr[0]<1 and 0<xr[1]<1 and 0<xr[2]<1:
+                # print (xr)
             if all([0-b <= r < 1-b for r, b in zip(xr, bounds)]): #only that in sc.rprimd box are needed
                 sc.xcart.append( xc )
                 sc.xred.append ( xr )
@@ -878,6 +895,9 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     sc.ntypat = st.ntypat
     sc.nznucl = sc.get_nznucl()
 
+    if mag_flag is False:
+        sc.magmom = [None]
+
 
     return sc
 
@@ -888,6 +908,14 @@ def supercell(st, ortho_sizes):
     """
     mul_matrix = ortho_vec(st.rprimd, ortho_sizes)
     return create_supercell(st, mul_matrix)
+
+def cubic_supercell(st, ortho_sizes):
+    """
+    wrapper
+    """
+    mul_matrix = ortho_vec(st.rprimd, ortho_sizes)
+    return create_supercell(st, mul_matrix)
+
 
 def determine_symmetry_positions(st, element, silent = 0):
     """

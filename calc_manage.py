@@ -1696,7 +1696,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-
 def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base = None,
     id_from = None, confdic = None,
     atom_new = None, atom_to_replace = None,  
@@ -3228,5 +3227,6 @@ def manually_remove_from_struct_des(struct_des, key):
 
 
 
-
+add = add_loop
+res = res_loop
 
