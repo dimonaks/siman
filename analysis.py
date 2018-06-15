@@ -468,7 +468,7 @@ def around_alkali(st, nn, alkali_ion_number):
 
     n_neighbours = nn
     alkali_ions = []
-
+    dist = []
     ifmaglist = st.get_maglist()
 
     for i, typ, x in zip(range(st.natom), st.typat, st.xcart):
