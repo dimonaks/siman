@@ -660,12 +660,13 @@ class Structure():
 
         for i, x in enumerate(st.xcart):
             el = els[i]
+            if el == element:
+                # print(x[2])
+                if z1 <= x[2] < z1+surface_width:
+                    surface_atoms[0].append(i)
 
-            if el == element and z1 <= x[2] < z1+surface_width:
-                surface_atoms[0].append(i)
-
-            if el == element and z2 - surface_width  < x[2] <= z2:
-                surface_atoms[1].append(i)
+                if z2 - surface_width  < x[2] <= z2:
+                    surface_atoms[1].append(i)
 
 
         return surface_atoms[surface]
@@ -5315,7 +5316,7 @@ class CalculationVasp(Calculation):
         iopt - inherit_option
             'full_nomag'
             'full'
-
+            'full_chg' - including chg file
         vers - list of version for which the inheritance is done
 
         TODO:

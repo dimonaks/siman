@@ -1510,7 +1510,8 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
 
 
 
-def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = ''):
+def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
+    primitive = None, symmetrize = False):
     """
     INPUT:
         st (Structure) - Initial input structure. Note that to
@@ -1544,9 +1545,9 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
     # pm = st.convert2pymatgen()
 
 
-    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size, primitive = 1)
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size, primitive = primitive)
     # print(slabgen.oriented_unit_cell)
-    slabs = slabgen.get_slabs()
+    slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument\nWriting POSCARs to xyz', imp = 'y')
 
