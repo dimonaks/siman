@@ -470,6 +470,11 @@ class Structure():
         # print(charges)
         # sys.exit()
 
+        ################magmom update
+        if 'magmom' in stpm.site_properties.keys():
+            print(stpm.site_properties)
+            st.magmom = stpm.site_properties['magmom']
+
         st = st.update_types(elements)
 
         st.natom = len(st.typat)
@@ -480,6 +485,87 @@ class Structure():
 
         st.name+='_from_pmg'
         return st
+
+
+
+    def rotate(self, axis, angle):
+        #axis - list of 3 elements, [0,0,1]
+        #angle in degrees
+        
+        from pymatgen.transformations.standard_transformations import RotationTransformation
+        
+        st = copy.deepcopy(self)
+        rot = RotationTransformation(axis, angle)
+        stpm = st.convert2pymatgen()
+        stpmr1 = rot.apply_transformation(stpm)
+        st_r1 = st.update_from_pymatgen(stpmr1)
+        return st_r1
+
+
+    def invert_axis(self, axis):
+        st = copy.deepcopy(self)
+
+        st.rprimd[axis] *= -1
+        st.update_xred()
+        st = st.return_atoms_to_cell()
+        return st
+
+
+
+
+
+
+
+
+
+
+
+    def get_conventional_cell(self):
+        """
+        return conventional cell 
+        """
+        st_mp = self.convert2pymatgen()
+
+        # st_test = self.update_from_pymatgen(st_mp)
+        # st_test.printme()
+
+        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
+
+        sc = sf.get_conventional_standard_structure() # magmom are set to None
+
+        # print(sc)
+        st = self.update_from_pymatgen(sc)
+
+        # print(st.rprimd)
+        # print(len(st.xcart))
+        # print(st.ntypat)
+
+        return st
+
+
+
+
+    def get_primitive_cell(self):
+        """
+        return primitive cell 
+        """
+        st_mp = self.convert2pymatgen()
+
+        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
+
+        sc = sf.get_primitive_structure() # magmom are set to None
+
+        st = self.update_from_pymatgen(sc)
+
+
+        return st
+
+
+
+
+
+
+
 
     def printme(self):
         print(self.convert2pymatgen())
