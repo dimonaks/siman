@@ -507,7 +507,7 @@ class Structure():
         only rprimd, xred and xcart are updated now!!!!!
 
         TODO:
-        please update magmom also!!!!
+
 
         """
         st = copy.deepcopy(self)
@@ -5307,7 +5307,7 @@ class CalculationVasp(Calculation):
         from calc_manage import res_loop
         res_loop(*self.id, **argv)
 
-    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, *args, **kwargs):
+    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, *args, **kwargs):
         """
         Wrapper for add_loop (in development)
         By default inherit self.end
@@ -5319,6 +5319,8 @@ class CalculationVasp(Calculation):
             'full_chg' - including chg file
         vers - list of version for which the inheritance is done
 
+        i_child - choose number of child to run res_loop()
+        add - if 1 than add new calculation irrelevant to children
         TODO:
         1. if ise is not provided continue in the same folder under the same name,
         however, it is not always what is needed, therefore use inherit_xred = continue
@@ -5336,20 +5338,27 @@ class CalculationVasp(Calculation):
             if not hasattr(self, 'children'):
                 self.children = []
 
-            for idd in self.children:
+            if not add and len(self.children)>0:
+                print('Children were found:', self.children, 'by defauld reading last, choose with *i_child* ')
+                idd  = self.children[i_child]
                 cl_son = header.calc[idd]
-                # cl_son.res()
-                # self.children = list(set(self.children))
+                
+                if 'show' in kwargs:
+                    show = kwargs['show']
+                else:
+                    show = 'fo'
+                cl_son.res(show = show)
                 child = idd
-            # if len(self.children) == 0:
-            if not vers:
-                vers = [self.id[2]]
+            else:
+                if not vers:
+                    vers = [self.id[2]]
 
-            it_new = add_loop(*self.id[:2], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
-            # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
-            child = (it_new, ise, self.id[2])
-            if child not in self.children:
-                self.children.append(child)
+                it_new = add_loop(*self.id[:2], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
+                # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
+                child = (it_new, ise, self.id[2])
+
+                if child not in self.children:
+                    self.children.append(child)
 
 
         return header.calc[child]
