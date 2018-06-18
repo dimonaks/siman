@@ -105,6 +105,33 @@ def write_batch_header(batch_script_filename = None,
             f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
             f.write("module load ScriptLang/python/2.7\n\n")
 
+
+
+        if schedule_system == 'PBS_bsu':
+            f.write("#!/bin/bash   \n")
+            f.write("#PBS -N "+job_name+"\n")
+            if header.WALLTIME_LIMIT:
+                f.write("#PBS -l walltime=72:00:00 \n")
+            # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            if header.PBS_PROCS:
+                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
+            else: # 1 node option 
+                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
+            # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
+            f.write("#PBS -r n\n")
+            f.write("#PBS -j eo\n")
+            f.write("#PBS -m bea\n")
+            f.write("#PBS -M boev.anton.olegovich@gmail.com\n")
+            f.write("cd $PBS_O_WORKDIR\n")
+            f.write("echo $LD_LIBRARY_PATH \n")
+
+
+
+
+
+
+
+
         if schedule_system == 'SLURM':
             if '~' in path_to_job:
                 print_and_log('Error! For slurm std err and out you need full paths')
@@ -187,7 +214,7 @@ def prepare_run():
             f.write("#!/bin/tcsh\n")
             f.write("module load sge\n")
             f.write("module load vasp/parallel/5.2.12\n")
-        elif schedule_system in ('PBS', 'SLURM'):
+        elif schedule_system in ('PBS', 'PBS_bsu' 'SLURM'):
             f.write("#!/bin/bash\n")
         else:
             ''
@@ -203,7 +230,7 @@ def complete_run(close_run = True):
     if close_run:
 
         with open('run','a', newline = '') as f:
-            if header.schedule_system == "PBS":
+            if header.schedule_system in ["PBS", 'PBS_bsu']:
                 f.write("qstat\n")
                 f.write("sleep 2\n")
             elif header.schedule_system == "SLURM":
