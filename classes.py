@@ -3295,7 +3295,7 @@ class CalculationVasp(Calculation):
 
         if schedule_system == 'SGE':
             parrallel_run_command = "mpirun -x PATH vasp"
-        elif schedule_system == 'PBS':
+        elif schedule_system in ['PBS', 'PBS_bsu']:
             # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
             # parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
             parrallel_run_command = header.vasp_command #skoltech cluster
@@ -3813,7 +3813,7 @@ class CalculationVasp(Calculation):
                 f.write("qsub -pe 'mpi*' "+str(header.corenum)+" "+header.queue+" "+run_name+"\n") #str(self.set.np) #-l cmmd
                 f.write('sleep 5\n')
                 # runBash('chmod +x run')
-            elif schedule_system == 'PBS':
+            elif schedule_system in ['PBS', 'PBS_bsu']:
                 if header.PATH2PROJECT == '':
                     header.PATH2PROJECT = '.'
 
