@@ -1093,12 +1093,20 @@ class Structure():
 
 
 
-    def mov_atoms(self, iat = None, to_x = None):
+    def mov_atoms(self, iat = None, to_x = None, relative = False):
         """
         Move one atom to xcart position *to_x*
+        relative (bool) - if shift is relative
+
         """
         st = copy.deepcopy(self)
-        st.xcart[iat] = to_x
+        
+        if relative:
+            st.xcart[iat] += to_x
+        else:
+            st.xcart[iat] = to_x
+        
+
         st.xcart2xred()
 
         return st
@@ -5090,14 +5098,14 @@ class CalculationVasp(Calculation):
 
 
         if out:
-            printlog('File', path2file_cluster, 'was not found, trying scratch', imp = 'Y')
+            printlog('File', path2file_cluster, 'was not found, trying archive:',header.PATH2ARCHIVE, imp = 'Y')
             # printlog('Charge file', path_to_chg, 'was not found')
             try:
                 pp = self.project_path_cluster.replace(self.cluster_home, '') #project path without home
             except:
                 pp = ''
             # print(pp)
-            path_to_chg_scratch = '/scratch/amg/aksenov/'+pp+'/'+path_to_chg
+            path_to_chg_scratch = header.PATH2ARCHIVE+'/'+pp+'/'+path_to_chg
 
             out = get_from_server(path_to_chg_scratch, os.path.dirname(path_to_chg), addr = self.cluster_address)
             
@@ -5148,7 +5156,7 @@ class CalculationVasp(Calculation):
         self.determine_filenames()
 
         # print()
-        CHG_scratch_gz  = '/scratch/amg/aksenov/'+self.dir+'/'+v+".CHGCAR.gz"
+        CHG_scratch_gz  = header.PATH2ARCHIVE+'/'+self.dir+'/'+v+".CHGCAR.gz"
 
         CHG     = ppc + self.path['chgcar']
         AECCAR0 = ppc + self.path['aeccar0']
@@ -5340,15 +5348,23 @@ class CalculationVasp(Calculation):
 
             if not add and len(self.children)>0:
                 print('Children were found:', self.children, 'by defauld reading last, choose with *i_child* ')
-                idd  = self.children[i_child]
+                
+                for i in self.children:
+                    # print(i, ise, i[1], i[1] == ise)
+                    if i[1] == ise:
+                        idd = i
+                        break
+                else:
+                    idd  = self.children[i_child]
+                # print(idd)
+
                 cl_son = header.calc[idd]
                 
-                if 'show' in kwargs:
-                    show = kwargs['show']
-                else:
-                    show = 'fo'
-                cl_son.res(show = show)
+                cl_son.res(**kwargs)
                 child = idd
+            
+
+
             else:
                 if not vers:
                     vers = [self.id[2]]

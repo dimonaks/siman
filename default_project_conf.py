@@ -10,6 +10,7 @@ from __future__ import division, unicode_literals, absolute_import
 CLUSTERS = {}
 DEFAULT_CLUSTER = 'cee'
 PATH2PROJECT = '' # path to project on cluster relative to home folder
+PATH2ARCHIVE = '' # path to archive; if no files are found at home folder, siman will check here; relative paths should be same
 
 
 CLUSTERS['cee'] = {

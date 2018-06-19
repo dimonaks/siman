@@ -711,7 +711,7 @@ def words(fileobj):
 def server_cp(copy_file, to, gz = True, scratch = False):
     
     if scratch:
-        copy_file = '/scratch/amg/aksenov/' + copy_file
+        copy_file = header.PATH2ARCHIVE + '/' + copy_file
     else:
         copy_file = header.project_path_cluster + '/' + copy_file
 

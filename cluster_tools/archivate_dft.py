@@ -5,7 +5,9 @@ archivate_dft.py by Aksyonov Dmitry, Skoltech, Moscow
 2. remove all auxilary DFT files from home directory for finished calculations
 """
 import sys
-import subprocess, datetime, os, glob
+import subprocess, datetime, os, glob, copy
+from os.path import expanduser
+
 # print sys.argv
 # sys.path.append('/usr/lib64/python2.7/site-packages/numpy')
 # import numpy as np
@@ -46,7 +48,7 @@ def runBash(cmd, env = None, detached = False):
 
 
 
-with open('arhivate_dft.log', 'a') as f:
+with open('archivate_dft.log', 'a') as f:
 
     """1. Archivate files with rsync"""
     f.write("\nStart rsync at "+str(datetime.datetime.now())+'\n')
@@ -66,17 +68,37 @@ with open('arhivate_dft.log', 'a') as f:
 
     curpath = sys.path[0]
 
-    active_directories = [d.replace(curpath+'/', '').split('/')[0] for d in active_directories]
+    home = expanduser("~")
+    user = home.split('/')[-1]
+    print('home is ', home)
+    print('user is ', user)
+    active_for_find = ['-path '+p.replace(home, '.')+' -prune -o' for p in active_directories if user in p]
 
+    active_directories = [d.replace(curpath+'/', '').split('/')[0] for d in active_directories]
     # print(active_directories)
     dirs = filter(os.path.isdir, os.listdir(curpath)) # return list of directories in current folder
-    # print(dirs)
-    for d in dirs:
-        if d in active_directories:
-            continue
+    
+    # print(active_full)
 
+    if 0:
+        # option 1, skipping top directories of active calculations - not effecient
+        for d in dirs:
+            if d in active_directories:
+                continue
+
+            for tem in AUX_FILES_TEMPL:
+                ''
+                out = runBash('find '+d+' -name '+tem+' -delete' )
+                f.write('find out: '+out+'\n')
+
+                # print(out)
+    if 1:
+        #option 2, skipping only active
+        find_arg = ' '.join(active_for_find)
         for tem in AUX_FILES_TEMPL:
-            out = runBash('find '+d+' -name '+tem+' -delete' )
+            ''
+            find_command = 'find . '+find_arg+' -name '+tem+' -exec rm  {} \\;'
+            out = runBash(find_command)
             f.write('find out: '+out+'\n')
-
-            # print(out)
+            
+            # print(find_command)

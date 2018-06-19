@@ -140,6 +140,8 @@ corenum = 1
 check_job = 1 # check job by additional ssh requests
 
 
+
+
 calc = CalcDict()
 # global db
 db = calc
