@@ -489,3 +489,26 @@ def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = 
 
 
     return
+
+
+
+
+def optimize_wrapper(cl, ise, add = 0, show_fit = 1):
+    #wrapper for optimization function
+
+
+    up_res = 'up1'
+    readfiles = 1
+    check_job = 1
+    id_res = (cl.id[0]+'.su', ise, 100)
+
+    if add:
+        add_loop(*cl.id, ise_new = ise,  up = 'up1', calc_method = 'uniform_scale',  
+            scale_region = (-4, 4), input_st = cl.end, show = '', run = 0,  inherit_option = 'inherit_xred', 
+            it_folder = cl.sfolder+'/scaled/') 
+    else:
+
+        if show_fit:
+            res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, analys_type = 'fit_a', show = 'fitfo')
+        else:
+            res_loop(*id_res, up = up_res, show = 'fo', check_job = check_job)

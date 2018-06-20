@@ -2508,8 +2508,9 @@ def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_lo
     if param_dic:
         cathodes = [param_dic]
 
-
+    # print(cathodes)
     for c in cathodes:
+
         st = c['cl'].end
         it = c['cl'].id[0]
         it_base = it
@@ -2520,11 +2521,16 @@ def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_lo
             it+=el_add+str(c['i_void'])
             add_loop(it, c['set'], 1, input_st = st, it_folder = struct_des[it_base].sfolder+'/as', up = up, **add_loop_dic)
         else:
-            i_add = None
+            if 'iatom' in c:
+                i_add = c['iatom']
+            else:
+                i_add = None
 
         sts = create_antisite_defect3(st, c['el1'], c['el2'], max_sep = c['max_sep'], iatom = i_add  )
         
-        cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, **add_loop_dic)
+
+
+        cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update, **add_loop_dic)
 
         header.show = 'fo'
 
@@ -2546,7 +2552,7 @@ def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_lo
             #     break
 
     # sys.exit()
-
+    return
 
 
 def alkali_bar(m, param, option = ''):

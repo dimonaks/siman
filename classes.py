@@ -1432,7 +1432,7 @@ class Structure():
 
     def image_distance(self, *args, **kwargs):
 
-        return image_distance(*args, **kwargs, r = self.rprimd)
+        return image_distance(*args, **kwargs)
 
 
 
@@ -2214,6 +2214,8 @@ class Calculation(object):
         """
         print(self.NKPTS*self.end.natom) #KPPRA - k-points per reciprocal atom? 
 
+    def copy(self):
+        return copy.deepcopy(self)
 
     @property
     def sfolder(self):
@@ -5353,6 +5355,7 @@ class CalculationVasp(Calculation):
                     # print(i, ise, i[1], i[1] == ise)
                     if i[1] == ise:
                         idd = i
+                        add = True
                         break
                 else:
                     idd  = self.children[i_child]
@@ -5365,11 +5368,12 @@ class CalculationVasp(Calculation):
             
 
 
-            else:
+            if add:
                 if not vers:
                     vers = [self.id[2]]
 
-                it_new = add_loop(*self.id[:2], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
+                idd = self.id
+                it_new = add_loop(idd[0],idd[1], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
                 # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
                 child = (it_new, ise, self.id[2])
 

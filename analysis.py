@@ -216,7 +216,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
         'mdstep':cl1.mdstep, 'ecut':cl1.set.ecut, 'niter':cl1.iterat/cl1.mdstep,
         'set_is':cl1.id[1], 'vol_red':vol_red }
     except:
-        results_dic = {}
+        results_dic = {'redox_pot':redox, 'vol_red':vol_red}
 
 
     return results_dic

@@ -10,7 +10,6 @@ import pandas as pd
 
 import header
 from header import runBash, print_and_log, printlog
-from classes import CalculationVasp
 from small_functions import makedir
 from set_functions import init_default_sets
 from functions import invert
@@ -237,6 +236,7 @@ def get_from_database(x1, x2, mat, inquiry_keys = None, silent = None, ssh_objec
     ssh_object (SSHTools) - ssh object based on paramiko with access details
 
     """
+    from classes import CalculationVasp
 
     def check(key, inquiry_keys):
         return all([k in key for k in inquiry_keys])

@@ -1250,7 +1250,7 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
             i+=1
 
             structures.append(st_as)
-            st_as.write_xyz()
+            st_as.write_poscar()
     st.write_xyz()
 
     printlog('List of antisites:', imp  = 'y')
