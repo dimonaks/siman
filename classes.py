@@ -5355,10 +5355,12 @@ class CalculationVasp(Calculation):
                     # print(i, ise, i[1], i[1] == ise)
                     if i[1] == ise:
                         idd = i
-                        add = True
+                        # add = True
                         break
+
                 else:
-                    idd  = self.children[i_child]
+                    add = True
+                    # idd  = self.children[i_child]
                 # print(idd)
 
                 cl_son = header.calc[idd]
@@ -5368,7 +5370,7 @@ class CalculationVasp(Calculation):
             
 
 
-            if add:
+            if add or len(self.children) == 0:
                 if not vers:
                     vers = [self.id[2]]
 
