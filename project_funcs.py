@@ -2469,12 +2469,12 @@ def calc_antisite_defects(dpi = 300, image_format = 'eps', update = 0):
 
 
 
-def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_loop_dic = None):
+def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_loop_dic = None, only = None):
     """
 
     'add' - element to be inserted in void!
     if provided
-
+    only - only these configurations are considered
     """
     from impurity import insert_atom
     from analysis import find_polaron
@@ -2535,7 +2535,12 @@ def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_lo
         header.show = 'fo'
 
         for i, st_as in enumerate(sts):
+            if only is not None:
+                if i not in only:
+                    continue
             suf = 'as'+str(i)
+            st_as.name+=suf
+            st_as.write_poscar()
             add_loop(it+'.'+suf, c['set'], 1, input_st = st_as, it_folder = struct_des[it_base].sfolder+'/as', up = up, **add_loop_dic)
             cl_as = calc[it+'.'+suf, c['set'], 1]
             # print(cl_as.path['output'])

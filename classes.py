@@ -651,7 +651,7 @@ class Structure():
             if z2 < x[2]:
                 z2 = x[2]
 
-        print('Surfaces are ', z1, z2)
+        printlog('Surfaces are ', z1, z2)
 
         z.append(z1)
         z.append(z2)
@@ -2221,12 +2221,14 @@ class Calculation(object):
         self.end.jmol()
     def poscar(self):
         self.end.write_poscar()
-
+    def me(self):
+        self.end.printme()
 
     @property
     def sfolder(self):
         self._x = header.struct_des[self.id[0]].sfolder
         return self._x
+
 
 
 

@@ -1,12 +1,23 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
-import os, math, re
+import os, math, re, sys
 import numpy as np
 from six import string_types
 from collections import Iterable
 import shutil, gzip
+import traceback
 
 from header import printlog
+
+
+
+
+class TracePrints(object):
+  def __init__(self):    
+    self.stdout = sys.stdout
+  def write(self, s):
+    self.stdout.write("Writing %r\n" % s)
+    traceback.print_stack(file=self.stdout)
 
 
 def angle(v1, v2):
