@@ -2447,6 +2447,14 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 # sys.exit()
                 return
 
+            if 'pos' in show:
+                cl.end.write_poscar()
+                return
+
+
+
+
+
             if not hasattr(cl,'version'):
                 cl.version = v
 

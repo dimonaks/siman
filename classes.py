@@ -2217,6 +2217,12 @@ class Calculation(object):
     def copy(self):
         return copy.deepcopy(self)
 
+    def jmol(self):
+        self.end.jmol()
+    def poscar(self):
+        self.end.write_poscar()
+
+
     @property
     def sfolder(self):
         self._x = header.struct_des[self.id[0]].sfolder
@@ -5365,7 +5371,7 @@ class CalculationVasp(Calculation):
 
                 cl_son = header.calc[idd]
                 
-                cl_son.res(**kwargs)
+                cl_son.res(up = up, **kwargs)
                 child = idd
             
 
