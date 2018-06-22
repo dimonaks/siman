@@ -912,3 +912,29 @@ def set_oxidation_states(st):
     st = st.update_from_pymatgen(pm)
     # print(pm)
     return st
+
+
+
+def suf_en(cl1, cl2, silent = 0):
+    """Calculate surface energy
+    cl1 - supercell with surface
+    cl2 - comensurate bulk supercell
+    the area is determined from r[0] and r[1];- i.e they lie in surface
+
+    """
+    st1 = cl1.end
+    st2 = cl2.end
+    # pm = st1.convert2pymatgen(oxidation = {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'})
+
+    A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
+    # print(A)
+
+    if st1.natom%st2.natom > 0:
+        printlog('Warning! check system sizes: natom1 = ', st1.natom, 'natom2 = ', st2.natom, st1.natom/st2.natom)
+
+    mul = st1.natom/st2.natom
+    gamma = (cl1.e0 - cl2.e0*mul)/2/A* header.eV_A_to_J_m
+    if not silent:
+        print('Surface energy = {:3.2f} J/m2   | {:} | {:} '.format(gamma, cl1.id, cl2.id))
+    
+    return gamma
