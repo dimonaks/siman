@@ -75,6 +75,8 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
         'pair' - make vacancy -Ti complex for V-Ti project 
 
     pos - unique position of el if non-eqivalent atoms exist - for vac
+    pos_rep - number of position to replace from 0
+
     ise - new set
     opt_vol (bool) - optimize volume
 

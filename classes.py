@@ -126,7 +126,7 @@ class Structure():
         self.xred = []
         self.magmom = []
         self.select = [] # flags for selective dynamics
-
+        # self.pos = write_poscar()
 
     def copy(self):
         return copy.deepcopy(self)
@@ -1771,6 +1771,7 @@ class Structure():
         f.close()
         print_and_log("POSCAR was written to", filename, imp = 'y')
         return
+
 
 
     def write_cif(self, filename = None, mcif = False):

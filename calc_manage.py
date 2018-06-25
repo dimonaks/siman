@@ -361,8 +361,8 @@ def cif2poscar(cif_file, poscar_file):
 
         si = s._sites[0]
 
-        print(dir(si))
-        print(si.specie)
+        # print(dir(si))
+        # print(si.specie)
 
         # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
         # sf = SpacegroupAnalyzer(s, ) #
