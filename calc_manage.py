@@ -85,8 +85,14 @@ def write_batch_header(batch_script_filename = None,
         if schedule_system == 'PBS':
             f.write("#!/bin/bash   \n")
             f.write("#PBS -N "+job_name+"\n")
-            if header.WALLTIME_LIMIT:
-                f.write("#PBS -l walltime=72:00:00 \n")
+            
+            if 'walltime' in header.cluster:
+                f.write("#PBS -l walltime="+str(header.cluster['walltime'])+'\n')
+            else:
+                if header.WALLTIME_LIMIT: #deprecated remove
+                    f.write("#PBS -l walltime=72:00:00 \n")
+            
+
             # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
             if header.PBS_PROCS:
                 f.write("#PBS -l procs="+str(number_cores)+"\n")
@@ -96,14 +102,17 @@ def write_batch_header(batch_script_filename = None,
             f.write("#PBS -r n\n")
             f.write("#PBS -j eo\n")
             f.write("#PBS -m bea\n")
-            f.write("#PBS -M dimonaks@gmail.com\n")
+            # f.write("#PBS -M dimonaks@gmail.com\n")
             f.write("cd $PBS_O_WORKDIR\n")
-            f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
-            f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
-            f.write("module load Compilers/Intel/psxe_2015.6\n")
-            f.write("module load MPI/intel/5.1.3.258/intel \n")
-            f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
-            f.write("module load ScriptLang/python/2.7\n\n")
+            # f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
+            # f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
+            if 'modules' in header.cluster:
+                f.write(header.cluster['modules']+'\n')
+
+            # f.write("module load Compilers/Intel/psxe_2015.6\n")
+            # f.write("module load MPI/intel/5.1.3.258/intel \n")
+            # f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
+            # f.write("module load ScriptLang/python/2.7\n\n")
 
 
 
@@ -621,6 +630,7 @@ def choose_cluster(cluster_name, cluster_home, corenum):
     """
     *cluster_name* should be in header.project_conf.CLUSTERS dict
     """
+
     if cluster_name in header.CLUSTERS:
         printlog('We use', cluster_name,'cluster')
         clust = header.CLUSTERS[cluster_name]
@@ -628,10 +638,10 @@ def choose_cluster(cluster_name, cluster_home, corenum):
 
 
     else:
-        printlog('Cluster', cluster_name, 'is not found, using default', header.DEFAULT_CLUSTER)
+        printlog('Attention!, cluster', cluster_name, 'is not found, using default', header.DEFAULT_CLUSTER)
         clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
 
-
+    header.cluster = clust # dict
     header.cluster_address = clust['address']
     header.CLUSTER_ADDRESS = clust['address']
     
@@ -641,6 +651,16 @@ def choose_cluster(cluster_name, cluster_home, corenum):
     else:
         header.cluster_home    = cluster_home
     
+
+    if 'sshpass' in clust and clust['sshpass']:
+        printlog('setting sshpass to True', imp = '')
+        # sys.exit()
+
+        header.sshpass = True
+    else:
+        header.sshpass = None
+
+
 
     #Determine cluster home using ssh
     # run_on_server('touch ~/.hushlogin', header.cluster_address)
@@ -670,6 +690,9 @@ def choose_cluster(cluster_name, cluster_home, corenum):
         header.vasp_command = clust['vasp_com']
     except:
         header.vasp_command = None
+
+    # print(clust)
+
 
 
     return

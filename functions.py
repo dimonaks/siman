@@ -80,8 +80,20 @@ def smoother(x, n, mul = 1, align = 1):
 def run_on_server(command, addr):
     printlog('Running', command, 'on server ...')
     command = command.replace('\\', '/') # make sure is POSIX
+    # sys.exit()
+    
+
     if header.ssh_object:
         out = header.ssh_object.run(command)
+
+    elif header.sshpass:
+        com = 'sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'
+        # sys.exit()
+        
+        out = runBash(com)    
+
+        # sys.exit()
+
     else:
         out = runBash('ssh '+addr+' "'+command+'"')    
     
@@ -121,6 +133,19 @@ def push_to_server(files = None, to = None,  addr = None):
             # print(file, to)
             header.ssh_object.put(file,  to+'/'+os.path.basename(file) )
         out = ''
+    
+    elif header.sshpass:
+        # if '@' not in addr:
+        #     printlog('Error! Please provide address in the form user@address')
+        # l = addr.split('@')
+        # print(l)
+        # user = l[0]
+        # ad   = l[1]
+        com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+files_str+ ' '+addr+':'+to
+        # print(com)
+        # sys.exit()
+        out = runBash(com)
+    
     else:
         out = runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
     

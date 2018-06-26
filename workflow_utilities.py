@@ -514,3 +514,28 @@ def optimize_wrapper(cl, ise, add = 0, show_fit = 1):
             res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, analys_type = 'fit_a', show = 'fitfo')
         else:
             res_loop(*id_res, up = up_res, show = 'fo', check_job = check_job)
+
+
+
+
+def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = None, ngkpt = None):
+    """
+    Add Several  structures
+    """
+    folder = suf.replace('.', '')
+    # print(folder)
+    # sys.exit()
+    for i, st in enumerate(sts): 
+
+        itn = cl.id[0]+suf+ str(i)
+        # del header.struct_des[itn]
+        # continue
+        if add:
+            add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', ) #
+        else:
+            ''
+            res(itn, ise, 1)
+            if acc:
+                db[itn, ise, 1].run(ise, show = 'fo', iopt = 'full_chg', add  = 0)
+
+    return

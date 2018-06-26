@@ -135,6 +135,7 @@ copy_to_cluster_flag = True
 close_run = False # alows to control close run file automatically after each add_loop
 first_run = True  # needed to write header of run script
 ssh_object = None # paramiko ssh_object
+sshpass = None # using sshpass wrapper for rsync; see functions.py/push_to_server()
 show = None
 corenum = 1
 check_job = 1 # check job by additional ssh requests
@@ -263,7 +264,10 @@ Need: import subprocess
         stdout = subprocess.PIPE
         stderr = subprocess.STDOUT
 
-    printlog('running in BASH:', cmd)
+    printlog('running in BASH:', cmd, '\n')
+    # if 'sshpass' in cmd:
+    #     sys.exit()
+
     my_env = os.environ.copy()
     # my_env["PATH"] = "/opt/local/bin:/opt/local/sbin:" + my_env["PATH"]
     p = subprocess.Popen(cmd, 
