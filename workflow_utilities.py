@@ -518,7 +518,7 @@ def optimize_wrapper(cl, ise, add = 0, show_fit = 1):
 
 
 
-def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = None, ngkpt = None):
+def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = None, ngkpt = None, acc = None):
     """
     Add Several  structures
     """
@@ -534,8 +534,8 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
             add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', ) #
         else:
             ''
-            res(itn, ise, 1)
+            res_loop(itn, ise, 1)
             if acc:
-                db[itn, ise, 1].run(ise, show = 'fo', iopt = 'full_chg', add  = 0)
+                db[itn, ise, 1].run(ise, show = 'fo', iopt = 'full_chg', add  = 1)
 
     return
