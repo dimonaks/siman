@@ -3671,6 +3671,7 @@ class CalculationVasp(Calculation):
 
         if 'OUTCAR' in path_to_outcar:
             path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
+            path_to_poscar = path_to_outcar.replace('OUTCAR', "POSCAR")
             path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
         else:
             path_to_contcar = ''
@@ -3744,7 +3745,13 @@ class CalculationVasp(Calculation):
             outcar_exist   = True
         else:
             outcar_exist   = False
-
+            path_to_zip = path_to_outcar+'.gz'
+            if os.path.exists(path_to_zip):
+                with gzip.open(path_to_zip, 'rb') as f_in:      # unzip OUTCAR
+                    with open(path_to_outcar, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                if os.path.exists(path_to_outcar):
+                    outcar_exist = True
 
 
         """Start reading """
