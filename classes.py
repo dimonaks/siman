@@ -5072,7 +5072,7 @@ class CalculationVasp(Calculation):
         if nametype == 'asoutcar':
             for filetype in 'CHGCAR', 'AECCAR0', 'AECCAR2':
                 self.path[filetype.lower()] = self.path['output'].replace('OUTCAR',filetype)
-                print('determine_filenames()',self.path[filetype.lower()])
+                printlog('determine_filenames()',self.path[filetype.lower()])
 
 
 
@@ -5180,41 +5180,50 @@ class CalculationVasp(Calculation):
 
 
         command1 = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
-        "mv CHGCAR_sum "+CHGCAR_sum+";"
+        "mv CHGCAR_sum "+CHGCAR_sum+";" # on cluster
 
-        command2 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz '
+        command2 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
         
         command3 = "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+mv
         command3s = "cd "+path+"; ~/tools/bader "+CHG+" > "+mv #simple
         
-
+        command_check_CHG_sum = " [ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ; """ #true if file not exists
+        command_check_CHG  = " [ -e "+   CHG       +""" ] || echo "NO"     ; """
+        command_check_ACF  = " [ -e "+   ACF     +""" ] || echo "NO"     ; """
+        command_cat_ACF    = " cat "+path+v+".ACF.dat"
+        # run_on_server()
         
-        if runBash("ssh "+self.cluster_address+" '[ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ;' """): #true if file not exists
-            print_and_log(  CHGCAR_sum, "not exist. trying to calculate it ", imp = 'Y')
-            printlog( runBash("ssh "+self.cluster_address+" '"+command1+"'")+'\n' ) 
+        if run_on_server(command_check_CHG_sum, self.cluster_address): 
+            print_and_log(  CHGCAR_sum, "does not exist. trying to calculate it ", imp = 'Y')
+            printlog( run_on_server(command1, self.cluster_address)+'\n', imp = 'Y' ) 
+        # sys.exit()
 
-        if runBash("ssh "+self.cluster_address+" '[ -e "+   CHG       +""" ] || echo "NO"     ;' """): #true if file not exists
-            printlog( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n', imp = 'y' ) 
+
+        if run_on_server(command_check_CHG, self.cluster_address): #true if file not exists
+            printlog( 'Warning! File ', CHG, "does not exist. Trying to restore it from archive .. ", imp = 'Y')
+
+            printlog( run_on_server(command2, self.cluster_address)+'\n', imp = 'y' ) 
 
 
 
         def run_bader(command, ):        
-            if runBash("ssh "+self.cluster_address+" '[ -e "+   ACF     +""" ] || echo "NO"     ;' """): #true if file not exists
-                print_and_log(  ACF, " does not exist. trying to calculate Bader ", imp = 'Y')
-                printlog( runBash("ssh "+self.cluster_address+" '"+command+"'")+'\n', imp = 'y' ) 
+            if run_on_server(command_check_ACF, self.cluster_address): #true if file not exists
+                print_and_log(  ACF, " does not exist. trying to calculate Bader ... ", imp = 'Y')
+                printlog( run_on_server(command, self.cluster_address)+'\n', imp = 'y' ) 
                 
 
 
 
-            ACF_text = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
+            ACF_text = run_on_server(command_cat_ACF, self.cluster_address)
             return ACF_text
 
         ACF_text = run_bader(command3)
+
         if 'No such file or directory' in ACF_text:
-            printlog('Warning!, most probable problemes with',CHGCAR_sum)
-            printlog('Trying without it ...')
+            printlog('Warning! Probably you have problems with',CHGCAR_sum)
+            printlog('Trying to calculate charges from CHGCAR ...', imp = 'Y')
             ACF_text = run_bader(command3s)
 
         print('ACF_text = ', ACF_text)
@@ -5223,11 +5232,14 @@ class CalculationVasp(Calculation):
         if ACF_text:
             ACF_l = ACF_text.splitlines()
         charges = []
+        
+
         for line in ACF_l:
             try:
                 charges.append(round(float(line.split()[4]), 3))
             except:
                 pass
+        
         self.charges = charges
 
         # print(charges[[1,2]])

@@ -84,6 +84,7 @@ def run_on_server(command, addr):
     
 
     if header.ssh_object:
+        printlog('Using paramiko ...', imp = 'y')
         out = header.ssh_object.run(command)
 
     elif header.sshpass:
@@ -95,7 +96,9 @@ def run_on_server(command, addr):
         # sys.exit()
 
     else:
-        out = runBash('ssh '+addr+' "'+command+'"')    
+        bash_comm = 'ssh '+addr+' "'+command+'"'
+        # print(bash_comm)
+        out = runBash(bash_comm)    
     
     out = out.split('#')[-1].strip()
 
