@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 import header
 from header import print_and_log as printlog
-from header import calc, db
+from header import calc, db, struct_des
 from picture_functions import fit_and_plot
 from small_functions import merge_dics
 from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive
@@ -17,9 +17,10 @@ from neb import add_neb
 from classes import Calculation
 from analysis import calc_redox,  matrix_diff
 from geo import create_deintercalated_structure
-from geo import remove_one_atom
+from geo import remove_one_atom, replic, local_surrounding
 from geo import create_replaced_structure, create_antisite_defect3, determine_symmetry_positions, image_distance
-from inout import write_occmatrix
+from inout import write_occmatrix, write_xyz
+from functions import invert
 
 
 
@@ -57,7 +58,7 @@ def prepare(it_new, opt_vol, it_folder, ise, cl, st_type, option):
 def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None, opt_vol = 0, 
     suf = '', it_folder = None,
     el_rep = '', pos_rep = 1, pos_rep2 = None, polaron_pos = None, occ_matrix = None,
-    up = 0, fit = 0,  outcar = None, only_read = 0,
+    up = 0, fit = 0,  outcar = None, only_read = 0, Eref = 0,
     compat1 = False, add_loop_arg = {}):
     """
     Function allow to create point defects and run them
@@ -70,10 +71,12 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
     
     option -
         'vac'  - make vacancy
-        'rep'  - replace one atom with Ti, was used for V-Ti project
+        'rep'  - replace one atom with 'el_rep', 
         'pair' - make vacancy -Ti complex for V-Ti project 
 
     pos - unique position of el if non-eqivalent atoms exist - for vac
+    pos_rep - number of position to replace from 0
+
     ise - new set
     opt_vol (bool) - optimize volume
 
@@ -89,6 +92,8 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
     compat1 - compatability with previous calculations, which were used for Na2FePO4F project
 
+
+    Eref - reference energy for solution energy
 
     TODO: rename to ?_point_defects()
     """
@@ -117,7 +122,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
         it_new = cl.id[0].replace('su', 'vac')+str(pos)
 
     id_new, st, it_folder = prepare(it_new, opt_vol, it_folder, ise, cl, st_type, option)
-
+    occfile = None
     if not only_read and (up or id_new not in calc):
         # it_new
 
@@ -132,6 +137,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
             i_tr = st.get_transition_elements(fmt = 'n') 
             # dist = []
             max_d = 0
+            i_max_d = None
             for i in i_tr:
                 d1, d2 = image_distance(st.xcart[i], st.xcart[i_del], st.rprimd)
                 # print(i+1, d1, d2)
@@ -139,8 +145,8 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
                     if d1 > max_d:
                         max_d = d1
                         i_max_d = i
-
-            print('The longest distance to transition metal in current supercell is ', max_d, 'A for atom', i_max_d+1, st.get_elements()[i_max_d])
+            if i_max_d is not None:
+                print('The longest distance to transition metal in current supercell is ', max_d, 'A for atom', i_max_d+1, st.get_elements()[i_max_d])
 
 
             numb = st.nn(i_del, from_one = 0, n = len(tr)+5, only = list(set(tr)))['numbers'][1:]
@@ -165,10 +171,10 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
 
         elif 'rep' in option:
-            st_del1 = st.replace_atoms([pos_rep], el)
-            print('Atom', str(pos_rep),st.get_elements()[pos_rep],' replaced with', el, )
+            st_del1 = st.replace_atoms([pos_rep], el_rep)
+            print('Atom', str(pos_rep),st.get_elements()[pos_rep],' replaced with', el_rep, )
             print(st_del1.get_elements()[pos_rep])
-            st_del1.name+=it_new
+            st_del1.name=it_new
         
         elif 'pair' in option:
             st_del1 = st.replace_atoms([1], el_rep)
@@ -177,7 +183,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
             st_del1 = remove_one_atom(st_del1, el, pos)
             print('Atom 1 replaced with', el,'and atom removed' )
-            st_del1.name+=it_new
+            st_del1.name=it_new
 
 
         st_del1.write_xyz()
@@ -216,12 +222,14 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
 
 
         if option == 'vac':
+            cl_v.res()
+            cl.res()
             print('Evac = {:3.2f} eV'.format(cl_v.e0 - cl.e0/cl.end.natom*cl_v.end.natom))    
         
         elif option == 'rep':
             diffE, diffV = matrix_diff(cl_v, cl)
 
-            print('Esol = {:3.2f} eV'.format(diffE))    
+            print('Esol = {:3.2f} eV'.format(diffE - Eref))    
 
         elif 'pair' in option:
             ''
@@ -319,4 +327,226 @@ def process_modified(cl, mod_dic = None, scale_region = (-4,4), opt_vol = 1, fit
             else:
                 res_loop(*id_new, up = '1', choose_outcar = None, show = 'fo')
         
+    return
+
+
+
+
+
+def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = None, option = None, 
+    precip_folder = None, use_init = False, precision = None):
+    """
+    Written for Ti-Fe project.
+    Allows to create segregation by substituting atoms;
+    dist_gb - distance from gb inside which the atoms are included
+    
+
+    option = 'precip'- adding additional impurities to the already existing at gb. Please use 'precip_folder'
+    use_init - allows to use initial structure.
+
+
+    !Warning PBC are not used in determination of seg positions 
+
+    """
+
+
+    # hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
+    # try:
+    #     if hstring != header.history[-1]: header.history.append( hstring  )
+    # except:
+    #     header.history.append( hstring  )
+    def write_local(cl, it_new, it_new_path, el_sub, main_path ): 
+        cl.version = v
+        # it_new_path   
+        
+        cl.name = it_new
+        cl.des = 'Obtained from end state of '+str((it, ise, v))+' by substitution of one atom near gb with '+el_sub+' impurity '
+        path_new_geo = it_new_path+"/"+it_new+"/"+it_new+'.imp.'+el_sub+'.'+str(cl.version)+'.'+'geo'
+        cl.init.name = it_new+".init."+str(cl.version)
+        xyzpath = it_new_path+"/"+it_new
+        cl.path["input_geo"] = path_new_geo
+        print(path_new_geo)
+        cl.write_geometry("init", cl.des, override = 1)
+        write_xyz(cl.init, xyzpath)
+        return it_new_path
+
+    if 0:
+        res_loop(it, ise, verlist, up = 0)
+
+    cl = header.calc[(it, ise, verlist[0])]
+
+    znucl_sub = 3 #atom to be added
+
+
+    """1. Create list of atoms near gb to substitue"""
+    cl.gbpos = gbpos
+    # print cl.gbpos
+    seg_pos_list = [] # numbers of segregation positions
+    
+    if use_init:
+        st = cl.init
+    else:
+        st = cl.end
+
+
+
+    for i, x in enumerate(st.xcart):
+        z_cur = st.znucl[st.typat[i]-1]
+        print ('z_cur', z_cur)
+        if z_cur == znucl_sub:
+            print_and_log('Skipping znucl_sub atom\n')
+            continue
+        if abs(x[0] - gbpos)< dist_gb:
+            print('adding possible seg position')
+            seg_pos_list.append(i)
+
+
+    """2. Substitue"""
+    el_sub    = invert(znucl_sub)
+    base_name = it
+    main_path = struct_des[it].sfolder
+    based_on = it+'.'+ise
+    des_list = []
+    add_list = []
+
+    cl_list = []
+    sumr_list = []
+
+    i = 0
+    for j, replace_atom in enumerate(seg_pos_list): #
+
+        v = verlist[0] # the first version from list is used
+        cl = calc[(it, ise, v)]
+        cl.gbpos = gbpos
+
+        new = copy.deepcopy(cl)
+        if use_init:
+            new.end = new.init
+        else:
+            new.init = new.end #replace init structure by the end structure
+        
+        if 1: #atom substitution !make function; see TODO
+            
+            if znucl_sub not in new.init.znucl:
+                new.init.znucl.append(znucl_sub)
+                new.init.ntypat+=1
+                new.init.typat[replace_atom] = new.init.ntypat
+            else:
+                ind = new.init.znucl.index(znucl_sub)
+                new.init.typat[replace_atom] = ind + 1
+            new.init.nznucl = []
+            for typ in range(1, new.init.ntypat+1):
+                new.init.nznucl.append(new.init.typat.count(typ) )
+            printlog("Impurity with Z="+str(znucl_sub)+" has been substituted in "+new.name+"\n\n")
+            
+            it_new        = base_name+el_sub+'is'+str(i+1) #interface substitution
+            
+            if option == 'precip':
+                it_new_path = precip_folder
+
+            else:
+                it_new_path = main_path+'/'+base_name+'_segreg'
+            
+
+        #Check if configuration is unique
+        add = 1
+        # for cl in cl_list:
+        st = new.end
+        st_replic = replic(st, (2,2,2))
+        st_replic = replic(st_replic, (2,2,2), -1) #replic in negative direction also
+        sumr = local_surrounding(st.xcart[replace_atom], st_replic, n_neighbours =  6) # sum of distances to surrounding atoms
+        print ("sumr", sumr)
+        for ad_sumr in sumr_list:
+            if abs(ad_sumr-sumr) < precision :
+                add = 0
+                printlog("The void is non-equivalent; skipping\n")
+
+
+        if add:
+            i+=1
+            sumr_list.append(sumr)
+            # cl_list.append(new)
+            write_local(new, it_new, it_new_path, el_sub, main_path) 
+            for v in verlist[1:]: #write files; versions are scaled
+                cl = calc[(it, ise, v)]
+                rprimd_scaled = cl.end.rprimd 
+                new_scaled    = copy.deepcopy(new)
+                new_scaled.init.rprimd = copy.deepcopy(rprimd_scaled)
+                new_scaled.init.xred2xcart()
+                write_local(new_scaled, it_new, it_new_path, el_sub, main_path) 
+            #create names
+            des_list.append(  "struct_des['{0:s}'] = des('{1:s}', 'segregation configurations; made from {2:s}'   )".format(it_new, it_new_path, based_on)      ) 
+            add_list.append(  "add_loop('"+it_new+"','"+ise_new+"',"+"range(1,6)"+", up = 'up1', it_folder = '"+it_new_path+"')"  )
+
+
+
+
+    for d in des_list:
+        print (d)
+
+
+    for d in add_list:
+        print (d)
+
+
+
+    return
+
+
+
+
+def optimize_wrapper(cl, ise, add = 0, show_fit = 1):
+    #wrapper for optimization function
+
+
+    up_res = 'up1'
+    readfiles = 1
+    check_job = 1
+    id_res = (cl.id[0]+'.su', ise, 100)
+
+    if add:
+        add_loop(*cl.id, ise_new = ise,  up = 'up1', calc_method = 'uniform_scale',  
+            scale_region = (-4, 4), input_st = cl.end, show = '', run = 0,  inherit_option = 'inherit_xred', 
+            it_folder = cl.sfolder+'/scaled/') 
+    else:
+
+        if show_fit:
+            res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, analys_type = 'fit_a', show = 'fitfo')
+        else:
+            res_loop(*id_res, up = up_res, show = 'fo', check_job = check_job)
+
+
+
+
+def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = None, ngkpt = None, acc = None, ise1= None, acc2 = None, ise2 = None):
+    """
+    Add Several  structures
+    """
+    folder = suf.replace('.', '')
+    # print(folder)
+    # sys.exit()
+    if ise1 is None:
+        ise1 = ise
+
+    for i, st in enumerate(sts): 
+
+        itn = cl.id[0]+suf+ str(i)
+        # del header.struct_des[itn]
+        # continue
+        if add:
+            add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', ) #
+        else:
+            ''
+            
+            if acc:
+                if acc2:
+                    db[itn+'.ifc', ise, 1].run(ise2, show = 'fo', iopt = 'full_chg', add  = 0)
+
+                else:
+                    db[itn, ise, 1].run(ise1, show = 'fo', iopt = 'full_chg', add  = 0, ngkpt = ngkpt)
+            else:
+                res_loop(itn, ise, 1, up = 'up2')
+
+
+
     return

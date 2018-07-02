@@ -18,7 +18,7 @@ from set_functions import InputSet
 from functions import  return_atoms_to_cell, element_name_inv
 from inout import write_xyz
 
-from geo import local_surrounding
+from geo import local_surrounding, local_surrounding2
 
 lib = cdll.LoadLibrary(os.path.dirname(__file__)+'/libfindpores.so')
 
@@ -246,6 +246,7 @@ def find_pores(st_in, r_matrix=1.4, r_impurity = 0.6, step_dec = 0.05, fine = 0.
     st_result.rprimd = rprimd
     st_result.xred2xcart()
     st_result.typat = [1 for x in st_result.xred]
+    st_result.ntypat = 1
     st_result.natom = len(st_result.typat)
     st_result.znucl = [200]
     st_ntypat = 1
@@ -784,7 +785,7 @@ def insert(it_ins, ise_ins, mat_path, it_new, calc, type_of_insertion = "xcart" 
 
 
 
-def determine_voids(st, r_impurity):
+def determine_voids(st, r_impurity, fine = 1, step_dec = 0.05):
 
     if not r_impurity:
         printlog('add_neb(): Error!, Please provide *r_impurity* (1.6 A?)')
@@ -793,16 +794,18 @@ def determine_voids(st, r_impurity):
     sums = []
     avds = []
     printlog('Searching for voids', important = 'y')
-    st_pores = find_pores(st, r_matrix = 0.5, r_impurity = r_impurity, fine = 1, calctype = 'all_pores')
+    st_pores = find_pores(st, r_matrix = 0.5, r_impurity = r_impurity, step_dec = step_dec, fine = fine, calctype = 'all_pores')
 
     printlog('List of found voids:\n', np.array(st_pores.xcart) )
     write_xyz(st.add_atoms(st_pores.xcart, 'H'), file_name = st.name+'_possible_positions')
     write_xyz(st.add_atoms(st_pores.xcart, 'H'), replications = (2,2,2), file_name = st.name+'_possible_positions_replicated')
 
     for x in st_pores.xcart:
-        summ = local_surrounding(x, st, n_neighbours = 6, control = 'sum', periodic  = True)
-        avd = local_surrounding(x, st, n_neighbours = 6, control = 'av_dev', periodic  = True)
-        # print sur,
+        # summ = local_surrounding(x, st, n_neighbours = 6, control = 'sum', periodic  = True)
+        # avd = local_surrounding(x, st, n_neighbours = 6, control = 'av_dev', periodic  = True)
+        summ, avd = local_surrounding2(x, st, n_neighbours = 6, control = 'sum_av_dev', periodic  = True)
+        # print (summ, avd)
+        
         sums.append(summ)
         avds.append(avd[0])
     # print
@@ -838,7 +841,7 @@ def determine_unique_voids(st_pores, sums, avds):
     
     return insert_positions
 
-def insert_atom(st, el, i_void = None, r_imp = 1.6):
+def insert_atom(st, el, i_void = None, r_imp = 1.6, ):
     """Simple Wrapper for inserting atoms """
 
 

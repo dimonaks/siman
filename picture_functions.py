@@ -125,7 +125,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     print_and_log('plot_mep(): Diffusion barrier =',round(diff_barrier, 2),' eV', imp = 'y')
     # sys.exit()
-
+    # print()
 
     path2saved = None
     if plot:
@@ -137,13 +137,14 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
         fig_format = 'eps', **fitplot_args)
 
         # print(image_name, filename)
-        with open(filename+'.txt', 'w') as f:
-            f.write('DFT points:\n')
-            for m, e in zip(mep_pos, eners):
-                f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
-            f.write('Spline:\n')
-            for m, e in zip(xnew, ynew):
-                f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
+        if 0:
+            with open(filename+'.txt', 'w') as f:
+                f.write('DFT points:\n')
+                for m, e in zip(mep_pos, eners):
+                    f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
+                f.write('Spline:\n')
+                for m, e in zip(xnew, ynew):
+                    f.write('{:10.5f}, {:10.5f} \n'.format(m, e))
 
 
 
@@ -177,10 +178,11 @@ def process_fig_filename(image_name, fig_format):
 
 def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     image_name = None, filename = None,
-    show = None, fontsize = None, pad = None,
+    show = None, pad = None,
     xlim = None, ylim = None, title = None, figsize = None,
     xlog = False,ylog = False, scatter = False, 
-    legend = False, ncol = 1, legend_fontsize=None, markersize = None,  
+    legend = False, ncol = 1, 
+    fontsize = None, legend_fontsize=None, markersize = None,  
     linewidth = None, hor = False, fig_format = 'eps', dpi = 300,
     ver_lines = None, xy_line = None, x_nbins = None,
     alpha = 0.8, fill = False,
@@ -527,7 +529,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             plt.show()
         plt.clf()
         plt.close('all')
-
+    else:
+        printlog('Attention! last = False, no figure is saved')
 
     return path2saved
 
@@ -968,8 +971,10 @@ def plot_conv(list_of_calculations = None, calc = None,
 
             plt.tight_layout()
             #plt.savefig('images/'+image_name)
-            print_and_log( 'Saving file ...',path_to_images+str(image_name)+'.png', imp = 'y' )
-            plt.savefig(path_to_images+str(image_name)+'.png',format='png', dpi = 300)
+            file = header.path_to_images+'/'+str(image_name)+'.png'
+            makedir(file)
+            print_and_log( 'Saving file ...',file, imp = 'y' )
+            plt.savefig(file,format='png', dpi = 300)
         return fit_func2  
 
 

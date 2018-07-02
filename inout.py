@@ -140,7 +140,8 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
         if 0:
            f.write('cpk 250 \nwireframe 0.3\n') 
 
-        f.write('background white \nselect Ti* \ncolor [20,120,250] \nselect C* \ncolor [80,80,80]\n cpk 100\n')
+        f.write('background white \n')
+        # f.write('select Ti* \ncolor [20,120,250] \nselect C* \ncolor [80,80,80]\n cpk 100\n')
         f.write('set perspectivedepth off\n')
         
 
@@ -236,7 +237,6 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     imp_positions - (x1,x2,x3, element, label)- xcart and element name coordinates additionally to be added to structure; to visulaze all impurity positions: for jmol, additional key 's', 'i' can be added after element
     imp_sub_positions - list of atom numbers; the typat of these atoms is changed: not used now
 
-    specialcommand - any command at the end of script
 
     analysis - additional processing, allows to show only specifice atoms, 
         'imp_surrounding' - shows Ti atoms only around impurity
@@ -253,6 +253,9 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
     jmol - 1,0 -  use jmol to produce png picture
     jmol_args - see write_jmol()
+
+    specialcommand - any command at the end of jmol script
+
 
     sts - list of Structure - write several structures to xyz file - other options are not working in this regime
     """

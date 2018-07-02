@@ -13,10 +13,10 @@ from inout import write_xyz
 
 from small_functions import is_list_like, makedir
 from classes import CalculationVasp, cd
-from impurity import find_pores
+# from impurity import find_pores
 from tabulate import tabulate
 from geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
-from impurity import determine_voids, determine_unique_voids
+# from impurity import determine_voids, determine_unique_voids
 
 
 
@@ -61,7 +61,7 @@ def determine_unique_final(st_pores, sums, avds, x_m):
 
     sur = local_surrounding(x_m, st_pores, n_neighbours = len(st_pores.xcart), control = 'atoms', periodic  = True)
 
-    print('neb.determine_unique_final(): sur',  sur)
+    # print('neb.determine_unique_final(): sur',  sur)
 
     print_and_log(
     'I can suggest you '+str (len(sur[0]) )+' end positions.', imp = 'y' )
@@ -98,7 +98,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     x_start = None, xr_start = None,
     x_final = None, xr_final = None,
     upload_vts = False,
-    run = False, add_loop_dic = None, old_behaviour = None,
+    center_on_moving = True,
+    run = False, add_loop_dic = None, old_behaviour = None, params = None
      ):
 
 
@@ -157,6 +158,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     else:
         naming_conventions209 = True # set False to reproduce old behavior before 2.09.2017
 
+    # print(atom_to_insert)
+    # sys.exit()
 
     calc = header.calc
     struct_des = header.struct_des
@@ -270,6 +273,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             else:
                 nn = str(i_void_start)
 
+
             name_suffix+=atom_to_insert+nn
             write_xyz(st1, file_name = st.name+'_manually_start')
             printlog('Start position is created manually by adding xr_start', xr_start, x_start)
@@ -282,7 +286,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             atoms_to_move = []
             atoms_to_move_types = []
             
-            # print(i_atom_to_move)
+            # print('d', i_atom_to_move)
             # sys.exit()
 
             if i_atom_to_move:
@@ -299,7 +303,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             else:
                 #try to find automatically among alkali - special case for batteries
                 for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): 
-                    if typ in ['Li', 'Na', 'K', 'Rb']:
+                    if typ in ['Li', 'Na', 'K', 'Rb', 'Mg']:
                         atoms_to_move.append([i, typ, x])
                         if typ not in atoms_to_move_types:
                             atoms_to_move_types.append(typ)
@@ -344,20 +348,34 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 atom_to_insert = atom_to_move
 
                 st1 = st
+            # elif atom_to_replace:
+            #     num = st.get_specific_elements(atom_to_replace)
+
+            #     if len(n)>0:
+            #         printlog('Please choose position using *i_void_start* :', [i+1 for i in range(len(num))],imp = 'y' )
+            #         printlog('*i_void_start* = ', i_void_start)
+            #         i_m = num[i_void_start-1]
+            #         printlog('Position',i_void_start,'chosen, atom to replace:', i_m+1, atom_to_replace, imp = 'y' )
+            #         sys.exit()
+
 
             else:
 
                 print_and_log('No atoms to move found, you probably gave me deintercalated structure', important = 'y')
                 
-                st_pores, sums, avds = determine_voids(st, r_impurity)
-                
+                st_pores, sums, avds = determine_voids(st, r_impurity, step_dec = 0.1, fine = 2)
+              
+
                 insert_positions = determine_unique_voids(st_pores, sums, avds)
 
                 print_and_log('Please use *i_void_start* to choose the void for atom insertion from the Table above:', 
                     end = '\n', imp = 'Y')
 
+
                 if i_void_start == None:
                     sys.exit()
+                if atom_to_insert == None:
+                    printlog('Error! atom_to_insert = None')
 
                 st = st.add_atoms([insert_positions[i_void_start],], atom_to_insert)
 
@@ -454,6 +472,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 only_elements = [invert(type_atom_to_move)]+end_pos_types_z,
                 periodic  = True) #exclude the atom itself
 
+            # print(x_m)
             # print(sur)
 
             # st.nn()
@@ -472,7 +491,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             x_del = sur[0][i_void_final]
             printlog('xcart of atom to delete', x_del)
             i_del = st.find_atom_num_by_xcart(x_del)
+            # print(x_del)
             # print(st.xcart)
+            # for x in st.xcart:
+            #     if x[0] > 10:
+            #         print(x)
+
+
             print_and_log( 'number of atom to delete = ', i_del, imp = 'y')
             if i_del == None:
                 printlog('add_neb(): Error! I could find atom to delete!')
@@ -535,33 +560,33 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     """ Determining magnetic moments  """
     vp = varset[ise_new].vasp_params
 
-    if search_type != None: #for None not implemented; x_m should be determined first for this
-
-        if 'ISPIN' in vp and vp['ISPIN'] == 2:
-            print_and_log('Magnetic calculation detected. Preparing spin modifications ...', imp = 'y')
-            cl_test = CalculationVasp(varset[ise_new])
-            cl_test.init = st1
-            # print 'asdfsdfasdfsadfsadf', st1.magmom
-            if inherit_magmom and hasattr(st, 'magmom') and st.magmom and any(st.magmom):
-                print_and_log('inherit_magmom=True: You have chosen MAGMOM from provided structure', imp = 'y')
-                name_suffix+='mp' #Magmom from Previous
-            else:
-                cl_test.init.magmom = None
-                print_and_log('inherit_magmom=False or no magmom in input structure : MAGMOM will be determined  from set', imp = 'y')
-                name_suffix+='ms' #Magmom from Set
 
 
-            cl_test.actualize_set() #find magmom for current structure
+    if 'ISPIN' in vp and vp['ISPIN'] == 2:
+        print_and_log('Magnetic calculation detected. Preparing spin modifications ...', imp = 'y')
+        cl_test = CalculationVasp(varset[ise_new])
+        cl_test.init = st1
+        # print 'asdfsdfasdfsadfsadf', st1.magmom
+        if inherit_magmom and hasattr(st, 'magmom') and st.magmom and any(st.magmom):
+            print_and_log('inherit_magmom=True: You have chosen MAGMOM from provided structure', imp = 'y')
+            name_suffix+='mp' #Magmom from Previous
+        else:
+            cl_test.init.magmom = None
+            print_and_log('inherit_magmom=False or no magmom in input structure : MAGMOM will be determined  from set', imp = 'y')
+            name_suffix+='ms' #Magmom from Set
 
-            st1.magmom = copy.deepcopy(cl_test.init.magmom)
-            st2.magmom = copy.deepcopy(cl_test.init.magmom)
 
-            # sys.exit()
-            # print_and_log('The magnetic moments from set:')
-            # print cl_test.init.magmom
+        cl_test.actualize_set() #find magmom for current structure
 
+        st1.magmom = copy.deepcopy(cl_test.init.magmom)
+        st2.magmom = copy.deepcopy(cl_test.init.magmom)
+
+        # sys.exit()
+        # print_and_log('The magnetic moments from set:')
+        # print cl_test.init.magmom
+        if search_type != None:  # for None not implemented; x_m should be determined first for this
             #checking for closest atoms now only for Fe, Mn, Ni, Co
-            sur   = local_surrounding(x_m, st1, n_neighbours = 3, control = 'atoms', 
+            sur   = local_surrounding(x_m, st1, n_neighbours = 3, control = 'atoms',
             periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
 
             dist = np.array(sur[3]).round(2)
@@ -576,7 +601,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                     # no key: the whole element must be unique
                     key = lambda e: e
                 return list ( {key(el): el for el in elements}.values() )
-            
+
             # print a
             mag_atoms_dists = unique_by_key(a, key=itemgetter(1))
             # print (mag_atoms_dists)
@@ -596,21 +621,21 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             print_and_log( 'The list of possible mag_moments:', imp = 'y' )
             for i, mag in enumerate(mag_moments_variants):
                 print_and_log( i, mag)
-            
+
             print_and_log( 'Please use *mag_config* arg to choose desired config' , imp = 'y' )
 
 
-            if mag_config != None:
+        if mag_config != None:
 
-                st1.magmom = copy.deepcopy(mag_moments_variants[mag_config])
-                st2.magmom = copy.deepcopy(mag_moments_variants[mag_config])
-                
-                name_suffix+='m'+str(mag_config)
-                
-                print_and_log('You have chosen mag configuration #',mag_config,imp = 'y')
+            st1.magmom = copy.deepcopy(mag_moments_variants[mag_config])
+            st2.magmom = copy.deepcopy(mag_moments_variants[mag_config])
 
-        else:
-            print_and_log('Non-magnetic calculation continue ...')
+            name_suffix+='m'+str(mag_config)
+
+            print_and_log('You have chosen mag configuration #',mag_config,imp = 'y')
+
+    else:
+        print_and_log('Non-magnetic calculation continue ...')
 
 
 
@@ -673,25 +698,25 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     cl = CalculationVasp()
 
     #write start position
+    if search_type is not None:
+        struct_des[it_new].x_m_ion_start = x_m
+        struct_des[it_new].xr_m_ion_start = xcart2xred([x_m], st1.rprimd)[0]
 
-    struct_des[it_new].x_m_ion_start = x_m
-    struct_des[it_new].xr_m_ion_start = xcart2xred([x_m], st1.rprimd)[0]
+        # st1, _, _ = st1.remove_close_lying()
+        # st2, _, _ = st2.remove_close_lying()
+        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
+        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
 
-    # st1, _, _ = st1.remove_close_lying()
-    # st2, _, _ = st2.remove_close_lying()
-    i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
-    i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
-    
-    if rep_moving_atom: #replace the moving atom by required
-        st1 = st1.replace_atoms([i1], rep_moving_atom)
-        st2 = st2.replace_atoms([i2], rep_moving_atom)
-    else:
-        #allows to make correct order for nebmake.pl
-        st1 = st1.replace_atoms([i1], type_atom_to_move)
-        st2 = st2.replace_atoms([i2], type_atom_to_move)
+        if rep_moving_atom: #replace the moving atom by required
+            st1 = st1.replace_atoms([i1], rep_moving_atom)
+            st2 = st2.replace_atoms([i2], rep_moving_atom)
+        else:
+            #allows to make correct order for nebmake.pl
+            st1 = st1.replace_atoms([i1], type_atom_to_move)
+            st2 = st2.replace_atoms([i2], type_atom_to_move)
 
-    i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3) # the positions were changed
-    i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
+        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3) # the positions were changed
+        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
 
 
     cl.end = st1
@@ -718,19 +743,19 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     
     cl.write_siman_geo(geotype = 'end', description = 'Final conf. for neb from '+obtained_from, override = True)
 
-    if not rep_moving_atom:
+    if not rep_moving_atom and search_type is not None:
         st1s = st1.replace_atoms([i1], 'Pu')
         st2s = st2.replace_atoms([i2], 'Pu')
     else:
         st1s = copy.deepcopy(st1)
         st2s = copy.deepcopy(st2)
     
-
-    vec = st1.center_on(i1)
-    st1s = st1s.shift_atoms(vec)
-    st2s = st2s.shift_atoms(vec)
-    write_xyz(st1s, file_name = it_new+'_start')
-    write_xyz(st2s, file_name = it_new+'_end')
+    if center_on_moving and search_type is not None:
+        vec = st1.center_on(i1)
+        st1s = st1s.shift_atoms(vec)
+        st2s = st2s.shift_atoms(vec)
+        write_xyz(st1s, file_name = it_new+'_start')
+        write_xyz(st2s, file_name = it_new+'_end')
 
 
     st1s.write_poscar('xyz/POSCAR1')
@@ -778,7 +803,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     inherit_ngkpt(it_new, it, varset[ise_new])
 
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, run =run, **add_loop_dic  )
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, run =run, params=params, **add_loop_dic  )
     
 
     if upload_vts:
