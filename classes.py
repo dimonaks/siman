@@ -1568,6 +1568,10 @@ class Structure():
         return info
 
 
+    def center(self):
+        #return cartesian center of the cell
+        return np.sum(self.xcart, 0)/self.natom
+
     def center_on(self, i):
         #calc vector which alows to make particular atom in the center 
         x_r = self.xred[i]
@@ -3994,7 +3998,7 @@ class CalculationVasp(Calculation):
                 self.cluster_address, join(self.project_path_cluster, path_to_outcar) )
             # runBash(command_reduce)
 
-            if 'un' in load:
+            if 'un2' in load:
                 out_name  = os.path.basename(path_to_outcar)
                 cont_name = os.path.basename(path_to_contcar)
                 path_to_outcar = path_to_outcar.replace(out_name, 'OUTCAR')
@@ -5390,8 +5394,18 @@ class CalculationVasp(Calculation):
                 child = idd
             
 
-
+            vp = header.varset[ise].vasp_params
+            ICHARG_or = 'impossible_value'
             if add or len(self.children) == 0:
+                
+
+                if iopt  == 'full_chg':
+                    if 'ICHARG' in vp and vp['ICHARG'] != 1:
+                        printlog('Warning! Inheritance of CHGCAR and ICHARG == 0; I change locally ICHARG to 1')
+                        ICHARG_or = vp['ICHARG']
+                        vp['ICHARG'] = 1
+
+
                 if not vers:
                     vers = [self.id[2]]
 
@@ -5403,6 +5417,10 @@ class CalculationVasp(Calculation):
                 if child not in self.children:
                     self.children.append(child)
 
+
+                if ICHARG_or != 'impossible_value':
+                    vp['ICHARG'] = ICHARG_or  #return original value
+ 
 
         return header.calc[child]
 
