@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import, print_function
-import itertools, os, copy, math, glob, re, shutil, sys, pickle
+import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil
 import re
 
 from small_functions import angle, is_string_like
@@ -2041,7 +2041,9 @@ class Calculation(object):
                 self.init.vel = vel
 
             #read magnetic states; name of vasp variable
-            self.init.magmom = read_list("magmom", self.natom, float, gen_words)
+            curset = self.set
+            if hasattr(curset, 'magnetic_moments') and curset.magnetic_moments:
+                self.init.magmom = read_list("magmom", self.natom, float, gen_words)
             # self.init.mag_moments 
 
 
@@ -3948,6 +3950,7 @@ class CalculationVasp(Calculation):
 
         if 'OUTCAR' in path_to_outcar:
             path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
+            path_to_poscar = path_to_outcar.replace('OUTCAR', "POSCAR")
             path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
         else:
             path_to_contcar = ''
@@ -3994,12 +3997,6 @@ class CalculationVasp(Calculation):
                 self.cluster_address, join(self.project_path_cluster, path_to_outcar) )
             # runBash(command_reduce)
 
-            if 'un' in load:
-                out_name  = os.path.basename(path_to_outcar)
-                cont_name = os.path.basename(path_to_contcar)
-                path_to_outcar = path_to_outcar.replace(out_name, 'OUTCAR')
-                path_to_contcar = path_to_contcar.replace(cont_name, 'CONTCAR')
-
             files = [ self.project_path_cluster+'/'+path_to_outcar, self.project_path_cluster+'/'+path_to_contcar ]
             # print(load)
             # print(files)
@@ -4028,7 +4025,13 @@ class CalculationVasp(Calculation):
             outcar_exist   = True
         else:
             outcar_exist   = False
-
+            path_to_zip = path_to_outcar+'.gz'
+            if os.path.exists(path_to_zip):
+                with gzip.open(path_to_zip, 'rb') as f_in:      # unzip OUTCAR
+                    with open(path_to_outcar, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                if os.path.exists(path_to_outcar):
+                    outcar_exist = True
 
 
         """Start reading """
