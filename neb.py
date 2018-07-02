@@ -13,10 +13,10 @@ from inout import write_xyz
 
 from small_functions import is_list_like, makedir
 from classes import CalculationVasp, cd
-# from impurity import find_pores
+from impurity import find_pores
 from tabulate import tabulate
 from geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
-# from impurity import determine_voids, determine_unique_voids
+from impurity import determine_voids, determine_unique_voids
 
 
 
