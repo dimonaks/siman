@@ -61,7 +61,7 @@ def determine_unique_final(st_pores, sums, avds, x_m):
 
     sur = local_surrounding(x_m, st_pores, n_neighbours = len(st_pores.xcart), control = 'atoms', periodic  = True)
 
-    print('neb.determine_unique_final(): sur',  sur)
+    # print('neb.determine_unique_final(): sur',  sur)
 
     print_and_log(
     'I can suggest you '+str (len(sur[0]) )+' end positions.', imp = 'y' )
@@ -157,6 +157,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     else:
         naming_conventions209 = True # set False to reproduce old behavior before 2.09.2017
 
+    # print(atom_to_insert)
+    # sys.exit()
 
     calc = header.calc
     struct_des = header.struct_des
@@ -270,6 +272,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             else:
                 nn = str(i_void_start)
 
+
             name_suffix+=atom_to_insert+nn
             write_xyz(st1, file_name = st.name+'_manually_start')
             printlog('Start position is created manually by adding xr_start', xr_start, x_start)
@@ -282,7 +285,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             atoms_to_move = []
             atoms_to_move_types = []
             
-            # print(i_atom_to_move)
+            # print('d', i_atom_to_move)
             # sys.exit()
 
             if i_atom_to_move:
@@ -299,7 +302,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             else:
                 #try to find automatically among alkali - special case for batteries
                 for i, typ, x in zip(range(st.natom), st.get_elements(), st.xcart): 
-                    if typ in ['Li', 'Na', 'K', 'Rb']:
+                    if typ in ['Li', 'Na', 'K', 'Rb', 'Mg']:
                         atoms_to_move.append([i, typ, x])
                         if typ not in atoms_to_move_types:
                             atoms_to_move_types.append(typ)
@@ -344,20 +347,34 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 atom_to_insert = atom_to_move
 
                 st1 = st
+            # elif atom_to_replace:
+            #     num = st.get_specific_elements(atom_to_replace)
+
+            #     if len(n)>0:
+            #         printlog('Please choose position using *i_void_start* :', [i+1 for i in range(len(num))],imp = 'y' )
+            #         printlog('*i_void_start* = ', i_void_start)
+            #         i_m = num[i_void_start-1]
+            #         printlog('Position',i_void_start,'chosen, atom to replace:', i_m+1, atom_to_replace, imp = 'y' )
+            #         sys.exit()
+
 
             else:
 
                 print_and_log('No atoms to move found, you probably gave me deintercalated structure', important = 'y')
                 
-                st_pores, sums, avds = determine_voids(st, r_impurity)
-                
+                st_pores, sums, avds = determine_voids(st, r_impurity, step_dec = 0.1, fine = 2)
+              
+
                 insert_positions = determine_unique_voids(st_pores, sums, avds)
 
                 print_and_log('Please use *i_void_start* to choose the void for atom insertion from the Table above:', 
                     end = '\n', imp = 'Y')
 
+
                 if i_void_start == None:
                     sys.exit()
+                if atom_to_insert == None:
+                    printlog('Error! atom_to_insert = None')
 
                 st = st.add_atoms([insert_positions[i_void_start],], atom_to_insert)
 
@@ -454,6 +471,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 only_elements = [invert(type_atom_to_move)]+end_pos_types_z,
                 periodic  = True) #exclude the atom itself
 
+            # print(x_m)
             # print(sur)
 
             # st.nn()
@@ -472,7 +490,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             x_del = sur[0][i_void_final]
             printlog('xcart of atom to delete', x_del)
             i_del = st.find_atom_num_by_xcart(x_del)
+            # print(x_del)
             # print(st.xcart)
+            # for x in st.xcart:
+            #     if x[0] > 10:
+            #         print(x)
+
+
             print_and_log( 'number of atom to delete = ', i_del, imp = 'y')
             if i_del == None:
                 printlog('add_neb(): Error! I could find atom to delete!')

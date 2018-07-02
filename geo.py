@@ -401,6 +401,17 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     else:
         my_round = round
 
+
+    def av_dev():
+        nonlocal n_neighbours
+        n_neighbours = float(n_neighbours)
+        dav = sum(dlistnn)/n_neighbours
+        av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
+        max_dev = max([abs(d-dav) for d in dlistnn])
+        
+            
+        return my_round(av_dev*1000, 0), my_round(max_dev*1000, 0)
+
     st_original = copy.deepcopy(st)
     st.init_numbers = None
     if periodic:
@@ -469,11 +480,12 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
        
     elif control == 'av_dev':
-        n_neighbours = float(n_neighbours)
-        dav = sum(dlistnn)/n_neighbours
-        av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
-        max_dev = max([abs(d-dav) for d in dlistnn])
-        output = (my_round(av_dev*1000, 0), my_round(max_dev*1000, 0))
+        output = av_dev()
+
+    elif control == 'sum_av_dev':
+        output = (my_round(sum(dlistnn), 2), av_dev())
+
+
 
     elif control == 'atoms':
         # print dlist_unsort
@@ -534,7 +546,193 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     return output
 
 
+def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = False, only_elements = None, only_numbers = None, round_flag = 1):
+    """
+    !!! Attempt to improve speed of periodic conditions!
+    #control = 'atoms' could work wrong!!! check
 
+    Return list of distances to n closest atoms around central atom. (By defauld sum of distances)
+    
+    Input:
+    - x_central - cartesian coordinates of central atom; vector
+    - st - structure with xcart list of coordinates of all atoms in system
+    - n_neighbours - number of needed closest neighbours
+
+    - control - type of output; 
+              sum - sum of distances, 
+              av - average distance, 
+              avsq - average squared dist
+              'mavm': #min, av, max, av excluding min and max
+              av_dev - return (average deviation, maximum deviation) from average distance in mA.
+              list - list of distances; 
+              atoms  - coordinates of neighbours
+
+    - periodic - if True, then cell is additionaly replicated; needed for small cells
+    Only for control = atoms
+        - *only_elements* - list of z of elements to which only the distances are needed; 
+        - only_numbers  (list of int) - calc dist only to this atoms 
+
+    round_flag (bool) - if 1 than reduce distance prec to 2 points
+
+
+    #TODO:
+    the periodic boundary conditions realized very stupid by replicating the cell!
+
+    """
+    # round_orig = round
+    if not round_flag:
+        # overwrite round function with wrapper that do nothing
+        def my_round(a, b):
+            return a
+    else:
+        my_round = round
+
+
+    def av_dev():
+        nonlocal n_neighbours
+        n_neighbours = float(n_neighbours)
+        dav = sum(dlistnn)/n_neighbours
+        av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
+        max_dev = max([abs(d-dav) for d in dlistnn])
+        
+            
+        return my_round(av_dev*1000, 0), my_round(max_dev*1000, 0)
+
+    st_original = copy.deepcopy(st)
+    st.init_numbers = None
+    if periodic:
+        ''
+        # not needed anymore, since image_distance is used,
+        # however for 'atoms' regime more actions can be needed
+        # st = replic(st, mul = (2,2,2), inv = 1 ) # to be sure that impurity is surrounded by atoms
+        # st = replic(st, mul = (2,2,2), inv = -1 )
+
+    xcart = st.xcart
+    typat = st.typat
+    natom = st.natom
+    # print x_central
+
+    #print len(xcart)
+    if only_elements:
+        only_elements = list(set(only_elements))
+        # print(only_elements)
+        # sys.exit()
+
+
+    zlist = [int(st.znucl[t-1]) for t in st.typat]
+    
+
+    dlist_unsort = [image_distance(x_central, x, st.rprimd)[0] for x in xcart ]# if all (x != x_central)] # list of all distances
+
+    if only_elements:
+        dlist = [image_distance(x_central, x, st.rprimd)[0]  for x, z in zip(xcart, zlist) if z in only_elements]
+    else:
+        dlist = copy.deepcopy(dlist_unsort)
+    dlist.sort()
+    # print('local_surrounding(): dlist', dlist)
+
+
+    if len(dlist) > 0 and abs(dlist[0]) < 0.01:
+        dlistnn = dlist[1:n_neighbours+1] #without first impurity which is x_central
+    else:
+        dlistnn = dlist[:n_neighbours]
+
+    # print('dlistnn', dlistnn)
+    # os._exit(1)
+
+    if control == 'list':
+        output = dlistnn
+
+    elif control == 'sum':
+        
+        output = my_round(sum(dlistnn), 2)
+    
+    elif control == 'av':
+        n_neighbours = float(n_neighbours)
+        dav = sum(dlistnn)/n_neighbours
+        output = my_round(dav, 2)
+
+    elif control == 'avsq':
+        n_neighbours = float(n_neighbours)
+        # print(dlistnn)
+        davsq = sum([d*d for d in dlistnn])/n_neighbours
+        davsq = davsq**(0.5)
+        output = my_round(davsq, 2)
+
+
+    elif control == 'mavm': #min, av, max
+        dsort = sorted(dlistnn)
+        if n_neighbours > 2:
+            output = (my_round(dsort[0], 2), sum(dsort[1:-1])/(n_neighbours-2), my_round(dsort[-1], 2) ) #min, av excluding min and max, max
+        else:
+            output = (my_round(dsort[0], 2), 0, my_round(dsort[-1], 2) ) #min, av excluding min and max, max
+
+       
+    elif control == 'av_dev':
+        output = av_dev()
+
+    elif control == 'sum_av_dev':
+        output = (my_round(sum(dlistnn), 2), av_dev())
+
+
+
+    elif control == 'atoms':
+        # print dlist_unsort
+        if hasattr(st, 'init_numbers') and st.init_numbers:
+            numbers = st.init_numbers
+        else:
+            numbers = range(natom)
+        temp = list(zip(dlist_unsort, xcart, typat, numbers, zlist) )
+        
+        temp.sort(key = itemgetter(0))
+
+
+        if only_elements:
+            centr_type = temp[0][4]
+            if centr_type in only_elements:
+                first = []
+            else:
+                first = temp[0:1]
+            temp = first+[t for t in temp if t[4] in only_elements] #including central; included ionce even if only elements are and central are the same
+
+        if only_numbers:
+            temp = temp[0:1]+[t for t in temp if t[3] in only_numbers]
+
+
+
+        temp2 = list( zip(*temp) )
+        dlist       = temp2[0][:n_neighbours+1]
+        xcart_local = temp2[1][:n_neighbours+1]
+        typat_local = temp2[2][:n_neighbours+1]
+        numbers     = temp2[3][:n_neighbours+1]
+        # print temp2[0][:n_neighbours]
+        # print xcart_local[:n_neighbours]
+        
+
+
+
+
+
+
+        #check if atoms in output are from neighboring cells
+        if 0:
+            xred_local = xcart2xred(xcart_local, st_original.rprimd)
+            # print 'xred_local', xred_local
+            for x_l in xred_local:
+                for i, x in enumerate(x_l):
+                    if x > 1: 
+                        x_l[i]-=1
+                        # print 'returning to prim cell', x,x_l[i]
+                    if x < 0: 
+                        x_l[i]+=1
+                        # print 'returning to prim cell', x,x_l[i]
+            xcart_local = xred2xcart(xred_local, st_original.rprimd)
+
+        # print 'Warning! local_surrounding() can return several atoms in one position due to incomplete PBC implementation; Improve please\n'
+
+        output =  (xcart_local, typat_local, numbers, dlist )
+
+    return output
 
 
 def ortho_vec_old(rprim, ortho_sizes = None):
@@ -615,6 +813,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     test_overlap (bool) - check if atoms are overlapping -  quite slow
     """ 
     sc = st.new() 
+    # st = st.return_atoms_to_cell()
     sc.name = st.name+'_supercell'
     sc.rprimd = list(np.dot(mul_matrix, st.rprimd  ))
     printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
@@ -624,11 +823,21 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
     st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  )
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
+    # print(st.natom)
+
+    if len(st.typat) != len(st.magmom):
+        st.magmom = [None]*st.natom
+        mag_flag = False
+    else:
+        mag_flag = True
+
+
     sc_natom = sc.vol/st.vol*st.natom # test
-    printlog('The supercell should contain', sc_natom, 'atoms ... ', imp = 'y', end = ' ')
+    printlog('The supercell should contain', sc_natom, 'atoms ... \n', imp = 'y', end = ' ')
     sc.xcart = []
     sc.typat = []
     sc.xred  = []
+    sc.magmom  = []
     #find range of multiplication
     mi = np.min(mul_matrix, axis = 0)
     ma = np.max(mul_matrix, axis = 0)
@@ -637,27 +846,34 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     # print(mi, ma)
 
 
+
+
     # find bound values
     lengths = np.linalg.norm(sc.rprimd, axis = 1)
     bounds = bound/lengths # in reduced coordinates
-
-
+    # print(bounds)
+    # print(st.xcart)
+    # print([range(*z) for z in zip(mi-mp, ma+mp)])
+    # print(st.rprimd)
+    # print(sc.rprimd)
     for uvw in itertools.product(*[range(*z) for z in zip(mi-mp, ma+mp)]): #loop over all ness uvw
         # print(uvw)
         xcart_mul = st.xcart + np.dot(uvw, st.rprimd) # coordinates of basis for each uvw
         # print(xcart_mul)
         xred_mul  = xcart2xred(xcart_mul, sc.rprimd)
-        
-        for xr, xc,  t in zip(xred_mul, xcart_mul, st.typat):
-            
+
+        # print(len(xred_mul), len(xcart_mul), len(st.typat), len(st.magmom) )
+        for xr, xc,  t, m in zip(xred_mul, xcart_mul, st.typat, st.magmom):
+            # if 0<xr[0]<1 and 0<xr[1]<1 and 0<xr[2]<1:
+                # print (xr)
             if all([0-b <= r < 1-b for r, b in zip(xr, bounds)]): #only that in sc.rprimd box are needed
                 sc.xcart.append( xc )
                 sc.xred.append ( xr )
                 sc.typat.append( t  )
+                sc.magmom.append(m)
     
 
     sc.natom = len(sc.xcart)
-    sc.magmom = [None]
 
 
     if abs(sc.natom - sc_natom)>1e-5: #test 1, number of atoms
@@ -679,6 +895,9 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     sc.ntypat = st.ntypat
     sc.nznucl = sc.get_nznucl()
 
+    if mag_flag is False:
+        sc.magmom = [None]
+
 
     return sc
 
@@ -689,6 +908,14 @@ def supercell(st, ortho_sizes):
     """
     mul_matrix = ortho_vec(st.rprimd, ortho_sizes)
     return create_supercell(st, mul_matrix)
+
+def cubic_supercell(st, ortho_sizes):
+    """
+    wrapper
+    """
+    mul_matrix = ortho_vec(st.rprimd, ortho_sizes)
+    return create_supercell(st, mul_matrix)
+
 
 def determine_symmetry_positions(st, element, silent = 0):
     """
@@ -1023,7 +1250,7 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
             i+=1
 
             structures.append(st_as)
-            st_as.write_xyz()
+            st_as.write_poscar()
     st.write_xyz()
 
     printlog('List of antisites:', imp  = 'y')
@@ -1211,3 +1438,121 @@ def remove_half(st, el, sg = None):
     
     return st_half
 
+
+def primitive(st):
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    
+    st.sg()
+    # st.jmol()
+    st_mp = st.convert2pymatgen()
+    # print(st_mp)
+
+
+    sf = SpacegroupAnalyzer(st_mp)
+
+    st_mp_prim = sf.find_primitive()
+
+    # print(st_mp_prim)
+
+    st  =st.update_from_pymatgen(st_mp_prim)
+    # st.sg()
+    return st
+
+
+
+
+
+def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, ):
+    """
+    INPUT:
+        st (Structure) - Initial input structure. Note that to
+                ensure that the miller indices correspond to usual
+                crystallographic definitions, you should supply a conventional
+                unit cell structure.
+
+        miller_index ([h, k, l]): Miller index of plane parallel to
+                        surface. Note that this is referenced to the input structure. If
+                        you need this to be based on the conventional cell,
+                        you should supply the conventional structure.
+
+
+        oxidation (dic) - dictionary of effective oxidation states, e. g. {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'}
+                          allows to calculate dipole moment
+
+        surface_i (int) - choose particular surface 
+
+        min_slab_size (float) - minimum slab size
+
+        min_vacuum_size (float) - vacuum thicknes in A
+
+    """
+
+    from pymatgen.core.surface import SlabGenerator
+    from pymatgen.io.vasp.inputs import Poscar
+    from geo import replic
+
+
+    pm = st.convert2pymatgen(oxidation = oxidation)
+    # pm = st.convert2pymatgen()
+
+
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size)
+    # print(slabgen.oriented_unit_cell)
+    slabs = slabgen.get_slabs()
+
+    printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument\nWriting POSCARs to xyz', imp = 'y')
+
+    for i, slab in enumerate(slabs):
+        pos = Poscar(slab)
+        pos.write_file('xyz/POSCAR_suf'+str(i))
+
+    return slabs[surface_i]
+
+
+
+def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
+    primitive = None, symmetrize = False):
+    """
+    INPUT:
+        st (Structure) - Initial input structure. Note that to
+                ensure that the miller indices correspond to usual
+                crystallographic definitions, you should supply a conventional
+                unit cell structure.
+
+        miller_index ([h, k, l]): Miller index of plane parallel to
+                        surface. Note that this is referenced to the input structure. If
+                        you need this to be based on the conventional cell,
+                        you should supply the conventional structure.
+
+
+        oxidation (dic) - dictionary of effective oxidation states, e. g. {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'}
+                          allows to calculate dipole moment
+
+        surface_i (int) - choose particular surface 
+
+        min_slab_size (float) - minimum slab size
+
+        min_vacuum_size (float) - vacuum thicknes in A
+
+    """
+
+    from pymatgen.core.surface import SlabGenerator
+    from pymatgen.io.vasp.inputs import Poscar
+    from geo import replic
+
+
+    pm = st.convert2pymatgen(oxidation = oxidation)
+    # pm = st.convert2pymatgen()
+
+
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size, primitive = primitive)
+    # print(slabgen.oriented_unit_cell)
+    slabs = slabgen.get_slabs(symmetrize = symmetrize)
+
+    printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument\nWriting POSCARs to xyz', imp = 'y')
+
+    for i, slab in enumerate(slabs):
+        pos = Poscar(slab)
+        pos.write_file('xyz/POSCAR_suf'+str(i)+str(suf))
+
+    return slabs

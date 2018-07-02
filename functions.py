@@ -9,7 +9,7 @@ import scipy
 import header
 from header import print_and_log, printlog, runBash
 from small_functions import is_list_like, is_string_like, gunzip_file, makedir
-
+from header import eV_A_to_J_m
 
 
 def unique_elements(seq, idfun=None): 
@@ -80,10 +80,25 @@ def smoother(x, n, mul = 1, align = 1):
 def run_on_server(command, addr):
     printlog('Running', command, 'on server ...')
     command = command.replace('\\', '/') # make sure is POSIX
+    # sys.exit()
+    
+
     if header.ssh_object:
+        # printlog('Using paramiko ...', imp = 'y')
         out = header.ssh_object.run(command)
+
+    elif header.sshpass:
+        com = 'sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'
+        # sys.exit()
+        
+        out = runBash(com)    
+
+        # sys.exit()
+
     else:
-        out = runBash('ssh '+addr+' "'+command+'"')    
+        bash_comm = 'ssh '+addr+' "'+command+'"'
+        # print(bash_comm)
+        out = runBash(bash_comm)    
     
     out = out.split('#')[-1].strip()
 
@@ -121,6 +136,19 @@ def push_to_server(files = None, to = None,  addr = None):
             # print(file, to)
             header.ssh_object.put(file,  to+'/'+os.path.basename(file) )
         out = ''
+    
+    elif header.sshpass:
+        # if '@' not in addr:
+        #     printlog('Error! Please provide address in the form user@address')
+        # l = addr.split('@')
+        # print(l)
+        # user = l[0]
+        # ad   = l[1]
+        com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+files_str+ ' '+addr+':'+to
+        # print(com)
+        # sys.exit()
+        out = runBash(com)
+    
     else:
         out = runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
     
@@ -711,7 +739,7 @@ def words(fileobj):
 def server_cp(copy_file, to, gz = True, scratch = False):
     
     if scratch:
-        copy_file = '/scratch/amg/aksenov/' + copy_file
+        copy_file = header.PATH2ARCHIVE + '/' + copy_file
     else:
         copy_file = header.project_path_cluster + '/' + copy_file
 

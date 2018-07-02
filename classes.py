@@ -126,7 +126,10 @@ class Structure():
         self.xred = []
         self.magmom = []
         self.select = [] # flags for selective dynamics
+        # self.pos = write_poscar()
 
+    def copy(self):
+        return copy.deepcopy(self)
 
     def new(self):
         return Structure()
@@ -137,6 +140,8 @@ class Structure():
         st.select = []
         for i in range(st.natom):
             st.select.append([True,True,True])
+            # print('9')
+        # print(st.select)
         return st 
 
     def check_selective(self):
@@ -268,6 +273,23 @@ class Structure():
     def update_xcart(self,):
         self.xcart = xred2xcart(self.xred, self.rprimd)
 
+    def exchange_axes(self, i1_r, i2_r):
+        """
+        
+        """
+        st = copy.deepcopy(self)
+        r = copy.deepcopy(st.rprimd)
+
+        st.rprimd[i1_r] = r[i2_r]
+        st.rprimd[i2_r] = r[i1_r]
+
+        st.update_xred()
+
+        return st
+
+
+
+
     def get_volume(self):
         self.vol = np.dot( self.rprimd[0], np.cross(self.rprimd[1], self.rprimd[2])  ); #volume
         return self.vol
@@ -303,6 +325,12 @@ class Structure():
             zvals.append(zv)
         return zvals
 
+    def determine_symmetry_positions(self, element):
+        from geo import determine_symmetry_positions
+
+        return determine_symmetry_positions(self, element)
+
+
     def get_maglist(self):
         #return bool list of which  elements are magnetic (here all transition metals are searched!)
         #and dictionary with numbers of each transition metal
@@ -320,6 +348,31 @@ class Structure():
         ifmaglist = np.array(ifmaglist)
 
         return ifmaglist, mag_numbers
+
+
+    def set_magnetic_config(self, element, moments):
+        #set magnetic configuration based on symmetry non-equivalent positions
+        # element (str) - elements for which moments should be set 
+        # moments (list) - list of moments for non-equivalent positions - the same order as in determine
+        #                  the length should be the same as number of unique postions
+
+        st = copy.deepcopy(self)
+
+        if not hasattr(st, 'magmom') or None in st.magmom:
+            magmom = [0.6]*st.natom
+        else:
+            magmom = st.magmom
+
+        pos = st.determine_symmetry_positions(element)
+
+        for j, p in enumerate(pos):
+            for i in p:
+                magmom[i] = moments[j]
+
+        # print(magmom)
+        st.magmom = magmom
+
+        return st
 
     def convert2pymatgen(self, oxidation = None, slab = False):
         """
@@ -349,6 +402,10 @@ class Structure():
                 miller_index = [0,0,1], oriented_unit_cell = None, shift = None, scale_factor = None,reorient_lattice = False,
                 site_properties = site_properties)
         else:
+            # print(elements)
+            # print(len(self.xred))
+            # print(site_properties)
+
             pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
 
@@ -365,6 +422,12 @@ class Structure():
 
 
         return pm
+
+
+
+
+
+
 
     def get_pm_composition(self):
         ''
@@ -444,23 +507,41 @@ class Structure():
         only rprimd, xred and xcart are updated now!!!!!
 
         TODO:
-        please update magmom also!!!!
+
 
         """
         st = copy.deepcopy(self)
         st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
         st.xred   = [np.array(site._fcoords) for site in stpm._sites]
+        
+
         # print(elements)
         st.update_xcart()
 
         s = stpm._sites[0]
+
+        if 'magmom' in s.properties:
+            st.magmom = [site.properties['magmom'] for site in stpm._sites]
+        else:
+            st.magmom = [None]
+        # print( dir(s._lattice) )
+        # print( dir(s) )
+        # print( s.properties )
+        # print( s._properties )
         # print( dir(s.specie) )
-        # print( s.specie )
+        # print( s.specie.name )
+        # sys.exit()
         elements = [s.specie.name for s in stpm._sites]
         # print(s.specie.oxi_state)
         if hasattr(s.specie, 'oxi_state'):
             charges = [s.specie.oxi_state for s in stpm._sites]
             st.charges = charges
+        
+        # if hasattr(s.specie, 'oxi_state'):
+        #     charges = [s.specie.oxi_state for s in stpm._sites]
+        #     st.charges = charges
+
+
         # print(st.charges)
         # else:
         #     charges = [None]
@@ -478,6 +559,122 @@ class Structure():
 
         st.name+='_from_pmg'
         return st
+
+
+    def rotate(self, axis, angle):
+        #axis - list of 3 elements, [0,0,1]
+        #angle in degrees
+        
+        from pymatgen.transformations.standard_transformations import RotationTransformation
+        
+        st = copy.deepcopy(self)
+        rot = RotationTransformation(axis, angle)
+        stpm = st.convert2pymatgen()
+        stpmr1 = rot.apply_transformation(stpm)
+        st_r1 = st.update_from_pymatgen(stpmr1)
+        return st_r1
+
+
+    def invert_axis(self, axis):
+        st = copy.deepcopy(self)
+
+        st.rprimd[axis] *= -1
+        st.update_xred()
+        st = st.return_atoms_to_cell()
+        return st
+
+
+
+
+
+
+
+
+
+
+
+    def get_conventional_cell(self):
+        """
+        return conventional cell 
+        """
+        st_mp = self.convert2pymatgen()
+
+        # st_test = self.update_from_pymatgen(st_mp)
+        # st_test.printme()
+
+        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
+
+        sc = sf.get_conventional_standard_structure() # magmom are set to None
+
+        # print(sc)
+        st = self.update_from_pymatgen(sc)
+
+        # print(st.rprimd)
+        # print(len(st.xcart))
+        # print(st.ntypat)
+
+        return st
+
+
+
+
+    def get_primitive_cell(self):
+        """
+        return primitive cell 
+        """
+        st_mp = self.convert2pymatgen()
+
+        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
+
+        sc = sf.get_primitive_standard_structure() # magmom are set to None
+
+        st = self.update_from_pymatgen(sc)
+
+
+        return st
+
+
+    def get_surface_atoms(self, element, surface = 0, surface_width = 0.5 ):
+        #return numbers of surface atoms
+        #elememt - which element is interesting?
+        #surface_width - which atoms to consider as surface 
+        #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
+        st = self
+        surface_atoms = [[],[]]
+        
+        z1 = 100
+        z2 = -100
+        z = []
+        for x in st.xcart:
+            if z1 > x[2]:
+                z1 = x[2]
+            if z2 < x[2]:
+                z2 = x[2]
+
+        printlog('Surfaces are ', z1, z2)
+
+        z.append(z1)
+        z.append(z2)
+        els = st.get_elements()
+
+
+        for i, x in enumerate(st.xcart):
+            el = els[i]
+            if el == element:
+                # print(x[2])
+                if z1 <= x[2] < z1+surface_width:
+                    surface_atoms[0].append(i)
+
+                if z2 - surface_width  < x[2] <= z2:
+                    surface_atoms[1].append(i)
+
+
+        return surface_atoms[surface]
+
+
+
+
+
 
     def printme(self):
         print(self.convert2pymatgen())
@@ -559,8 +756,8 @@ class Structure():
             tra = ns
         return tra
 
-    def get_specific_elements(self, required_elements = None, fmt = 'names', ):
-        """Returns list of transition elements (chemical names or z) in the structure
+    def get_specific_elements(self, required_elements = None, fmt = 'n', ):
+        """Returns list of specific elements (chemical names or z) in the structure
         fmt - 
             'names'
             'z'
@@ -611,9 +808,12 @@ class Structure():
 
         st = copy.deepcopy(self)
 
-        if not hasattr(st, 'select') or st.select is None:
-            st = st.selective_all()
-
+        # print(st.select)
+        if selective: 
+            if not hasattr(st, 'select') or st.select is None or len(st.select) == 0:
+                st = st.selective_all()
+        # print(st.select)
+        # sys.exit()
 
         natom_to_add = len(atoms_xcart)
 
@@ -643,9 +843,12 @@ class Structure():
 
             if selective is not None:
                 st.select.extend(selective)
-            else:
-                st.select.extend( [[1,1,1] for i in range(natom_to_add)] )
+            elif hasattr(st, 'select') and st.select and len(st.select) > 0:
+                # printlog('adding default selective', imp = 'y')
 
+                st.select.extend( [[True,True,True] for i in range(natom_to_add)] )
+            else:
+                ''
 
             if magmom_flag:
                 st.magmom.extend( [0.6]*natom_to_add  )
@@ -671,11 +874,17 @@ class Structure():
             
             st.typat[j_ins:j_ins] = [typ]*natom_to_add
 
+            # print(st.select)
+            # sys.exit()
             if selective is not None:
+                printlog('adding selective', imp = '')
 
                 st.select[j_ins:j_ins] = selective
+            elif hasattr(st, 'select') and  st.select and len(st.select) > 0:
+                printlog('adding default selective', imp = '')
+                st.select[j_ins:j_ins] = [[True,True,True] for i in range(natom_to_add)]
             else:
-                st.select[j_ins:j_ins] = [[1,1,1] for i in range(natom_to_add)]
+                ''
 
             if magmom_flag:
                 st.magmom[j_ins:j_ins] =  [0.6]*natom_to_add
@@ -685,6 +894,7 @@ class Structure():
         
 
 
+        # print(st.select)
 
 
 
@@ -771,10 +981,56 @@ class Structure():
         return st
 
 
+    def reorder_element_groups(self, order = None, inplace = False):
+        """
+        
+        Group and order atoms by atom types; consistent with VASP
+        order (list) -required order e.g. ['O', 'Li']
+
+        return st
+        """
+
+        st = copy.deepcopy(self)
+
+        # for z in st.znucl:
+        #     print(z)
+        
+        typat = []
+        xcart = []
+        magmom = []
+        znucl = []
+        # st.write_poscar()
 
 
+        els = st.get_elements()
+        t = 1
+        for el in order:
+            if el not in els:
+                printlog('Error! Check *order* list')
+            
+            znucl.append( invert(el) )
 
+            for i in range(st.natom):
+                el_i = els[i]
+                if el_i not in order:
+                    printlog('Error! Check *order* list')
 
+                if el_i == el:
+                    # print(el)
+                    typat.append(t)
+                    xcart.append(st.xcart[i])
+                    magmom.append(st.magmom[i])
+            t+=1
+
+        st.xcart = xcart
+        st.magmom = magmom
+        st.typat = typat
+        st.znucl = znucl
+        st.update_xred()
+        st.name+='_r'
+        # st.write_poscar()
+
+        return st
 
 
     def del_atom(self, iat):
@@ -837,12 +1093,20 @@ class Structure():
 
 
 
-    def mov_atoms(self, iat = None, to_x = None):
+    def mov_atoms(self, iat = None, to_x = None, relative = False):
         """
         Move one atom to xcart position *to_x*
+        relative (bool) - if shift is relative
+
         """
         st = copy.deepcopy(self)
-        st.xcart[iat] = to_x
+        
+        if relative:
+            st.xcart[iat] += to_x
+        else:
+            st.xcart[iat] = to_x
+        
+
         st.xcart2xred()
 
         return st
@@ -1118,6 +1382,7 @@ class Structure():
         for i in [0,1,2]:
             if xr_tar[i] < 0:
                 xr_tar[i]+= 1
+                
             if xr_tar[i] >= 1:
                 xr_tar[i]-= 1
         printlog('find_atom_num_by_xcart(): xr_tar after periodic = ', xr_tar)
@@ -1167,7 +1432,7 @@ class Structure():
 
     def image_distance(self, *args, **kwargs):
 
-        return image_distance(*args, **kwargs, r = self.rprimd)
+        return image_distance(*args, **kwargs)
 
 
 
@@ -1508,7 +1773,8 @@ class Structure():
         return
 
 
-    def write_cif(self, filename, mcif = False):
+
+    def write_cif(self, filename = None, mcif = False):
         """
         Find primitive cell and write it in cif format
         
@@ -1524,6 +1790,9 @@ class Structure():
             m = 'm'
         else:
             m = ''
+
+        if filename == None:
+            filename = 'cif/'+self.name
 
 
         makedir(filename)
@@ -1948,11 +2217,21 @@ class Calculation(object):
         """
         print(self.NKPTS*self.end.natom) #KPPRA - k-points per reciprocal atom? 
 
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def jmol(self):
+        self.end.jmol()
+    def poscar(self):
+        self.end.write_poscar()
+    def me(self):
+        self.end.printme()
 
     @property
     def sfolder(self):
         self._x = header.struct_des[self.id[0]].sfolder
         return self._x
+
 
 
 
@@ -2525,7 +2804,7 @@ class CalculationVasp(Calculation):
                 if number_of_ord > 10000:
                     printlog('Attention! Too much orderings (1000), skipping ...')
                 else:
-                    nords = 10
+                    nords = 71
                     use_each = number_of_ord // nords  # spin() should be improved to find the AFM state based on the number of configuration 
                     if use_each == 0:
                         use_each = 1
@@ -3037,7 +3316,7 @@ class CalculationVasp(Calculation):
 
         if schedule_system == 'SGE':
             parrallel_run_command = "mpirun -x PATH vasp"
-        elif schedule_system == 'PBS':
+        elif schedule_system in ['PBS', 'PBS_bsu']:
             # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
             # parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
             parrallel_run_command = header.vasp_command #skoltech cluster
@@ -3555,7 +3834,7 @@ class CalculationVasp(Calculation):
                 f.write("qsub -pe 'mpi*' "+str(header.corenum)+" "+header.queue+" "+run_name+"\n") #str(self.set.np) #-l cmmd
                 f.write('sleep 5\n')
                 # runBash('chmod +x run')
-            elif schedule_system == 'PBS':
+            elif schedule_system in ['PBS', 'PBS_bsu']:
                 if header.PATH2PROJECT == '':
                     header.PATH2PROJECT = '.'
 
@@ -3718,8 +3997,9 @@ class CalculationVasp(Calculation):
                 self.cluster_address, join(self.project_path_cluster, path_to_outcar) )
             # runBash(command_reduce)
 
-            files = [ self.project_path_cluster+'/'+path_to_outcar,  self.project_path_cluster+'/'+path_to_outcar+'.gz', self.project_path_cluster+'/'+path_to_contcar, self.project_path_cluster+'/'+path_to_poscar]
-
+            files = [ self.project_path_cluster+'/'+path_to_outcar, self.project_path_cluster+'/'+path_to_contcar ]
+            # print(load)
+            # print(files)
             # get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
             for file in files:
                 self.get_file(os.path.basename(file), up = load)
@@ -3929,10 +4209,18 @@ class CalculationVasp(Calculation):
                         lmax = int(line.split()[7])
                         # print 'lmax', lmax
                     if "W(low)/X(q)" in line:
-                        kk = 1; low = []; high = [];
+                        kk = 1; 
+                        low = []; 
+                        high = [];
+                        
                         while kk < 100:
-                            if 'Optimization' in outcarlines[i_line + kk] or len(outcarlines[i_line + kk].split() ) != 7: break
-                            # print 'line', outcarlines[i_line + kk]
+                            if 'Optimization' in outcarlines[i_line + kk] or len(outcarlines[i_line + kk].split() ) != 7: 
+                                break
+                            if 'PSMAXN' in outcarlines[i_line + kk]:
+                                # print(line)
+                                printlog('Warning! PSMAXN for non-local potential too small')
+                                break
+                            # print( 'line', outcarlines[i_line + kk])
 
                             low.append(  float(outcarlines[i_line + kk].split()[4]) )
                             high.append( float(outcarlines[i_line + kk].split()[5]) )
@@ -3993,7 +4281,9 @@ class CalculationVasp(Calculation):
                         for j in range(self.end.natom):
                             parts = outcarlines[i_line+j+2].split()
                             # print "parts", parts
-                            if self.end.select:
+                            # print(self.end.select)
+                            # sys.exit()
+                            if hasattr(self.end, 'select') and self.end.select:
                                 x = float(parts[ff[0]])*self.end.select[j][0]
                                 y = float(parts[ff[1]])*self.end.select[j][1]
                                 z = float(parts[ff[2]])*self.end.select[j][2]
@@ -4785,7 +5075,7 @@ class CalculationVasp(Calculation):
         if nametype == 'asoutcar':
             for filetype in 'CHGCAR', 'AECCAR0', 'AECCAR2':
                 self.path[filetype.lower()] = self.path['output'].replace('OUTCAR',filetype)
-                print('determine_filenames()',self.path[filetype.lower()])
+                printlog('determine_filenames()',self.path[filetype.lower()])
 
 
 
@@ -4822,14 +5112,14 @@ class CalculationVasp(Calculation):
 
 
         if out:
-            printlog('File', path2file_cluster, 'was not found, trying scratch', imp = 'Y')
+            printlog('File', path2file_cluster, 'was not found, trying archive:',header.PATH2ARCHIVE, imp = 'Y')
             # printlog('Charge file', path_to_chg, 'was not found')
             try:
                 pp = self.project_path_cluster.replace(self.cluster_home, '') #project path without home
             except:
                 pp = ''
             # print(pp)
-            path_to_chg_scratch = '/scratch/amg/aksenov/'+pp+'/'+path_to_chg
+            path_to_chg_scratch = header.PATH2ARCHIVE+'/'+pp+'/'+path_to_chg
 
             out = get_from_server(path_to_chg_scratch, os.path.dirname(path_to_chg), addr = self.cluster_address)
             
@@ -4880,7 +5170,7 @@ class CalculationVasp(Calculation):
         self.determine_filenames()
 
         # print()
-        CHG_scratch_gz  = '/scratch/amg/aksenov/'+self.dir+'/'+v+".CHGCAR.gz"
+        CHG_scratch_gz  = header.PATH2ARCHIVE+'/'+self.dir+'/'+v+".CHGCAR.gz"
 
         CHG     = ppc + self.path['chgcar']
         AECCAR0 = ppc + self.path['aeccar0']
@@ -4893,41 +5183,50 @@ class CalculationVasp(Calculation):
 
 
         command1 = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
-        "mv CHGCAR_sum "+CHGCAR_sum+";"
+        "mv CHGCAR_sum "+CHGCAR_sum+";" # on cluster
 
-        command2 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz '
+        command2 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
         
         command3 = "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+mv
         command3s = "cd "+path+"; ~/tools/bader "+CHG+" > "+mv #simple
         
-
+        command_check_CHG_sum = " [ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ; """ #true if file not exists
+        command_check_CHG  = " [ -e "+   CHG       +""" ] || echo "NO"     ; """
+        command_check_ACF  = " [ -e "+   ACF     +""" ] || echo "NO"     ; """
+        command_cat_ACF    = " cat "+path+v+".ACF.dat"
+        # run_on_server()
         
-        if runBash("ssh "+self.cluster_address+" '[ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ;' """): #true if file not exists
-            print_and_log(  CHGCAR_sum, "not exist. trying to calculate it ", imp = 'Y')
-            printlog( runBash("ssh "+self.cluster_address+" '"+command1+"'")+'\n' ) 
+        if run_on_server(command_check_CHG_sum, self.cluster_address): 
+            print_and_log(  CHGCAR_sum, "does not exist. trying to calculate it ", imp = 'Y')
+            printlog( run_on_server(command1, self.cluster_address)+'\n', imp = 'Y' ) 
+        # sys.exit()
 
-        if runBash("ssh "+self.cluster_address+" '[ -e "+   CHG       +""" ] || echo "NO"     ;' """): #true if file not exists
-            printlog( runBash("ssh "+self.cluster_address+" '"+command2+"'")+'\n', imp = 'y' ) 
+
+        if run_on_server(command_check_CHG, self.cluster_address): #true if file not exists
+            printlog( 'Warning! File ', CHG, "does not exist. Trying to restore it from archive .. ", imp = 'Y')
+
+            printlog( run_on_server(command2, self.cluster_address)+'\n', imp = 'y' ) 
 
 
 
         def run_bader(command, ):        
-            if runBash("ssh "+self.cluster_address+" '[ -e "+   ACF     +""" ] || echo "NO"     ;' """): #true if file not exists
-                print_and_log(  ACF, " does not exist. trying to calculate Bader ", imp = 'Y')
-                printlog( runBash("ssh "+self.cluster_address+" '"+command+"'")+'\n', imp = 'y' ) 
+            if run_on_server(command_check_ACF, self.cluster_address): #true if file not exists
+                print_and_log(  ACF, " does not exist. trying to calculate Bader ... ", imp = 'Y')
+                printlog( run_on_server(command, self.cluster_address)+'\n', imp = 'y' ) 
                 
 
 
 
-            ACF_text = runBash("ssh "+self.cluster_address+" 'cat "+path+v+".ACF.dat"  +"'" )
+            ACF_text = run_on_server(command_cat_ACF, self.cluster_address)
             return ACF_text
 
         ACF_text = run_bader(command3)
+
         if 'No such file or directory' in ACF_text:
-            printlog('Warning!, most probable problemes with',CHGCAR_sum)
-            printlog('Trying without it ...')
+            printlog('Warning! Probably you have problems with',CHGCAR_sum)
+            printlog('Trying to calculate charges from CHGCAR ...', imp = 'Y')
             ACF_text = run_bader(command3s)
 
         print('ACF_text = ', ACF_text)
@@ -4936,11 +5235,14 @@ class CalculationVasp(Calculation):
         if ACF_text:
             ACF_l = ACF_text.splitlines()
         charges = []
+        
+
         for line in ACF_l:
             try:
                 charges.append(round(float(line.split()[4]), 3))
             except:
                 pass
+        
         self.charges = charges
 
         # print(charges[[1,2]])
@@ -4992,37 +5294,43 @@ class CalculationVasp(Calculation):
     def check_job_state(self):
         #check if job in queue or Running
 
-        
         cl = self
-        job_in_queue = ''
-        if hasattr(cl,'schedule_system'):
+        if header.check_job == 1:
+            job_in_queue = ''
+            if hasattr(cl,'schedule_system'):
 
-            check_string =  cl.id[0]+'.'+cl.id[1]
-            if 'SLURM' in cl.schedule_system:
+                check_string =  cl.id[0]+'.'+cl.id[1]
+                if 'SLURM' in cl.schedule_system:
 
-                job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster_address)
-                printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
+                    job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster_address)
+                    printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
 
-            elif 'PBS' in cl.schedule_system:
-                job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
+                elif 'PBS' in cl.schedule_system:
+                    job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
 
+                else:
+                    print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')
+                    job_in_queue = ''
+
+
+            if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster_address) and job_in_queue: 
+                
+                cl.state = '3. Running'
+
+            elif job_in_queue:
+                
+                cl.state = '3. In queue'
+       
             else:
-                print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')
-                job_in_queue = ''
+                ''
+                if '3' in cl.state:
+                    cl.state = '2. Unknown'
 
-
-        if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster_address) and job_in_queue: 
-            
-            cl.state = '3. Running'
-
-        elif job_in_queue:
-            
-            cl.state = '3. In queue'
-   
         else:
-            ''
-            if '3' in cl.state:
-                cl.state = '2. Unknown'
+            cl.state = '2. Unknown'
+
+
+
 
         return cl.state 
 
@@ -5033,7 +5341,7 @@ class CalculationVasp(Calculation):
         from calc_manage import res_loop
         res_loop(*self.id, **argv)
 
-    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, *args, **kwargs):
+    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, *args, **kwargs):
         """
         Wrapper for add_loop (in development)
         By default inherit self.end
@@ -5042,9 +5350,11 @@ class CalculationVasp(Calculation):
         iopt - inherit_option
             'full_nomag'
             'full'
-
+            'full_chg' - including chg file
         vers - list of version for which the inheritance is done
 
+        i_child - choose number of child to run res_loop()
+        add - if 1 than add new calculation irrelevant to children
         TODO:
         1. if ise is not provided continue in the same folder under the same name,
         however, it is not always what is needed, therefore use inherit_xred = continue
@@ -5062,20 +5372,39 @@ class CalculationVasp(Calculation):
             if not hasattr(self, 'children'):
                 self.children = []
 
-            for idd in self.children:
-                cl_son = header.calc[idd]
-                # cl_son.res()
-                # self.children = list(set(self.children))
-                child = idd
-            # if len(self.children) == 0:
-            if not vers:
-                vers = [self.id[2]]
+            if not add and len(self.children)>0:
+                print('Children were found:', self.children, 'by defauld reading last, choose with *i_child* ')
+                
+                for i in self.children:
+                    # print(i, ise, i[1], i[1] == ise)
+                    if i[1] == ise:
+                        idd = i
+                        # add = True
+                        break
 
-            it_new = add_loop(*self.id[:2], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
-            # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
-            child = (it_new, ise, self.id[2])
-            if child not in self.children:
-                self.children.append(child)
+                else:
+                    add = True
+                    # idd  = self.children[i_child]
+                # print(idd)
+
+                cl_son = header.calc[idd]
+                
+                cl_son.res(up = up, **kwargs)
+                child = idd
+            
+
+
+            if add or len(self.children) == 0:
+                if not vers:
+                    vers = [self.id[2]]
+
+                idd = self.id
+                it_new = add_loop(idd[0],idd[1], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
+                # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
+                child = (it_new, ise, self.id[2])
+
+                if child not in self.children:
+                    self.children.append(child)
 
 
         return header.calc[child]

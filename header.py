@@ -78,6 +78,13 @@ calc_database = 'only_calc.gdbm3'
 class CalcDict(dict):
     def __getitem__(self, key):
         # print(self)
+        if type(key) == str:
+            # print('String key detected', key)
+            key_str = key
+            l = key.split('.')
+            if len(l) > 2:
+                key = ('.'.join(l[0:-2]), l[-2], int(l[-1]))            
+        # else:
 
         if dict.__contains__(self, key):
             # print('key', key, 'is  in self')
@@ -86,21 +93,9 @@ class CalcDict(dict):
         else:
             with shelve.open(calc_database, protocol = 3) as d:
                 try:
-                    # print(type(key)==str)
-                    if type(key) == str:
-                        # print('String key detected', key)
-                        l = key.split('.')
-                        if len(l) > 2:
-                            key = ('.'.join(l[0:-2]), l[-2], int(l[-1]))
-                        # print(key)
                     val = d[str(key)]
-                    # print(len(d))
                     dict.__setitem__(self, key, val)
                     # print('reading ',str(key), 'from db')
-                # print(val)
-                # else:
-
-
                 except:
                     val = None
         
@@ -140,8 +135,11 @@ copy_to_cluster_flag = True
 close_run = False # alows to control close run file automatically after each add_loop
 first_run = True  # needed to write header of run script
 ssh_object = None # paramiko ssh_object
+sshpass = None # using sshpass wrapper for rsync; see functions.py/push_to_server()
 show = None
 corenum = 1
+check_job = 1 # check job by additional ssh requests
+
 
 
 
@@ -266,7 +264,10 @@ Need: import subprocess
         stdout = subprocess.PIPE
         stderr = subprocess.STDOUT
 
-    printlog('running in BASH:', cmd)
+    printlog('running in BASH:', cmd, '\n')
+    # if 'sshpass' in cmd:
+    #     sys.exit()
+
     my_env = os.environ.copy()
     # my_env["PATH"] = "/opt/local/bin:/opt/local/sbin:" + my_env["PATH"]
     p = subprocess.Popen(cmd, 

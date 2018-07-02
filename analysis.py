@@ -216,7 +216,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
         'mdstep':cl1.mdstep, 'ecut':cl1.set.ecut, 'niter':cl1.iterat/cl1.mdstep,
         'set_is':cl1.id[1], 'vol_red':vol_red }
     except:
-        results_dic = {}
+        results_dic = {'redox_pot':redox, 'vol_red':vol_red}
 
 
     return results_dic
@@ -224,7 +224,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
 
 def matrix_diff(cl1, cl2, energy_ref = 0):
-    
+    #energy of substitutional impurity
     e = cl1.energy_sigma0
     v = cl1.end.vol
     n_m = cl1.end.nznucl[0]
@@ -468,7 +468,7 @@ def around_alkali(st, nn, alkali_ion_number):
 
     n_neighbours = nn
     alkali_ions = []
-
+    dist = []
     ifmaglist = st.get_maglist()
 
     for i, typ, x in zip(range(st.natom), st.typat, st.xcart):
@@ -539,7 +539,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
 
     # sys.exit()
-
+    magmom_tm = None
     for key in mag_numbers:
         printlog('Looking at polarons on transition atoms: ',invert(key) )
         numbs = np.array(mag_numbers[key])
@@ -561,7 +561,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
             d_to_pols = []
             for j in i_pols:
                 x2 = st.xcart[j]
-                d, _ = st.image_distance(x1, x2)
+                d, _ = st.image_distance(x1, x2, st.rprimd)
                 d_to_pols.append(d)
             print('polarons are detected on atoms', [i+1 for i in i_pols], 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
             print('mag moments on trans. atoms:', magmom_tm.round(out_prec))
@@ -617,6 +617,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         get_from_server(files = cl.project_path_cluster+'/'+cl.dir+'/movie.xyz', to_file = movie_to, addr = cl.cluster_address, )
         
         if os.path.exists(movie_to):
+            makedir('figs/'+name_without_ext+'.xyz')
             shutil.copyfile(movie_to, 'figs/'+name_without_ext+'.xyz')
 
 
@@ -911,3 +912,29 @@ def set_oxidation_states(st):
     st = st.update_from_pymatgen(pm)
     # print(pm)
     return st
+
+
+
+def suf_en(cl1, cl2, silent = 0):
+    """Calculate surface energy
+    cl1 - supercell with surface
+    cl2 - comensurate bulk supercell
+    the area is determined from r[0] and r[1];- i.e they lie in surface
+
+    """
+    st1 = cl1.end
+    st2 = cl2.end
+    # pm = st1.convert2pymatgen(oxidation = {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'})
+
+    A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
+    # print(A)
+
+    if st1.natom%st2.natom > 0:
+        printlog('Warning! check system sizes: natom1 = ', st1.natom, 'natom2 = ', st2.natom, st1.natom/st2.natom)
+
+    mul = st1.natom/st2.natom
+    gamma = (cl1.e0 - cl2.e0*mul)/2/A* header.eV_A_to_J_m
+    if not silent:
+        print('Surface energy = {:3.2f} J/m2   | {:} | {:} '.format(gamma, cl1.id, cl2.id))
+    
+    return gamma

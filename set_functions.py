@@ -116,7 +116,9 @@ vasp_other_keys = [
 'IDIPOL',
 'LDIPOL',
 'DIPOL',
-'LVTOT'
+'LVTOT',
+'TEBEG'
+
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 

@@ -10,7 +10,6 @@ import pandas as pd
 
 import header
 from header import runBash, print_and_log, printlog
-from classes import CalculationVasp
 from small_functions import makedir
 from set_functions import init_default_sets
 from functions import invert
@@ -193,9 +192,14 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
         d[struct_des_key] = header.struct_des 
         d.close()   
 
+        # print(header.db[('Cu.su', '1lo', 100)].inh_id)
+        printlog('Opening ', header.calc_database, 'for writing')
+
         with shelve.Shelf(dbm.open(header.calc_database, 'w'), protocol = 3) as d:
             for key in header.calc:
+                printlog('saving key:', key,imp = 'n')
                 # print(key)
+                # print(key, header.calc[key].inh_id)
                 d[str(key)] = header.calc[key]
         
         if 0: #please run me from time to time to reduce the size of the database file
@@ -232,6 +236,7 @@ def get_from_database(x1, x2, mat, inquiry_keys = None, silent = None, ssh_objec
     ssh_object (SSHTools) - ssh object based on paramiko with access details
 
     """
+    from classes import CalculationVasp
 
     def check(key, inquiry_keys):
         return all([k in key for k in inquiry_keys])

@@ -33,7 +33,7 @@ from inout import write_xyz, read_xyz, write_occmatrix
 
 from picture_functions import plot_mep, fit_and_plot, plot_conv
 from analysis import calc_redox, matrix_diff, fit_a
-from geo import image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
+from geo import replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 
 
 from set_functions import init_default_sets
@@ -85,8 +85,14 @@ def write_batch_header(batch_script_filename = None,
         if schedule_system == 'PBS':
             f.write("#!/bin/bash   \n")
             f.write("#PBS -N "+job_name+"\n")
-            if header.WALLTIME_LIMIT:
-                f.write("#PBS -l walltime=72:00:00 \n")
+            
+            if 'walltime' in header.cluster:
+                f.write("#PBS -l walltime="+str(header.cluster['walltime'])+'\n')
+            else:
+                if header.WALLTIME_LIMIT: #deprecated remove
+                    f.write("#PBS -l walltime=72:00:00 \n")
+            
+
             # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
             if header.PBS_PROCS:
                 f.write("#PBS -l procs="+str(number_cores)+"\n")
@@ -96,14 +102,44 @@ def write_batch_header(batch_script_filename = None,
             f.write("#PBS -r n\n")
             f.write("#PBS -j eo\n")
             f.write("#PBS -m bea\n")
-            f.write("#PBS -M dimonaks@gmail.com\n")
+            # f.write("#PBS -M dimonaks@gmail.com\n")
             f.write("cd $PBS_O_WORKDIR\n")
-            f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
-            f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
-            f.write("module load Compilers/Intel/psxe_2015.6\n")
-            f.write("module load MPI/intel/5.1.3.258/intel \n")
-            f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
-            f.write("module load ScriptLang/python/2.7\n\n")
+            # f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
+            # f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
+            if 'modules' in header.cluster:
+                f.write(header.cluster['modules']+'\n')
+
+            # f.write("module load Compilers/Intel/psxe_2015.6\n")
+            # f.write("module load MPI/intel/5.1.3.258/intel \n")
+            # f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
+            # f.write("module load ScriptLang/python/2.7\n\n")
+
+
+
+        if schedule_system == 'PBS_bsu':
+            f.write("#!/bin/bash   \n")
+            f.write("#PBS -N "+job_name+"\n")
+            if header.WALLTIME_LIMIT:
+                f.write("#PBS -l walltime=72:00:00 \n")
+            # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            if header.PBS_PROCS:
+                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
+            else: # 1 node option 
+                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
+            # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
+            f.write("#PBS -r n\n")
+            f.write("#PBS -j eo\n")
+            f.write("#PBS -m bea\n")
+            f.write("#PBS -M boev.anton.olegovich@gmail.com\n")
+            f.write("cd $PBS_O_WORKDIR\n")
+            f.write("echo $LD_LIBRARY_PATH \n")
+
+
+
+
+
+
+
 
         if schedule_system == 'SLURM':
             if '~' in path_to_job:
@@ -187,7 +223,7 @@ def prepare_run():
             f.write("#!/bin/tcsh\n")
             f.write("module load sge\n")
             f.write("module load vasp/parallel/5.2.12\n")
-        elif schedule_system in ('PBS', 'SLURM'):
+        elif schedule_system in ('PBS', 'PBS_bsu' 'SLURM'):
             f.write("#!/bin/bash\n")
         else:
             ''
@@ -203,7 +239,7 @@ def complete_run(close_run = True):
     if close_run:
 
         with open('run','a', newline = '') as f:
-            if header.schedule_system == "PBS":
+            if header.schedule_system in ["PBS", 'PBS_bsu']:
                 f.write("qstat\n")
                 f.write("sleep 2\n")
             elif header.schedule_system == "SLURM":
@@ -329,8 +365,21 @@ def cif2poscar(cif_file, poscar_file):
 
     if pymatgen_flag:
         parser = CifParser(cif_file)
-        s = parser.get_structures(primitive=0)[0]
+        s = parser.get_structures(primitive = True)[0]
         
+
+        si = s._sites[0]
+
+        # print(dir(si))
+        # print(si.specie)
+
+        # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+        # sf = SpacegroupAnalyzer(s, ) #
+        # sc = sf.get_conventional_standard_structure() # magmom are set to None
+        # print(sc)
+
+
+
         Poscar(s).write_file(poscar_file)
         printlog('File',poscar_file, 'created.')
     
@@ -581,6 +630,7 @@ def choose_cluster(cluster_name, cluster_home, corenum):
     """
     *cluster_name* should be in header.project_conf.CLUSTERS dict
     """
+
     if cluster_name in header.CLUSTERS:
         printlog('We use', cluster_name,'cluster')
         clust = header.CLUSTERS[cluster_name]
@@ -588,10 +638,10 @@ def choose_cluster(cluster_name, cluster_home, corenum):
 
 
     else:
-        printlog('Cluster', cluster_name, 'is not found, using default', header.DEFAULT_CLUSTER)
+        printlog('Attention!, cluster', cluster_name, 'is not found, using default', header.DEFAULT_CLUSTER)
         clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
 
-
+    header.cluster = clust # dict
     header.cluster_address = clust['address']
     header.CLUSTER_ADDRESS = clust['address']
     
@@ -601,6 +651,16 @@ def choose_cluster(cluster_name, cluster_home, corenum):
     else:
         header.cluster_home    = cluster_home
     
+
+    if 'sshpass' in clust and clust['sshpass']:
+        printlog('setting sshpass to True', imp = '')
+        # sys.exit()
+
+        header.sshpass = True
+    else:
+        header.sshpass = None
+
+
 
     #Determine cluster home using ssh
     # run_on_server('touch ~/.hushlogin', header.cluster_address)
@@ -630,6 +690,9 @@ def choose_cluster(cluster_name, cluster_home, corenum):
         header.vasp_command = clust['vasp_com']
     except:
         header.vasp_command = None
+
+    # print(clust)
+
 
 
     return
@@ -1444,6 +1507,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             elif "4" in cl.state: 
                 status = "compl"
+                if up == 'up2':
+                    cl.init.select = None
                 cl.res(check_job = check_job, show = params['show']) 
                 # sys.exit()
 
@@ -1669,7 +1734,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
     return
-
 
 
 
@@ -2206,7 +2270,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fo', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
-    ortho = None, mat_proj_cell = None,
+    ortho = None, mat_proj_cell = None, ngkpt = None,
     it_folder = None, choose_outcar = None, choose_image = None, 
     cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
@@ -2363,8 +2427,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 else:
                     print_and_log('Warning! Calculation ',b_id, 'was not finished; please check, now skipping ...', important = 'y')
         else:
-            printlog('res_loop(): b_id', b_id, 'does not exist. return {} []')
-            return {}, []
+            printlog('Attention! res_loop(): b_id', b_id, 'does not exist. return {} []')
+            # return {}, []
 
     #define reference values
     e1_r = 0
@@ -2388,7 +2452,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     for inputset in setlist:
         for v in verlist:
             id = (it,inputset,v)
-            
+            # print(id)
             if id not in calc:
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
                 continue #pass non existing calculations
@@ -2405,6 +2469,14 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 printlog(os.getcwd()+'/'+cl.path['output'], imp = 'Y')
                 # sys.exit()
                 return
+
+            if 'pos' in show:
+                cl.end.write_poscar()
+                return
+
+
+
+
 
             if not hasattr(cl,'version'):
                 cl.version = v
@@ -2431,7 +2503,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     b_id = (b_id[0], b_id[1], id[2] + b_ver_shift)
                 except:
                     b_id = (b_id[0], id[1], id[2] + b_ver_shift)
-            
+                printlog('b_id', b_id)
 
 
             # print(id)
@@ -2466,9 +2538,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
                 # if "4" not in calc[b_id].state:
                 if readfiles:    
+                    # print(b_id)
                     calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
 
-
+                # print(b_id)
                 if "4" in calc[b_id].state:    
 
                     if calc[id].set.ngkpt != calc[b_id].set.ngkpt:
@@ -2610,6 +2683,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 e_seg = (e - e_b * bulk_mul) * 1000
                 v_seg =  v - v_b * bulk_mul
 
+
+                # print(e_seg, e_segmin)
+
                 calc[id1].e_seg = e_seg
                 calc[id1].v_seg = v_seg
             
@@ -2625,7 +2701,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             calc[id1].Xgb = v1 / A # for grain boundary with 1 A width. For other boundaries should be divided by width. 
             #print ("__________________________________________________________________________")
             
-            #print (" At zero pressure: segregation energy is %.0f  meV; Seg. volume is %.1f A^3; excess seg. vol. is %.2f A" %(e_seg, v_seg, v_seg/A ) )
+            # print (" At zero pressure: segregation energy is %.0f  meV; Seg. volume is %.1f A^3; excess seg. vol. is %.2f A" %(e_seg, v_seg, v_seg/A ) )
+            print ("At min: segregation energy is %.0f  meV; Seg. volume is %.1f A^3; excess seg. vol. is %.2f A" %(e_segmin, v_segmin, v_segmin/A ) )
             # print ("%s.fit.pe & %.0f & %.1f & %.2f & %.3f & %.1f" %(id[0]+'.'+id[1], e_seg, v_seg, v_seg/A, 1./A, 1./calc[id].natom * 100  ) )
             
             #Calculate distance from impurity to boundary and number of neighbours for version 2!
@@ -3208,5 +3285,6 @@ def manually_remove_from_struct_des(struct_des, key):
 
 
 
-
+add = add_loop
+res = res_loop
 
