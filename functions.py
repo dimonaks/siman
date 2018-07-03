@@ -215,7 +215,7 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
                 out = ''
             # except FileNotFoundError:
             else:
-                out = 'file not found'
+                out = 'error, file not found'
 
         else:
             # print(addr,file,to_file)
@@ -743,17 +743,21 @@ def server_cp(copy_file, to, gz = True, scratch = False):
     else:
         copy_file = header.project_path_cluster + '/' + copy_file
 
+    filename = os.path.basename(copy_file)
 
     if gz:
-        command = 'cp '+copy_file + ' ' + to +'/CHGCAR.gz' '; gunzip -f '+ to+ '/CHGCAR.gz'
+        command = 'cp '+copy_file + ' ' + to +'/'+filename+ '; gunzip -f '+ to+ '/'+filename
     else:
-        command = 'cp '+copy_file + ' ' + to +'/CHGCAR' 
+        command = 'cp '+copy_file + ' ' + to +'/'+filename 
 
 
 
-    printlog(command, imp = 'y')
-    out = run_on_server(command, addr = header.cluster_address)
-    printlog(out, imp = 'y')                
+    printlog('Running on server', command, imp = '')
+    if file_exists_on_server(copy_file, header.cluster_address):
+        out = run_on_server(command, addr = header.cluster_address)
+        printlog('Output of run_on_server', out, imp = '')
+    else:
+        out = 'error, file does not exist on server: '+copy_file                
     return out
 
 
