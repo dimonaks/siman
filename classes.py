@@ -5177,8 +5177,8 @@ class CalculationVasp(Calculation):
         #assumes that bader is installed
         self.res()
         v = str(self.version)
-        path = self.project_path_cluster+self.dir
-        ppc = self.project_path_cluster
+        path = self.project_path_cluster+'/'+self.dir
+        ppc = self.project_path_cluster+'/'
         self.determine_filenames()
 
         # print()
