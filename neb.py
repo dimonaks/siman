@@ -715,7 +715,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             st1 = st1.replace_atoms([i1], type_atom_to_move)
             st2 = st2.replace_atoms([i2], type_atom_to_move)
 
-        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3) # the positions were changed
+        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3) # the positions were changed # check if this is correct
         i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
 
 
