@@ -209,6 +209,23 @@ class Structure():
                         del (natom1[ztype][k])
         return st1
 
+
+    def fix_atoms(self, numbers = None):
+        #fix all atom with numbers in numbers list
+        
+        #TODO allow choice of axis of fix 
+        st = copy.deepcopy(self)
+        
+        if len(st.select) != st.natom:
+            printlog('Warning! number of select atom is not equal to total number of atoms. First I make all moveable')
+            st = st.selective_all()
+            
+        # print(st.select)
+        for i in numbers:
+            st.select[i] = [False, False, False]
+
+        return st
+
     def fix_layers(self, xred_range, highlight = False):
         """
         fix atoms in layers normal to R3
