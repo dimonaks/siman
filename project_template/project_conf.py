@@ -43,8 +43,10 @@ CLUSTERS['skol'] = {'address':'Dmitry.Aksenov@10.30.17.12',
 'vasp_com':'mpirun  vasp_std',
 'homepath':'/home/Dmitry.Aksenov/',
 'schedule':'PBS',
+'walltime':72,
 'corenum':16,
-'pythonpath':'/usr/lib64/python2.7/site-packages/numpy'
+'pythonpath':'/usr/lib64/python2.7/site-packages/numpy',
+'modules':'module load Compilers/Intel/psxe_2015.6; module load MPI/intel/5.1.3.258/intel; module load QCh/VASP/5.4.1p1/psxe2015.6; module load ScriptLang/python/2.7',
 }
 
 CLUSTERS['bsu'] = {'address':'aleksenov_d@95.167.109.79',
