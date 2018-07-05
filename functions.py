@@ -781,6 +781,12 @@ def wrapper_cp_on_server(file, to, new_filename = None):
 
     copy_file = file
 
+    filename = os.path.basename(file)
+    if new_filename:
+        app = 'with new name '+new_filename
+    else:
+        app = ''
+
     for s, gz in product([0,1], ['', '.gz']):
 
         printlog('scratch, gz:', s, gz)
@@ -788,7 +794,11 @@ def wrapper_cp_on_server(file, to, new_filename = None):
         out = server_cp(copy_file+gz, to = to, gz = gz, scratch = s, new_filename = new_filename)
 
         if out == '':
-            printlog('Succesfully copied', imp = 'y')
+            printlog('File', filename, 'was succesfully copied to',to, app, imp = 'y')
             break
+        # else:
+    else:
+        printlog('Warning! File was not copied, probably it does not exist. Try using header.warnings = "neyY" for more details', imp = 'y')
+
 
     return
