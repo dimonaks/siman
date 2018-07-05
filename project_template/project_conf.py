@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Control of project
-
-TODO:
-cif2cell installation check or add to siman
 """
 from __future__ import division, unicode_literals, absolute_import 
 
@@ -12,44 +9,34 @@ NEW_BATCH = True   # for testing new batch system based on set sequences
 PBS_PROCS = True # if true than #PBS -l procs="+str(number_cores) is used
 WALLTIME_LIMIT = True
 
-"""Cluster constants"""
-# cluster_address = 'aksenov@10.30.16.62' #
-# CLUSTER_ADDRESS = cluster_address
-# cluster_home    = '/home/aksenov/' # needed only for SLURM std out and std err
-# CLUSTER_PYTHONPATH = '/usr/lib64/python2.7/site-packages/numpy'
-
-# SCHEDULE_SYSTEM = 'SLURM' #see write_batch_header()
-# corenum = 16; #queue = ' -l cmmd '
-# CORENUM = corenum
-
+"""Cluster parameters"""
 CLUSTERS = {}
 DEFAULT_CLUSTER = 'cee'
 PATH2PROJECT = '' # path to project on cluster relative to home folder
-# project_path_cluster = '' 
-# PATH_TO_PROJECT_ON_CLUSTER = project_path_cluster
 
-
-CLUSTERS['cee'] = {'address':'aksenov@10.30.16.62',
+#description of clusters:
+CLUSTERS['cee'] = {
+'address':'aksenov@10.30.16.62',
 'vasp_com':'prun /opt/vasp/bin/vasp5.4.1MPI_aksenov',
-# 'vasp_com':'prun /opt/vasp/bin/vasp5.4.1MPI_ncl',
-
 'homepath':'/home/aksenov/',
 'schedule':'SLURM',
 'corenum':16,
 'pythonpath':'/usr/lib64/python2.7/site-packages/numpy'
 }
 
-CLUSTERS['skol'] = {'address':'Dmitry.Aksenov@10.30.17.12',
+CLUSTERS['skol'] = {
+'address':'Dmitry.Aksenov@10.30.17.12',
 'vasp_com':'mpirun  vasp_std',
 'homepath':'/home/Dmitry.Aksenov/',
 'schedule':'PBS',
-'walltime':72,
+'walltime':'72:00:00',
 'corenum':16,
 'pythonpath':'/usr/lib64/python2.7/site-packages/numpy',
 'modules':'module load Compilers/Intel/psxe_2015.6; module load MPI/intel/5.1.3.258/intel; module load QCh/VASP/5.4.1p1/psxe2015.6; module load ScriptLang/python/2.7',
 }
 
-CLUSTERS['bsu'] = {'address':'aleksenov_d@95.167.109.79',
+CLUSTERS['bsu'] = {
+'address':'aleksenov_d@95.167.109.79',
 'vasp_com':'mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp',
 'homepath':'/home/aleksenov_d',
 'schedule':'PBS',
@@ -64,20 +51,15 @@ CLUSTERS['bsu'] = {'address':'aleksenov_d@95.167.109.79',
 
 """Local constants"""
 PATH2POTENTIALS = '/home/aksenov/scientific_projects/PAW_PBE_VASP'
-pmgkey = "AWqKPyV8EmTRlf1t"
+pmgkey = "AWqKPyV8EmTRlf1t" # please get your own key from materials project for pymatgen
 
 path_to_paper        = '/home/aksenov/Research/CEStorage/aksenov_report/'
-# PATH2DATABASE        = '/home/aksenov/Data/CEStorage/_aksenov'
 PATH2DATABASE        = '/home/aksenov/Data/CEStorage/'
-# gb4_geo_folder       = '/home/dim/Simulation_wrapper/gb4/out/'
-#we have gb5!
 PATH2JMOL  = 'jmol'
 PATH2NEBMAKE = '~/Simulation_wrapper/vts/nebmake.pl'
 
 geo_folder           = './'
-# path_to_images       = '/home/aksenov/ydisk/cathode_report/images/'
 path_to_images       = path_to_paper+'/fig/'
-# path_to_jmol         = '/home/dim/installed/jmol-14.2.12_2015.02.11/jmol.sh '
 path_to_wrapper      = '/home/aksenov/Simulation_wrapper/'
 
 # RAMDISK              = '/mnt/ramdisk/'

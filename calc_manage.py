@@ -1329,28 +1329,17 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if ise_new and hasattr(varset[ise_new], 'k_band_structure') and varset[ise_new].k_band_structure: #copy chgcar
             
             # calc[id_base].path["charge"]
-
-
-
-
-
-            printlog('Coping CHGCAR for band structure', imp = 'y')
-            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/')
-
-
+            printlog('Copying CHGCAR for band structure', imp = 'y')
+            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
 
 
         if inherit_option  == 'full_chg':
 
-
             # cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
-
             # print(calc[id_base].path)
+            printlog('Copying CHGCAR ...', imp = 'y')
 
-            printlog('Coping CHGCAR for band structure', imp = 'y')
-
-            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/')
-
+            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
 
 
 

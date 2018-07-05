@@ -164,10 +164,17 @@ def file_exists_on_server(file, addr):
     file = file.replace('\\', '/') # make sure is POSIX
 
     printlog('Checking existence of file', file, 'on server', addr )
+    
     if header.ssh_object:
         exist = header.ssh_object.fexists(file)
     else:
         exist = runBash('ssh '+addr+' ls '+file)
+        if 'No such file' in exist:
+            exist = ''
+        else:
+            exist = 'no such file'
+
+
     if exist:
         res = True
     else:
@@ -736,7 +743,7 @@ def words(fileobj):
 
 
 
-def server_cp(copy_file, to, gz = True, scratch = False):
+def server_cp(copy_file, to, gz = True, scratch = False, new_filename = None):
     
     if scratch:
         copy_file = header.PATH2ARCHIVE + '/' + copy_file
@@ -745,10 +752,14 @@ def server_cp(copy_file, to, gz = True, scratch = False):
 
     filename = os.path.basename(copy_file)
 
+    if new_filename is None:
+        new_filename = filename
+
+
     if gz:
-        command = 'cp '+copy_file + ' ' + to +'/'+filename+ '; gunzip -f '+ to+ '/'+filename
+        command = 'cp '+copy_file + ' ' + to +'/'+new_filename + '.gz ; gunzip -f '+ to+ '/'+new_filename+'.gz'
     else:
-        command = 'cp '+copy_file + ' ' + to +'/'+filename 
+        command = 'cp '+copy_file + ' ' + to +'/'+new_filename 
 
 
 
@@ -762,7 +773,7 @@ def server_cp(copy_file, to, gz = True, scratch = False):
 
 
 
-def wrapper_cp_on_server(file, to):
+def wrapper_cp_on_server(file, to, new_filename = None):
     """
     tries iterativly scratch and gz
     """
@@ -770,10 +781,24 @@ def wrapper_cp_on_server(file, to):
 
     copy_file = file
 
+    filename = os.path.basename(file)
+    if new_filename:
+        app = 'with new name '+new_filename
+    else:
+        app = ''
+
     for s, gz in product([0,1], ['', '.gz']):
+
         printlog('scratch, gz:', s, gz)
-        out = server_cp(copy_file+gz, to = to, gz = gz, scratch = s)
+
+        out = server_cp(copy_file+gz, to = to, gz = gz, scratch = s, new_filename = new_filename)
+
         if out == '':
-            printlog('Succesfully copied', imp = 'y')
+            printlog('File', filename, 'was succesfully copied to',to, app, imp = 'y')
             break
+        # else:
+    else:
+        printlog('Warning! File was not copied, probably it does not exist. Try using header.warnings = "neyY" for more details', imp = 'y')
+
+
     return
