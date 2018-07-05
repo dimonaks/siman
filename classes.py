@@ -5197,6 +5197,8 @@ class CalculationVasp(Calculation):
         command1 = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
         "mv CHGCAR_sum "+CHGCAR_sum+";" # on cluster
 
+        command_chg_gunzip = 'gunzip '+CHG+'.gz ' # on cluster
+        
         command2 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
@@ -5210,11 +5212,18 @@ class CalculationVasp(Calculation):
         command_cat_ACF    = " cat "+path+v+".ACF.dat"
         # run_on_server()
         
+
+        #Calculate CHGCAR_sum
         if run_on_server(command_check_CHG_sum, self.cluster_address): 
             print_and_log(  CHGCAR_sum, "does not exist. trying to calculate it ", imp = 'Y')
             printlog( run_on_server(command1, self.cluster_address)+'\n', imp = 'Y' ) 
         # sys.exit()
 
+        #Check chgcar
+        if run_on_server(command_check_CHG, self.cluster_address): #true if file not exists
+            printlog( 'Warning! File ', CHG, "does not exist. Checking .gz .. ", imp = 'Y')
+
+            printlog( run_on_server(command_chg_gunzip, self.cluster_address)+'\n', imp = 'y' ) 
 
         if run_on_server(command_check_CHG, self.cluster_address): #true if file not exists
             printlog( 'Warning! File ', CHG, "does not exist. Trying to restore it from archive .. ", imp = 'Y')
