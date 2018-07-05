@@ -1,0 +1,27 @@
+SYSTEM =  auto add_des ; no description for these set, see history
+ADDGRID = .TRUE.
+ALGO = Normal
+EDIFF = 1e-08
+EDIFFG = 0
+ENAUG = 776.16
+ENCUT = 441.0
+IBRION = 1
+ICHARG = 1
+ISIF = 2
+ISMEAR = 2
+ISTART = 0
+KGAMMA = .TRUE.
+LAECHG = .TRUE.
+LPLANE = .TRUE.
+LREAL = Auto
+LSCALU = .FALSE.
+MAXMIX = 40
+NBANDS = 38
+NELM = 100
+NELMIN = 4
+NPAR = 1
+NSIM = 4
+NSW = 0
+PREC = Accurate
+SIGMA = 0.2
+
