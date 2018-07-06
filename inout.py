@@ -282,7 +282,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xred)
 
     
-
+    st = st.copy()
     rprimd, xcart, xred, typat, znucl, natom = update_var(st)
 
 
@@ -325,7 +325,8 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
 
     if analysis == 'imp_surrounding':
-        
+        printlog('analysis = imp_surrounding', imp = 'y')
+
         if show_around == 0:
             printlog('Error! number of atom *show_around* should start from 1')
 
@@ -358,27 +359,29 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
                 # print 'se', condition
 
                 if condition: 
+                    # print('Atom at', x, 'used as central')
                     # lxcart.append(x)
                     # ltypat.append(t)
                     # print x, ' x'
                     x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True, only_elements = only_elements)
-                    # print x_t[1]
+                    print (x_t)
                     lxcart+=x_t[0]
                     ltypat+=x_t[1]
                 i+=1
         
 
-
         xcart = lxcart
         typat = ltypat
         natom = len(typat)
         # print natom, 'nat'
+        # print('Number of neighbours', natom  )
+        st.xcart = xcart
+        st.typat = typat
+        st.natom = natom
+        st.update_xred()
 
 
 
-    name+=suf
-    xyzfile = os.path.join(basepath, name+".xyz")
-    makedir(xyzfile)
 
 
     """Include atoms on the edge of cell"""
@@ -396,7 +399,6 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         
     # asdegf
 
-    """Writing section"""   
     # printlog("Writing xyz: "+xyzfile, imp = 'y')
 
     #analyze imp_positions
@@ -428,6 +430,10 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     else:
         nvect = 0
 
+    """Writing section"""   
+    name+=suf
+    xyzfile = os.path.join(basepath, name+".xyz")
+    makedir(xyzfile)
 
     def write(st):
         rprimd, xcart, xred, typat, znucl, natom = update_var(st)
@@ -473,6 +479,8 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     printlog('File', xyzfile, 'was written', imp = 'y')
 
     pngfile = None
+    
+
     if jmol:
         """
         script mode for jmol. Create script file as well for elobarate visualization

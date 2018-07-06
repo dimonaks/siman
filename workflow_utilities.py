@@ -540,7 +540,7 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
             
             if acc:
                 if acc2:
-                    db[itn+'.ifc', ise1, 1].run(ise2, show = 'fo', iopt = 'full_chg', add  = 1, up = 'up2', ngkpt = ngkpt)
+                    db[itn+'.ifc', ise1, 1].run(ise2, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up2', ngkpt = ngkpt)
 
                 else:
                     db[itn, ise, 1].run(ise1, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up2', ngkpt = ngkpt)
