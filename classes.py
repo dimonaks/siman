@@ -219,7 +219,7 @@ class Structure():
         if len(st.select) != st.natom:
             printlog('Warning! number of select atom is not equal to total number of atoms. First I make all moveable')
             st = st.selective_all()
-            
+
         # print(st.select)
         for i in numbers:
             st.select[i] = [False, False, False]
@@ -5487,7 +5487,11 @@ class CalculationVasp(Calculation):
         cwd = os.getcwd()
 
         os.chdir(self.dir)
-        runBash('phonopy --fc '+os.path.basename(self.path['xml']))
+        out = runBash('phonopy --fc '+os.path.basename(self.path['xml']))
+
+        printlog('phonopy out: ', out)
+
+
 
         if 'poscar' not in self.path:
             self.path['poscar'] = self.path['output'].replace('OUTCAR','POSCAR')

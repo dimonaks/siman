@@ -64,7 +64,7 @@ with open('archivate_dft.log', 'a') as f:
     active_directories = []
     out = runBash(RETURN_DIRS_COMMAND)
     # print(out)
-    active_directories = out.splitlines()[1:]
+    active_directories = out.splitlines()
 
     curpath = sys.path[0]
 
