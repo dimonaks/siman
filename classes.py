@@ -1795,7 +1795,7 @@ class Structure():
 
 
 
-    def write_cif(self, filename = None, mcif = False):
+    def write_cif(self, filename = None, mcif = False, symprec = 0.1, write_prim = 0):
         """
         Find primitive cell and write it in cif format
         
@@ -1817,7 +1817,7 @@ class Structure():
 
 
         makedir(filename)
-        symprec = 0.1
+
         st_mp = self.convert2pymatgen()
 
         # print(st_mp)
@@ -1835,22 +1835,33 @@ class Structure():
         except:
             sg_before = [None]
             sg_after = [None]
+            st_mp_prim = None
+            printlog('Warning! could not analyze space group')
 
         if sg_before[0] != sg_after[0]:
             printlog('Attention! the space group was changed after primitive cell searching', sg_before, sg_after)
-            printlog('I will save supercell in cif and reduce symprec to 0.01')
-            st_mp_prim = st_mp
-            symprec = 0.01
+            printlog('I will save supercell in cif Pay attention that CifWriter can symmetrize and change vectors. Also use *write_prim*')
+            # st_mp_prim = st_mp
+            # symprec = 0.001
+            # symprec = None
 
         if mcif:
             cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif)
         else:
-            # cif = CifWriter(st_mp_prim, symprec = symprec, write_magmoms=mcif)
-            cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif)
+            if st_mp_prim:
+                cif_prim = CifWriter(st_mp_prim, symprec = symprec, )
+            
+            cif = CifWriter(st_mp, symprec = symprec, )
+
         
         cif_name =  filename+'.'+m+'cif'
+        cif_prim_name =  filename+'_prim.'+m+'cif'
         
+
         cif.write_file( cif_name  )
+        if write_prim:
+            cif_prim.write_file( cif_prim_name  )
+        
         printlog('Writing cif', cif_name, imp = 'y')
 
 
