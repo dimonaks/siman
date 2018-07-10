@@ -252,7 +252,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         header.mpl.rcParams.update({'font.size': fontsize+4})
         if legend_fontsize is None:
             legend_fontsize = fontsize
-
+    if legend_fontsize:
         header.mpl.rc('legend', fontsize= legend_fontsize) 
 
 
