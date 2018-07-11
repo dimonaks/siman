@@ -576,17 +576,25 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
 
 
-def calc_oxidation_states(cl):
+def calc_oxidation_states(cl = None, st = None, silent = 1):
 
-    st = cl.end
+    if cl:
+        st = cl.end
+        ch = cl.charges
+    if st:
+        ch  = st.charges
+    
+
     z_vals = []
     for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
-        ox = z_val - cl.charges[j]
+        ox = z_val - ch[j]
         z_vals.append(ox)
-        print(el, '{:3.1f}'.format(ox))
+        if not silent:
+            ''
+            print(el, '{:3.1f}'.format(ox))
     # print(list(zip(z_vals, self.end.get_elements())))
 
-
+    return z_vals
 
 
 

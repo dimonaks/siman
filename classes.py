@@ -391,12 +391,20 @@ class Structure():
 
         return st
 
-    def convert2pymatgen(self, oxidation = None, slab = False):
+    def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
         """
         oxidation (dict) - {'Ti':'Ti3+'}
+        if self.charges exist then it is used to update oxidation states of atoms
+        chg_type - 'ox' - oxidation states calculated from self.charges 
+                   'norm' - normalized self.charges
+                    'tot' - just self.charges
+                    'pot' - charges from potentials zval, number of valence electrons
+
 
         slab - if True return slab object is returned - limited functional is implemented
         """
+        from analysis import calc_oxidation_states
+
         site_properties = {}
 
         if hasattr(self, 'magmom') and any(self.magmom):
@@ -428,13 +436,25 @@ class Structure():
 
         if hasattr(self, 'charges') and any(self.charges):
 
-            if 1: #normalize charges
+            chg_type = 'ox' # 'norm', 'tot'
+
+            # print(chg_type)
+            if chg_type == 'norm': #normalize charges
                 t = sum(self.charges)/len(self.charges)
                 chg = [c-t for c in self.charges ]
                 # print(t)
-            else:
+            
+            elif chg_type == 'ox':
+                chg = calc_oxidation_states(st = self)
+            elif chg_type == 'tot':
                 chg = self.charges
+            pm.add_oxidation_state_by_site(chg)
 
+        if chg_type == 'pot':
+            
+            printlog('Using zval as charges', imp = '')
+            chg = [z*-1 for z in self.get_elements_zval()           ]
+            # print(chg)
             pm.add_oxidation_state_by_site(chg)
 
 
@@ -689,7 +709,11 @@ class Structure():
         return surface_atoms[surface]
 
 
-
+    def get_surface_area(self):
+        #currently should be normal to rprim[0] and rprim[1]
+        st = self
+        # print()
+        return np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
 
 
 
@@ -798,6 +822,15 @@ class Structure():
             tra = ns
         return tra
 
+
+
+    def get_dipole(self, ox_states = None, chg_type = 'ox'):
+        #return dipole moment, e*A
+        #
+        # if you need to convert it to debye (D), use 1 D = 0.20819434 eÅ = 3.33564×10−30; 1 eA = 4.8 D
+
+        slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
+        return slab.dipole
 
 
 
@@ -2248,6 +2281,9 @@ class Calculation(object):
         Number of k-points per atom
         """
         print(self.NKPTS*self.end.natom) #KPPRA - k-points per reciprocal atom? 
+
+
+
 
     def copy(self):
         return copy.deepcopy(self)
@@ -4577,7 +4613,8 @@ class CalculationVasp(Calculation):
                         mdstep_prev = self.mdstep
 
                     if 'dipolmoment' in line:
-                        self.dipol = line
+                        dipol = line.split()[1:4]
+                        self.dipol = [float(d) for d in dipol]
                         # print(line)
 
                         # for i in range(1,4):
@@ -5430,16 +5467,21 @@ class CalculationVasp(Calculation):
                         idd = i
                         # add = True
                         break
+                    else:
+                        idd = None
 
                 else:
                     add = True
                     # idd  = self.children[i_child]
                 # print(idd)
 
-                cl_son = header.calc[idd]
-                
-                cl_son.res(up = up, **kwargs)
-                child = idd
+                if idd:
+                    cl_son = header.calc[idd]
+                    
+                    cl_son.res(up = up, **kwargs)
+                    child = idd
+                else:
+                    child = None
             
 
             vp = header.varset[ise].vasp_params
