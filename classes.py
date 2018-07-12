@@ -5240,6 +5240,7 @@ class CalculationVasp(Calculation):
     def get_bader_ACF(self, p = 0):
         #Make bader on server
         #assumes that bader is installed
+        from small_functions import bash_chk_file_cmd
         self.res()
         v = str(self.version)
         path = self.project_path_cluster+'/'+self.dir
@@ -5259,61 +5260,75 @@ class CalculationVasp(Calculation):
 
 
 
-        command1 = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
+        run_chgsum = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
         "mv CHGCAR_sum "+CHGCAR_sum+";" # on cluster
 
         command_chg_gunzip = 'gunzip '+CHG+'.gz ' # on cluster
         
-        command2 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
+        restore_CHG = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
+        restore_AEC = "rsync "+header.PATH2ARCHIVE+'/'+self.path['aeccar0']+' '+ header.PATH2ARCHIVE+'/'+self.path['aeccar2']+' '+path # on cluster
+
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
         
-        command3 = "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+mv
-        command3s = "cd "+path+"; ~/tools/bader "+CHG+" > "+mv #simple
-        
-        command_check_CHG_sum = " [ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ; """ #true if file not exists
-        command_check_CHG  = " [ -e "+   CHG       +""" ] || echo "NO"     ; """
-        command_check_ACF  = " [ -e "+   ACF     +""" ] || echo "NO"     ; """
+        bader_on_sum = "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+mv
+        bader_on_chg = "cd "+path+"; ~/tools/bader "+CHG+" > "+mv #simple
         command_cat_ACF    = " cat "+path+v+".ACF.dat"
-        # run_on_server()
         
+        no_CHG_sum = bash_chk_file_cmd(CHGCAR_sum) #true if file not exists
+        no_CHG     = bash_chk_file_cmd(CHG)
+        no_ACF     = bash_chk_file_cmd(ACF)
+        no_AECCAR0 = bash_chk_file_cmd(AECCAR0)
+        no_AECCAR2 = bash_chk_file_cmd(AECCAR2)
+        
+        def remote(cmd):
+            return run_on_server(cmd, self.cluster_address)
+
+
 
         #Calculate CHGCAR_sum
-        if run_on_server(command_check_CHG_sum, self.cluster_address): 
-            print_and_log(  CHGCAR_sum, "does not exist. trying to calculate it ", imp = 'Y')
-            printlog( run_on_server(command1, self.cluster_address)+'\n', imp = 'Y' ) 
+        if remote(no_CHG_sum): 
+            printlog(  CHGCAR_sum, "does not exist. trying to calculate it ...", imp = 'Y')
+            
+            if remote(no_AECCAR0) or remote(no_AECCAR2):
+                printlog(  AECCAR0, "does not exist, trying to take it from archive ...", imp = 'Y')
+                printlog(remote(restore_AEC)+'\n', imp = 'y')
+
+            if not remote(no_AECCAR0):
+                printlog( remote(run_chgsum)+'\n', imp = 'Y' ) 
+                printlog( remote(" rm "+path+v+".ACF.dat")+'\n', imp = 'Y' ) 
         # sys.exit()
 
         #Check chgcar
-        if run_on_server(command_check_CHG, self.cluster_address): #true if file not exists
+        if remote(no_CHG): #true if file not exists
             printlog( 'Warning! File ', CHG, "does not exist. Checking .gz .. ", imp = 'Y')
 
-            printlog( run_on_server(command_chg_gunzip, self.cluster_address)+'\n', imp = 'y' ) 
+            printlog( remote(command_chg_gunzip)+'\n', imp = 'y' ) 
 
-        if run_on_server(command_check_CHG, self.cluster_address): #true if file not exists
+        if remote(no_CHG): #true if file not exists
             printlog( 'Warning! File ', CHG, "does not exist. Trying to restore it from archive .. ", imp = 'Y')
 
-            printlog( run_on_server(command2, self.cluster_address)+'\n', imp = 'y' ) 
+            printlog( remote(restore_CHG)+'\n', imp = 'y' ) 
 
 
 
         def run_bader(command, ):        
-            if run_on_server(command_check_ACF, self.cluster_address): #true if file not exists
-                print_and_log(  ACF, " does not exist. trying to calculate Bader ... ", imp = 'Y')
-                printlog( run_on_server(command, self.cluster_address)+'\n', imp = 'y' ) 
+            
+            if remote(no_ACF): #true if file not exists
+                printlog(  ACF, " does not exist. trying to calculate Bader ... ", imp = 'Y')
+                printlog( remote(command)+'\n', imp = 'y' ) 
                 
+            ACF_text = remote(command_cat_ACF)
 
-
-
-            ACF_text = run_on_server(command_cat_ACF, self.cluster_address)
             return ACF_text
 
-        ACF_text = run_bader(command3)
+        ACF_text = run_bader(bader_on_sum)
 
         if 'No such file or directory' in ACF_text:
             printlog('Warning! Probably you have problems with',CHGCAR_sum)
             printlog('Trying to calculate charges from CHGCAR ...', imp = 'Y')
-            ACF_text = run_bader(command3s)
+            
+            ACF_text = run_bader(bader_on_chg)
 
         print('ACF_text = ', ACF_text)
 
@@ -5515,7 +5530,7 @@ class CalculationVasp(Calculation):
         return header.calc[child]
 
 
-    def read_pdos_using_phonopy(self, mode = 'pdos', plot = 1):
+    def read_pdos_using_phonopy(self, mode = 'pdos', plot = 1, up = 'up1'):
         """
         mode - 
             pdos
@@ -5530,7 +5545,7 @@ class CalculationVasp(Calculation):
 
         from calc_manage import create_phonopy_conf_file, read_phonopy_data
 
-        self.get_chg_file('vasprun.xml', nametype = 'asoutcar')
+        self.get_file('vasprun.xml', nametype = 'asoutcar', up = up)
         create_phonopy_conf_file(self.end, mp = [10, 10, 10], path = self.dir)
         # create_phonopy_conf_file(self.end, mp = [36, 36, 36], path = self.dir) #almost no difference was found for Na2X
         create_phonopy_conf_file(self.end, path = self.dir, filetype = 'band') #create band file

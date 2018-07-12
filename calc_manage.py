@@ -2459,6 +2459,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 # sys.exit()
                 return
 
+            if 'jmol' in show:
+                # printlog(os.getcwd()+'/'+cl.path['output'], imp = 'Y')
+                cl.jmol()
+                # sys.exit()
+                return
+
+
             if 'pos' in show:
                 cl.end.write_poscar()
                 return
@@ -2515,7 +2522,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             conv[base].append(b_id)
 
 
-            outst2 = ("%s"%calc[id].name).ljust(name_field_length)
+            outst2 = ("db['{:s}']".format(calc[id].name)).ljust(name_field_length)
+            
+
+
             outst2+='|'
             outst_end = '' 
 

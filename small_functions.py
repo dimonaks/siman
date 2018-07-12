@@ -120,7 +120,9 @@ def latex_spg(spg):
     return spg
 
 
-
+def bash_chk_file_cmd(file):
+    #bash returns empty string if file exist
+    return " [ -e "+   file     +""" ] || echo "NO"     ; """
 
 # def find_transition_atom(elements):
 #     #return list of unique transition elements

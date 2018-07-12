@@ -4,3 +4,7 @@ bug fixed in cl.run()
 calc_oxidation_states() improved, use silent = 0 to show charges
 get_surface_area() added to Structure()
 get_dipole() added to Structure()
+cl.get_bader_ACF() improved
+creating_sets tutorial updated
+'jmol' option of show in res() added
+calculation name in output changed to db['name']
