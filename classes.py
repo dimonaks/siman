@@ -366,6 +366,16 @@ class Structure():
 
         return ifmaglist, mag_numbers
 
+    def show_mag(self, i):
+        # show magmom of i atoms, starting from 1
+        i-=1
+        m = self.magmom[i]
+        el = self.get_elements()[i]
+        print('Mag for {:s} = {:.2f}'.format(el, m))
+
+        return 
+
+
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
