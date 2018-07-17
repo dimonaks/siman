@@ -8,3 +8,5 @@ cl.get_bader_ACF() improved
 creating_sets tutorial updated
 'jmol' option of show in res() added
 calculation name in output changed to db['name']
+st.jmol() now uses vasp format
+new property st.outfile - path to output file added

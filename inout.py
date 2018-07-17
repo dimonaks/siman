@@ -111,7 +111,7 @@ def read_xyz(st, filename, rprimd = None):
     return st
 
 
-def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = 1, orientation = None,
+def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = 0, orientation = None,
     axis = False, bonds = True, rprimd = None, shift = None, rotate = None,
     label = None, high_contrast = None, specialcommand = None,
     boundbox = 2, atom_labels = None):
@@ -144,7 +144,6 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
         # f.write('select Ti* \ncolor [20,120,250] \nselect C* \ncolor [80,80,80]\n cpk 100\n')
         f.write('set perspectivedepth off\n')
         
-
 
 
 
@@ -208,15 +207,23 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
         if specialcommand:
             f.write(specialcommand+'\n')
 
+        if 1:
+            f.write('set displayCellParameters False ;\n')
+
+
+
         
         # f.write('write image 2800 2800 png "'+pngfile+'"')
         f.write('write image 1800 1800 png "'+pngfile+'"')
     
+    # print(header.PATH2JMOL)
+    # sys.exit()
     printlog( runBash(header.PATH2JMOL+' -ions '+scriptfile) )
     # print runBash('convert '+pngfile+' -shave 0x5% -trim '+pngfile) #cut by 5% from up and down (shave) and that trim left background
     printlog( pngfile )
     printlog( runBash('convert '+pngfile+' -trim '+pngfile)  ) # trim background
     printlog('png file by Jmol',pngfile, 'was written', imp = 'y' )
+    # print(header.PATH2JMOL)
     return
 
 
@@ -529,7 +536,9 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
 
 
-        xyzfile = os.getcwd()+'/'+xyzfile
+        # xyzfile = os.getcwd()+'/'+xyzfile
+        xyzfile = st.write_poscar()
+        
         scriptfile = basepath+name+".jmol"
         bn = (basepath+name).replace('.', '_')
         pngfile = os.getcwd()+'/'+bn+".png"

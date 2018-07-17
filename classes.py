@@ -1834,7 +1834,7 @@ class Structure():
 
         f.close()
         print_and_log("POSCAR was written to", filename, imp = 'y')
-        return
+        return filename
 
 
 
@@ -1924,16 +1924,23 @@ class Structure():
         return read_xyz(self, *args, **kwargs)
 
 
-    def jmol(self, shift = None):
+    def jmol(self, shift = None, r = 0):
         # self.write_poscar('CONTCAR', vasp5 = 1)
+        #if r == 1 then open outcar
         st = self
         if shift:
             st = st.shift_atoms(shift)
 
 
-        filename, _ = st.write_xyz()
-        # print(filename)
-        runBash('jmol '+filename, detached = True)
+        # filename, _ = st.write_xyz()
+        if r == 1:
+            filename = st.outfile 
+        else:
+            filename = st.write_poscar(vasp5 = 1)
+        
+        # print(r, filename)
+        # sys.exit()
+        runBash(header.PATH2JMOL+' '+filename, detached = True)
         return
 
 class Calculation(object):
@@ -2298,8 +2305,8 @@ class Calculation(object):
     def copy(self):
         return copy.deepcopy(self)
 
-    def jmol(self):
-        self.end.jmol()
+    def jmol(self, *args, **kwargs):
+        self.end.jmol(*args, **kwargs)
     def poscar(self):
         self.end.write_poscar()
     def me(self):
@@ -4715,6 +4722,7 @@ class CalculationVasp(Calculation):
             else: 
                 self.end.xred = xcart2xred( self.end.xcart, self.end.rprimd)
 
+
             #print "init pressure = ",self.extpress_init,"; final pressure =",self.extpress
             #print self.end.xred
             #self.vol = np.dot( self.rprimd[0], np.cross(self.rprimd[1], self.rprimd[2])  ); #volume
@@ -5106,7 +5114,9 @@ class CalculationVasp(Calculation):
 
 
             printlog("Reading of results completed\n\n", imp = 'n')
+            self.end.outfile = path_to_outcar
             
+
             if pymatgen_flag:
                 ''
                 # self.end.write_cif(os.path.join(self.dir,self.name))
