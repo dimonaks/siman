@@ -588,12 +588,13 @@ def calc_oxidation_states(cl = None, st = None, silent = 1):
     z_vals = []
     for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
         ox = z_val - ch[j]
+
         z_vals.append(ox)
         if not silent:
             ''
             print(el, '{:3.1f}'.format(ox))
     # print(list(zip(z_vals, self.end.get_elements())))
-
+    # print(z_vals)
     return z_vals
 
 

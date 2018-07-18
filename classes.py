@@ -375,7 +375,11 @@ class Structure():
 
         return 
 
-
+    def get_mag_tran(self):
+        #show mag moments of transition metals 
+        l = self.get_maglist()[0]
+        # print(l)
+        return np.array(self.magmom)[l]
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -444,28 +448,30 @@ class Structure():
             pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
 
-        if hasattr(self, 'charges') and any(self.charges):
-
-            chg_type = 'ox' # 'norm', 'tot'
-
-            # print(chg_type)
-            if chg_type == 'norm': #normalize charges
-                t = sum(self.charges)/len(self.charges)
-                chg = [c-t for c in self.charges ]
-                # print(t)
-            
-            elif chg_type == 'ox':
-                chg = calc_oxidation_states(st = self)
-            elif chg_type == 'tot':
-                chg = self.charges
-            pm.add_oxidation_state_by_site(chg)
-
         if chg_type == 'pot':
             
             printlog('Using zval as charges', imp = '')
             chg = [z*-1 for z in self.get_elements_zval()           ]
             # print(chg)
             pm.add_oxidation_state_by_site(chg)
+        else:
+            if hasattr(self, 'charges') and any(self.charges):
+
+                chg_type = 'ox' # 'norm', 'tot'
+
+                # print(chg_type)
+                if chg_type == 'norm': #normalize charges
+                    t = sum(self.charges)/len(self.charges)
+                    chg = [c-t for c in self.charges ]
+                    # print(t)
+                
+                elif chg_type == 'ox':
+                    chg = calc_oxidation_states(st = self)
+                elif chg_type == 'tot':
+                    chg = self.charges
+                pm.add_oxidation_state_by_site(chg)
+
+
 
 
         return pm
@@ -1400,18 +1406,20 @@ class Structure():
     #     sumx/=len(self.xcart)
     #     return sumx
 
-    def return_atoms_to_cell(self):
-
+    def return_atoms_to_cell(self, shift = 0):
+        #shift - shift from the end of vectors between 0 and 1 - allows to collect atoms close to origin
 
         st = copy.deepcopy(self)
-        bob = 0; upb = 1;
+        bob = 0-shift; upb = 1-shift;
         n = 0 
         # print st.xred
         for xr in st.xred:
             for j in 0,1,2:
-                if xr[j]  < bob:  xr[j] = xr[j] - int(xr[j]) + 1 #allows to account that xr can be more than 2
-                if xr[j]  >= upb:  xr[j] = xr[j] - int(xr[j])
-        n+=1
+                if xr[j]  < bob:  
+                    xr[j] = xr[j] - int(xr[j]) + 1 #allows to account that xr can be more than 2
+                if xr[j]  >= upb:  
+                    xr[j] = xr[j] - int(xr[j]) - 1
+        # n+=1
         # zmin = 100
         # for xr in st.xred:
         #     if xr[2]<zmin: zmin = xr[2]
@@ -1423,7 +1431,7 @@ class Structure():
 
         st.xcart = xred2xcart(st.xred, st.rprimd)
 
-        print_and_log(str(n)+" atoms were returned to cell.\n")
+        # print_and_log(str(n)+" atoms were returned to cell.\n")
         #print st.xred
         return st
 
@@ -1833,8 +1841,9 @@ class Structure():
         
 
         f.close()
-        print_and_log("POSCAR was written to", filename, imp = 'y')
-        return filename
+        path = os.getcwd()+'/'+filename
+        print_and_log("POSCAR was written to", path, imp = 'y')
+        return path
 
 
 
@@ -1856,7 +1865,7 @@ class Structure():
             m = ''
 
         if filename == None:
-            filename = 'cif/'+self.name
+            filename = os.getcwd()+'/cif/'+self.name
 
 
         makedir(filename)
@@ -1907,6 +1916,7 @@ class Structure():
         
         printlog('Writing cif', cif_name, imp = 'y')
 
+        return cif_name
 
     def write_xyz(self, *args, **kwargs):
         #see description for write_xyz()

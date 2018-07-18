@@ -232,7 +232,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     analysis = None, show_around = None, show_around_x = None,  nnumber = 6, only_elements = None,
     gbpos2 = None, gbwidth = 1, withgb = False, include_boundary = 2,
     imp_positions = [], imp_sub_positions = None,
-    jmol = None, specialcommand = None, jmol_args = None, sts = None
+    jmol = None, specialcommand = None, jmol_args = None, sts = None, mcif = 0, suf = ''
     ):
     """Writes st structure in xyz format in the folder xyz/path
 
@@ -260,9 +260,11 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
     jmol - 1,0 -  use jmol to produce png picture
     jmol_args - see write_jmol()
+    mcif - write magnetic cif for jmol
+
 
     specialcommand - any command at the end of jmol script
-
+    suf - additional suffix for name
 
     sts - list of Structure - write several structures to xyz file - other options are not working in this regime
     """
@@ -300,7 +302,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     elif filename:
         name = filename
     else:
-        name = st.name
+        name = st.name+suf
 
 
     if sts:
@@ -537,7 +539,10 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
 
         # xyzfile = os.getcwd()+'/'+xyzfile
-        xyzfile = st.write_poscar()
+        if mcif:
+            xyzfile = st.write_cif(mcif = 1)
+        else:
+            xyzfile = st.write_poscar()
         
         scriptfile = basepath+name+".jmol"
         bn = (basepath+name).replace('.', '_')
