@@ -2484,9 +2484,11 @@ class CalculationVasp(Calculation):
                         for fi, flag in enumerate(vec[3:6]):
                             if flag == 'F':
                                 flagset[fi] = False
+                        # print(flagset)
                         select.append(flagset)
 
             st.select = select
+
             if "Car" in type_of_coordinates or 'car' in type_of_coordinates:
                 st.xcart  = coordinates
                 st.xred = xcart2xred(st.xcart, st.rprimd)
@@ -4381,21 +4383,25 @@ class CalculationVasp(Calculation):
                         forces = []
                         magnitudes = []
 
+                        # print(self.end.select)
                         for j in range(self.end.natom):
                             parts = outcarlines[i_line+j+2].split()
                             # print "parts", parts
                             # print(self.end.select)
                             # sys.exit()
                             if hasattr(self.end, 'select') and self.end.select:
-                                x = float(parts[ff[0]])*self.end.select[j][0]
-                                y = float(parts[ff[1]])*self.end.select[j][1]
-                                z = float(parts[ff[2]])*self.end.select[j][2]
+                                # print(float(parts[ff[0]]), self.end.select[j][0])
+                                x = float(parts[ff[0]]) * self.end.select[j][0]
+                                y = float(parts[ff[1]]) * self.end.select[j][1]
+                                z = float(parts[ff[2]]) * self.end.select[j][2]
                             else:
                                 x = float(parts[ff[0]])
                                 y = float(parts[ff[1]])
                                 z = float(parts[ff[2]])
+                            
                             forces.append([x,y,z])
                             magnitudes.append(math.sqrt(x*x + y*y + z*z))
+                        
                         average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
                         imax = np.asarray(magnitudes).argmax()
                         maxforce.append( [imax, round(magnitudes[imax] * 1000)]  )
