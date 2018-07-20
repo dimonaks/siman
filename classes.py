@@ -523,6 +523,10 @@ class Structure():
         # cm = Composition(self.get_elements())
         return cm.fractional_composition
 
+
+
+
+
     def update_types(self, elements):
         # update typat, ntypat, znucl, nznucl from elements - list of elements names
         st = copy.deepcopy(self)
@@ -2321,6 +2325,22 @@ class Calculation(object):
         self.end.write_poscar()
     def me(self):
         self.end.printme()
+
+    def add_new_name(self, idd):
+        """
+        
+        just adding new key in database for that calculation
+        warning cl.id is updated; old name in db remains
+        the calculation folder remains the same
+        
+        idd - key
+        """
+        if idd in header.db:
+            printlog('Error! ',idd,'already used in database! Choose another name')
+            
+        header.db[idd] = self
+        header.struct_des[idd[0]] = header.struct_des[self.id[0]]
+
 
     @property
     def sfolder(self):

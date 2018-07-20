@@ -11,3 +11,4 @@ calculation name in output changed to db['name']
 st.jmol() now uses vasp format
 new property st.outfile - path to output file added
 mcif argument added to write_xyz() enabling visualization of magnetic structures with jmol=1 
+cl.add_new_name() method added

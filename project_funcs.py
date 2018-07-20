@@ -1,5 +1,5 @@
 from __future__ import division, unicode_literals, absolute_import 
-import sys, copy, re, os
+import sys, copy, re, os, shutil
 #external
 import numpy as np
 import pandas as pd
@@ -11,8 +11,8 @@ from header import print_and_log as printlog
 from header import calc
 from header import db
 from picture_functions import fit_and_plot
-from small_functions import merge_dics as md
-from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive
+from small_functions import merge_dics as md, makedir
+from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
 from neb import add_neb
 from classes import Calculation
 from analysis import calc_redox,  matrix_diff
@@ -3755,3 +3755,52 @@ def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 )
 
         # print(alpha, beta, gamma)  
     return
+
+
+def create_project_from_geofile(filename):
+    """
+    empty project is added to database
+    get name from geofile and create required folder and put file into it  
+    Various rules to create project name
+
+    """
+    db = header.db
+    if 1:
+        #simple - just name of file
+        basename = os.path.basename(filename)
+        projectname = basename.split('.')[0]
+        makedir(projectname+'/temp')
+        startgeofile = projectname+'/'+ basename
+
+
+    if projectname not in db:
+
+        shutil.copyfile(filename, startgeofile)
+        db[projectname]  = {}
+        db[projectname]['startgeofile'] = startgeofile
+        db[projectname]['steps'] = [] 
+        printlog('Project ', projectname, 'was created', imp = 'y')
+    
+    else:
+        printlog('Error! project already exist')
+
+    return projectname
+
+def process_cathode_material(projectname, step = 1):
+    """
+    AI module to process cif file and automatic calculation of standard properties of cathode material 
+    
+    step 1 - read geo and run simple relaxation
+
+    """
+    pn = projectname
+    if step == 1:
+        ''
+        if 1 not in db[pn]['steps']:
+            startgeofile = db[pn]['startgeofile'] 
+            st = smart_structure_read(startgeofile)
+            st = primitive(st)
+            add_loop(pn,'1u',1, input_st = st, it_folder = pn)
+            startgeofile = db[pn]['steps'].append(1) 
+        else:
+            res_loop(pn,'1u',1)

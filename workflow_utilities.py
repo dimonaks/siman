@@ -495,7 +495,11 @@ def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = 
 
 
 
-def optimize_wrapper(cl, ise, add = 0, show_fit = 1):
+
+
+
+
+def optimize_wrapper(cl, ise, add = 0, show_fit = 1, params = None):
     #wrapper for optimization function
 
 
@@ -505,9 +509,9 @@ def optimize_wrapper(cl, ise, add = 0, show_fit = 1):
     id_res = (cl.id[0]+'.su', ise, 100)
 
     if add:
-        add_loop(*cl.id, ise_new = ise,  up = 'up1', calc_method = 'uniform_scale',  
+        add_loop(*cl.id, ise_new = ise,  up = 'up2', calc_method = 'uniform_scale',  
             scale_region = (-4, 4), input_st = cl.end, show = '', run = 0,  inherit_option = 'inherit_xred', 
-            it_folder = cl.sfolder+'/scaled/') 
+            it_folder = cl.sfolder+'/scaled/', params = params) 
     else:
 
         if show_fit:
