@@ -3793,6 +3793,8 @@ def process_cathode_material(projectname, step = 1):
     step 1 - read geo and run simple relaxation
 
     """
+    from geo import determine_symmetry_positions, primitive
+    
     pn = projectname
     if step == 1:
         ''
