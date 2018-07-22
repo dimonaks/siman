@@ -37,10 +37,10 @@ def determine_barrier(positions = None, energies = None):
     import scipy
     import matplotlib.pyplot as plt
 
-    if positions == None:
+    if positions is None:
         positions = range(len(energies))
 
-    if energies == None:
+    if energies is None:
         printlog('Error! Please provide at least energies')
 
 
@@ -60,13 +60,13 @@ def determine_barrier(positions = None, energies = None):
     e_at_roots = spl(r)
     if len(e_at_roots) > 0:
         # diff_barrier = max( e_at_roots ) # the maximum value 
-        print('roots are at ', r, e_at_roots)
+        printlog('roots are at ', r, e_at_roots)
 
         #find r for saddle point. the energy at saddle point is most far away from the energy at initial position by definition
         de_s = np.abs(e_at_roots-energies[0])
         i_r_de_max = np.argmax(de_s)
-        print(de_s)
-        print(i_r_de_max)
+        # print(de_s)
+        # print(i_r_de_max)
 
 
         r_de_max = r[i_r_de_max]
@@ -75,14 +75,14 @@ def determine_barrier(positions = None, energies = None):
         
         sign =  - np.sign(curvuture_at_saddle)
         if curvuture_at_saddle < 0:
-            critical_point_type = 'max'
+            critical_point_type = 'maximum'
         elif curvuture_at_saddle > 0:
-            critical_point_type = 'min'
+            critical_point_type = 'minimum'
         else:
             critical_point_type = 'undefined'
 
-
-        print('saddle point at ', r_de_max, e, 'is a local', critical_point_type)
+        # print(type(r_de_max), type(e), critical_point_type)
+        print('Saddle point at {:.2f} {:.2f} is a local {:}'.format(r_de_max, float(e), critical_point_type)  )
 
 
     else:
@@ -97,7 +97,7 @@ def determine_barrier(positions = None, energies = None):
     # if de > diff_barrier:
     diff_barrier = de * sign
 
-    print('diff_barrier', diff_barrier)
+    print('Migration barrier is {:.2f}'.format( diff_barrier))
     # plt.plot(spl(np.linspace(0, ma, 1000)))
     # plt.show()
 
@@ -869,7 +869,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     cl2.barrier = diff_barrier
 
 
-
+    results_dic['atom_pos'] = atom_pos
+    results_dic['mep_energies'] = mep_energies
 
 
     if 'mep' in show:

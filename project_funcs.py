@@ -1953,6 +1953,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     curres['id_start'] = (idC[0], idC[1],1)
                     curres['id_end']   = (idC[0], idC[1],2)
 
+
+                    curres['atom_pos']     = res['atom_pos']
+                    curres['mep_energies'] = res['mep_energies']
+
                     # dn = calc[idC].end.natom - calc[idB].end.natom
                     # v_int1 = calc[idC[0], idC[1],1].energy_sigma0 - calc[idB].energy_sigma0 - dn * curres['Eref']
                     # v_int2 = calc[idC[0], idC[1],2].energy_sigma0 - calc[idB].energy_sigma0 - dn * curres['Eref']
@@ -3786,6 +3790,23 @@ def create_project_from_geofile(filename):
 
     return projectname
 
+def get_alkali_ion(st):
+
+    for_diffusion = []
+    for el in st.get_elements():
+        if el in ['Li', 'Na', 'K', 'Rb', 'Mg']:
+            if el not in for_diffusion:
+                for_diffusion.append(el)
+
+    el = for_diffusion[0]
+    if len(for_diffusion) > 1:
+        printlog('Warning! More than one candidate for NEB was found, I use first', el)
+
+    return el
+
+
+
+
 def process_cathode_material(projectname, step = 1):
     """
     AI module to process cif file and automatic calculation of standard properties of cathode material 
@@ -3794,15 +3815,41 @@ def process_cathode_material(projectname, step = 1):
 
     """
     from geo import determine_symmetry_positions, primitive
-    
+
     pn = projectname
+    
+    sc_set = '4uis'; m_set = '1u'; n_set  = '1u'; clust = 'cee' # 
+
+
     if step == 1:
         ''
         if 1 not in db[pn]['steps']:
             startgeofile = db[pn]['startgeofile'] 
             st = smart_structure_read(startgeofile)
             st = primitive(st)
-            add_loop(pn,'1u',1, input_st = st, it_folder = pn)
+            add_loop(pn, m_set, 1, input_st = st, it_folder = pn)
             startgeofile = db[pn]['steps'].append(1) 
         else:
-            res_loop(pn,'1u',1)
+            res_loop(pn, m_set, 1)
+
+    if step == 2:
+
+        # if 2 not in db[pn]['steps']:
+        it = pn
+        cl = db[it, m_set, 1]
+
+        el  = get_alkali_ion(cl.end)
+
+        it_ds = it.replace(el, '')
+        printlog('Name for DS is', it_ds)
+
+        pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
+        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'scale_region':(-3, 5), 'readfiles':1, 'ortho':[10,10,10]}
+
+        p = (1,1)
+
+        pd['start_pos'] = p[0] 
+        pd['end_pos']   = p[1] 
+
+        calc_barriers('normal', up_res = 'up1', show_fit = 1, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = { 'check_job':1, 'cluster':clust},
+        fitplot_args = {'ylim':(-0.02, 1.8)}, style_dic = {'p':'bo', 'l':'-b', 'label':'IS'}) 

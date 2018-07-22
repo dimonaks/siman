@@ -82,7 +82,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     mep_pos =  np.array([p*path_length for p in u])
 
 
-    if 0: #plot the path in 3d
+    if 1: #plot the path in 3d
         fig = plt.figure()
         ax = Axes3D(fig)
         ax.plot(data[0], data[1], data[2], label='originalpoints', lw =2, c='Dodgerblue')
@@ -127,14 +127,21 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     # sys.exit()
     # print()
 
+    if 'fig_format' not in fitplot_args:
+        fitplot_args['fig_format'] = 'eps'
+
+    if 'xlim' not in fitplot_args:
+        fitplot_args['xlim'] = (-0.05, None  )
+
+
+
     path2saved = None
     if plot:
         # print(image_name)
         path2saved = fit_and_plot(orig = (mep_pos, eners, style_dic['p'], style_dic['label']), 
             spline = (xnew, ynew, style_dic['l'], None), 
-            xlim = (-0.05, None  ),
         xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, filename = filename, show = show, 
-        fig_format = 'eps', **fitplot_args)
+        **fitplot_args)
 
         # print(image_name, filename)
         if 0:

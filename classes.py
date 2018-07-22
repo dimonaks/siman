@@ -1537,7 +1537,7 @@ class Structure():
                 #     continue
                 # if all(x1 == x1_del) or (x2 == x2_del):
                 #     continue
-                if self.image_distance(x1, x2)[0] < tol:
+                if self.image_distance(x1, x2, r = self.rprimd)[0] < tol:
                     count+=1
                     if count > 1:
                         raise RuntimeError # for detecting multiple overlaps please make this function more universal - removing not by numbers, but by coordinates or more intelligent- see remove_atoms()
