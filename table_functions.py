@@ -38,7 +38,7 @@ from geo import replic
 
 
 def latex_table(table, caption, label, header = None, fullpage = '', filename = None, writetype = 'w', header0 = None, size = None,
-    replace = None, float_format = None):
+    replace = None, float_format = None, tab_type = 'tabular', width = 0.75):
     """
     If header is not provided, table[0] is used as a header
 
@@ -49,6 +49,13 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
     replace - list of tuples for replacements
 
     float_format - list of float numbers
+
+    tab_type (str) - see latex types of tables
+        available: 
+        'tabular'
+        'tabularx'
+    width (float) - in units of textwidth
+
 
     """
 
@@ -105,7 +112,14 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
     myprint('\\caption{'+caption+'}')
     myprint('\\label{'+label+'}')
 
-    myprint('\\begin{tabular}{l'+ n*'c'+'r}')
+    if tab_type == 'tabular':
+        # tabular = 
+        myprint('\\begin{tabular}{l'+ n*'c'+'r}')
+    elif tab_type == 'tabularx':
+        myprint('\\begin{tabularx}{'+str(width)+'\\textwidth}{X'+ n*'X'+'X}')
+    else:
+        printlog('Error! Unknown type of tabular env!')
+
     myprint('\\hline')
 
     if header0:
@@ -147,7 +161,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
 
     myprint('\\hline')
-    myprint('\\end{tabular}')
+    myprint('\\end{'+tab_type+'}')
     myprint('\\end{table'+fullpage+'}')
 
     if filename:

@@ -1,5 +1,5 @@
 from __future__ import division, unicode_literals, absolute_import 
-import os, copy, shutil
+import os, copy, shutil, sys
 import numpy as np
 
 import header
@@ -35,7 +35,6 @@ def determine_barrier(positions = None, energies = None):
     """
 
     import scipy
-    import matplotlib.pyplot as plt
 
     if positions is None:
         positions = range(len(energies))
@@ -155,6 +154,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     n1  = cl1.end.nznucl[i_n1]
     n2  = cl2.end.nznucl[i_n2]
 
+    # print(n1,n2)
 
     nz1_dict = {}
     nz2_dict = {}
@@ -171,6 +171,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
     for z in z_alk_ions:
         mul = (nz1_dict[z] / n1 - nz2_dict[z] / n2)
+        # print(mul)
         if abs(mul) > 0: #only change of concentration of one ion type is allowed; the first found is used
             printlog('Change of concentration detected for ', element_name_inv(z))
             if not energy_ref: #take energy ref from dict
@@ -702,6 +703,11 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     
 
     atom_num = find_moving_atom(cl1.end, cl2.end)
+    # cl1.poscar()
+    # cl2.poscar()
+
+    # print('atom_num',atom_num)
+    # sys.exit()
 
     #prepare lists
     ni = cl.set.vasp_params['IMAGES']

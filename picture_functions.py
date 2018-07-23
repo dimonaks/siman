@@ -70,6 +70,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     if not fitplot_args:
         fitplot_args = {}
+
+    # print
+
     atom_pos = np.array(atom_pos)
     data = atom_pos.T #
     tck, u= interpolate.splprep(data) #now we get all the knots and info about the interpolated spline
@@ -82,7 +85,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     mep_pos =  np.array([p*path_length for p in u])
 
 
-    if 1: #plot the path in 3d
+    if 0: #plot the path in 3d
         fig = plt.figure()
         ax = Axes3D(fig)
         ax.plot(data[0], data[1], data[2], label='originalpoints', lw =2, c='Dodgerblue')
@@ -133,14 +136,19 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     if 'xlim' not in fitplot_args:
         fitplot_args['xlim'] = (-0.05, None  )
 
+    if 'xlabel' not in fitplot_args:
+        fitplot_args['xlabel'] = 'Reaction coordinate ($\AA$)'
 
+
+    if 'ylabel' not in fitplot_args:
+        fitplot_args['ylabel'] = 'Energy (eV)'
 
     path2saved = None
     if plot:
         # print(image_name)
         path2saved = fit_and_plot(orig = (mep_pos, eners, style_dic['p'], style_dic['label']), 
             spline = (xnew, ynew, style_dic['l'], None), 
-        xlabel = 'Reaction coordinate ($\AA$)', ylabel = 'Energy (eV)', image_name =  image_name, filename = filename, show = show, 
+        image_name =  image_name, filename = filename, show = show, 
         **fitplot_args)
 
         # print(image_name, filename)
@@ -190,7 +198,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     xlog = False,ylog = False, scatter = False, 
     legend = False, ncol = 1, 
     fontsize = None, legend_fontsize=None, markersize = None,  
-    linewidth = None, hor = False, fig_format = 'eps', dpi = 300,
+    linewidth = None, hor = False, ver = True, fig_format = 'eps', dpi = 300,
     ver_lines = None, xy_line = None, x_nbins = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
@@ -229,6 +237,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
     ver_lines - list of dic args for  vertical lines {'x':, 'c', 'lw':, 'ls':}
+    ver - vertical line at 0
+    hor - horizontal line at 0
+
 
     hide_ylabels - just hide numbers
 
@@ -236,7 +247,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     corner_letter - letter in the corner of the plot
 
-    pad - additional padding, experimental
+    pad - additional padding, if dict than the same keys as in plt.subplots_adjust() are used
 
     annotate - annotate each point, 'annotates' list should be in data dic!
 
@@ -273,6 +284,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
 
+    # print('ax is', ax)
     
     if ax is None:
         if first:
@@ -281,7 +293,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
         ax = plt.gca() # get current axes )))
         # ax  = fig.axes
-
+    # print('ax is', ax)
 
     if title: 
         ax.title(title)
@@ -457,7 +469,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     if hor: 
         ax.axhline(color = 'k') #horizontal line
 
-    ax.axvline(color='k') # vertical line at 0 always 
+    if ver:
+        ax.axvline(color='k') # vertical line at 0 always 
 
     if ver_lines:
         for line in ver_lines:
@@ -508,16 +521,21 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     # plt.tight_layout(pad = 2, h_pad = 0.5)
 
 
-    plt.tight_layout()
 
+    plt.tight_layout()
     if pad:
-        plt.subplots_adjust(left=0.13, bottom=None, right=None, top=None,
+        # pad =0.13
+        if type(pad) == dict:
+            plt.subplots_adjust(**pad)
+        else:
+            plt.subplots_adjust(left=0.13, bottom=None, right=None, top=None,
                         wspace=0.07, hspace=None)
 
 
     path2saved = ''
     
     if last:
+
         if image_name:
             # plt.subplots_adjust(hspace=0.1)
 

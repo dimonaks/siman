@@ -1422,7 +1422,8 @@ class Structure():
                 if xr[j]  < bob:  
                     xr[j] = xr[j] - int(xr[j]) + 1 #allows to account that xr can be more than 2
                 if xr[j]  >= upb:  
-                    xr[j] = xr[j] - int(xr[j]) - 1
+                    # print(xr[j], int(xr[j]))
+                    xr[j] = xr[j] - int(xr[j]) 
         # n+=1
         # zmin = 100
         # for xr in st.xred:

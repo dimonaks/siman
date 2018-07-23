@@ -145,7 +145,8 @@ def find_moving_atom(st1, st2):
 
     # diffv = np.array(st1.xcart) - np.array(st2.xcart)
     # diffn = np.linalg.norm(diffv, axis = 1)
-
+    # st1.write_poscar()
+    # st2.write_poscar()
 
     diffn = []
     for x1, x2 in zip(st1.xcart, st2.xcart):
@@ -825,12 +826,15 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
     # print(st.natom)
 
-    if len(st.typat) != len(st.magmom):
-        st.magmom = [None]*st.natom
-        mag_flag = False
+    if hasattr(st, 'magmom'):
+        if len(st.typat) != len(st.magmom):
+            st.magmom = [None]*st.natom
+            mag_flag = False
+        else:
+            mag_flag = True
     else:
-        mag_flag = True
-
+        st.magmom = [None]*st.natom
+        mag_flag = False        
 
     sc_natom = sc.vol/st.vol*st.natom # test
     printlog('The supercell should contain', sc_natom, 'atoms ... \n', imp = 'y', end = ' ')
