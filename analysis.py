@@ -245,6 +245,8 @@ def form_en(sources, products, norm_el = None):
     sources, products - list of tuples (x, cl), where x is multiplier and cl is calculation
     norm_el  - which element to use for normalization
         'all' - normalize by total number of atoms
+        'el'
+        int - divide by this number
 
     """
 
