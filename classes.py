@@ -469,6 +469,19 @@ class Structure():
                     chg = calc_oxidation_states(st = self)
                 elif chg_type == 'tot':
                     chg = self.charges
+                
+                if 0: #check total charge
+                    # st = st.copy()
+                    chg = copy.copy(chg)
+                    tot = sum(chg)
+                    print('Total charge is ', tot, 'I subtract it uniformly from each atom')
+                    d = tot/self.natom
+                    chg = [c - d for c in chg]
+
+
+
+
+
                 pm.add_oxidation_state_by_site(chg)
 
 
