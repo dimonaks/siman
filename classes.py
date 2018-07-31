@@ -5551,11 +5551,11 @@ class CalculationVasp(Calculation):
                     if i[1] == ise:
                         idd = i
                         # add = True
-                        break
+                        # break
                     else:
                         idd = None
 
-                else:
+                if idd is None:
                     add = True
                     # idd  = self.children[i_child]
                 # print(idd)
