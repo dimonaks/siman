@@ -5605,7 +5605,7 @@ class CalculationVasp(Calculation):
         mode - 
             pdos
             band
-            free - thermal properties
+            free - thermal properties, converted to eV!!!
         """
 
         if plot == 1:
@@ -5624,7 +5624,9 @@ class CalculationVasp(Calculation):
 
         cwd = os.getcwd()
 
+
         os.chdir(self.dir)
+        print(self.dir)
         out = runBash('phonopy --fc '+os.path.basename(self.path['xml']))
 
         printlog('phonopy out: ', out)

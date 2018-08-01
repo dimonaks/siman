@@ -115,7 +115,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     cl2 (Calculation) - structure with lower concentration
     energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
     
-    temperature (float) - potential at temperature, self.F is expected from phonopy calculations
+    temp(float) - potential at temperature, self.F is expected from phonopy calculations
     """
     if cl1 is None or cl2 is None:
         printlog('Warning! cl1 or cl2 is none; return')
@@ -532,7 +532,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
     magmom = np.array(st.magmom)
     if len(magmom) == 0 :
-        printlog('Error! magmom is empty')
+        printlog('Warning! magmom is empty')
 
     _, mag_numbers = st.get_maglist()
 
