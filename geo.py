@@ -1313,10 +1313,12 @@ def calc_k_point_mesh(rprimd, kspacing):
 
 
 
-def remove_half_based_on_symmetry(st, sg = None):
+def remove_half_based_on_symmetry(st, sg = None, info_mode = 0):
     """
     Generate all possible configurations by removing half of atoms
     sg (int) - give back structure with specific space group
+
+    info_mode (bool) if 1 then return list of possible space groups
     
     return list of structures with sg space groups
 
@@ -1358,6 +1360,7 @@ def remove_half_based_on_symmetry(st, sg = None):
         # if nm > 50:
             # print(nm)
         symmetries.append(nm)
+        
         if nm == sg:
             # st_rem.jmol()
             # sc = supercell(st_rem, [14,14,14])
@@ -1369,12 +1372,14 @@ def remove_half_based_on_symmetry(st, sg = None):
 
     # print(len(orderings))
     print('The following space groups were found', Counter(symmetries))
+    if info_mode:
+        return list(set(symmetries))
 
     return structures
 
 
 
-def remove_half(st, el, sg = None):
+def remove_half(st, el, sg = None, info_mode = 0):
     """
     # works only for 
 
@@ -1388,6 +1393,7 @@ def remove_half(st, el, sg = None):
 
     """
 
+    prim = 0
 
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     from pymatgen.io.vasp.inputs import Poscar
@@ -1400,36 +1406,44 @@ def remove_half(st, el, sg = None):
 
     st_mp = st_only_el.convert2pymatgen()
 
-    sf = SpacegroupAnalyzer(st_mp)
-
-    st_mp_prim = sf.find_primitive() # find primitive based only on element el
-
+    if prim:
+        sf = SpacegroupAnalyzer(st_mp)
+        st_mp_prim = sf.find_primitive() # find primitive based only on element el
+    else:
+        st_mp_prim = st_mp
 
     #convert back to my format! please improve!!!
     p = Poscar(st_mp_prim)
     p.write_file('xyz/POSCAR')
     st_prim = smart_structure_read('xyz/POSCAR')
 
+    if info_mode:
+        return remove_half_based_on_symmetry(st_prim, info_mode = 1)
 
     sts = remove_half_based_on_symmetry(st_prim, sg)
+
 
 
 
     st_only_el_half = sts[0]   # now only first configuration is taken, they could be different
 
 
+    if prim:
+        mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
+        mul_matrix = np.array(mul_matrix_float)
+        mul_matrix = mul_matrix.round(0)
+        mul_matrix = mul_matrix.astype(int)
 
-    mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
-    mul_matrix = np.array(mul_matrix_float)
-    mul_matrix = mul_matrix.round(0)
-    mul_matrix = mul_matrix.astype(int)
 
 
+        sc_only_el_half = create_supercell(st_only_el_half, mul_matrix = mul_matrix)
 
-    sc_only_el_half = create_supercell(st_only_el_half, mul_matrix = mul_matrix)
+        sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
+        sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
 
-    sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
-    sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
+    else:
+        sc_only_el_half = st_only_el_half
+        # sc_only_el_half
 
 
     # st_only_el.write_poscar('xyz/POSCAR1')

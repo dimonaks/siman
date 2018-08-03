@@ -17,7 +17,7 @@ from neb import add_neb
 from classes import Calculation
 from analysis import calc_redox,  matrix_diff
 from geo import create_deintercalated_structure
-from geo import remove_one_atom
+from geo import remove_one_atom, remove_half_based_on_symmetry, remove_half
 from geo import create_replaced_structure, create_antisite_defect3, determine_symmetry_positions
 from inout import write_occmatrix
 from database import add_to_archive_database
@@ -3807,11 +3807,22 @@ def get_alkali_ion(st):
 
 
 
-def process_cathode_material(projectname, step = 1):
+def process_cathode_material(projectname, step = 1, target_x = 0):
     """
     AI module to process cif file and automatic calculation of standard properties of cathode material 
     
     step 1 - read geo and run simple relaxation
+
+    step 2 - calc barriers, IS
+
+    step 3 - calc barriers, DS
+
+
+    INPUT:
+    target_x (float) - required concentration for DS state
+
+
+
 
     """
     from geo import determine_symmetry_positions, primitive
@@ -3832,7 +3843,7 @@ def process_cathode_material(projectname, step = 1):
         else:
             res_loop(pn, m_set, 1)
 
-    if step == 2:
+    if step in [2, 3]:
 
         # if 2 not in db[pn]['steps']:
         it = pn
@@ -3851,5 +3862,39 @@ def process_cathode_material(projectname, step = 1):
         pd['start_pos'] = p[0] 
         pd['end_pos']   = p[1] 
 
-        calc_barriers('normal', up_res = 'up1', show_fit = 1, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = { 'check_job':1, 'cluster':clust},
-        fitplot_args = {'ylim':(-0.02, 1.8)}, style_dic = {'p':'bo', 'l':'-b', 'label':'IS'}) 
+        add_loop_dic = { 'check_job':1, 'cluster':clust}
+        fitplot_args = {'ylim':(-0.02, 1.8)}
+
+        if step == 2:
+            style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
+            calc_barriers('normal', up_res = 'up1', show_fit = 1, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+            fitplot_args = fitplot_args, style_dic = style_dic) 
+
+        if step == 3:
+            # cl.res()
+            style_dic  = {'p':'bo', 'l':'-b', 'label':'DS'}
+
+            st = cl.end
+
+            pos = determine_symmetry_positions(st, el)
+            # cl.me()
+            if target_x == 0.5:
+                name = el+'05'+it_ds
+
+                syms =  remove_half(st, el, info_mode = 1)
+                printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
+
+
+                # sys.exit()
+                for sg in syms:
+                    st_rem  =  remove_half(st, el, sg = sg)
+                    id_new = (name+'sg'+str(sg), m_set, 1)
+                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = 'up2')
+                    pd['id'] = id_new
+                    calc_barriers('normal', el, el, up_res = 'up1', show_fit = 1, up = 1, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                    fitplot_args = fitplot_args, style_dic = style_dic) 
+                # st = remove_half
+
+            if target_x == 1:
+                calc_barriers('make_ds', el, el, up_res = 'up1', show_fit = 1, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                fitplot_args = fitplot_args, style_dic = style_dic) 
