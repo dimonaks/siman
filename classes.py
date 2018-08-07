@@ -509,6 +509,10 @@ class Structure():
         # cm = Composition(self.get_elements())
         return cm.reduced_formula
 
+    def get_name(self):
+        from small_functions import latex_chem
+        return latex_chem(self.get_reduced_formula())
+
     def get_formula(self):
         ''
         # pm = self.convert2pymatgen()

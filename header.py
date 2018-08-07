@@ -253,7 +253,7 @@ printlog = print_and_log
 
 
 
-def runBash(cmd, env = None, detached = False):
+def runBash(cmd, env = None, detached = False, cwd = None):
     """Input - string; Executes Bash commands and returns stdout
 Need: import subprocess
     """
@@ -272,7 +272,7 @@ Need: import subprocess
     # my_env["PATH"] = "/opt/local/bin:/opt/local/sbin:" + my_env["PATH"]
     p = subprocess.Popen(cmd, 
         # executable='/bin/bash', 
-        shell=True, stdout=stdout, stderr = stderr, stdin = None, env = my_env)
+        shell=True, stdout=stdout, stderr = stderr, stdin = None, env = my_env, cwd = cwd)
     # print (cmd)
     # print 'Bash output is\n'+out
     # print ( str(out, 'utf-8') ) 

@@ -59,13 +59,16 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
     """
 
+    table_string = ''
 
     def myprint(string):
+        nonlocal table_string
         if filename:
             f.write(string+"\n")
             print( string)
         else:
             print( string)
+        table_string+=string+'\n'
 
 
     if filename:
@@ -144,11 +147,11 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         r+=' '
         if '-- ' in r:
             r = r.replace('-- ',' - ')
-        
-        for rep in replace:
-            # if rep[0] in r:
+        if replace:
+            for rep in replace:
+                # if rep[0] in r:
 
-            r = r.replace(*rep)
+                r = r.replace(*rep)
 
 
 
@@ -166,26 +169,29 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
     if filename:
         f.close()
-    return
+    return table_string
 
-def geo_table_row(cl, name = '', show_alpha = 0, mnpo4_hack = False):
-    #Basic table
+def geo_table_row(cl = None, st = None, name = '', show_alpha = 0, mnpo4_hack = False):
+    #return list of geo data for cl, which can be used for table
     """
     mnpo4_hack (bool) - if true exchange a and c for mnpo4 phase
     """
     from small_functions import latex_spg, latex_chem
-    if not cl:
-        return
-    st = cl.end
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+    if cl:
+        st = cl.end
     # if not name:
     spg = st.get_space_group_info()
     spg = latex_spg(spg[0])
-    name = latex_chem(name)
+    
+
+
+
 
 
     #transform to standard
-    st_mp = cl.end.convert2pymatgen()
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    st_mp = st.convert2pymatgen()
     symprec = 0.1
     sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
 
@@ -201,10 +207,20 @@ def geo_table_row(cl, name = '', show_alpha = 0, mnpo4_hack = False):
     # st_mp_prim = sf.get_conventional_standard_structure()
 
 
+    if not name:
+       # print(dir(st_mp ))
+       # st.printme()
+       name = st.get_reduced_formula()
+
+
+
+    name = latex_chem(name)
+
+
 
 
     alpha, beta, gamma = st.get_angles()
-    elem = np.array(cl.end.get_elements())
+    elem = np.array(st.get_elements())
 
     alpha = '& {:5.1f}'.format(alpha)
     if not show_alpha:
@@ -222,7 +238,60 @@ def geo_table_row(cl, name = '', show_alpha = 0, mnpo4_hack = False):
 
 
 
+def table_geometry(st_list):
+    #Produce standart table with lattice constants
+    # print(row)
+    rows = []
+    for st in st_list:
+        st.printme()
+        row = geo_table_row(st = st)
+        rows.append(row)
 
 
+    caption = "Lattice parameters (\AA), volume (\AA$^3$), and space group (spg)."
+    return latex_table(rows, caption, 'tab:const', 'Structure & src & $a$ & $b$ & $c$ & Vol. & spg' )
+
+def table_potentials(cl_list):
+    from analysis import calc_redox
+    from small_functions import  get_common_chemical_base
+    cl_b = cl_list[0]
+    rows = []
+    for cl in cl_list[1:]:
+        a = calc_redox(cl_b, cl)
+        n_b = cl_b.end.get_name()
+        n = cl.end.get_name()
+
+        base = get_common_chemical_base(cl_b.end, cl.end)
+
+        rows.append([n_b.replace(base, 'X')+'/'+n.replace(base, 'X'), a['redox_pot'], a['vol_red']])
+
+    caption = "Redox potential (V) and volume change (\\%). X="+base
+    return latex_table(rows, caption, 'tab:const', 'Pair & $U$ & $dV$ ', float_format = [1,1] )
 
 
+def generate_latex_report(text, filename):
+    # 
+
+    from header import runBash
+    fn = filename+'.tex'
+    makedir(fn)
+    head = r"""
+\documentclass{article}
+% General document formatting
+\usepackage[margin=0.7in]{geometry}
+\usepackage[parfill]{parskip}
+\usepackage[utf8]{inputenc}
+
+% Related to math
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+
+\begin{document}"""
+    
+
+    with open(fn, 'w') as f:
+        f.write(head+'\n')
+        f.write(text+'\n')
+        f.write(r'\end{document}')
+
+
+    runBash('pdflatex '+os.path.basename(fn), cwd = os.path.dirname(fn))

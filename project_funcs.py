@@ -3817,6 +3817,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
 
     step 3 - calc barriers, DS
 
+    step 4 - make table with lattice constants for IS and DS
+
+    step 5 - make table with intercalation potential 
 
     INPUT:
     target_x (float) - required concentration for DS state
@@ -3826,11 +3829,22 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
 
     """
     from geo import determine_symmetry_positions, primitive
-
+    show_fit  = 0
     pn = projectname
     
+
+
+
     sc_set = '4uis'; m_set = '1u'; n_set  = '1u'; clust = 'cee' # 
 
+    if 'res' not in db[pn]:
+        db[pn]['res'] = []
+
+    if 'latex' not in db[pn]:
+        db[pn]['latex'] = {}
+
+
+    service_list = db[pn]['res']
 
     if step == 1:
         ''
@@ -3867,8 +3881,13 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
 
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
-            calc_barriers('normal', up_res = 'up1', show_fit = 1, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+            a = calc_barriers('normal', up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic) 
+            
+            # print(a)
+            if a[0] not in service_list:
+                service_list.append(a[0])
+            # db[pn]['B'] = [ a[0]['B'] ]
 
         if step == 3:
             # cl.res()
@@ -3889,12 +3908,53 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
                 for sg in syms:
                     st_rem  =  remove_half(st, el, sg = sg)
                     id_new = (name+'sg'+str(sg), m_set, 1)
-                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = 'up2')
+                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = 'up1')
                     pd['id'] = id_new
-                    calc_barriers('normal', el, el, up_res = 'up1', show_fit = 1, up = 1, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                    a = calc_barriers('normal', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
                     fitplot_args = fitplot_args, style_dic = style_dic) 
-                # st = remove_half
+                    if a[0] not in service_list:
+                        service_list.append(a[0])
 
             if target_x == 1:
-                calc_barriers('make_ds', el, el, up_res = 'up1', show_fit = 1, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                a = calc_barriers('make_ds', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
                 fitplot_args = fitplot_args, style_dic = style_dic) 
+                if a[0] not in service_list:
+                
+                    service_list.append(a[0])
+
+
+    if step == 4:
+        ''
+        #Lattice constants, and intercalation potentials 
+        #the first calculation now is considered as intercalated 
+        # IS = 
+        from table_functions import table_geometry, table_potentials
+
+        # print('service list is ', service_list)
+        """Lattice constants"""
+
+        sts = []
+        cll = []
+        for a in service_list:
+            sts.append(db[a['id']].end)
+            cll.append(db[a['id']])
+
+        table = table_geometry(sts)
+        db[pn]['latex']['t1'] = table
+
+
+        """Intercalation potentials"""
+        table = table_potentials(cll)
+        db[pn]['latex']['t2'] = table
+
+
+    if step == 4:
+        #create report
+        from table_functions import generate_latex_report
+        
+        latex_text = ''
+
+        for key in ['t1', 't2']:
+            latex_text+=db[pn]['latex'][key] +'\n'
+
+        generate_latex_report(latex_text, filename = 'tex/'+pn+'/'+pn)
