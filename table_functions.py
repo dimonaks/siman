@@ -243,7 +243,7 @@ def table_geometry(st_list):
     # print(row)
     rows = []
     for st in st_list:
-        st.printme()
+        # st.printme()
         row = geo_table_row(st = st)
         rows.append(row)
 

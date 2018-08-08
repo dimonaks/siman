@@ -1707,6 +1707,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 res_loop(*idA, up = up_res, readfiles = readfiles, choose_outcar = choose_outcar, show = 'm', check_job = 0)
                 # res_loop(*idA, choose_outcar = 3, show = 'fo')
                 # res_loop(*idA, choose_outcar = 4, show = 'fo')
+                curres['id_sc'] = idA
                 if '4' in calc[idA].state:
                     
 
@@ -3807,7 +3808,7 @@ def get_alkali_ion(st):
 
 
 
-def process_cathode_material(projectname, step = 1, target_x = 0):
+def process_cathode_material(projectname, step = 1, target_x = 0, update = 0 ):
     """
     AI module to process cif file and automatic calculation of standard properties of cathode material 
     
@@ -3822,22 +3823,22 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
     step 5 - make table with intercalation potential 
 
     INPUT:
-    target_x (float) - required concentration for DS state
-
+    target_x (float) - required concentration of Na in DS state
+    update - allows to rewrite service table
 
 
 
     """
-    from geo import determine_symmetry_positions, primitive
+    from geo import determine_symmetry_positions, primitive, remove_x
     show_fit  = 0
     pn = projectname
-    
+    run_neb = 0
 
 
 
     sc_set = '4uis'; m_set = '1u'; n_set  = '1u'; clust = 'cee' # 
 
-    if 'res' not in db[pn]:
+    if update or 'res' not in db[pn]:
         db[pn]['res'] = []
 
     if 'latex' not in db[pn]:
@@ -3882,7 +3883,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
             a = calc_barriers('normal', up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
-            fitplot_args = fitplot_args, style_dic = style_dic) 
+            fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
             
             # print(a)
             if a[0] not in service_list:
@@ -3897,30 +3898,40 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
 
             pos = determine_symmetry_positions(st, el)
             # cl.me()
-            if target_x == 0.5:
-                name = el+'05'+it_ds
 
-                syms =  remove_half(st, el, info_mode = 1)
+            if target_x == 0:
+                a = calc_barriers('make_ds', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                if a[0] not in service_list:
+                
+                    service_list.append(a[0])
+
+            else:
+                x_str = str(target_x).replace('.', '')
+                x_vac = 1 - target_x # concentration of vacancies
+                name = el+x_str+it_ds
+
+                syms =  remove_x(st, el, info_mode = 1, x = x_vac)
+
                 printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
 
 
                 # sys.exit()
                 for sg in syms:
-                    st_rem  =  remove_half(st, el, sg = sg)
+                    st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
+
                     id_new = (name+'sg'+str(sg), m_set, 1)
                     add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = 'up1')
+                    
                     pd['id'] = id_new
                     a = calc_barriers('normal', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
-                    fitplot_args = fitplot_args, style_dic = style_dic) 
-                    if a[0] not in service_list:
-                        service_list.append(a[0])
+                    fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                    info = a[0]
+                    info['x'] = target_x
+                    if info not in service_list:
+                        service_list.append(info)
 
-            if target_x == 1:
-                a = calc_barriers('make_ds', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
-                fitplot_args = fitplot_args, style_dic = style_dic) 
-                if a[0] not in service_list:
-                
-                    service_list.append(a[0])
+                    # print (service_list)
 
 
     if step == 4:
@@ -3936,8 +3947,21 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
         sts = []
         cll = []
         for a in service_list:
-            sts.append(db[a['id']].end)
-            cll.append(db[a['id']])
+            # print(a)
+            cl = db[a['id']]
+            try:
+                cl.end
+            except:
+                service_list.remove(a)
+                continue
+            st = cl.end
+            st.x = a['x']
+            sts.append(st)
+            cll.append(cl)
+            if 1:
+                """Plot figures"""
+                if 'id_sc' in a:
+                    db[a['id_sc']].end.write_xyz(jmol = 1)
 
         table = table_geometry(sts)
         db[pn]['latex']['t1'] = table
@@ -3948,10 +3972,13 @@ def process_cathode_material(projectname, step = 1, target_x = 0):
         db[pn]['latex']['t2'] = table
 
 
+
+
+
     if step == 4:
         #create report
         from table_functions import generate_latex_report
-        
+
         latex_text = ''
 
         for key in ['t1', 't2']:
