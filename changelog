@@ -12,5 +12,7 @@ st.jmol() now uses vasp format
 new property st.outfile - path to output file added
 mcif argument added to write_xyz() enabling visualization of magnetic structures with jmol=1 
 cl.add_new_name() method added
-cluster_tools/fit_tool.py new paths added for numy support on cee cluster (local change for skoltech)
-now modules are written for SLURM from project_conf.py
+cluster_tools/fit_tool.py new paths added for numpy support on cee cluster (local change for skoltech)
+now modules are written for SLURM from project_conf.py, please add them as in example below:
+    CLUSTERS['cee']['modules'] = 'module add prun/1.0; module add intel/16.0.2.181; module add impi/5.1.3.181\n'
+}

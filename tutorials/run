@@ -1,4 +1,4 @@
 squeue
-sbatch -p AMG /home/aksenov/topologic/Bi2Se3//Bi2Se3.bader/Bi2Se3.bader.run
+sbatch -p AMG /home/aksenov/barriers/Cu/scaled//super///Cu2.su.s7.ion/Cu2.su.s7.ion.run
 squeue
 mv run last_run
