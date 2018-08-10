@@ -1,4 +1,0 @@
-squeue
-sbatch -p AMG /home/aksenov/topologic/Bi2Se3//Bi2Se3.bader/Bi2Se3.bader.run
-squeue
-mv run last_run

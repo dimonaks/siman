@@ -209,6 +209,23 @@ class Structure():
                         del (natom1[ztype][k])
         return st1
 
+
+    def fix_atoms(self, numbers = None):
+        #fix all atom with numbers in numbers list
+        
+        #TODO allow choice of axis of fix 
+        st = copy.deepcopy(self)
+        
+        if len(st.select) != st.natom:
+            printlog('Warning! number of select atom is not equal to total number of atoms. First I make all moveable')
+            st = st.selective_all()
+
+        # print(st.select)
+        for i in numbers:
+            st.select[i] = [False, False, False]
+
+        return st
+
     def fix_layers(self, xred_range, highlight = False):
         """
         fix atoms in layers normal to R3
@@ -349,6 +366,20 @@ class Structure():
 
         return ifmaglist, mag_numbers
 
+    def show_mag(self, i):
+        # show magmom of i atoms, starting from 1
+        i-=1
+        m = self.magmom[i]
+        el = self.get_elements()[i]
+        print('Mag for {:s} = {:.2f}'.format(el, m))
+
+        return 
+
+    def get_mag_tran(self):
+        #show mag moments of transition metals 
+        l = self.get_maglist()[0]
+        # print(l)
+        return np.array(self.magmom)[l]
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -374,12 +405,20 @@ class Structure():
 
         return st
 
-    def convert2pymatgen(self, oxidation = None, slab = False):
+    def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
         """
         oxidation (dict) - {'Ti':'Ti3+'}
+        if self.charges exist then it is used to update oxidation states of atoms
+        chg_type - 'ox' - oxidation states calculated from self.charges 
+                   'norm' - normalized self.charges
+                    'tot' - just self.charges
+                    'pot' - charges from potentials zval, number of valence electrons
+
 
         slab - if True return slab object is returned - limited functional is implemented
         """
+        from analysis import calc_oxidation_states
+
         site_properties = {}
 
         if hasattr(self, 'magmom') and any(self.magmom):
@@ -409,16 +448,43 @@ class Structure():
             pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
 
-        if hasattr(self, 'charges') and any(self.charges):
-
-            if 1: #normalize charges
-                t = sum(self.charges)/len(self.charges)
-                chg = [c-t for c in self.charges ]
-                # print(t)
-            else:
-                chg = self.charges
-
+        if chg_type == 'pot':
+            
+            printlog('Using zval as charges', imp = '')
+            chg = [z*-1 for z in self.get_elements_zval()           ]
+            # print(chg)
             pm.add_oxidation_state_by_site(chg)
+        else:
+            if hasattr(self, 'charges') and any(self.charges):
+
+                chg_type = 'ox' # 'norm', 'tot'
+
+                # print(chg_type)
+                if chg_type == 'norm': #normalize charges
+                    t = sum(self.charges)/len(self.charges)
+                    chg = [c-t for c in self.charges ]
+                    # print(t)
+                
+                elif chg_type == 'ox':
+                    chg = calc_oxidation_states(st = self)
+                elif chg_type == 'tot':
+                    chg = self.charges
+                
+                if 0: #check total charge
+                    # st = st.copy()
+                    chg = copy.copy(chg)
+                    tot = sum(chg)
+                    print('Total charge is ', tot, 'I subtract it uniformly from each atom')
+                    d = tot/self.natom
+                    chg = [c - d for c in chg]
+
+
+
+
+
+                pm.add_oxidation_state_by_site(chg)
+
+
 
 
         return pm
@@ -442,6 +508,10 @@ class Structure():
         cm = Composition(pm.formula)
         # cm = Composition(self.get_elements())
         return cm.reduced_formula
+
+    def get_name(self):
+        from small_functions import latex_chem
+        return latex_chem(self.get_reduced_formula())
 
     def get_formula(self):
         ''
@@ -469,6 +539,10 @@ class Structure():
         cm = Composition(pm.formula)
         # cm = Composition(self.get_elements())
         return cm.fractional_composition
+
+
+
+
 
     def update_types(self, elements):
         # update typat, ntypat, znucl, nznucl from elements - list of elements names
@@ -672,7 +746,11 @@ class Structure():
         return surface_atoms[surface]
 
 
-
+    def get_surface_area(self):
+        #currently should be normal to rprim[0] and rprim[1]
+        st = self
+        # print()
+        return np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
 
 
 
@@ -781,6 +859,15 @@ class Structure():
             tra = ns
         return tra
 
+
+
+    def get_dipole(self, ox_states = None, chg_type = 'ox'):
+        #return dipole moment, e*A
+        #
+        # if you need to convert it to debye (D), use 1 D = 0.20819434 eÅ = 3.33564×10−30; 1 eA = 4.8 D
+
+        slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
+        return slab.dipole
 
 
 
@@ -1340,18 +1427,21 @@ class Structure():
     #     sumx/=len(self.xcart)
     #     return sumx
 
-    def return_atoms_to_cell(self):
-
+    def return_atoms_to_cell(self, shift = 0):
+        #shift - shift from the end of vectors between 0 and 1 - allows to collect atoms close to origin
 
         st = copy.deepcopy(self)
-        bob = 0; upb = 1;
+        bob = 0-shift; upb = 1-shift;
         n = 0 
         # print st.xred
         for xr in st.xred:
             for j in 0,1,2:
-                if xr[j]  < bob:  xr[j] = xr[j] - int(xr[j]) + 1 #allows to account that xr can be more than 2
-                if xr[j]  >= upb:  xr[j] = xr[j] - int(xr[j])
-        n+=1
+                if xr[j]  < bob:  
+                    xr[j] = xr[j] - int(xr[j]) + 1 #allows to account that xr can be more than 2
+                if xr[j]  >= upb:  
+                    # print(xr[j], int(xr[j]))
+                    xr[j] = xr[j] - int(xr[j]) 
+        # n+=1
         # zmin = 100
         # for xr in st.xred:
         #     if xr[2]<zmin: zmin = xr[2]
@@ -1363,7 +1453,7 @@ class Structure():
 
         st.xcart = xred2xcart(st.xred, st.rprimd)
 
-        print_and_log(str(n)+" atoms were returned to cell.\n")
+        # print_and_log(str(n)+" atoms were returned to cell.\n")
         #print st.xred
         return st
 
@@ -1465,7 +1555,7 @@ class Structure():
                 #     continue
                 # if all(x1 == x1_del) or (x2 == x2_del):
                 #     continue
-                if self.image_distance(x1, x2)[0] < tol:
+                if self.image_distance(x1, x2, r = self.rprimd)[0] < tol:
                     count+=1
                     if count > 1:
                         raise RuntimeError # for detecting multiple overlaps please make this function more universal - removing not by numbers, but by coordinates or more intelligent- see remove_atoms()
@@ -1773,12 +1863,13 @@ class Structure():
         
 
         f.close()
-        print_and_log("POSCAR was written to", filename, imp = 'y')
-        return
+        path = os.getcwd()+'/'+filename
+        print_and_log("POSCAR was written to", path, imp = 'y')
+        return path
 
 
 
-    def write_cif(self, filename = None, mcif = False):
+    def write_cif(self, filename = None, mcif = False, symprec = 0.1, write_prim = 0):
         """
         Find primitive cell and write it in cif format
         
@@ -1796,11 +1887,11 @@ class Structure():
             m = ''
 
         if filename == None:
-            filename = 'cif/'+self.name
+            filename = os.getcwd()+'/cif/'+self.name
 
 
         makedir(filename)
-        symprec = 0.1
+
         st_mp = self.convert2pymatgen()
 
         # print(st_mp)
@@ -1818,24 +1909,36 @@ class Structure():
         except:
             sg_before = [None]
             sg_after = [None]
+            st_mp_prim = None
+            printlog('Warning! could not analyze space group')
 
         if sg_before[0] != sg_after[0]:
             printlog('Attention! the space group was changed after primitive cell searching', sg_before, sg_after)
-            printlog('I will save supercell in cif and reduce symprec to 0.01')
-            st_mp_prim = st_mp
-            symprec = 0.01
+            printlog('I will save supercell in cif Pay attention that CifWriter can symmetrize and change vectors. Also use *write_prim*')
+            # st_mp_prim = st_mp
+            # symprec = 0.001
+            # symprec = None
 
         if mcif:
             cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif)
         else:
-            # cif = CifWriter(st_mp_prim, symprec = symprec, write_magmoms=mcif)
-            cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif)
+            if st_mp_prim:
+                cif_prim = CifWriter(st_mp_prim, symprec = symprec, )
+            
+            cif = CifWriter(st_mp, symprec = symprec, )
+
         
         cif_name =  filename+'.'+m+'cif'
+        cif_prim_name =  filename+'_prim.'+m+'cif'
         
+
         cif.write_file( cif_name  )
+        if write_prim:
+            cif_prim.write_file( cif_prim_name  )
+        
         printlog('Writing cif', cif_name, imp = 'y')
 
+        return cif_name
 
     def write_xyz(self, *args, **kwargs):
         #see description for write_xyz()
@@ -1853,16 +1956,23 @@ class Structure():
         return read_xyz(self, *args, **kwargs)
 
 
-    def jmol(self, shift = None):
+    def jmol(self, shift = None, r = 0):
         # self.write_poscar('CONTCAR', vasp5 = 1)
+        #if r == 1 then open outcar
         st = self
         if shift:
             st = st.shift_atoms(shift)
 
 
-        filename, _ = st.write_xyz()
-        # print(filename)
-        runBash('jmol '+filename, detached = True)
+        # filename, _ = st.write_xyz()
+        if r == 1:
+            filename = st.outfile 
+        else:
+            filename = st.write_poscar(vasp5 = 1)
+        
+        # print(r, filename)
+        # sys.exit()
+        runBash(header.PATH2JMOL+' '+filename, detached = True)
         return
 
 class Calculation(object):
@@ -2221,15 +2331,34 @@ class Calculation(object):
         """
         print(self.NKPTS*self.end.natom) #KPPRA - k-points per reciprocal atom? 
 
+
+
+
     def copy(self):
         return copy.deepcopy(self)
 
-    def jmol(self):
-        self.end.jmol()
+    def jmol(self, *args, **kwargs):
+        self.end.jmol(*args, **kwargs)
     def poscar(self):
         self.end.write_poscar()
     def me(self):
         self.end.printme()
+
+    def add_new_name(self, idd):
+        """
+        
+        just adding new key in database for that calculation
+        warning cl.id is updated; old name in db remains
+        the calculation folder remains the same
+        
+        idd - key
+        """
+        if idd in header.db:
+            printlog('Error! ',idd,'already used in database! Choose another name')
+            
+        header.db[idd] = self
+        header.struct_des[idd[0]] = header.struct_des[self.id[0]]
+
 
     @property
     def sfolder(self):
@@ -2393,9 +2522,11 @@ class CalculationVasp(Calculation):
                         for fi, flag in enumerate(vec[3:6]):
                             if flag == 'F':
                                 flagset[fi] = False
+                        # print(flagset)
                         select.append(flagset)
 
             st.select = select
+
             if "Car" in type_of_coordinates or 'car' in type_of_coordinates:
                 st.xcart  = coordinates
                 st.xred = xcart2xred(st.xcart, st.rprimd)
@@ -4290,21 +4421,25 @@ class CalculationVasp(Calculation):
                         forces = []
                         magnitudes = []
 
+                        # print(self.end.select)
                         for j in range(self.end.natom):
                             parts = outcarlines[i_line+j+2].split()
                             # print "parts", parts
                             # print(self.end.select)
                             # sys.exit()
                             if hasattr(self.end, 'select') and self.end.select:
-                                x = float(parts[ff[0]])*self.end.select[j][0]
-                                y = float(parts[ff[1]])*self.end.select[j][1]
-                                z = float(parts[ff[2]])*self.end.select[j][2]
+                                # print(float(parts[ff[0]]), self.end.select[j][0])
+                                x = float(parts[ff[0]]) * self.end.select[j][0]
+                                y = float(parts[ff[1]]) * self.end.select[j][1]
+                                z = float(parts[ff[2]]) * self.end.select[j][2]
                             else:
                                 x = float(parts[ff[0]])
                                 y = float(parts[ff[1]])
                                 z = float(parts[ff[2]])
+                            
                             forces.append([x,y,z])
                             magnitudes.append(math.sqrt(x*x + y*y + z*z))
+                        
                         average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
                         imax = np.asarray(magnitudes).argmax()
                         maxforce.append( [imax, round(magnitudes[imax] * 1000)]  )
@@ -4549,7 +4684,8 @@ class CalculationVasp(Calculation):
                         mdstep_prev = self.mdstep
 
                     if 'dipolmoment' in line:
-                        self.dipol = line
+                        dipol = line.split()[1:4]
+                        self.dipol = [float(d) for d in dipol]
                         # print(line)
 
                         # for i in range(1,4):
@@ -4639,6 +4775,7 @@ class CalculationVasp(Calculation):
                 self.end.xcart = xred2xcart( self.end.xred, self.end.rprimd)
             else: 
                 self.end.xred = xcart2xred( self.end.xcart, self.end.rprimd)
+
 
             #print "init pressure = ",self.extpress_init,"; final pressure =",self.extpress
             #print self.end.xred
@@ -5031,7 +5168,9 @@ class CalculationVasp(Calculation):
 
 
             printlog("Reading of results completed\n\n", imp = 'n')
+            self.end.outfile = path_to_outcar
             
+
             if pymatgen_flag:
                 ''
                 # self.end.write_cif(os.path.join(self.dir,self.name))
@@ -5175,6 +5314,7 @@ class CalculationVasp(Calculation):
     def get_bader_ACF(self, p = 0):
         #Make bader on server
         #assumes that bader is installed
+        from small_functions import bash_chk_file_cmd
         self.res()
         v = str(self.version)
         path = self.project_path_cluster+'/'+self.dir
@@ -5194,61 +5334,75 @@ class CalculationVasp(Calculation):
 
 
 
-        command1 = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
+        run_chgsum = "cd "+path+"; ~/tools/vts/chgsum.pl "+AECCAR0+" "+AECCAR2+"; "+\
         "mv CHGCAR_sum "+CHGCAR_sum+";" # on cluster
 
         command_chg_gunzip = 'gunzip '+CHG+'.gz ' # on cluster
         
-        command2 = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
+        restore_CHG = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
+        restore_AEC = "rsync "+header.PATH2ARCHIVE+'/'+self.path['aeccar0']+' '+ header.PATH2ARCHIVE+'/'+self.path['aeccar2']+' '+path # on cluster
+
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
         
-        command3 = "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+mv
-        command3s = "cd "+path+"; ~/tools/bader "+CHG+" > "+mv #simple
-        
-        command_check_CHG_sum = " [ -e "+   CHGCAR_sum       +""" ] || echo "NO"     ; """ #true if file not exists
-        command_check_CHG  = " [ -e "+   CHG       +""" ] || echo "NO"     ; """
-        command_check_ACF  = " [ -e "+   ACF     +""" ] || echo "NO"     ; """
+        bader_on_sum = "cd "+path+"; ~/tools/bader "+CHG+" -ref "+CHGCAR_sum+" > "+mv
+        bader_on_chg = "cd "+path+"; ~/tools/bader "+CHG+" > "+mv #simple
         command_cat_ACF    = " cat "+path+v+".ACF.dat"
-        # run_on_server()
         
+        no_CHG_sum = bash_chk_file_cmd(CHGCAR_sum) #true if file not exists
+        no_CHG     = bash_chk_file_cmd(CHG)
+        no_ACF     = bash_chk_file_cmd(ACF)
+        no_AECCAR0 = bash_chk_file_cmd(AECCAR0)
+        no_AECCAR2 = bash_chk_file_cmd(AECCAR2)
+        
+        def remote(cmd):
+            return run_on_server(cmd, self.cluster_address)
+
+
 
         #Calculate CHGCAR_sum
-        if run_on_server(command_check_CHG_sum, self.cluster_address): 
-            print_and_log(  CHGCAR_sum, "does not exist. trying to calculate it ", imp = 'Y')
-            printlog( run_on_server(command1, self.cluster_address)+'\n', imp = 'Y' ) 
+        if remote(no_CHG_sum): 
+            printlog(  CHGCAR_sum, "does not exist. trying to calculate it ...", imp = 'Y')
+            
+            if remote(no_AECCAR0) or remote(no_AECCAR2):
+                printlog(  AECCAR0, "does not exist, trying to take it from archive ...", imp = 'Y')
+                printlog(remote(restore_AEC)+'\n', imp = 'y')
+
+            if not remote(no_AECCAR0):
+                printlog( remote(run_chgsum)+'\n', imp = 'Y' ) 
+                printlog( remote(" rm "+path+v+".ACF.dat")+'\n', imp = 'Y' ) 
         # sys.exit()
 
         #Check chgcar
-        if run_on_server(command_check_CHG, self.cluster_address): #true if file not exists
+        if remote(no_CHG): #true if file not exists
             printlog( 'Warning! File ', CHG, "does not exist. Checking .gz .. ", imp = 'Y')
 
-            printlog( run_on_server(command_chg_gunzip, self.cluster_address)+'\n', imp = 'y' ) 
+            printlog( remote(command_chg_gunzip)+'\n', imp = 'y' ) 
 
-        if run_on_server(command_check_CHG, self.cluster_address): #true if file not exists
+        if remote(no_CHG): #true if file not exists
             printlog( 'Warning! File ', CHG, "does not exist. Trying to restore it from archive .. ", imp = 'Y')
 
-            printlog( run_on_server(command2, self.cluster_address)+'\n', imp = 'y' ) 
+            printlog( remote(restore_CHG)+'\n', imp = 'y' ) 
 
 
 
         def run_bader(command, ):        
-            if run_on_server(command_check_ACF, self.cluster_address): #true if file not exists
-                print_and_log(  ACF, " does not exist. trying to calculate Bader ... ", imp = 'Y')
-                printlog( run_on_server(command, self.cluster_address)+'\n', imp = 'y' ) 
+            
+            if remote(no_ACF): #true if file not exists
+                printlog(  ACF, " does not exist. trying to calculate Bader ... ", imp = 'Y')
+                printlog( remote(command)+'\n', imp = 'y' ) 
                 
+            ACF_text = remote(command_cat_ACF)
 
-
-
-            ACF_text = run_on_server(command_cat_ACF, self.cluster_address)
             return ACF_text
 
-        ACF_text = run_bader(command3)
+        ACF_text = run_bader(bader_on_sum)
 
         if 'No such file or directory' in ACF_text:
             printlog('Warning! Probably you have problems with',CHGCAR_sum)
             printlog('Trying to calculate charges from CHGCAR ...', imp = 'Y')
-            ACF_text = run_bader(command3s)
+            
+            ACF_text = run_bader(bader_on_chg)
 
         print('ACF_text = ', ACF_text)
 
@@ -5401,17 +5555,22 @@ class CalculationVasp(Calculation):
                     if i[1] == ise:
                         idd = i
                         # add = True
-                        break
+                        # break
+                    else:
+                        idd = None
 
-                else:
+                if idd is None:
                     add = True
                     # idd  = self.children[i_child]
                 # print(idd)
 
-                cl_son = header.calc[idd]
-                
-                cl_son.res(up = up, **kwargs)
-                child = idd
+                if idd:
+                    cl_son = header.calc[idd]
+                    
+                    cl_son.res(up = up, **kwargs)
+                    child = idd
+                else:
+                    child = None
             
 
             vp = header.varset[ise].vasp_params
@@ -5445,12 +5604,12 @@ class CalculationVasp(Calculation):
         return header.calc[child]
 
 
-    def read_pdos_using_phonopy(self, mode = 'pdos', plot = 1):
+    def read_pdos_using_phonopy(self, mode = 'pdos', plot = 1, up = 'up1'):
         """
         mode - 
             pdos
             band
-            free - thermal properties
+            free - thermal properties, converted to eV!!!
         """
 
         if plot == 1:
@@ -5460,7 +5619,7 @@ class CalculationVasp(Calculation):
 
         from calc_manage import create_phonopy_conf_file, read_phonopy_data
 
-        self.get_chg_file('vasprun.xml', nametype = 'asoutcar')
+        self.get_file('vasprun.xml', nametype = 'asoutcar', up = up)
         create_phonopy_conf_file(self.end, mp = [10, 10, 10], path = self.dir)
         # create_phonopy_conf_file(self.end, mp = [36, 36, 36], path = self.dir) #almost no difference was found for Na2X
         create_phonopy_conf_file(self.end, path = self.dir, filetype = 'band') #create band file
@@ -5469,8 +5628,14 @@ class CalculationVasp(Calculation):
 
         cwd = os.getcwd()
 
+
         os.chdir(self.dir)
-        runBash('phonopy --fc '+os.path.basename(self.path['xml']))
+        print(self.dir)
+        out = runBash('phonopy --fc '+os.path.basename(self.path['xml']))
+
+        printlog('phonopy out: ', out)
+
+
 
         if 'poscar' not in self.path:
             self.path['poscar'] = self.path['output'].replace('OUTCAR','POSCAR')

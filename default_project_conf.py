@@ -20,6 +20,7 @@ CLUSTERS['cee'] = {
 'corenum':16,
 'pythonpath':'/usr/lib64/python2.7/site-packages/numpy',
 'vasp_com':'prun /opt/vasp/bin/vasp5.4.1MPI', # path to vasp binary
+'modules':'module add prun/1.0; module add intel/16.0.2.181; module add impi/5.1.3.181\n'
 }
 
 CLUSTERS['skol'] = {

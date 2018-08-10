@@ -1,0 +1,22 @@
+0.8.3
+cl.fix_atoms() method added
+bug fixed in cl.run()
+calc_oxidation_states() improved, use silent = 0 to show charges
+get_surface_area() added to Structure()
+get_dipole() added to Structure()
+cl.get_bader_ACF() improved
+creating_sets tutorial updated
+'jmol' option of show in res() added
+calculation name in output changed to db['name']
+st.jmol() now uses vasp format
+new property st.outfile - path to output file added
+mcif argument added to write_xyz() enabling visualization of magnetic structures with jmol=1 
+cl.add_new_name() method added
+cluster_tools/fit_tool.py new paths added for numpy support on cee cluster (local change for skoltech)
+now modules are written for SLURM from project_conf.py, please add them as in example below:
+    CLUSTERS['cee']['modules'] = 'module add prun/1.0; module add intel/16.0.2.181; module add impi/5.1.3.181\n'
+}
+
+New tutorial for calc_barriers subroutine
+
+

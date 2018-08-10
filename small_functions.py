@@ -6,6 +6,7 @@ from six import string_types
 from collections import Iterable
 import shutil, gzip
 import traceback
+from contextlib import contextmanager
 
 from header import printlog
 
@@ -104,7 +105,7 @@ def latex_chem(formula):
     """ """
     # print(formula)
     if '$' not in formula:
-        formula =re.sub("([0-9])", "$_\\1$", formula)
+        formula =re.sub("([0-9]{1,3})", "$_{\\1}$", formula)
     return formula
 
 def latex_spg(spg):
@@ -120,8 +121,28 @@ def latex_spg(spg):
     return spg
 
 
-
+def bash_chk_file_cmd(file):
+    #bash returns empty string if file exist
+    return " [ -e "+   file     +""" ] || echo "NO"     ; """
 
 # def find_transition_atom(elements):
 #     #return list of unique transition elements
 #     for elements
+
+def get_common_chemical_base(st1,st2):
+    from difflib import SequenceMatcher
+    s1 = st1.get_reduced_formula()
+    s2 = st2.get_reduced_formula()
+    match = SequenceMatcher(None, s1, s2).find_longest_match(0, len(s1), 0, len(s2))
+    base  = s1[match.a: match.a + match.size]
+    return latex_chem(base)
+
+
+@contextmanager
+def cwd(path):
+    oldpwd=os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(oldpwd)

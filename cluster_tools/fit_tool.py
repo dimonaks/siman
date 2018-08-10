@@ -8,6 +8,14 @@ creates file '100.POSCAR' with minimum energy volume.
 import sys
 # print sys.argv
 sys.path.append('/usr/lib64/python2.7/site-packages/numpy')
+sys.path.append("/opt/python2.7libs/")
+sys.path.append("/opt/python2.7libs/plat-linux2")
+sys.path.append("/opt/python2.7libs/lib-tk")
+sys.path.append("/opt/python2.7libs/lib-old")
+sys.path.append("/opt/python2.7libs/lib-dynload")
+sys.path.append("/opt/python2.7libs/site-packages")
+sys.path.append("/opt/python2.7libs/site-packages")
+
 import numpy as np
 
 class Simple(object):

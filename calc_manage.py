@@ -164,13 +164,19 @@ def write_batch_header(batch_script_filename = None,
             f.write("cd "+path_to_job+"\n")
             f.write("export OMP_NUM_THREADS=1\n")
 
-            f.write("module add prun/1.0\n")
-            f.write("module add intel/16.0.2.181\n")
-            f.write("module add impi/5.1.3.181\n")
+            if 'modules' in header.cluster:
+                f.write(header.cluster['modules']+'\n')
+            # f.write("module add prun/1.0\n")
+            # f.write("module add intel/16.0.2.181\n")
+            # f.write("module add impi/5.1.3.181\n")
             
             # if header.siman_run: #only for me
-            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/aksenov/tools/lib64:/home/aksenov/tools/atlas\n")
-            f.write("export PATH=$PATH:/home/aksenov/tools\n")
+            lib64 = header.cluster['homepath'] + '/tools/lib64'
+            atlas = header.cluster['homepath'] + '/tools/atlas'
+            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
+            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
+            
+            f.write("export PATH=$PATH:"+header.cluster['homepath'] +"/tools/\n")
             
 
             f.write("touch RUNNING\n")
@@ -672,8 +678,11 @@ def choose_cluster(cluster_name, cluster_home, corenum):
     printlog('The home folder on cluster is ', header.cluster_home)
 
 
+    if 'pythonpath' in clust:
+        header.CLUSTER_PYTHONPATH    = clust['pythonpath']
+    else:
+        header.CLUSTER_PYTHONPATH = ''
 
-    header.CLUSTER_PYTHONPATH    = clust['pythonpath']
     # header.SCHEDULE_SYSTEM    = clust['schedule']
     header.schedule_system    = clust['schedule']
     # header.CORENUM    = clust['corenum']
@@ -2459,6 +2468,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 # sys.exit()
                 return
 
+            if 'jmol' in show:
+                # printlog(os.getcwd()+'/'+cl.path['output'], imp = 'Y')
+                cl.jmol()
+                # sys.exit()
+                return
+
+
             if 'pos' in show:
                 cl.end.write_poscar()
                 return
@@ -2515,7 +2531,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             conv[base].append(b_id)
 
 
-            outst2 = ("%s"%calc[id].name).ljust(name_field_length)
+            outst2 = ("db['{:s}']".format(calc[id].name)).ljust(name_field_length)
+            
+
+
             outst2+='|'
             outst_end = '' 
 

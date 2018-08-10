@@ -111,7 +111,7 @@ def read_xyz(st, filename, rprimd = None):
     return st
 
 
-def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = 1, orientation = None,
+def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topview = 0, orientation = None,
     axis = False, bonds = True, rprimd = None, shift = None, rotate = None,
     label = None, high_contrast = None, specialcommand = None,
     boundbox = 2, atom_labels = None):
@@ -144,7 +144,6 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
         # f.write('select Ti* \ncolor [20,120,250] \nselect C* \ncolor [80,80,80]\n cpk 100\n')
         f.write('set perspectivedepth off\n')
         
-
 
 
 
@@ -208,15 +207,23 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
         if specialcommand:
             f.write(specialcommand+'\n')
 
+        if 1:
+            f.write('set displayCellParameters False ;\n')
+
+
+
         
         # f.write('write image 2800 2800 png "'+pngfile+'"')
         f.write('write image 1800 1800 png "'+pngfile+'"')
     
+    # print(header.PATH2JMOL)
+    # sys.exit()
     printlog( runBash(header.PATH2JMOL+' -ions '+scriptfile) )
     # print runBash('convert '+pngfile+' -shave 0x5% -trim '+pngfile) #cut by 5% from up and down (shave) and that trim left background
     printlog( pngfile )
     printlog( runBash('convert '+pngfile+' -trim '+pngfile)  ) # trim background
     printlog('png file by Jmol',pngfile, 'was written', imp = 'y' )
+    # print(header.PATH2JMOL)
     return
 
 
@@ -225,7 +232,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     analysis = None, show_around = None, show_around_x = None,  nnumber = 6, only_elements = None,
     gbpos2 = None, gbwidth = 1, withgb = False, include_boundary = 2,
     imp_positions = [], imp_sub_positions = None,
-    jmol = None, specialcommand = None, jmol_args = None, sts = None
+    jmol = None, specialcommand = None, jmol_args = None, sts = None, mcif = 0, suf = ''
     ):
     """Writes st structure in xyz format in the folder xyz/path
 
@@ -253,9 +260,11 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
     jmol - 1,0 -  use jmol to produce png picture
     jmol_args - see write_jmol()
+    mcif - write magnetic cif for jmol
+
 
     specialcommand - any command at the end of jmol script
-
+    suf - additional suffix for name
 
     sts - list of Structure - write several structures to xyz file - other options are not working in this regime
     """
@@ -282,7 +291,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xred)
 
     
-
+    st = st.copy()
     rprimd, xcart, xred, typat, znucl, natom = update_var(st)
 
 
@@ -293,7 +302,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     elif filename:
         name = filename
     else:
-        name = st.name
+        name = st.name+suf
 
 
     if sts:
@@ -325,7 +334,8 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
 
     if analysis == 'imp_surrounding':
-        
+        printlog('analysis = imp_surrounding', imp = 'y')
+
         if show_around == 0:
             printlog('Error! number of atom *show_around* should start from 1')
 
@@ -358,27 +368,29 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
                 # print 'se', condition
 
                 if condition: 
+                    # print('Atom at', x, 'used as central')
                     # lxcart.append(x)
                     # ltypat.append(t)
                     # print x, ' x'
                     x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True, only_elements = only_elements)
-                    # print x_t[1]
+                    print (x_t)
                     lxcart+=x_t[0]
                     ltypat+=x_t[1]
                 i+=1
         
 
-
         xcart = lxcart
         typat = ltypat
         natom = len(typat)
         # print natom, 'nat'
+        # print('Number of neighbours', natom  )
+        st.xcart = xcart
+        st.typat = typat
+        st.natom = natom
+        st.update_xred()
 
 
 
-    name+=suf
-    xyzfile = os.path.join(basepath, name+".xyz")
-    makedir(xyzfile)
 
 
     """Include atoms on the edge of cell"""
@@ -396,7 +408,6 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         
     # asdegf
 
-    """Writing section"""   
     # printlog("Writing xyz: "+xyzfile, imp = 'y')
 
     #analyze imp_positions
@@ -428,6 +439,10 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     else:
         nvect = 0
 
+    """Writing section"""   
+    name+=suf
+    xyzfile = os.path.join(basepath, name+".xyz")
+    makedir(xyzfile)
 
     def write(st):
         rprimd, xcart, xred, typat, znucl, natom = update_var(st)
@@ -473,6 +488,8 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     printlog('File', xyzfile, 'was written', imp = 'y')
 
     pngfile = None
+    
+
     if jmol:
         """
         script mode for jmol. Create script file as well for elobarate visualization
@@ -521,7 +538,12 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
 
 
-        xyzfile = os.getcwd()+'/'+xyzfile
+        # xyzfile = os.getcwd()+'/'+xyzfile
+        if mcif:
+            xyzfile = st.write_cif(mcif = 1)
+        else:
+            xyzfile = st.write_poscar()
+        
         scriptfile = basepath+name+".jmol"
         bn = (basepath+name).replace('.', '_')
         pngfile = os.getcwd()+'/'+bn+".png"

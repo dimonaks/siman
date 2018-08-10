@@ -1,5 +1,5 @@
 from __future__ import division, unicode_literals, absolute_import 
-import sys, copy, re, os
+import sys, copy, re, os, shutil
 #external
 import numpy as np
 import pandas as pd
@@ -11,13 +11,13 @@ from header import print_and_log as printlog
 from header import calc
 from header import db
 from picture_functions import fit_and_plot
-from small_functions import merge_dics as md
-from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive
+from small_functions import merge_dics as md, makedir
+from calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
 from neb import add_neb
 from classes import Calculation
 from analysis import calc_redox,  matrix_diff
 from geo import create_deintercalated_structure
-from geo import remove_one_atom
+from geo import remove_one_atom, remove_half_based_on_symmetry, remove_half
 from geo import create_replaced_structure, create_antisite_defect3, determine_symmetry_positions
 from inout import write_occmatrix
 from database import add_to_archive_database
@@ -1707,6 +1707,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 res_loop(*idA, up = up_res, readfiles = readfiles, choose_outcar = choose_outcar, show = 'm', check_job = 0)
                 # res_loop(*idA, choose_outcar = 3, show = 'fo')
                 # res_loop(*idA, choose_outcar = 4, show = 'fo')
+                curres['id_sc'] = idA
                 if '4' in calc[idA].state:
                     
 
@@ -1952,6 +1953,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                     curres['id_start'] = (idC[0], idC[1],1)
                     curres['id_end']   = (idC[0], idC[1],2)
+
+
+                    curres['atom_pos']     = res['atom_pos']
+                    curres['mep_energies'] = res['mep_energies']
 
                     # dn = calc[idC].end.natom - calc[idB].end.natom
                     # v_int1 = calc[idC[0], idC[1],1].energy_sigma0 - calc[idB].energy_sigma0 - dn * curres['Eref']
@@ -3755,3 +3760,228 @@ def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 )
 
         # print(alpha, beta, gamma)  
     return
+
+
+def create_project_from_geofile(filename):
+    """
+    empty project is added to database
+    get name from geofile and create required folder and put file into it  
+    Various rules to create project name
+
+    """
+    db = header.db
+    if 1:
+        #simple - just name of file
+        basename = os.path.basename(filename)
+        projectname = basename.split('.')[0]
+        makedir(projectname+'/temp')
+        startgeofile = projectname+'/'+ basename
+
+
+    if projectname not in db:
+
+        shutil.copyfile(filename, startgeofile)
+        db[projectname]  = {}
+        db[projectname]['startgeofile'] = startgeofile
+        db[projectname]['steps'] = [] 
+        printlog('Project ', projectname, 'was created', imp = 'y')
+    
+    else:
+        printlog('Error! project already exist')
+
+    return projectname
+
+def get_alkali_ion(st):
+
+    for_diffusion = []
+    for el in st.get_elements():
+        if el in ['Li', 'Na', 'K', 'Rb', 'Mg']:
+            if el not in for_diffusion:
+                for_diffusion.append(el)
+
+    el = for_diffusion[0]
+    if len(for_diffusion) > 1:
+        printlog('Warning! More than one candidate for NEB was found, I use first', el)
+
+    return el
+
+
+
+
+def process_cathode_material(projectname, step = 1, target_x = 0, update = 0 ):
+    """
+    AI module to process cif file and automatic calculation of standard properties of cathode material 
+    
+    step 1 - read geo and run simple relaxation
+
+    step 2 - calc barriers, IS
+
+    step 3 - calc barriers, DS
+
+    step 4 - make table with lattice constants for IS and DS
+
+    step 5 - make table with intercalation potential 
+
+    INPUT:
+    target_x (float) - required concentration of Na in DS state
+    update - allows to rewrite service table
+
+
+
+    """
+    from geo import determine_symmetry_positions, primitive, remove_x
+    show_fit  = 0
+    pn = projectname
+    run_neb = 0
+
+
+
+    sc_set = '4uis'; m_set = '1u'; n_set  = '1u'; clust = 'cee' # 
+
+    if update or 'res' not in db[pn]:
+        db[pn]['res'] = []
+
+    if 'latex' not in db[pn]:
+        db[pn]['latex'] = {}
+
+
+    service_list = db[pn]['res']
+
+    if step == 1:
+        ''
+        if 1 not in db[pn]['steps']:
+            startgeofile = db[pn]['startgeofile'] 
+            st = smart_structure_read(startgeofile)
+            st = primitive(st)
+            add_loop(pn, m_set, 1, input_st = st, it_folder = pn)
+            startgeofile = db[pn]['steps'].append(1) 
+        else:
+            res_loop(pn, m_set, 1)
+
+    if step in [2, 3]:
+
+        # if 2 not in db[pn]['steps']:
+        it = pn
+        cl = db[it, m_set, 1]
+
+        el  = get_alkali_ion(cl.end)
+
+        it_ds = it.replace(el, '')
+        printlog('Name for DS is', it_ds)
+
+        pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
+        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'scale_region':(-3, 5), 'readfiles':1, 'ortho':[10,10,10]}
+
+        p = (1,1)
+
+        pd['start_pos'] = p[0] 
+        pd['end_pos']   = p[1] 
+
+        add_loop_dic = { 'check_job':1, 'cluster':clust}
+        fitplot_args = {'ylim':(-0.02, 1.8)}
+
+        if step == 2:
+            style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
+            a = calc_barriers('normal', up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+            fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+            
+            # print(a)
+            if a[0] not in service_list:
+                service_list.append(a[0])
+            # db[pn]['B'] = [ a[0]['B'] ]
+
+        if step == 3:
+            # cl.res()
+            style_dic  = {'p':'bo', 'l':'-b', 'label':'DS'}
+
+            st = cl.end
+
+            pos = determine_symmetry_positions(st, el)
+            # cl.me()
+
+            if target_x == 0:
+                a = calc_barriers('make_ds', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                if a[0] not in service_list:
+                
+                    service_list.append(a[0])
+
+            else:
+                x_str = str(target_x).replace('.', '')
+                x_vac = 1 - target_x # concentration of vacancies
+                name = el+x_str+it_ds
+
+                syms =  remove_x(st, el, info_mode = 1, x = x_vac)
+
+                printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
+
+
+                # sys.exit()
+                for sg in syms:
+                    st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
+
+                    id_new = (name+'sg'+str(sg), m_set, 1)
+                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = 'up1')
+                    
+                    pd['id'] = id_new
+                    a = calc_barriers('normal', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                    fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                    info = a[0]
+                    info['x'] = target_x
+                    if info not in service_list:
+                        service_list.append(info)
+
+                    # print (service_list)
+
+
+    if step == 4:
+        ''
+        #Lattice constants, and intercalation potentials 
+        #the first calculation now is considered as intercalated 
+        # IS = 
+        from table_functions import table_geometry, table_potentials
+
+        # print('service list is ', service_list)
+        """Lattice constants"""
+
+        sts = []
+        cll = []
+        for a in service_list:
+            # print(a)
+            cl = db[a['id']]
+            try:
+                cl.end
+            except:
+                service_list.remove(a)
+                continue
+            st = cl.end
+            st.x = a['x']
+            sts.append(st)
+            cll.append(cl)
+            if 1:
+                """Plot figures"""
+                if 'id_sc' in a:
+                    db[a['id_sc']].end.write_xyz(jmol = 1)
+
+        table = table_geometry(sts)
+        db[pn]['latex']['t1'] = table
+
+
+        """Intercalation potentials"""
+        table = table_potentials(cll)
+        db[pn]['latex']['t2'] = table
+
+
+
+
+
+    if step == 4:
+        #create report
+        from table_functions import generate_latex_report
+
+        latex_text = ''
+
+        for key in ['t1', 't2']:
+            latex_text+=db[pn]['latex'][key] +'\n'
+
+        generate_latex_report(latex_text, filename = 'tex/'+pn+'/'+pn)

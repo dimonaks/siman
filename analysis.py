@@ -1,5 +1,5 @@
 from __future__ import division, unicode_literals, absolute_import 
-import os, copy, shutil
+import os, copy, shutil, sys
 import numpy as np
 
 import header
@@ -35,12 +35,11 @@ def determine_barrier(positions = None, energies = None):
     """
 
     import scipy
-    import matplotlib.pyplot as plt
 
-    if positions == None:
+    if positions is None:
         positions = range(len(energies))
 
-    if energies == None:
+    if energies is None:
         printlog('Error! Please provide at least energies')
 
 
@@ -60,13 +59,13 @@ def determine_barrier(positions = None, energies = None):
     e_at_roots = spl(r)
     if len(e_at_roots) > 0:
         # diff_barrier = max( e_at_roots ) # the maximum value 
-        print('roots are at ', r, e_at_roots)
+        printlog('roots are at ', r, e_at_roots)
 
         #find r for saddle point. the energy at saddle point is most far away from the energy at initial position by definition
         de_s = np.abs(e_at_roots-energies[0])
         i_r_de_max = np.argmax(de_s)
-        print(de_s)
-        print(i_r_de_max)
+        # print(de_s)
+        # print(i_r_de_max)
 
 
         r_de_max = r[i_r_de_max]
@@ -75,14 +74,14 @@ def determine_barrier(positions = None, energies = None):
         
         sign =  - np.sign(curvuture_at_saddle)
         if curvuture_at_saddle < 0:
-            critical_point_type = 'max'
+            critical_point_type = 'maximum'
         elif curvuture_at_saddle > 0:
-            critical_point_type = 'min'
+            critical_point_type = 'minimum'
         else:
             critical_point_type = 'undefined'
 
-
-        print('saddle point at ', r_de_max, e, 'is a local', critical_point_type)
+        # print(type(r_de_max), type(e), critical_point_type)
+        print('Saddle point at {:.2f} {:.2f} is a local {:}'.format(r_de_max, float(e), critical_point_type)  )
 
 
     else:
@@ -97,7 +96,7 @@ def determine_barrier(positions = None, energies = None):
     # if de > diff_barrier:
     diff_barrier = de * sign
 
-    print('diff_barrier', diff_barrier)
+    print('Migration barrier is {:.2f}'.format( diff_barrier))
     # plt.plot(spl(np.linspace(0, ma, 1000)))
     # plt.show()
 
@@ -116,7 +115,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     cl2 (Calculation) - structure with lower concentration
     energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
     
-    temperature (float) - potential at temperature, self.F is expected from phonopy calculations
+    temp(float) - potential at temperature, self.F is expected from phonopy calculations
     """
     if cl1 is None or cl2 is None:
         printlog('Warning! cl1 or cl2 is none; return')
@@ -155,6 +154,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     n1  = cl1.end.nznucl[i_n1]
     n2  = cl2.end.nznucl[i_n2]
 
+    # print(n1,n2)
 
     nz1_dict = {}
     nz2_dict = {}
@@ -171,6 +171,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
     for z in z_alk_ions:
         mul = (nz1_dict[z] / n1 - nz2_dict[z] / n2)
+        # print(mul)
         if abs(mul) > 0: #only change of concentration of one ion type is allowed; the first found is used
             printlog('Change of concentration detected for ', element_name_inv(z))
             if not energy_ref: #take energy ref from dict
@@ -244,6 +245,8 @@ def form_en(sources, products, norm_el = None):
     sources, products - list of tuples (x, cl), where x is multiplier and cl is calculation
     norm_el  - which element to use for normalization
         'all' - normalize by total number of atoms
+        'el'
+        int - divide by this number
 
     """
 
@@ -529,7 +532,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
     magmom = np.array(st.magmom)
     if len(magmom) == 0 :
-        printlog('Error! magmom is empty')
+        printlog('Warning! magmom is empty')
 
     _, mag_numbers = st.get_maglist()
 
@@ -576,17 +579,26 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
 
 
-def calc_oxidation_states(cl):
+def calc_oxidation_states(cl = None, st = None, silent = 1):
 
-    st = cl.end
+    if cl:
+        st = cl.end
+        ch = cl.charges
+    if st:
+        ch  = st.charges
+    
+
     z_vals = []
     for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
-        ox = z_val - cl.charges[j]
+        ox = z_val - ch[j]
+
         z_vals.append(ox)
-        print(el, '{:3.1f}'.format(ox))
+        if not silent:
+            ''
+            print(el, '{:3.1f}'.format(ox))
     # print(list(zip(z_vals, self.end.get_elements())))
-
-
+    # print(z_vals)
+    return z_vals
 
 
 
@@ -693,6 +705,11 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     
 
     atom_num = find_moving_atom(cl1.end, cl2.end)
+    # cl1.poscar()
+    # cl2.poscar()
+
+    # print('atom_num',atom_num)
+    # sys.exit()
 
     #prepare lists
     ni = cl.set.vasp_params['IMAGES']
@@ -860,7 +877,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     cl2.barrier = diff_barrier
 
 
-
+    results_dic['atom_pos'] = atom_pos
+    results_dic['mep_energies'] = mep_energies
 
 
     if 'mep' in show:
