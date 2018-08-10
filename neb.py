@@ -94,6 +94,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     end_pos_types_z = None,
     replicate = None,
     it_new_folder = None,
+    it_folder = None,
     inherit_magmom = False,
     x_start = None, xr_start = None,
     x_final = None, xr_final = None,
@@ -124,7 +125,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - i_void_start,  i_void_final (int) - position numbers of voids (or atoms) from the suggested lists
         - atom_to_insert  (str) - element name of atom to insert
         - atom_to_move (str) - element name of atom to move
-        - it_new_folder  (str) - section folder
+        - it_new_folder or it_folder  (str) - section folder
         - inherit_option (str) - passed only to add_loop
         - inherit_magmom (bool) - if True than magmom from starting_calc is used, else from set
 
@@ -482,6 +483,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
             if not i_void_final:
+                printlog('Changing i_void_final: None -> 1', imp = 'y')
                 i_void_final = 1 #since zero is itself
 
             print_and_log('Choosing position ', i_void_final, 'with distance', round(sur[3][i_void_final], 2), 'A', imp = 'y')
@@ -677,8 +679,11 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         if not ise_new:
             printlog('Error! please provide *ise_new*', important = 'Y')
 
-        if not it_new_folder:
+        if not it_new_folder and not it_folder:
+            
             printlog('Error! please provide *it_new_folder* - folder for your new calculation', important = 'Y')
+        if it_folder:
+            it_new_folder = it_folder
 
     if rep_moving_atom:
         it_new += 'r'+rep_moving_atom
@@ -803,7 +808,11 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     inherit_ngkpt(it_new, it, varset[ise_new])
 
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, run =run, params=params, **add_loop_dic  )
+    if run:
+        add_loop_dic['run'] = run
+
+
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, params=params, **add_loop_dic  )
     
 
     if upload_vts:

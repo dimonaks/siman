@@ -1,4 +1,0 @@
-squeue
-sbatch -p AMG /home/aksenov/barriers/Cu/scaled//super///Cu2.su.s7.ion/Cu2.su.s7.ion.run
-squeue
-mv run last_run
