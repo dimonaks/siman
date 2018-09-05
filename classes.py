@@ -4429,9 +4429,19 @@ class CalculationVasp(Calculation):
                             # sys.exit()
                             if hasattr(self.end, 'select') and self.end.select:
                                 # print(float(parts[ff[0]]), self.end.select[j][0])
-                                x = float(parts[ff[0]]) * self.end.select[j][0]
-                                y = float(parts[ff[1]]) * self.end.select[j][1]
-                                z = float(parts[ff[2]]) * self.end.select[j][2]
+                                b = []
+                                for kkk in 0,1,2:
+                                    cur = self.end.select[j][kkk]
+                                    if 'F' in cur:
+                                        b.append(0)
+                                    elif 'T' in cur:
+                                        b.append(1)
+                                    else:
+                                        b.append(cur)
+
+                                x = float(parts[ff[0]]) * b[0]
+                                y = float(parts[ff[1]]) * b[1]
+                                z = float(parts[ff[2]]) * b[2]
                             else:
                                 x = float(parts[ff[0]])
                                 y = float(parts[ff[1]])
