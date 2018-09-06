@@ -281,10 +281,11 @@ def form_en(sources, products, norm_el = None):
         norm = 1
     # print('Normalizing by ', norm_el, norm, 'atoms')
 
+    dE = (El[1]-El[0])/norm
+    print('dE = {:4.2f} eV'.format(dE))
 
-    print('dE = {:4.2f} eV'.format((El[1]-El[0])/norm))
 
-
+    return dE
 
 def chgsum(cll, el, site, silent = 1):
     """
