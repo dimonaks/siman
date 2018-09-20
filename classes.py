@@ -835,13 +835,14 @@ class Structure():
         return tra
 
     def get_specific_elements(self, required_elements = None, fmt = 'n', ):
-        """Returns list of specific elements (chemical names or z) in the structure
+        """Returns list of specific elements (chemical names. z, or numbers from 0) in the structure
         fmt - 
             'names'
             'z'
             'n' - numbers of atoms
         
-        required_elements - list of elements of interest
+        required_elements - list of elements z of interest
+
 
         """
         el = self.get_elements()
