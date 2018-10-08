@@ -2,8 +2,11 @@
 import sys, copy, itertools, math
 from operator import itemgetter
 
-from tabulate import tabulate
 import numpy as np
+try:
+    from tabulate import tabulate
+except:
+    print('geo.py:tabulate is not avail')
 
 import header
 from header import printlog
@@ -403,8 +406,8 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         my_round = round
 
 
-    def av_dev():
-        nonlocal n_neighbours
+    def av_dev(n_neighbours):
+        # nonlocal n_neighbours
         n_neighbours = float(n_neighbours)
         dav = sum(dlistnn)/n_neighbours
         av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
@@ -481,10 +484,10 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
 
        
     elif control == 'av_dev':
-        output = av_dev()
+        output = av_dev(n_neighbours)
 
     elif control == 'sum_av_dev':
-        output = (my_round(sum(dlistnn), 2), av_dev())
+        output = (my_round(sum(dlistnn), 2), av_dev(n_neighbours))
 
 
 
@@ -589,8 +592,8 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
         my_round = round
 
 
-    def av_dev():
-        nonlocal n_neighbours
+    def av_dev(n_neighbours):
+        # nonlocal n_neighbours
         n_neighbours = float(n_neighbours)
         dav = sum(dlistnn)/n_neighbours
         av_dev = sum( [abs(d-dav) for d in dlistnn] ) / n_neighbours
@@ -670,10 +673,10 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
 
        
     elif control == 'av_dev':
-        output = av_dev()
+        output = av_dev(n_neighbours)
 
     elif control == 'sum_av_dev':
-        output = (my_round(sum(dlistnn), 2), av_dev())
+        output = (my_round(sum(dlistnn), 2), av_dev(n_neighbours))
 
 
 
@@ -1698,7 +1701,7 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
 
 
 def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
-    primitive = None, symmetrize = False):
+    primitive = None, symmetrize = False, cut_thickness = None, return_one = False):
     """
     INPUT:
         st (Structure) - Initial input structure. Note that to
@@ -1706,20 +1709,29 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
                 crystallographic definitions, you should supply a conventional
                 unit cell structure.
 
-        miller_index ([h, k, l]): Miller index of plane parallel to
-                        surface. Note that this is referenced to the input structure. If
-                        you need this to be based on the conventional cell,
-                        you should supply the conventional structure.
+
+        pymatgen-related:
+            miller_index ([h, k, l]): Miller index of plane parallel to
+                            surface. Note that this is referenced to the input structure. If
+                            you need this to be based on the conventional cell,
+                            you should supply the conventional structure.
 
 
-        oxidation (dic) - dictionary of effective oxidation states, e. g. {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'}
-                          allows to calculate dipole moment
+            oxidation (dic) - dictionary of effective oxidation states, e. g. {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'}
+                              allows to calculate dipole moment
 
-        surface_i (int) - choose particular surface 
+            surface_i (int) - choose particular surface 
 
-        min_slab_size (float) - minimum slab size
+            min_slab_size (float) - minimum slab size
 
-        min_vacuum_size (float) - vacuum thicknes in A
+            min_vacuum_size (float) - vacuum thicknes in A
+
+            symmetrize - try to make both surfaces exact
+
+
+        my_paramters:
+        cut_thickness (float) - in A - allow to remove more layers from top
+        return_one (bool) - allows to return only one Structure, otherwise list of pymatgen slabs is returned 
 
     """
 
@@ -1731,8 +1743,9 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
     pm = st.convert2pymatgen(oxidation = oxidation)
     # pm = st.convert2pymatgen()
 
-
-    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size, primitive = primitive)
+    # print(min_vacuum_size)
+    # sys.exit()
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size, in_unit_planes= False ,  primitive = primitive )
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
@@ -1742,4 +1755,27 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
         pos = Poscar(slab)
         pos.write_file('xyz/POSCAR_suf'+str(i)+str(suf))
 
-    return slabs
+    if cut_thickness:
+        return_one = True
+        # print(slabs[surface_i])
+        st = st.update_from_pymatgen(slabs[surface_i])
+        
+        z = st.get_surface_pos()[1]
+        # st.printme()
+
+        st = st.del_layers(xcart_range = [z-cut_thickness+0.1, z+0.1])
+
+        # print(st.rprimd[2])
+        st.rprimd[2][2]-=cut_thickness
+        # print(st.rprimd[2])
+
+        st.update_xred()
+
+        st.name+='cutted'
+        st.write_poscar()
+
+
+    if return_one:
+        return st
+    else:
+        return slabs

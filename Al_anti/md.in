@@ -1,0 +1,56 @@
+# Find minimum energy fcc configuration
+# Mark Tschopp, 2010
+
+# ---------- Initialize Simulation --------------------- 
+clear 
+units metal 
+dimension 3 
+boundary p p p 
+atom_style atomic 
+atom_modify map array
+
+# ---------- Create Atoms --------------------- 
+region	box block 0 1 0 1 0 1 
+create_box	2 box
+read_dump conf.dump 0 x y z scaled yes box yes add yes
+
+# ---------- Define Interatomic Potential --------------------- 
+pair_style eam/fs 
+pair_coeff * * FeAl.set.txt Al Fe
+neighbor 2.0 bin 
+neigh_modify delay 10 check yes 
+ 
+# ---------- Define Settings --------------------- 
+compute eng all pe/atom 
+compute eatoms all reduce sum c_eng 
+
+# -------------BC's-----------------
+velocity all create 300 243243
+
+fix 1 all box/relax iso 0.0 vmax 0.001
+fix 2 all npt temp 300.0 300.0 0.05 iso 0.0 0.0 1.0
+#fix 2 all nvt temp 1000.0 1000.0 0.75
+
+
+# ---------- Run Minimization --------------------- 
+#reset_timestep 0 
+fix 1 all box/relax iso 0.0 vmax 0.001
+#thermo 10 
+thermo_style custom step pe lx ly lz c_eatoms etotal press temp
+min_style cg 
+minimize 1e-25 1e-25 5000 10000 
+
+variable natoms equal "count(all)" 
+variable teng equal "c_eatoms"
+variable length equal "lx"
+variable ecoh equal "v_teng/v_natoms"
+
+print "Total energy (eV) = ${teng};"
+print "Number of atoms = ${natoms};"
+print "Lattice constant (Angstoms) = ${length};"
+print "Cohesive energy (eV) = ${ecoh};"
+
+print "All done!" 
+
+timestep 0.002
+run 100

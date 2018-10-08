@@ -2,11 +2,20 @@
 from __future__ import division, unicode_literals, absolute_import 
 import os, math, re, sys
 import numpy as np
-from six import string_types
 from collections import Iterable
 import shutil, gzip
 import traceback
 from contextlib import contextmanager
+
+try:
+    from six import string_types
+except:
+    print('Warning! six module was not found, I use only str and basestring as string_types; errors can be expected')
+    try:
+        string_types = basestring #for python 2.7
+    except NameError:
+        string_types = str # for python 3
+
 
 from header import printlog
 
@@ -33,10 +42,11 @@ def red_prec(value, precision = 100.):
 
 
 def is_list_like(obj): 
+    
 	return not isinstance(obj, string_types) and isinstance(obj, Iterable)
 
 def is_string_like(s):
-	return isinstance(s, string_types)
+    return isinstance(s, string_types)
 
 def list2string(ilist):
     #' '.join(['{:}']*len(lis)).format(*lis)

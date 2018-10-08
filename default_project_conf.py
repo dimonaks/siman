@@ -42,7 +42,7 @@ pmgkey = "AWqKPyV8EmTRlf1t" #MAPI_KEY
 path_to_paper        = '/home/aksenov/Research/CEStorage/aksenov_report/'
 PATH2DATABASE        = '/home/aksenov/Data/CEStorage/_aksenov'
 
-
+cluster_tools = 'tools'
 geo_folder           = './'
 path_to_images       = path_to_paper+'/fig/'
 path_to_wrapper      = '/home/aksenov/Simulation_wrapper/'

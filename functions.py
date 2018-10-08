@@ -4,7 +4,13 @@ import os, tempfile, copy, math, itertools, sys
 import numpy as np
 from operator import itemgetter
 from itertools import product
-import scipy
+
+try:
+    import scipy
+
+except:
+    print('functions.py: no scipy, smoother() will not work()')
+
 
 import header
 from header import print_and_log, printlog, runBash
@@ -82,13 +88,25 @@ def run_on_server(command, addr):
     command = command.replace('\\', '/') # make sure is POSIX
     # sys.exit()
     
-
+    # print(header.sshpass)
+    # sys.exit()
     if header.ssh_object:
         # printlog('Using paramiko ...', imp = 'y')
         out = header.ssh_object.run(command)
 
+    elif header.sshpass and header.sshpass == 'proxy':
+        com = 'ssh -tt sdv sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'
+        # print(com)
+        # sys.exit()
+
+        out = runBash(com) 
+        # print(out)
+        out = out.split('Connection to')[0] # remove last message Connection to ipaddress closed
+        # sys.exit()
+
     elif header.sshpass:
         com = 'sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'
+        # print(com)
         # sys.exit()
         
         out = runBash(com)    
@@ -103,6 +121,7 @@ def run_on_server(command, addr):
     out = out.split('#')[-1].strip()
 
     printlog(out)
+    # print(out)
     # sys.exit()
     
 
@@ -136,7 +155,15 @@ def push_to_server(files = None, to = None,  addr = None):
             # print(file, to)
             header.ssh_object.put(file,  to+'/'+os.path.basename(file) )
         out = ''
+
+    elif header.sshpass and header.sshpass == 'proxy':
+        com = 'tar cf - '+ files_str + ' | ssh sdv "sshpass -f ~/.ssh/p ssh '+addr+' \\"cd '+header.cluster_home+' && tar xvf -\\"" '
+        # print(com)
+        # sys.exit()
+        out = runBash(com)
     
+        # print(out)
+        # sys.exit()
     elif header.sshpass:
         # if '@' not in addr:
         #     printlog('Error! Please provide address in the form user@address')
@@ -148,7 +175,9 @@ def push_to_server(files = None, to = None,  addr = None):
         # print(com)
         # sys.exit()
         out = runBash(com)
-    
+
+
+
     else:
         out = runBash('rsync -uaz  '+files_str+ ' '+addr+':'+to)
     
@@ -165,14 +194,18 @@ def file_exists_on_server(file, addr):
 
     printlog('Checking existence of file', file, 'on server', addr )
     
-    if header.ssh_object:
-        exist = header.ssh_object.fexists(file)
+    exist = run_on_server(' ls '+file, addr)
+
+    # if header.ssh_object:
+    #     exist = header.ssh_object.fexists(file)
+    # else:
+    #     exist = runBash('ssh '+addr+' ls '+file)
+     
+
+    if 'No such file' in exist:
+        exist = ''
     else:
-        exist = runBash('ssh '+addr+' ls '+file)
-        if 'No such file' in exist:
-            exist = ''
-        else:
-            exist = 'no such file'
+        exist = 'file exists'
 
 
     if exist:
@@ -224,9 +257,25 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
             else:
                 out = 'error, file not found'
 
+        elif header.sshpass and header.sshpass == 'proxy':
+            # com = 'ssh sdv "sshpass -f ~/.ssh/p ssh ' + addr + ' \\"tar zcf - '+ file +'\\"" | tar zxf - '+to_file # does not work?
+            com = 'ssh sdv "sshpass -f ~/.ssh/p ssh ' + addr + ' \\"tar cf - '+ file +'\\"" > '+to_file
+            # print(com)
+            # sys.exit()
+            out = runBash(com)
+
+        elif header.sshpass:
+            com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
+            out = runBash(com)
+
+
         else:
             # print(addr,file,to_file)
             out = runBash('rsync -uaz  '+addr+':'+file+ ' '+to_file)
+
+
+
+
 
         if 'error' in out:
             res = out

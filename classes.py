@@ -2,7 +2,7 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import, print_function
 import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil
-import re
+import re, io
 
 from small_functions import angle, is_string_like
 
@@ -42,7 +42,7 @@ from small_functions import cat_files, grep_file, red_prec, list2string, is_list
 from functions import (read_vectors, read_list, words,
      element_name_inv, invert, calculate_voronoi,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
-from inout import write_xyz, write_lammps, read_xyz
+from inout import write_xyz, write_lammps, read_xyz, read_poscar
 from small_functions import makedir
 from geo import calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
 from geo import  image_distance, replic
@@ -138,6 +138,7 @@ class Structure():
         st = copy.deepcopy(self)
         # if hasattr(self, 'select'):
         st.select = []
+        # print(st.natom)
         for i in range(st.natom):
             st.select.append([True,True,True])
             # print('9')
@@ -226,7 +227,7 @@ class Structure():
 
         return st
 
-    def fix_layers(self, xred_range, highlight = False):
+    def fix_layers(self, xred_range = None, xcart_range = None, highlight = False):
         """
         fix atoms in layers normal to R3
 
@@ -235,13 +236,26 @@ class Structure():
 
         """
         st = copy.deepcopy(self)
-        if not hasattr(st, 'select'):
+
+        r3 = np.linalg.norm(st.rprimd[2])
+        xcr = xcart_range
+        if xcr:
+            xred_range = [xcr[0]/r3, xcr[1]/r3]
+            printlog('xcart_range converted to xred', xred_range)
+
+
+
+        if not hasattr(st, 'select') or len(st.select)==0:
             st = st.selective_all()
         fixed = []
+        
+        # print(st.select)
+
         for i, xr in enumerate(st.xred):
             if xred_range[0]  < xr[2] < xred_range[1]:
                 st.select[i] = [0, 0, 0] # fix
                 fixed.append(i)
+        
         if highlight:
             st = st.replace_atoms(fixed, 'Pu')
 
@@ -707,15 +721,11 @@ class Structure():
 
         return st
 
-
-    def get_surface_atoms(self, element, surface = 0, surface_width = 0.5 ):
-        #return numbers of surface atoms
-        #elememt - which element is interesting?
-        #surface_width - which atoms to consider as surface 
-        #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
+    def get_surface_pos(self, ):
+        #allows to return positions of top and bottom surfaces (edge atoms) in cartesian
+        #assumed normal to R3
         st = self
-        surface_atoms = [[],[]]
-        
+
         z1 = 100
         z2 = -100
         z = []
@@ -729,6 +739,21 @@ class Structure():
 
         z.append(z1)
         z.append(z2)
+
+        return z
+
+
+    def get_surface_atoms(self, element, surface = 0, surface_width = 0.5 ):
+        #return numbers of surface atoms
+        #elememt - which element is interesting?
+        #surface_width - which atoms to consider as surface 
+        #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
+        st = self
+        surface_atoms = [[],[]]
+        
+        z = st.get_surface_pos()
+
+
         els = st.get_elements()
 
 
@@ -736,10 +761,10 @@ class Structure():
             el = els[i]
             if el == element:
                 # print(x[2])
-                if z1 <= x[2] < z1+surface_width:
+                if z[0] <= x[2] < z[0]+surface_width:
                     surface_atoms[0].append(i)
 
-                if z2 - surface_width  < x[2] <= z2:
+                if z[1] - surface_width  < x[2] <= z[1]:
                     surface_atoms[1].append(i)
 
 
@@ -834,25 +859,35 @@ class Structure():
             tra = ns
         return tra
 
-    def get_specific_elements(self, required_elements = None, fmt = 'n', ):
+    def get_specific_elements(self, required_elements = None, fmt = 'n', z_range = None):
         """Returns list of specific elements (chemical names. z, or numbers from 0) in the structure
-        fmt - 
+        required_elements - list of elements z of interest
+        z_range - (2 index tuple) range of z coordinates: only atoms from z1 to z2 are taken
+        fmt - format of output
             'names'
             'z'
             'n' - numbers of atoms
         
-        required_elements - list of elements z of interest
 
 
         """
         el = self.get_elements()
         tra = []
         ns = []
-        for i, e in enumerate(el):
-            for t in required_elements:
-                if e == invert(t):
-                    tra.append(e)
-                    ns.append(i)
+
+        if z_range:
+            def additional_condition(x):
+                return z_range[0] < x < z_range[1]
+        else:
+            def additional_condition(x):
+                return True
+
+
+        for i, e, xc in zip( range(self.natom), el, self.xcart ):
+            Z = invert(e)
+            if Z in required_elements and additional_condition(xc[2]):
+                tra.append(e)
+                ns.append(i)
         
         if fmt == 'z':
             tra = [invert(t) for t in tra]
@@ -1300,9 +1335,9 @@ class Structure():
         return st
 
 
-    def del_layers(self, xred_range,):
+    def del_layers(self, xred_range = None, xcart_range = None):
         """
-        fix atoms in layers normal to R3
+        remove atoms normal to R3 in given range
 
         xred_range (list) [from, to]
         highlight - replace with Pu to check
@@ -1310,6 +1345,11 @@ class Structure():
         """
         st = copy.deepcopy(self)
         # print(st.nznucl)
+        r3 = np.linalg.norm(st.rprimd[2])
+        xcr = xcart_range
+        if xcr:
+            xred_range = [xcr[0]/r3, xcr[1]/r3]
+            printlog('xcart_range converted to xred', xred_range)
 
         dels = []
         for i, xr in enumerate(st.xred):
@@ -1782,7 +1822,7 @@ class Structure():
 
 
 
-        with open(filename,'w', newline = '') as f:
+        with io.open(filename,'w', newline = '') as f:
             """Writes structure (POSCAR) in VASP format """
             if energy:
                 energy_string = 'e0='+str(energy)+' ; '
@@ -2389,10 +2429,12 @@ class CalculationVasp(Calculation):
 
 
     def read_poscar(self, filename, version = None):
-        """Read POSCAR file
+        """
+        Read POSCAR file using st.read_poscar 
+        
+
         """
 
-        selective_dynamics = None
 
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
@@ -2426,174 +2468,9 @@ class CalculationVasp(Calculation):
 
             self.version = ver
 
+        self.init = read_poscar(filename)
+        self.des = self.init.des
 
-        elements_list = []
-
-        self.init = Structure()
-        st = self.init
-        
-        st.name = os.path.basename(filename).replace('POSCAR', '').replace('CONTCAR', '')
-        
-        try:
-            if '.' in st.name[-1]:
-                st.name = st.name[0:-1]
-        except:
-            pass
-
-
-        with open(filename,'r') as f:
-            name = f.readline().strip()
-            # print self.name, "self.name"
-
-            self.des = name
-
-            # st.name = self.name
-            # print(f.readline())
-            mul = float( f.readline().split('!')[0] )
-            # print 'mul', mul
-
-
-            st.rprimd = []
-            for i in 0, 1, 2:
-                vec = f.readline().split()
-                st.rprimd.append( np.asarray([float(vec[0])*mul, float(vec[1])*mul, float(vec[2])*mul]) )
-
-            st.nznucl = []
-
-            ilist = f.readline().split() #nznucl of elements?
-            
-            try:
-                int(ilist[0])
-                vasp5 = False
-            except:
-                vasp5 = True
-
-
-            if vasp5:
-                printlog('Vasp5 detected')
-                for el in ilist:
-                    elements_list.append(el)
-                printlog('elements_list:', elements_list)
-
-                ilist = f.readline().split()
-            else:
-                printlog('Vasp4 detected')
-
-
-            
-            for z in ilist:
-                st.nznucl.append( int(z)  )
-
-
-            temp_line = f.readline()
-
-            if temp_line[0] in ['s', 'S']:
-                printlog('selective dynamics detected') 
-                selective_dynamics = True
-                temp_line = f.readline()
-
-            type_of_coordinates = temp_line
-
-
-            st.xred = []
-
-            coordinates = []
-            select = []
-
-
-            if len(elements_list) > 0:
-                read_elements = 0
-            else:
-                read_elements = 1
-
-            for nz in st.nznucl:
-
-                for i in range(nz):
-                    vec = f.readline().split()
-                    coordinates.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
-
-                    if read_elements and len(vec) == 4: # elements may be added by pymatgen
-                        # print_and_log("Probably elements names are added at the end of coordinates, trying to read them")
-                        if vec[3] not in elements_list:
-                            elements_list.append(vec[3])
-                    
-                    if selective_dynamics:
-                        # convert 'T'/'F' to True/False
-                        flagset = [True, True, True]
-                        for fi, flag in enumerate(vec[3:6]):
-                            if flag == 'F':
-                                flagset[fi] = False
-                        # print(flagset)
-                        select.append(flagset)
-
-            st.select = select
-
-            if "Car" in type_of_coordinates or 'car' in type_of_coordinates:
-                st.xcart  = coordinates
-                st.xred = xcart2xred(st.xcart, st.rprimd)
-                
-            elif "dir" in type_of_coordinates or 'Dir' in type_of_coordinates:
-                st.xred  = coordinates
-                st.xcart = xred2xcart(st.xred, st.rprimd)
-
-
-            elif 'None' in type_of_coordinates:
-                pass
-
-            else:
-                print_and_log("Error! The type of coordinates should be 'car' or 'dir' ")
-                raise NameError
-
-
-
-            if 'Species order:' in name:
-                print_and_log('I detect that input file was generated by cif2cell\n')
-                name = name.split(':')[-1]
-
-
-            if not elements_list:
-                elements_list = name.split('!')[0].strip().split()
-                print_and_log('I take elements from the first line, The line is '+str(name.split('!'))+' you could use ! to add comment after name+\n')
-                # print(elements_list)
-                if 'i2a' in elements_list[0]:
-                    printlog('i2a list detected')
-                    el = elements_list[0].split('[')[-1].replace(']','')
-                    elements_list = el.split(',')
-            else:
-                print_and_log("Elements names have been taken from the end of coordinates, pymatgen file?\n")
-
-
-
-            st.znucl = []
-            for elname in elements_list:
-                st.znucl.append( element_name_inv(elname) )
-            # print_and_log('znucl is ')
-
-
-
-            st.natom = len(st.xred)
-
-            st.ntypat = len(st.znucl)
-
-            st.typat = []
-            for i, nz in enumerate(st.nznucl):
-                for j in range(nz):
-                    st.typat.append(i+1)
-
-            #Determine reciprocal vectors
-            st.recip = st.get_recip()
-
-
-                # if hasattr(self.init, 'vel'):
-                #     print "I write to POSCAR velocity as well"
-                #     f.write("Cartesian\n")
-                #     for v in self.init.vel:
-                #         f.write( '%.12f %.12f %.12f\n'%(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )
-
-        print_and_log('The following Z were read = '+ str(self.init.znucl)+'\n')
-
-
-        print_and_log( "POSCAR was read\n")
         return
     
 
@@ -2963,7 +2840,7 @@ class CalculationVasp(Calculation):
                         i - index in ls  
 
                         """
-                        nonlocal i_current
+                        # nonlocal i_current
                         if len(orderings) < nords:
 
                             for s in 1,-1:
@@ -2976,7 +2853,7 @@ class CalculationVasp(Calculation):
                                 
                                 else:
                                     if sum(ls) == 0:
-                                        i_current+=1  
+                                        i_current['a']+=1  
                                         # print (i_current)
 
                                         if 1: #  i_current % use_each == 0:  # every use_each will be calculated; two slow even for sampling!
@@ -2984,7 +2861,7 @@ class CalculationVasp(Calculation):
                                             # print (i_current)
                         return
 
-                    i_current = 0
+                    i_current = {'a':0}
                     spin(ls, 0)
 
                     mag_orderings = []
@@ -3233,7 +3110,7 @@ class CalculationVasp(Calculation):
         mode = None,
         batch_script_filename = None):
         """Without arguments writes header, else adds sequence of calculatios
-            option - 'inherit_xred' - control inheritance, or 'master' - run serial on master 
+            option - the same as inherit_option, 'inherit_xred' - control inheritance, or 'master' - run serial on master 
             prevcalcver - ver of previous calc; for first none
             savefile - 'cdawx', where c-charge, d-dos, a- AECCAR, w-wavefile, x-xml
             schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
@@ -3344,11 +3221,20 @@ class CalculationVasp(Calculation):
                 #     condition = (not 'only_neb' in self.calc_method)
 
                 # if condition:
+
+
                 if option == 'master':
                     f.write("vasp >"+name+".log\n")
+
+                elif 'monte' in self.calc_method:
+                    f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
+
                 else:
                     f.write(parrallel_run_command +" >"+name+".log\n")
                 
+
+
+
                 f.write("sleep 20\n")
             return
 
@@ -4126,7 +4012,7 @@ class CalculationVasp(Calculation):
 
         printlog('The load flag is ', load)
 
-        if 'o' in load:
+        if 'o' in load and hasattr(self, 'cluster_address'):
 
             #reduce size of downloadable file by removing occupations: vasp 4 and 5
             command_reduce = """ssh {0:s} nbands=\`grep \\"NBANDS=\\" \{1:s} \| awk \\'{{print \$NF - 1}}\\'\`\; sed -i -e \\"/band No./,+\${{nbands}}d\\" \{1:s} """.format(
@@ -4158,7 +4044,7 @@ class CalculationVasp(Calculation):
 
 
 
-
+        printlog('Path to CONTCAR', path_to_contcar)
         if os.path.exists(path_to_contcar):
             contcar_exist   = True
         else:
@@ -4431,11 +4317,14 @@ class CalculationVasp(Calculation):
                             if hasattr(self.end, 'select') and self.end.select:
                                 # print(float(parts[ff[0]]), self.end.select[j][0])
                                 b = []
+                                # print (self.end.select)
                                 for kkk in 0,1,2:
                                     cur = self.end.select[j][kkk]
-                                    if 'F' in cur:
+                                    # print(cur)
+                                    
+                                    if cur == False:# or 'F' in cur:
                                         b.append(0)
-                                    elif 'T' in cur:
+                                    elif cur == True:# or 'T' in cur:
                                         b.append(1)
                                     else:
                                         b.append(cur)
@@ -4542,8 +4431,14 @@ class CalculationVasp(Calculation):
                         self.vlength = [red_prec( float(l),1000 ) for l in outcarlines[i_line + 1].split()[0:3]]
                         #print self.vlength
                     if "in kB" in line:
+                        # print(line)
+                        line = line.replace('-', ' -')
+
                         self.stress = [float(i)*100 for i in line.split()[2:]]  # in MPa 
                     if "Total  " in line:
+                        # print(line)
+                        line = line.replace('-', ' -')
+
                         self.intstress = [int(float(i)*1000) for i in line.split()[1:]] #stress in internal units; can be regarded as forces
                     
                     if "external pressure =" in line: 
@@ -4755,37 +4650,20 @@ class CalculationVasp(Calculation):
 
             """Try to read xred from CONCAR and calculate xcart"""
 
-
-
-
-
-
-            #print contcar_exist
-            # print(contcar_exist)
+            printlog('The status of CONTCAR file is', contcar_exist)
             if contcar_exist:
-                with open(path_to_contcar, 'r') as contcar:
-                    
-                    for line in contcar:
-                        
-                        if "Direct" in line:
-                            self.end.xred = []
-                            for i in range(self.end.natom):
-                                try:
-                                    xr = np.asarray ( [float(x) for x in contcar.readline().split()[0:3]] )
-                                    self.end.xred.append( xr )
-                                except:
-                                    self.end.xred.append( [0,0,0] )
+                try:
+                    self.end = read_poscar(path_to_contcar)
+                    printlog('CONTCAR was succesfully parsed')
+                except:
+                    printlog('Attention!, I could not parse CONTCAR:', path_to_contcar, 'use data from outcar')
 
-                                    printlog('Attention!, I could not parse CONTCAR:', path_to_contcar)
-                # print(self.end.xred)
-
-
-
-
-
-                self.end.xcart = xred2xcart( self.end.xred, self.end.rprimd)
             else: 
                 self.end.xred = xcart2xred( self.end.xcart, self.end.rprimd)
+
+
+
+
 
 
             #print "init pressure = ",self.extpress_init,"; final pressure =",self.extpress
@@ -5221,7 +5099,7 @@ class CalculationVasp(Calculation):
                 os.rename(cl.path['output'], cl.path['output']+"_unfinished") 
                 printlog('read_results():',cl.id, 'is unfinished, continue:', cl.dir, cl.cluster_address, imp = 'y')
                 cl.state = '5. Unfinished'
-            except FileNotFoundError:
+            except:
                 printlog('read_results():',cl.id, 'probably was not submitted:', cl.dir, imp = 'y')
 
 

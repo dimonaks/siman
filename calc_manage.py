@@ -1,7 +1,7 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
 from operator import itemgetter
-import copy, traceback, datetime, sys, os, glob, shutil, re
+import copy, traceback, datetime, sys, os, glob, shutil, re, io, json
 from itertools import product
 
 import numpy as np
@@ -662,7 +662,7 @@ def choose_cluster(cluster_name, cluster_home, corenum):
         printlog('setting sshpass to True', imp = '')
         # sys.exit()
 
-        header.sshpass = True
+        header.sshpass = clust['sshpass']
     else:
         header.sshpass = None
 
@@ -799,6 +799,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             The copies are available as versions from 1 to *n_scale_images* and
             suffix .su appended to *it* name
             Copies to cluster *fit* utility that finds volume corresp. to energy minimum, creates 100.POSCAR and continues run 
+            - 'monte' - Monte-Carlo functionality
+
 
 
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
@@ -815,7 +817,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         - params (dic) - dictionary of additional parameters, please move here numerous arguments
             - 'occmatrix' - explicit path to occmatrix file
             - 'update_set_dic' (dict) - additional parameters to override the existing set
-
+            - 'monte' - dictionary with parameters for Monte-Carlo regime
 
 
     Comments:
@@ -1374,6 +1376,16 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         return u_scale_flag
 
+
+
+
+    # def add_loop_write 
+
+
+
+
+
+
     id_base = None
 
     # id1 = (it, setlist[0], verlist[0])
@@ -1462,6 +1474,21 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     make init of seqset inside calculate_nbands(), actualize_set, check_kpoints 
 
     """
+
+    def write_parameters_for_monte(name, vasp_run_com, params):
+        file = cl.dir +  'monte.json'  
+        if 'monte' not in params:
+            printlog('Error! no paramters for Monte-Carlo simulation were provided! please provide params["monte"] dictionary to add_loop')      
+        pm = params['monte']
+        pm['vasp_run'] = vasp_run_com + ' > ' + name+'.log'
+        with io.open(  file, 'w', newline = '') as fp:
+            json.dump(pm, fp,)
+
+        return file
+
+
+
+
     struct_des = header.struct_des
 
 
@@ -1570,6 +1597,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         #pass using object
         # if header.copy_to_cluster_flag:
+        cl.cluster = header.cluster
         cl.cluster_address      = header.cluster_address
         cl.project_path_cluster = header.project_path_cluster
         cl.cluster_home = header.cluster_home
@@ -1696,7 +1724,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
             if id[2] == last_version:
+
                 list_to_copy = []
+
+                if 'monte' in cl.calc_method:
+                    monte_params_file = write_parameters_for_monte(cl.name, header.vasp_command, params)
+                    list_to_copy.append(monte_params_file)
                 
                 cl.write_sge_script(mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )
@@ -2377,6 +2410,18 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     if not calc:
         calc = header.calc
 
+    def setting_sshpass(cl):
+        if hasattr(cl , 'cluster'):
+            # print(cl.cluster)
+            # clust = header.CLUSTERS[cl.cluster]
+            if 'sshpass' in cl.cluster and cl.cluster['sshpass']:
+                printlog('setting sshpass to True', imp = '')
+                # sys.exit()
+                header.sshpass = cl.cluster['sshpass']
+            else:
+                header.sshpass = None
+
+
 
 
     try:
@@ -2455,7 +2500,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
                 continue #pass non existing calculations
             cl = calc[id]
-           
+            
+            setting_sshpass(cl) # checking if special download commands are needed
+            
             if readfiles and check_job:
                 if '3' in cl.check_job_state():
                     printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')

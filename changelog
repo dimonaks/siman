@@ -1,4 +1,14 @@
+0.9.0
+new regime for calc_method in add_loop:
+    'Monte-Carlo' - Monter Carlo simulation above DFT
 
+sshpass parameter in clusters now can take 'proxy' value. this allows to connect cluster with sshpass using proxy. 
+TODO: now proxy server and path to password is hardcoded in run_on_server(), push_to_server() and download()
+
+new attibute added to calculation objects: self.cluster - dictionary with all parameters for cluster
+
+
+read_poscar() moved from classes.py to inout.py as a separate function
 
 0.8.3
 cl.fix_atoms() method added

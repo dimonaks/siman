@@ -52,6 +52,7 @@ WALLTIME_LIMIT = False # now only for PBS if True 72 hours limit is used
 
 
 try:
+    from default_project_conf import *
     from project_conf import *
     import project_conf
     siman_run = True
