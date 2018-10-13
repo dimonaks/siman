@@ -253,7 +253,7 @@ class Structure():
 
         for i, xr in enumerate(st.xred):
             if xred_range[0]  < xr[2] < xred_range[1]:
-                st.select[i] = [0, 0, 0] # fix
+                st.select[i] = [False, False, False] # fix
                 fixed.append(i)
         
         if highlight:
@@ -729,6 +729,7 @@ class Structure():
         z1 = 100
         z2 = -100
         z = []
+        # print(st.xcart)
         for x in st.xcart:
             if z1 > x[2]:
                 z1 = x[2]
@@ -867,6 +868,7 @@ class Structure():
             'names'
             'z'
             'n' - numbers of atoms
+            'x' - xcart
         
 
 
@@ -882,17 +884,21 @@ class Structure():
             def additional_condition(x):
                 return True
 
-
+        xcart = []
         for i, e, xc in zip( range(self.natom), el, self.xcart ):
             Z = invert(e)
             if Z in required_elements and additional_condition(xc[2]):
                 tra.append(e)
                 ns.append(i)
+                xcart.append(xc)
         
         if fmt == 'z':
             tra = [invert(t) for t in tra]
         elif fmt == 'n':
             tra = ns
+        elif fmt == 'x':
+            tra = xcart
+
         return tra
 
 
@@ -1235,11 +1241,16 @@ class Structure():
         return st
 
     def swap_atoms(self, iat1, iat2):
+        
         st = copy.deepcopy(self)
+        els = st.get_elements()
+        # printlog('You choose', els[iat1], 'and', els[iat2])
+
         x1 = st.xcart[iat1]
         st.xcart[iat1] = st.xcart[iat2]
         st.xcart[iat2] = x1
         st.xcart2xred()
+        
         return st
 
 
@@ -1727,6 +1738,8 @@ class Structure():
             if at least one F is found than automatically switched on
             !works only for coord_type = 'dir' and charges = False
 
+        NOTE
+        #void element type is not written to POSCAR
 
         TODO
             selective_dynamics for coord_type = 'cart'
@@ -1742,7 +1755,9 @@ class Structure():
             return s
 
 
-        st = self
+        st = copy.deepcopy(self)
+        st = st.remove_atoms(['void']) # remove voids
+ 
         to_ang = 1
         rprimd = st.rprimd
         xred   = st.xred
@@ -2468,7 +2483,8 @@ class CalculationVasp(Calculation):
 
             self.version = ver
 
-        self.init = read_poscar(filename)
+        self.init = Structure()
+        self.init = read_poscar(self.init, filename)
         self.des = self.init.des
 
         return
@@ -2619,7 +2635,8 @@ class CalculationVasp(Calculation):
         if self.set.potdir:
             # print (self.set.potdir)
             for z in self.init.znucl:
-                
+                if z == 300:
+                    continue # skip voids
                 potcar_files.append(os.path.join(path2pot, self.set.potdir[ int(z) ], 'POTCAR') )
 
             printlog("POTCAR files:", potcar_files)        
@@ -2651,6 +2668,8 @@ class CalculationVasp(Calculation):
         if not curset:
             curset = self.set
         vp = curset.vasp_params
+        st = copy.deepcopy(self.init)
+        st = st.remove_atoms(['void']) # remove voids
 
         if path_to_potcar:
             # path_to_potcar = self.dir+'/POTCAR'
@@ -2668,9 +2687,9 @@ class CalculationVasp(Calculation):
 
             if curset.add_nbands != None:
                 tve =0
-                for i in range(self.init.ntypat):
+                for i in range(st.ntypat):
                     # print self.init.zval
-                    tve += self.init.zval[i] * self.init.nznucl[i] #number of electrons 
+                    tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
                     # print(self.init.zval[i], self.init.nznucl[i])
                 nbands_min = math.ceil(tve / 2.)
                 self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
@@ -4272,19 +4291,19 @@ class CalculationVasp(Calculation):
                         #print self.end.rprimd
                         #print self.rprimd
                     if "POSITION" in line:
-                        if not contcar_exist or out_type == 'xcarts':
-                            self.end.xcart = [] #clean xcart before filling
-                            for i in range(self.end.natom):
-                                #print outcarlines[i_line+1+i].split()[0:3] 
-                                xcart = np.asarray ( 
-                                            [   float(x) for x in outcarlines[i_line+2+i].split()[0:3]   ] 
-                                        )
-                                
-                                self.end.xcart.append( xcart )
-                                #self.end.xred.append ( xcart2xred( xcart, self.end.rprimd) )
-                    
-                            if out_type == 'xcarts':
-                                self.end.list_xcart.append(self.end.xcart) #xcart at each step only for dimer
+                        # if not contcar_exist or out_type == 'xcarts':
+                        self.end.xcart = [] #clean xcart before filling
+                        for i in range(self.end.natom):
+                            #print outcarlines[i_line+1+i].split()[0:3] 
+                            xcart = np.asarray ( 
+                                        [   float(x) for x in outcarlines[i_line+2+i].split()[0:3]   ] 
+                                    )
+                            
+                            self.end.xcart.append( xcart )
+                            #self.end.xred.append ( xcart2xred( xcart, self.end.rprimd) )
+                
+                        if out_type == 'xcarts':
+                            self.end.list_xcart.append(self.end.xcart) #xcart at each step only for dimer
 
                             #the change of typat is accounted below
 
@@ -4312,7 +4331,6 @@ class CalculationVasp(Calculation):
                         for j in range(self.end.natom):
                             parts = outcarlines[i_line+j+2].split()
                             # print "parts", parts
-                            # print(self.end.select)
                             # sys.exit()
                             if hasattr(self.end, 'select') and self.end.select:
                                 # print(float(parts[ff[0]]), self.end.select[j][0])
@@ -4328,7 +4346,7 @@ class CalculationVasp(Calculation):
                                         b.append(1)
                                     else:
                                         b.append(cur)
-
+                                # print(b)
                                 x = float(parts[ff[0]]) * b[0]
                                 y = float(parts[ff[1]]) * b[1]
                                 z = float(parts[ff[2]]) * b[2]
@@ -4337,9 +4355,13 @@ class CalculationVasp(Calculation):
                                 y = float(parts[ff[1]])
                                 z = float(parts[ff[2]])
                             
+                            
                             forces.append([x,y,z])
                             magnitudes.append(math.sqrt(x*x + y*y + z*z))
-                        
+                        # print('new step:')
+                        # for f in forces:
+                        #     print('{:5.2f} {:5.2f} {:5.2f}'.format(*f))
+                        # sys.exit()
                         average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
                         imax = np.asarray(magnitudes).argmax()
                         maxforce.append( [imax, round(magnitudes[imax] * 1000)]  )
@@ -4651,15 +4673,14 @@ class CalculationVasp(Calculation):
             """Try to read xred from CONCAR and calculate xcart"""
 
             printlog('The status of CONTCAR file is', contcar_exist)
+            self.end.update_xred()
             if contcar_exist:
-                try:
-                    self.end = read_poscar(path_to_contcar)
-                    printlog('CONTCAR was succesfully parsed')
-                except:
-                    printlog('Attention!, I could not parse CONTCAR:', path_to_contcar, 'use data from outcar')
+                # try:
+                self.end = read_poscar(self.end, path_to_contcar, new = False) # read from CONTCAR
+                # except:
+            else:
+                printlog('Attention!, No CONTCAR:', path_to_contcar, '. I use data from outcar')
 
-            else: 
-                self.end.xred = xcart2xred( self.end.xcart, self.end.rprimd)
 
 
 

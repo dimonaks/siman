@@ -1701,7 +1701,7 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
 
 
 def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
-    primitive = None, symmetrize = False, cut_thickness = None, return_one = False):
+    primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1):
     """
     INPUT:
         st (Structure) - Initial input structure. Note that to
@@ -1732,7 +1732,7 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
         my_paramters:
         cut_thickness (float) - in A - allow to remove more layers from top
         return_one (bool) - allows to return only one Structure, otherwise list of pymatgen slabs is returned 
-
+        write_poscar (bool) -self-explained
     """
 
     from pymatgen.core.surface import SlabGenerator
@@ -1751,9 +1751,10 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
 
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument\nWriting POSCARs to xyz', imp = 'y')
 
-    for i, slab in enumerate(slabs):
-        pos = Poscar(slab)
-        pos.write_file('xyz/POSCAR_suf'+str(i)+str(suf))
+    if write_poscar:
+        for i, slab in enumerate(slabs):
+            pos = Poscar(slab)
+            pos.write_file('xyz/POSCAR_suf'+str(i)+str(suf))
 
     if cut_thickness:
         return_one = True
@@ -1772,7 +1773,8 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
         st.update_xred()
 
         st.name+='cutted'
-        st.write_poscar()
+        if write_poscar:
+            st.write_poscar()
 
 
     if return_one:

@@ -818,7 +818,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'occmatrix' - explicit path to occmatrix file
             - 'update_set_dic' (dict) - additional parameters to override the existing set
             - 'monte' - dictionary with parameters for Monte-Carlo regime
-
+            - 'xvoid' - xcart coordinates of voids 
 
     Comments:
         !Check To create folders and add calculations add_flag should have value 'add' 
@@ -1480,6 +1480,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if 'monte' not in params:
             printlog('Error! no paramters for Monte-Carlo simulation were provided! please provide params["monte"] dictionary to add_loop')      
         pm = params['monte']
+        st = cl.init
+        els = st.get_elements()
+        if 'void' in els:
+            pm['xvoid'] = [ list(x) for x in st.get_specific_elements([300], fmt = 'x')]
+
         pm['vasp_run'] = vasp_run_com + ' > ' + name+'.log'
         with io.open(  file, 'w', newline = '') as fp:
             json.dump(pm, fp,)

@@ -340,7 +340,7 @@ def chgsum(cll, el, site, silent = 1):
             chgsum_ref = chgsum
         if not silent:
 
-            print('{:5.2f}({:4.2f})'.format(chgsum, chgsum_ref-chgsum), end = '  ')
+            print('{:5.2f}({:4.2f})'.format(chgsum, chgsum_ref-chgsum), )
     if not silent:
         print('\n')
 

@@ -10,6 +10,10 @@ new attibute added to calculation objects: self.cluster - dictionary with all pa
 
 read_poscar() moved from classes.py to inout.py as a separate function
 
+
+new type 'void' with Z = 300 added to system. It is not written in POSCAR. Be carefull, bugs are expected, 
+since cl.add_potcar() and cl.calculate_nbands() are affected
+
 0.8.3
 cl.fix_atoms() method added
 bug fixed in cl.run()

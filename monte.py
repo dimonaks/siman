@@ -1,6 +1,7 @@
 #!/bin/python
 """  
-Programm Monte-Carlo
+Program Monte-Carlo by Aksyonov Dmitry, Skoltech, Moscow
+
 """
 
 import sys, json, os, glob
@@ -17,13 +18,13 @@ import header
 from monte_functions import metropolis
 from header import runBash, ALKALI_ION_ELEMENTS, TRANSITION_ELEMENTS, printlog
 from classes import CalculationVasp, Structure
+from inout import read_poscar
 
-
-debug = 0
 
 def check(cl, exit = 0):
+    # return 0 if ok, return 1 if failed
     if hasattr(cl, 'e0'):
-        printlog('outcar is ok, continue', imp  = 'y')
+        printlog('outcar is ok', imp  = 'y')
         out = 0
     else:
         printlog('outcar is broken ', imp  = 'y')
@@ -34,19 +35,43 @@ def check(cl, exit = 0):
     return out
 
 
-header.warnings = 'neyY'
+def vasp_run(n, des):
+    #allows to run vasp several times, here fireworks can be used
+    #n - number of attempts
+    #des - description of run
+    for i in range(n): # max three attempts
+        out = runBash(vasprun_command)
+        printlog(des, 'attempt', i,'out is', out)
+        cl = CalculationVasp(output = 'OUTCAR')
+        cl.read_results(show = 'fo')
+        status = check(cl)
+        if status == 0:
+            break
+        else:
+            if os.path.exists('CONTCAR'):
+                copyfile('CONTCAR', 'POSCAR')
+            else:
+                printlog('No CONTCAR was found. No further attempts to run VASP', imp = 'y')
+                break
 
+    return cl   
+
+debug = 0
+
+header.warnings = 'yY'
+header.verbose_log = 1
 
 """0. Read configuration file """
 # params = read_monte_params()
 with open('monte.json', 'r') as fp:
     params = json.load(fp)
-vasp_run = params['vasp_run']
-print(vasp_run)
-
+vasprun_command = params['vasp_run']
 nmcstep = params['mcsteps']
+thickness = params['thickness']
 
-print('Total number of steps is', nmcstep)
+printlog('Command to run vasp', vasprun_command)
+printlog('Total number of steps is', nmcstep)
+printlog('Thickness is ', thickness)
 
 
 
@@ -60,78 +85,148 @@ if debug:
     cl.end = cl.init
     lastn = 0
 else:
-    files = glob.glob('*.pickle') #get list of calculated files
+    
+    files = glob.glob('*yes.pickle') #get list of calculated yes files
+    
+
+    """Find last yes pickle file"""
     if files:
-        numbers = [int(file.split('.')[0]) for file in files]
+        numbers = [int(file.split('-')[0]) for file in files]
         lastn = max(numbers)
-        last_file = str(lastn)+'.pickle'
-        printlog('Last calculation file is ', last_file)
+        last_file = str(lastn)+'-yes.pickle'
+        printlog('Last calculation file is ', last_file, imp = 'y')
+    
     else:
         lastn = 0
         last_file = None
 
+    """Read last pickle file or run vasp """
+    
     if last_file:
         cl = CalculationVasp().deserialize(last_file)
         printlog('Successfully deserialized')
+
+        if 0:
+            #to correct mistake on first step and add void to pickle
+            if 'xvoid' in params and len(params['xvoid']) >0: # read void coordinates
+                cl.end = cl.end.add_atoms(params['xvoid'], 'void')
+                printlog('I found', len(params['xvoid']), 'voids in config file. Added to structure.')
+
+            cl.serialize('0-yes')
+
+    
     else:
-        out = runBash(vasp_run)
-        print('first run', out)
-        cl = CalculationVasp(output = 'OUTCAR')
-        cl.read_results()
-        check(cl, exit = 1)
-        cl.serialize('0')
+        cl = vasp_run(3, 'first run')
+        if 'xvoid' in params and len(params['xvoid']) >0: # read void coordinates
+            cl.end = cl.end.add_atoms(params['xvoid'], 'void')
+            printlog('I found', len(params['xvoid']), 'voids in config file. Added to structure.')
+
+        cl.serialize('0-yes')
+
         with open('ENERGIES', 'w') as f:
             f.write('{:.5f}\n'.format(cl.e0))
 
 
 
+
+"""Define rest required parameters"""
 st = cl.end
-
-
-
-t = params['thickness']
 z2 = st.get_surface_pos()[1]
+printlog('Position of top surface is {:3.2f}'.format(z2) )
+
+xcart_voids = st.get_specific_elements([300], fmt = 'x')
+if xcart_voids:
+    voidz = [300]
+    printlog('Voids were extracted from st, adding them to z group for Monte-Carlo', xcart_voids)
+else:
+    voidz = None
+
 
 
 for i_mcstep in range(1+lastn, 1+lastn+nmcstep):
 
     """3. Exchange two atoms"""
     #choose two atoms 
-    alk = st.get_specific_elements(ALKALI_ION_ELEMENTS, z_range = [z2-t, z2])
-    tra = st.get_specific_elements(TRANSITION_ELEMENTS, z_range = [z2-t, z2])
-    # print(alk, tra)
-    st_new_init = st.swap_atoms(random.choice(alk), random.choice(tra))
+    z_groups = [ALKALI_ION_ELEMENTS, TRANSITION_ELEMENTS]
+    if voidz:
+        z_groups.append(voidz)
+
+
+    printlog('Z groups are ', z_groups)
+    # sys.exit()
+    gr1 = random.choice(z_groups)
+    z_groups.remove(gr1)
+    gr2 = random.choice(z_groups)
+
+
+    alk = st.get_specific_elements(gr1, z_range = [z2 - thickness, z2])
+    tra = st.get_specific_elements(gr2, z_range = [z2 - thickness, z2])
+    
+    
+    if len(alk) == 0 or len(tra) == 0:
+        printlog('Attention, alk or tra are too small:', alk, tra, 'trying another')
+        continue
+    
+    printlog('Two groups of atom numbers to swap are', alk, tra)
+    
+
+    at1 = random.choice(alk)
+    if at1 in tra:
+        tra.remove(at1)
+
+    at2 = random.choice(tra)
+
+    els = st.get_elements()
+    st_new_init = st.swap_atoms(at1, at2)
+    printlog('I swapped', at1, els[at1],  'and', at2, els[at2], imp = 'y' )
+
+    if voidz:
+        xcart_voids = st_new_init.get_specific_elements([300], fmt = 'x')
+        printlog('The following voids after changes were extracted from st:', xcart_voids)
 
     if debug:
         st_new_init.write_poscar('POSCAR-'+str(i_mcstep))
+        st_new_init = read_poscar(st_new_init, 'POSCAR-'+str(i_mcstep))
+        st_new_init = st_new_init.add_atoms(xcart_voids, 'void')
+        # xcart_voids = st_new_init.get_specific_elements([300], fmt = 'x')
+        # print('After writing and reading the voids are ', xcart_voids)
+        st = st_new_init
+
 
     else:
         """4. Write new structure and calculate energy  """
-        st_new_init.write_poscar('POSCAR')
-    
-        out = runBash(vasp_run)
-        print('mcstep '+str(i_mcstep), out)
 
-        cl_new = CalculationVasp(output = 'OUTCAR')
-        cl_new.read_results()
+        st_new_init.write_poscar('POSCAR') #here voids are lost
+        
+        cl_new = vasp_run(3, 'mcstep '+str(i_mcstep))
 
-        if check(cl):
-            print('unlucky configuration, trying another ... ')
-            with open('ENERGIES', 'a') as f:
-                f.write('0\n')
+        if check(cl_new):
+            printlog('{:5d} is unlucky configuration, trying another ... '.format(i_mcstep), imp = 'y')
             continue
 
+
+
         """5. Check if to accept new structure  """
-        printlog('Energies before and after are ', cl.e0, cl_new.e0, imp = 'y')
+        printlog('Energies before and after are {:3.3f} and {:3.3f}, dE = {:3.3f}'.format(cl.e0, cl_new.e0, cl_new.e0 - cl.e0), imp = 'y')
         with open('ENERGIES', 'a') as f:
-            f.write('{:.5f}\n'.format(cl_new.e0))
+            f.write('{:5d}  {:.5f}\n'.format(i_mcstep, cl_new.e0))
         
         if metropolis(cl.e0, cl_new.e0):
             cl = cl_new
-            st = cl_new.end
-            cl.serialize(str(i_mcstep))
+
+            if voidz:
+                #insert voids
+                cl_new.end = cl_new.end.add_atoms(xcart_voids, 'void') # here voids are inserted back
+
+            
+            cl.serialize(str(i_mcstep)+'-yes')
             copyfile('CONTCAR', 'CONTCAR_last')
             copyfile('OUTCAR', 'OUTCAR_last')
 
+            st = cl_new.end
+        else:
+            cl.serialize(str(i_mcstep)+'-no')
+        copyfile('OSZICAR', 'OSZICAR-'+str(i_mcstep))
 
-print('MC simulation finished!')
+
+printlog('MC simulation finished!', imp = 'y')

@@ -504,12 +504,18 @@ class InputSet():
 
     def set_add_nbands(self,arg):
         name = "add_nbands"  
-        if type(arg) not in [float, int ]:
+        # print(type(arg))
+        if type(arg) not in [float, int, type(None) ]:
             raise TypeError
-        try: self.add_nbands
-        except AttributeError: self.add_nbands = 1.
+        try: 
+            self.add_nbands
+        except AttributeError: 
+            self.add_nbands = None
+        
         old = self.add_nbands    
+        
         self.add_nbands = arg
+        
         if old == arg:
             print_and_log("Warning! You did not change  "+name+"  in "+self.ise+" set\n")
             return
