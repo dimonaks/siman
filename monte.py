@@ -43,7 +43,10 @@ def vasp_run(n, des):
         out = runBash(vasprun_command)
         printlog(des, 'attempt', i,'out is', out)
         cl = CalculationVasp(output = 'OUTCAR')
-        cl.read_results(show = 'fo')
+        out = cl.read_results(show = 'fo')
+        printlog('Results are', imp = 'y')
+        printlog(out, imp = 'y')
+
         status = check(cl)
         if status == 0:
             break
@@ -59,6 +62,7 @@ def vasp_run(n, des):
 debug = 0
 
 header.warnings = 'yY'
+header.warnings = 'neyY'
 header.verbose_log = 1
 
 """0. Read configuration file """
@@ -124,7 +128,8 @@ else:
         cl.serialize('0-yes')
 
         with open('ENERGIES', 'w') as f:
-            f.write('{:.5f}\n'.format(cl.e0))
+            f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))
+
 
 
 
@@ -135,6 +140,7 @@ z2 = st.get_surface_pos()[1]
 printlog('Position of top surface is {:3.2f}'.format(z2) )
 
 xcart_voids = st.get_specific_elements([300], fmt = 'x')
+# printlog
 if xcart_voids:
     voidz = [300]
     printlog('Voids were extracted from st, adding them to z group for Monte-Carlo', xcart_voids)
