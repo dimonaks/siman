@@ -65,21 +65,35 @@ def write_batch_header(batch_script_filename = None,
     self-explanatory)
     path_to_job (str) - absolute path to job folder 
     """
+    NC = str(number_cores)
     with open(batch_script_filename,'w', newline = '') as f:
 
 
         if schedule_system == 'SGE':
-            f.write("#!/bin/tcsh   \n")
-            f.write("#$ -M aksenov@mpie.de\n")
+            if 'shell' in header.cluster:
+                def_shell = header.cluster['shell']
+            else:
+                def_shell = '/bin/tcsh'
+            
+            f.write("#!"+def_shell+"\n")
+            # f.write("#$ -M aksenov@mpie.de\n")
             f.write("#$ -m be\n")
-            f.write("#$ -S /bin/tcsh\n")
+            f.write("#$ -S "+def_shell+"\n")
             f.write("#$ -cwd \n")
             f.write("#$ -R y \n")
-            f.write("#$ -o "+path_to_job+" -j y\n\n")
+            f.write("#$ -V  \n") # use variables
+            f.write("#$ -o "+path_to_job+" -j y\n")
+            if 'pe' in header.cluster:
+                f.write("#$ -pe "+header.cluster['pe']+' '+NC+'\n')
+            f.write("\n")
+
 
             f.write("cd "+path_to_job+"\n")
-            f.write("module load sge\n")
-            f.write("module load vasp/parallel/5.2.12\n\n")
+
+            if 'modules' in header.cluster:
+                f.write(header.cluster['modules']+'\n')
+            # f.write("module load sge\n")
+            # f.write("module load vasp/parallel/5.2.12\n\n")
 
 
         if schedule_system == 'PBS':
@@ -103,7 +117,10 @@ def write_batch_header(batch_script_filename = None,
             f.write("#PBS -j eo\n")
             f.write("#PBS -m bea\n")
             # f.write("#PBS -M dimonaks@gmail.com\n")
+            
             f.write("cd $PBS_O_WORKDIR\n")
+            
+
             # f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
             # f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
             if 'modules' in header.cluster:
@@ -226,9 +243,15 @@ def prepare_run():
     with open('run','w', newline = '') as f:
     
         if schedule_system == 'SGE':
-            f.write("#!/bin/tcsh\n")
-            f.write("module load sge\n")
-            f.write("module load vasp/parallel/5.2.12\n")
+            if 'shell' in header.cluster:
+                f.write("#!"+header.cluster['shell']+'\n')
+
+            else:
+                f.write("#!/bin/tcsh\n")
+            # if 'modules' in header.cluster:
+                # f.write(header.cluster['modules']+'\n')
+            # f.write("module load sge\n")
+            # f.write("module load vasp/parallel/5.2.12\n")
         elif schedule_system in ('PBS', 'PBS_bsu' 'SLURM'):
             f.write("#!/bin/bash\n")
         else:
@@ -250,6 +273,8 @@ def complete_run(close_run = True):
                 f.write("sleep 2\n")
             elif header.schedule_system == "SLURM":
                 f.write("squeue\n")
+            elif header.schedule_system == "SGE":
+                f.write("qstat\n")
 
             f.write("mv run last_run\n")
 

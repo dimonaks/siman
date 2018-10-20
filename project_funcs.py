@@ -3808,7 +3808,7 @@ def get_alkali_ion(st):
 
 
 
-def process_cathode_material(projectname, step = 1, target_x = 0, update = 0 ):
+def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, params = None ):
     """
     AI module to process cif file and automatic calculation of standard properties of cathode material 
     
@@ -3825,14 +3825,21 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0 ):
     INPUT:
     target_x (float) - required concentration of Na in DS state
     update - allows to rewrite service table
-
+    params (dic)
+        show_fit
 
 
     """
     from geo import determine_symmetry_positions, primitive, remove_x
-    show_fit  = 0
     pn = projectname
     run_neb = 0
+    show_fit = 0
+    up_scale = 0
+    if params:
+        show_fit  = params['show_fit']
+        up_scale  = params['up_scale']
+
+
 
 
 
@@ -3851,6 +3858,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0 ):
         ''
         if 1 not in db[pn]['steps']:
             startgeofile = db[pn]['startgeofile'] 
+            print('geo file is ', startgeofile)
             st = smart_structure_read(startgeofile)
             st = primitive(st)
             add_loop(pn, m_set, 1, input_st = st, it_folder = pn)
@@ -3882,7 +3890,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0 ):
 
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
-            a = calc_barriers('normal', up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+            a = calc_barriers('normal', up_res = 'up1', show_fit = show_fit, up = up_scale, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
             
             # print(a)

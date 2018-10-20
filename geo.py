@@ -1700,7 +1700,7 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
 
 
 
-def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
+def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
     primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1):
     """
     INPUT:
@@ -1730,6 +1730,7 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
 
 
         my_paramters:
+        shift (float) - shift along z 
         cut_thickness (float) - in A - allow to remove more layers from top
         return_one (bool) - allows to return only one Structure, otherwise list of pymatgen slabs is returned 
         write_poscar (bool) -self-explained
@@ -1739,6 +1740,8 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
     from pymatgen.io.vasp.inputs import Poscar
     from geo import replic
 
+    if shift:
+        st = st.shift_atoms([0,0,shift])
 
     pm = st.convert2pymatgen(oxidation = oxidation)
     # pm = st.convert2pymatgen()
@@ -1749,17 +1752,18 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
-    printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument\nWriting POSCARs to xyz', imp = 'y')
+    printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
+    st = st.update_from_pymatgen(slabs[surface_i])
 
     if write_poscar:
         for i, slab in enumerate(slabs):
             pos = Poscar(slab)
+            # \nWriting POSCARs to xyz
             pos.write_file('xyz/POSCAR_suf'+str(i)+str(suf))
 
     if cut_thickness:
         return_one = True
         # print(slabs[surface_i])
-        st = st.update_from_pymatgen(slabs[surface_i])
         
         z = st.get_surface_pos()[1]
         # st.printme()

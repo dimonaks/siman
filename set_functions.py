@@ -698,19 +698,19 @@ def make_sets_for_conv(isefrom,conv,list_of_parameters,varset):
 
 
 
-def init_default_sets():
+def init_default_sets(init = 0):
     """
     Pre-defined sets for Vasp
     """
     varset = header.varset
 
     setname = 'static'
-    if setname not in varset: #init only once
+    if init or setname not in varset: #init only once
         s = InputSet(setname) #default starting set without relaxation
         s.kpoints_file = True
         s.add_nbands = 1.25
         s.vasp_params = {
-            'NELM'      : 50,
+            'NELM'      : 100,
             'IBRION'    : 1,
             'KGAMMA'    : ".TRUE.",
             'ENCUT'     : 441.0,
@@ -741,7 +741,7 @@ def init_default_sets():
 
 
     setname = 'opt'
-    if setname not in varset: #init only once
+    if init or setname not in varset: #init only once
         # sys.exit()
         s = InputSet(setname) 
         s.kpoints_file = True

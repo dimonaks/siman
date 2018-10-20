@@ -286,7 +286,17 @@ class Structure():
         return z_unique
 
 
+    def get_slice(self, thickness):
+        #return element numbers from the top part of slab along z
+        #slab should start from bottom
+        st = self
+        z2 = st.get_surface_pos()[1]
+        nn = []
+        for i, x in enumerate(st.xcart):
+            if z2-thickness < x[2] < z2:
+                nn.append(i)
 
+        return nn
 
 
 
@@ -724,6 +734,7 @@ class Structure():
     def get_surface_pos(self, ):
         #allows to return positions of top and bottom surfaces (edge atoms) in cartesian
         #assumed normal to R3
+        #small number is added or subtracted to/from edge atom to overcome further numericall errors
         st = self
 
         z1 = 100
@@ -736,6 +747,8 @@ class Structure():
             if z2 < x[2]:
                 z2 = x[2]
 
+        z1-=0.01
+        z2+=0.01
         printlog('Surfaces are ', z1, z2)
 
         z.append(z1)
@@ -3356,7 +3369,8 @@ class CalculationVasp(Calculation):
 
 
         if schedule_system == 'SGE':
-            parrallel_run_command = "mpirun -x PATH vasp"
+            # parrallel_run_command = "mpirun -x PATH vasp" # MPIE
+            parrallel_run_command = header.vasp_command
         elif schedule_system in ['PBS', 'PBS_bsu']:
             # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
             # parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
@@ -3872,9 +3886,13 @@ class CalculationVasp(Calculation):
             if schedule_system == 'SGE':
                 #'qsub -pe 'mpi*' NCORES -l CLUSTER_TAG script.parallel.sh' for mpi-jobs which should run on CLUSTER_TAG (cmmd or cmdft)
                 #IMPORTANT: NCORES must be a multiple of 8(24) on cmdft(cmmd). 
-                f.write("qsub -pe 'mpi*' "+str(header.corenum)+" "+header.queue+" "+run_name+"\n") #str(self.set.np) #-l cmmd
-                f.write('sleep 5\n')
+                # f.write("qsub -pe 'mpi*' "+str(header.corenum)+" "+header.queue+" "+run_name+"\n") #str(self.set.np) #-l cmmd; on MPIE
+                
+                f.write("qsub "+" "+run_name+"\n") 
+            
+                # f.write('sleep 5\n')
                 # runBash('chmod +x run')
+            
             elif schedule_system in ['PBS', 'PBS_bsu']:
                 if header.PATH2PROJECT == '':
                     header.PATH2PROJECT = '.'
@@ -4063,11 +4081,6 @@ class CalculationVasp(Calculation):
 
 
 
-        printlog('Path to CONTCAR', path_to_contcar)
-        if os.path.exists(path_to_contcar):
-            contcar_exist   = True
-        else:
-            contcar_exist   = False
 
 
         if os.path.exists(path_to_outcar):
@@ -4105,6 +4118,33 @@ class CalculationVasp(Calculation):
 
         if "4" in self.state:
             
+
+            """Try to read xred from CONCAR and calculate xcart"""
+
+            printlog('Path to CONTCAR', path_to_contcar)
+            if os.path.exists(path_to_contcar):
+                contcar_exist   = True
+            else:
+                contcar_exist   = False
+
+
+            printlog('The status of CONTCAR file is', contcar_exist)
+            # self.end.update_xred()
+        
+            if contcar_exist:
+                # try:
+                self.end = read_poscar(self.end, path_to_contcar, new = False) # read from CONTCAR
+                # except:
+                contcar_read = True
+            else:
+                printlog('Attention!, No CONTCAR:', path_to_contcar, '. I use data from outcar')
+                contcar_read = False
+
+
+
+
+
+
             read = 1
             if read:
                 if 0: #please use this only for linux or create cross-platform way
@@ -4138,9 +4178,10 @@ class CalculationVasp(Calculation):
                 # mforce = []
                 self.list_e_sigma0 = []
                 self.list_e_without_entr = []
-                try:
-                    self.end = copy.deepcopy(self.init) # below needed end values will be updated
-                except:
+                # try:
+                #     self.end = copy.deepcopy(self.init) # below needed end values will be updated
+                # except:
+                if not contcar_read:
                     self.end = Structure()
 
                 # if not hasattr(self.end, "natom"): 
@@ -4216,25 +4257,26 @@ class CalculationVasp(Calculation):
                         self.xc_inc = line.split()[2].strip() #xc from incar
 
                     if 'ions per type =' in line:
-                        self.end.nznucl = [int(n) for n in line.split()[4:]]
-                        self.end.ntypat = len(self.end.nznucl)
+                        if not contcar_read:
+                            self.end.nznucl = [int(n) for n in line.split()[4:]]
+                            self.end.ntypat = len(self.end.nznucl)
 
-                        self.end.natom  = sum(self.end.nznucl)
+                            self.end.natom  = sum(self.end.nznucl)
 
-                        #correction of bug; Take into account that VASP changes typat by sorting impurities of the same type.
-                        self.end.typat = []
-                        for i, nz in enumerate(self.end.nznucl):
-                            for j in range(nz):
-                                self.end.typat.append(i+1)
-                        #correction of bug
+                            #correction of bug; Take into account that VASP changes typat by sorting impurities of the same type.
+                            self.end.typat = []
+                            for i, nz in enumerate(self.end.nznucl):
+                                for j in range(nz):
+                                    self.end.typat.append(i+1)
+                            #correction of bug
 
 
 
-                        # print(self.potcar_lines)
-                        elements = [t[1].split('_')[0] for t in self.potcar_lines]
-                        # printlog('I read ',elements, 'from outcar')
-                        self.end.znucl = [element_name_inv(el) for el in elements]
-                        # print (self.end.znucl)
+                            # print(self.potcar_lines)
+                            elements = [t[1].split('_')[0] for t in self.potcar_lines]
+                            # printlog('I read ',elements, 'from outcar')
+                            self.end.znucl = [element_name_inv(el) for el in elements]
+                            # print (self.end.znucl)
 
                         ifmaglist, _ = self.end.get_maglist()
 
@@ -4280,32 +4322,37 @@ class CalculationVasp(Calculation):
                             print_and_log("W(q)/X(q) are too high, check output!\n")
                             print_and_log('Low + high = ', low+high, imp = 'Y' )
                             print_and_log([v > 1e-3 for v in low+high], imp = 'Y' )
+                    
                     if "direct lattice vectors" in line:
-                        for v in 0,1,2:
-                            line = outcarlines[i_line+1+v]
-                            line = line.replace('-', ' -')
-                            # print(line)
-                            self.end.rprimd[v] = np.asarray( [float(ri) for ri in line.split()[0:3]   ] )
+                        if not contcar_read:
+                            for v in 0,1,2:
+                                line = outcarlines[i_line+1+v]
+                                line = line.replace('-', ' -')
+                                # print(line)
+                                self.end.rprimd[v] = np.asarray( [float(ri) for ri in line.split()[0:3]   ] )
 
 
                         #print self.end.rprimd
                         #print self.rprimd
                     if "POSITION" in line:
                         # if not contcar_exist or out_type == 'xcarts':
-                        self.end.xcart = [] #clean xcart before filling
-                        for i in range(self.end.natom):
-                            #print outcarlines[i_line+1+i].split()[0:3] 
-                            xcart = np.asarray ( 
-                                        [   float(x) for x in outcarlines[i_line+2+i].split()[0:3]   ] 
-                                    )
-                            
-                            self.end.xcart.append( xcart )
-                            #self.end.xred.append ( xcart2xred( xcart, self.end.rprimd) )
-                
-                        if out_type == 'xcarts':
-                            self.end.list_xcart.append(self.end.xcart) #xcart at each step only for dimer
+                        if not contcar_read or out_type == 'xcarts':
+                            local_xcart = []
+                            for i in range(self.end.natom):
+                                #print outcarlines[i_line+1+i].split()[0:3] 
+                                xcart = np.asarray ( 
+                                            [   float(x) for x in outcarlines[i_line+2+i].split()[0:3]   ] 
+                                        )
+                                
+                                local_xcart.append( xcart )
 
-                            #the change of typat is accounted below
+                            self.end.xcart = local_xcart
+
+                    
+                            if out_type == 'xcarts':
+                                self.end.list_xcart.append(local_xcart) #xcart at each step only for dimer
+
+                                #the change of typat is accounted below
 
                     if "number of electron " in line:
                         # print line
@@ -4359,8 +4406,8 @@ class CalculationVasp(Calculation):
                             forces.append([x,y,z])
                             magnitudes.append(math.sqrt(x*x + y*y + z*z))
                         # print('new step:')
-                        # for f in forces:
-                        #     print('{:5.2f} {:5.2f} {:5.2f}'.format(*f))
+                        # for f, s in zip(forces, self.end.select):
+                        #     print('{:5.2f} {:5.2f} {:5.2f} {}'.format(*f, s))
                         # sys.exit()
                         average.append( red_prec( sum(magnitudes)/self.end.natom * 1000 ) )
                         imax = np.asarray(magnitudes).argmax()
@@ -4670,16 +4717,10 @@ class CalculationVasp(Calculation):
             if tot_mag_by_atoms:
                 self.end.magmom = tot_mag_by_atoms[-1].tolist()
 
-            """Try to read xred from CONCAR and calculate xcart"""
-
-            printlog('The status of CONTCAR file is', contcar_exist)
+            """update xred"""
             self.end.update_xred()
-            if contcar_exist:
-                # try:
-                self.end = read_poscar(self.end, path_to_contcar, new = False) # read from CONTCAR
-                # except:
-            else:
-                printlog('Attention!, No CONTCAR:', path_to_contcar, '. I use data from outcar')
+
+
 
 
 

@@ -62,7 +62,7 @@ def vasp_run(n, des):
 debug = 0
 
 header.warnings = 'yY'
-header.warnings = 'neyY'
+# header.warnings = 'neyY'
 header.verbose_log = 1
 
 """0. Read configuration file """
@@ -126,6 +126,7 @@ else:
             printlog('I found', len(params['xvoid']), 'voids in config file. Added to structure.')
 
         cl.serialize('0-yes')
+        copyfile('OSZICAR', 'OSZICAR-0')
 
         with open('ENERGIES', 'w') as f:
             f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))
@@ -158,13 +159,16 @@ for i_mcstep in range(1+lastn, 1+lastn+nmcstep):
         z_groups.append(voidz)
 
 
-    printlog('Z groups are ', z_groups)
+    printlog('All Z groups are ', z_groups)
     # sys.exit()
     gr1 = random.choice(z_groups)
     z_groups.remove(gr1)
     gr2 = random.choice(z_groups)
 
+    printlog('Chosen Z groups are ', gr1, gr2)
 
+    # print(st.get_elements_z())
+    # sys.exit()
     alk = st.get_specific_elements(gr1, z_range = [z2 - thickness, z2])
     tra = st.get_specific_elements(gr2, z_range = [z2 - thickness, z2])
     
@@ -174,7 +178,7 @@ for i_mcstep in range(1+lastn, 1+lastn+nmcstep):
         continue
     
     printlog('Two groups of atom numbers to swap are', alk, tra)
-    
+    # sys.exit()
 
     at1 = random.choice(alk)
     if at1 in tra:
@@ -234,5 +238,5 @@ for i_mcstep in range(1+lastn, 1+lastn+nmcstep):
             cl.serialize(str(i_mcstep)+'-no')
         copyfile('OSZICAR', 'OSZICAR-'+str(i_mcstep))
 
-
+copyfile('OUTCAR_last', 'OUTCAR')
 printlog('MC simulation finished!', imp = 'y')

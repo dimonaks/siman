@@ -424,7 +424,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     jmol = None, specialcommand = None, jmol_args = None, sts = None, mcif = 0, suf = ''
     ):
     """Writes st structure in xyz format in the folder xyz/path
-
+    #void are visualized with Pu
     if repeat == 2: produces jmol script
     shift_2view - in rprimd[1][1] - shift of the second view
     gbpos2 - position of grain boundary in A
@@ -655,6 +655,9 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
                 continue
             else:
                 el = element_name_inv(z)
+                if el == 'void':
+                    el = 'Pu'
+
                 f.write( el+" " )
 
             f.write( "%.5f %.5f %.5f \n"%( xcart[i][0], xcart[i][1], xcart[i][2] ) )
