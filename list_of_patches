@@ -1,1 +1,0 @@
-diff -u classes.py classes_new.py > classes.1.patch   # reduction of ouctar size before download 
