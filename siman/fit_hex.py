@@ -1,9 +1,12 @@
 ﻿import sys, os
-sys.path.append(os.path.dirname(__file__)+'/../savelyev')
-sys.path.append(os.path.dirname(__file__)+'/../alglib_cpython')
+sys.path.append(os.path.dirname(__file__)+'../../savelyev')
+sys.path.append(os.path.dirname(__file__)+'../../alglib_cpython')
 # print sys.path
 #from read_write_i import ReadWrite as RW
-from SPL_i import ALGLIB as ALB
+try:
+    from SPL_i import ALGLIB as ALB
+except:
+    print('Cant import SPL_I, check paths to savelyev')
 #from plot_3d_i import Plot_3D as Pl3d
 
 def fit_hex(shag_a,shag_c,npoint_a,npoint_c,it,ise,verlist,calc,gb_volume = False ):

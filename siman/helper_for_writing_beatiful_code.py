@@ -1,17 +1,20 @@
 #Author: Aksyonov D.A.
-"""Template for doc using markdown markup language [https://daringfireball.net/projects/markdown/]  :"""
-    """
-    Function description;
+"""
+Template for doc using markdown markup language [https://daringfireball.net/projects/markdown/]:
 
-    ###INPUT:
-        - parameter 1 (type) - description
-        - parameter 2 (type) - description
+Function description;
 
-
-    ###RETURN:
-        None
-
-    ###DEPENDS:
+###INPUT:
+    
+    - parameter 1 (type) - description
+    - parameter 2 (type) - description
 
 
-    """
+###RETURN:
+    
+    None
+
+###DEPENDS:
+
+
+"""

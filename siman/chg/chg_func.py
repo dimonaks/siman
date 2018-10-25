@@ -6,7 +6,8 @@ import numpy as np
 
 from ase.calculators.vasp import VaspChargeDensity
 from chg.vasputil_chgarith_module import chgarith
-from header import runBash, printlog
+
+from siman.header import runBash, printlog
 
 
 def chg_at_point(chgfile, xred1, ):

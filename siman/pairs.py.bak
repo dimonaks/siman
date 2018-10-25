@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*- 
 #Copyright Aksyonov D.A
- 
+from __future__ import division, unicode_literals, absolute_import 
 from operator import itemgetter
 
 from siman import header
 from siman.classes import CalculationVasp, Structure
-from siman.functions import  element_name_inv
-from siman.geo import image_distance, replic, local_surrounding, xcart2xred, xred2xcart
-from siman.inout import write_xyz
+from siman.functions import image_distance, replic, write_xyz,xcart2xred, xred2xcart, local_surrounding, element_name_inv
 from siman.impurity import insert, add_impurity
 
 
@@ -98,7 +96,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
         add_typat - manually determined; please automatize!
         """
 
-        print(( "Warning! add_typat", add_typat))
+        print( "Warning! add_typat", add_typat)
         if tlist == []: #convert dlist to tlist - to do earlier
             for el in dlist:
                 config = Structure()
@@ -110,7 +108,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
 
 
         for i, el in enumerate( tlist): #by all found structures
-            print(( "el name is ", el.name))
+            print( "el name is ", el.name)
             stn = copy.deepcopy(in_calc.init)
             calc = copy.deepcopy(in_calc)
 
@@ -131,9 +129,9 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
             
 
             """Adapt new rprimd"""
-            print("take final rprimd is ", take_final_rprimd_from)
+            print "take final rprimd is ", take_final_rprimd_from
             if take_final_rprimd_from: #read final rprimd and version
-                print("Start to read rprimd and version from "+take_final_rprimd_from)
+                print "Start to read rprimd and version from "+take_final_rprimd_from
                 in_calc_rprimd = CalculationVasp()
                 in_calc_rprimd.name = 'temp'
                 in_calc_rprimd.read_geometry(take_final_rprimd_from)
@@ -153,12 +151,12 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
             calc.build.ipairlen = el.length # Initial length of pair
             if    not hasattr(calc.build, 'nadded') or calc.build.nadded == None:      calc.build.nadded = 2
             else: calc.build.nadded+= 2
-            if    not hasattr(calc.build, 'listadded') or calc.build.listadded == [None]: calc.build.listadded = list(range(stn.natom - 2, stn.natom)) #list of atoms which were added
-            else: calc.build.listadded.extend(                           list(range(stn.natom - 2, stn.natom)) )
+            if    not hasattr(calc.build, 'listadded') or calc.build.listadded == [None]: calc.build.listadded = range(stn.natom - 2, stn.natom) #list of atoms which were added
+            else: calc.build.listadded.extend(                           range(stn.natom - 2, stn.natom) )
 
             structure_name = calc.name+el.name.split('.')[0]
             #calc.name = add_name_before+calc.name+ '.' +el[2]+'.'+str(calc.version)
-            print('Structure_name', structure_name)
+            print 'Structure_name', structure_name
             if   structure_name in      struct_des:     
 
                 if configver:
@@ -166,15 +164,15 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
                     calc.path["input_geo"] = geo_folder + struct_des[fname].sfolder + '/' + fname + '/' + structure_name + '.' + segtyp+ '.' +str(calc.version) + '.geo'
                 else:
                     calc.path["input_geo"] = geo_folder + struct_des[structure_name].sfolder + '/' + structure_name + '/' + structure_name + '.' + segtyp+ '.' +str(calc.version) + '.geo'
-                print("write geo to ", calc.path["input_geo"])
+                print "write geo to ", calc.path["input_geo"]
                 calc.write_geometry('init', des )
 
 
-            print("write_geometry_files(): name ", el.name)
+            print "write_geometry_files(): name ", el.name
             stn.name = add_name_before+calc.name+ '' +str(el.name)+'.'+str(calc.version)
             #stn = replic(stn, (1,2,2))
             write_xyz(stn)
-            print("__________________________\n\n\n")
+            print "__________________________\n\n\n"
         return
 
     def min_diff(f, list, diffprec):
@@ -206,13 +204,13 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
         st_replic = replic(st_replic, (2,2,2), -1) #replic in negative direction also
         r1x   = in_calc.rprimd[0][0]
         r3z   = in_calc.rprimd[2][2]
-        print("Half length of r1x is", r1x/2)
+        print "Half length of r1x is", r1x/2
 
         if segtyp in ['segreg', 'coseg', 'grainvol']:
             gbpos2 = in_calc.gbpos
             gbpos1 = gbpos2 - r1x/2.
-            print("\n\nPositions of boundaries gb1 and gb2",gbpos1, gbpos2)
-            print("Maximum possible distance between boundary and impurity", r1x/4)
+            print "\n\nPositions of boundaries gb1 and gb2",gbpos1, gbpos2
+            print "Maximum possible distance between boundary and impurity", r1x/4
         else:
             gbpos2 = 0
             gbpos1 = 0      
@@ -332,13 +330,13 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
 
         unique_pores.sort(key = itemgetter(0))
         sumrulist.sort()
-        print('Number of unique pores     is', len(unique_pores))
-        print('Pores have the following sums: ',unique_pores)
+        print 'Number of unique pores     is', len(unique_pores)
+        print 'Pores have the following sums: ',unique_pores
 
 
 
-        print("Searching for similar pairs but with different distances ...")
-        print("number, d1, d2, name,  sumr1, sumr2, dgb1, dgb2; parallel pair with larger distances")
+        print "Searching for similar pairs but with different distances ..."
+        print "number, d1, d2, name,  sumr1, sumr2, dgb1, dgb2; parallel pair with larger distances"
         
         bname = element_name_inv(target_znucl[1]) + element_name_inv(target_znucl[2])
         for i, el1 in enumerate(dlist):
@@ -354,7 +352,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
             elif pairtyp == 'gvol':
                 dlist[i][2] = bname+'.v'+str(i+1) + dlist[i][2]
 
-            print(i+1, el1[:3], el1[-2:] , el1[-6], el1[-5], end=' ') #number, d1, d2, name,  sumr1, sumr2, dgb1, dgb2
+            print i+1, el1[:3], el1[-2:] , el1[-6], el1[-5], #number, d1, d2, name,  sumr1, sumr2, dgb1, dgb2
 
             for el2 in dlist: #this loop looks for pairs which are parallel to the same direction as el1 but have larger interdistances
                 
@@ -365,28 +363,28 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
                 if ( mod < 0.005 or mod > 0.995 ) and abs(el1[0]-el2[0]) > dlist[0][0]: #only multiple distances and if difference is larger than smallest distance
                     #if round(el1[2],prec-1) != round(el2[2],prec-1): continue #In either case the sum the distances should be the same for the same direction
                     if el1[0] == el2[1]: continue
-                    print(el2[0]/el1[0], end=' ') # el2, this pair of atoms is analogus to el1 but have larger interdistance
-            print()
-        print('Total number of structures is', len(dlist))
+                    print el2[0]/el1[0], # el2, this pair of atoms is analogus to el1 but have larger interdistance
+            print
+        print 'Total number of structures is', len(dlist)
 
 
       
         if 0:
-            print("\n\nSearching for pairs with equal distances by periodic boundary conditions:")
+            print "\n\nSearching for pairs with equal distances by periodic boundary conditions:"
             for el1 in dlist:
                 if el1[0] == el1[1]:
-                    print(el1)        
+                    print el1        
 
-            print("\nSearching for pairs with not equal distances by periodic boundary conditions:")
+            print "\nSearching for pairs with not equal distances by periodic boundary conditions:"
             for el1 in dlist:
                 if el1[0] != el1[1]:
-                    print(el1)  
+                    print el1  
 
 
-            print("\nSearching for pairs with d2/d1>2:")
+            print "\nSearching for pairs with d2/d1>2:"
             for el1 in dlist:
                 if el1[1]/el1[0] > 2:
-                    print(el1) 
+                    print el1 
 
 
         dlist[0].append(unique_pores) # last element of dlist[0] is sum and coordinates of unique pores
@@ -421,7 +419,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
         #in_calc.name = str(in_calc_name)
         
         in_calc.name = base_name 
-        print("in_calc name is ", in_calc.name)
+        print "in_calc name is ", in_calc.name
         
 
         in_calc.read_geometry(in_calc_name)
@@ -460,7 +458,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
                 st.xcart.append( x )
                 st.typat.append( typat[i] )
         st.natom = len(st.xcart)
-        print('Number of found pores with znucl = 200 is ', len(xcart_pores))
+        print 'Number of found pores with znucl = 200 is ', len(xcart_pores)
         for n in central_atoms:
             if n >= len(xcart_pores):
                 raise RuntimeError
@@ -483,7 +481,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
             st.ntypat -= 1
             del st.znucl[1]
 
-            print("Impurity atom was removed from cell")  
+            print "Impurity atom was removed from cell"  
 
 
 
@@ -549,7 +547,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
 
     st.znucl = target_znucl #Please make this part more general
     st.ntypat = len(set(st.znucl))
-    print('Warning! Found only ', st.ntypat, 'of unique atoms in target_znucl')
+    print 'Warning! Found only ', st.ntypat, 'of unique atoms in target_znucl'
 
     st.xred = xcart2xred(st.xcart, st.rprimd)
 
@@ -558,7 +556,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
 
     dlist_coseg = []
     if segtyp == 'coseg':
-        print("\nStart searching pairs in  gb")
+        print "\nStart searching pairs in  gb"
         # main_path = 'T2/CO/' #! please make more general
 
         
@@ -576,12 +574,12 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
         for el in dlist_coseg+dlist_coseg_exc: # Helper
             stname = base_name+el[2]
             path   = main_path+base_name+'_coseg'
-            print(( ("struct_des['{0:s}'] = des('{1:s}', 'co-segregation configurations; made from "+based_on+"'   )").format(stname, path)   )) 
+            print  ( ("struct_des['{0:s}'] = des('{1:s}', 'co-segregation configurations; made from "+based_on+"'   )").format(stname, path)   ) 
 
         for el in dlist_coseg+dlist_coseg_exc: # Helper
             stname = base_name+el[2]
             path   = main_path+base_name+'_coseg'
-            print("add_loop('"+stname+"','"+based_on.split('.')[1]+"',range(1,5),calc,conv,varset, 'up1', inherit_option = 'inherit_xred')")
+            print "add_loop('"+stname+"','"+based_on.split('.')[1]+"',range(1,5),calc,conv,varset, 'up1', inherit_option = 'inherit_xred')"
 
 
 
@@ -591,7 +589,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
     elif segtyp == 'segreg':
 
         """Produce segregation cases only in the case of segreg"""
-        print("\nStart producing segragation cases")
+        print "\nStart producing segragation cases"
 
         dlist_segreg = []
         # dlist_segreg1 = copy.deepcopy(input_dlist_coseg) #in this case we use input_dlist with co-segragation cases from pure cell. 
@@ -611,7 +609,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
         """new determination based on input_dlist_coseg[0][-1]"""
         el = copy.deepcopy(input_dlist_coseg[0])
         unique = el[-1] #sums and coordinates of unique pores
-        print("unique", unique)
+        print "unique", unique
         for i, sx in enumerate(unique):
             el[2] = 'Ci'+str(i+1)+'Ov'
             el[7] = sx[1]
@@ -643,13 +641,13 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
         for el in dlist_segreg+dlist_segreg_exc: 
             stname = base_name+el[2]
             path   = main_path+base_name+'_segreg'
-            print(( ("struct_des['{0:s}'] = des('{1:s}', 'co-segregation configurations; made from "+based_on+"'   )").format(stname, path)   )) 
+            print  ( ("struct_des['{0:s}'] = des('{1:s}', 'co-segregation configurations; made from "+based_on+"'   )").format(stname, path)   ) 
 
         for el in dlist_segreg+dlist_segreg_exc: 
             stname = base_name+el[2]
             path   = main_path+base_name+'_segreg'
 
-            print("add_loop('"+stname+"','"+based_on.split('.')[1]+"',range(1,5),calc,conv,varset, 'up1', inherit_option = 'inherit_xred')")
+            print "add_loop('"+stname+"','"+based_on.split('.')[1]+"',range(1,5),calc,conv,varset, 'up1', inherit_option = 'inherit_xred')"
 
 
         write_geometry_files(dlist_segreg+dlist_segreg_exc, in_calc, xcart_pores, segtyp, take_final_rprimd_from, add_typat = add_typat  ) 
@@ -659,7 +657,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
     """6. Find volume cases--------------------------------------------------------"""
     # this part for construction volume cases    
     if segtyp == "grainvol": #take care that you have only one carbon atom in the grain
-        print("\nStart searching pairs in the volume")
+        print "\nStart searching pairs in the volume"
         central_atoms = [imp1]
         max_dist_between_atoms = 4.
         #gvolume_config_num = 0 #please choose manually    
@@ -677,12 +675,12 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
         for el in dlist: 
             stname = base_name+el[2]
             path   = main_path+base_name+'_gvol' #grain volume
-            print("add_loop('"+stname+"','"+based_on.split('.')[1]+"',range(1,5),calc,conv,varset, 'up1', inherit_option = 'inherit_xred')")
+            print "add_loop('"+stname+"','"+based_on.split('.')[1]+"',range(1,5),calc,conv,varset, 'up1', inherit_option = 'inherit_xred')"
 
         for el in dlist: 
             stname = base_name+el[2]
             path   = main_path+base_name+'_gvol' #grain volume
-            print(( ("struct_des['{0:s}'] = des('{1:s}', 'co-segregation configurations; made from "+based_on+"'   )").format(stname, path)   )) 
+            print  ( ("struct_des['{0:s}'] = des('{1:s}', 'co-segregation configurations; made from "+based_on+"'   )").format(stname, path)   ) 
 
 
 
@@ -706,10 +704,10 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
         if dlist and tlist == []:
             for el in dlist:
                 par = el
-                print('pair 1', par, end=' ') 
+                print 'pair 1', par, 
                 x1 = par[7]; x2 = par[8]
-                print('x1 = ', x1)
-                print('x2 = ', x2)
+                print 'x1 = ', x1
+                print 'x2 = ', x2
                 config = Structure()
                 config.xcart = [x1,x2]
                 config.typat = [2, 3]
@@ -723,7 +721,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
             xcart = config.xcart
             typat = config.typat
             name  = config.name        
-            print('\n\n\nStart to adding atom to ',name)
+            print '\n\n\nStart to adding atom to ',name
 
             i = 1
             dlistlist = []
@@ -732,7 +730,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
 
 
             [dlistlist.append([]) for x in xcart]
-            print(len(dlistlist))
+            print len(dlistlist)
 
             for xpor in xcart_pores:
                 
@@ -814,7 +812,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
                                 if all( np.around(v1, 8) == np.around(v2, 8) ) and t1 == t2:
                                     nr+=1;
                         if nr == n:
-                            print("The configurations", new.name, 'and', config.name, 'consist of the same atoms, continue')
+                            print "The configurations", new.name, 'and', config.name, 'consist of the same atoms, continue'
                             skip = True
                             break
 
@@ -829,14 +827,14 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
                     i_min, smaller3 = min_diff(config.lengthOO, [new.lengthOO], diffprec)
                     # print 'Compare', new.name, config.name, smaller1, smaller2, smaller3
                     if smaller1 and smaller2 and smaller3: 
-                        print("\nConfiguration ", new.name, "has the same sum of C-O, C-C  and O-O lengths as", config.name)
-                        print() 
+                        print "\nConfiguration ", new.name, "has the same sum of C-O, C-C  and O-O lengths as", config.name
+                        print 
                         skip = True; break
 
 
 
                 if skip:     continue
-                print('\nSum of CO lengths in :',new.name, new.lengthCC, new.lengthOO, new.lengthCO)
+                print '\nSum of CO lengths in :',new.name, new.lengthCC, new.lengthOO, new.lengthCO
 
 
 
@@ -854,7 +852,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
 
         # max_dist_between_atoms = 4.8
 
-        print("\nSearching pairs ...")
+        print "\nSearching pairs ..."
         dlist = pairs(in_calc, xcart_pores, central_atoms, prec, max_dist_between_atoms, pairtyp = 'gvol' ) 
 
     if segtyp == "bulk_pairs":
@@ -865,7 +863,7 @@ def find_pairs(base_name, segtyp, in_calc, central_atoms = [], xcart1imp = None,
     if segtyp == "bulk_triple":
 
         max_dist_to_next_atom = 5.5    
-        print("\nSearching triples ...")#, tlist
+        print "\nSearching triples ..."#, tlist
         tlist = []
         tlist = triples(('O',3), dlist, tlist, in_calc, xcart_pores, max_dist_to_next_atom)
 
@@ -941,7 +939,7 @@ def create_coseg_samples(base_name, it_b, ise_b, ver, calc, path_template, imp_s
 
     print_and_log("Please add these strings:\n")
     #print ( ("struct_des['{0:s}'] = des('path', 'template without impurities'   )\n").format(temp)   )
-    print(( ("struct_des['{0:s}'] = des('path', 'template with correct rprimd; segreg - carbon in grain interior; coseg - pure'   )\n").format(temp)   ))
+    print ( ("struct_des['{0:s}'] = des('path', 'template with correct rprimd; segreg - carbon in grain interior; coseg - pure'   )\n").format(temp)   )
 
     """0. remove carbon but save its position and pass it to find_pairs"""
     #please remove both atoms if cell with carbon and oxygen
@@ -982,7 +980,7 @@ def create_coseg_samples(base_name, it_b, ise_b, ver, calc, path_template, imp_s
 
 def wrapper_create_coseg():
     basename =  't111g'
-    verlist  =   list(range(1,6))
+    verlist  =   range(1,6)
     templatepath = gb4_geo_folder+'T1/t111gCO_template'
     fine_mul = 4 # for center defining
     imp_size = 0.44
@@ -1007,7 +1005,7 @@ def wrapper_create_coseg():
 
 def wrapper_create_coseg_C1():
     basename =  'c1g'
-    verlist  =   list(range(1,6))
+    verlist  =   range(1,6)
     templatepath = gb4_geo_folder+'C1/c1gCO_template' #will search in target folder
     imp_size = 0.44 # for finding pores
 
@@ -1057,7 +1055,7 @@ def wrapper_create_pairs_H(basename = None, add_typat = [2, 3],  path2temp = Non
 def wrapper_create_coseg_T2(calc):
     basename =  't21g'
     main_path = 'T2/CO/'
-    verlist  =   list(range(1,6))
+    verlist  =   range(1,6)
     templatepath = gb4_geo_folder+'T2/t21gCO_template' #will search in target folder
     imp_size = 0.44 # for finding pores
 
@@ -1087,7 +1085,7 @@ def wrapper_create_coseg_T2(calc):
 def wrapper_create_coseg_T1s(calc):
     basename =  't111sg'
     main_path = 'T1/CO/shift/'
-    verlist  =   list(range(1,6))
+    verlist  =   range(1,6)
     templatepath = gb4_geo_folder+'T1/t111sgCO_template' #will search in target folder
     imp_size = 0.44 # for finding pores
 
@@ -1108,7 +1106,7 @@ def wrapper_create_coseg_T1s(calc):
 def wrapper_create_coseg_CSL7s(calc):
     basename =  'csl71sg'
     main_path = 'CSL7/CO/'
-    verlist  =   list(range(1,6))
+    verlist  =   range(1,6)
     templatepath = gb4_geo_folder+'CSL7/csl71sg15CO_template' #will search in target folder
     imp_size = 0.44 # for finding pores
 

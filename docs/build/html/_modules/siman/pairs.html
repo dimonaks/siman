@@ -1,0 +1,1211 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>siman.pairs &#8212; Siman 0.9.5 documentation</title>
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Siman 0.9.5 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for siman.pairs</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*- </span>
+<span class="c1">#Copyright Aksyonov D.A</span>
+ 
+<span class="kn">from</span> <span class="nn">operator</span> <span class="k">import</span> <span class="n">itemgetter</span>
+
+<span class="kn">from</span> <span class="nn">siman</span> <span class="k">import</span> <span class="n">header</span>
+<span class="kn">from</span> <span class="nn">siman.classes</span> <span class="k">import</span> <span class="n">CalculationVasp</span><span class="p">,</span> <span class="n">Structure</span>
+<span class="kn">from</span> <span class="nn">siman.functions</span> <span class="k">import</span>  <span class="n">element_name_inv</span>
+<span class="kn">from</span> <span class="nn">siman.geo</span> <span class="k">import</span> <span class="n">image_distance</span><span class="p">,</span> <span class="n">replic</span><span class="p">,</span> <span class="n">local_surrounding</span><span class="p">,</span> <span class="n">xcart2xred</span><span class="p">,</span> <span class="n">xred2xcart</span>
+<span class="kn">from</span> <span class="nn">siman.inout</span> <span class="k">import</span> <span class="n">write_xyz</span>
+<span class="kn">from</span> <span class="nn">siman.impurity</span> <span class="k">import</span> <span class="n">insert</span><span class="p">,</span> <span class="n">add_impurity</span>
+
+
+
+<div class="viewcode-block" id="PBC"><a class="viewcode-back" href="../../siman.html#siman.pairs.PBC">[docs]</a><span class="k">def</span> <span class="nf">PBC</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    can be incorrect</span>
+<span class="sd">    Realisation of periodic boundary conditions in common case</span>
+<span class="sd">    dx - vector[3] difference between coordinates of two atoms</span>
+<span class="sd">    r - rprimd of cell</span>
+<span class="sd">    return dx - the smallest distance between atoms</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">hproj</span> <span class="o">=</span> <span class="p">[</span> <span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">]</span><span class="o">+</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">]</span><span class="o">+</span><span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">i</span><span class="p">])</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="p">]</span> <span class="c1">#projection of vectors on three axis</span>
+    
+    <span class="n">dxl</span> <span class="o">=</span> <span class="n">dx</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="c1">#the smallest distance: can be incorrect for oblique cells</span>
+        <span class="k">if</span> <span class="n">dx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span>  <span class="n">hproj</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">-</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="c1">#periodic boundary conditions</span>
+        <span class="k">if</span> <span class="n">dx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">hproj</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span> <span class="n">dx</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="c1">#the largest distance: not correct</span>
+        <span class="c1">#if dx[i] &lt;  0: dxl = dx + r[i] </span>
+        <span class="c1">#f dx[i] &gt;  0: dxl = dx - r[i]</span>
+
+    <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dx</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dx</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="c1">#, math.sqrt(dxl[0]**2 + dxl[1]**2 + dxl[2]**2)</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="find_pairs"><a class="viewcode-back" href="../../siman.html#siman.pairs.find_pairs">[docs]</a><span class="k">def</span> <span class="nf">find_pairs</span><span class="p">(</span><span class="n">base_name</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">central_atoms</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">xcart1imp</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">input_dlist_coseg</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">prec</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">gvolume_config_num</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">gbpos</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">take_final_rprimd_from</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">based_on</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">target_znucl</span> <span class="o">=</span> <span class="p">[</span><span class="mi">22</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
+    <span class="n">max_dist_between_atoms</span> <span class="o">=</span> <span class="mf">4.8</span><span class="p">,</span> <span class="n">add_typat</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>                 <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find uniq pairs of atoms and analyse them</span>
+<span class="sd">    Input:</span>
+<span class="sd">    </span>
+<span class="sd">    segtyp - </span>
+<span class="sd">    three regimes for cells with grain boundaries:</span>
+<span class="sd">    &#39;segreg&#39; assumes that in_calc contains carbon atom in grain volume, and creates all cases; </span>
+<span class="sd">    &#39;coseg&#39; assumes pure cell and creates only coseg cases.</span>
+<span class="sd">    cosegregation cases of course should be the same for two regimes, however co-segregation configuations after &#39;coseg&#39; is more easy to relax.</span>
+<span class="sd">    &#39;grainvol&#39; - searching for pairs in grain volume</span>
+
+<span class="sd">    two regimes for bulk cells:</span>
+<span class="sd">    &#39;bulk_triple&#39; - used for bulk cells without grain boundaries; first step is searching for pairs, second step for triples.</span>
+<span class="sd">    &#39;bulk_pairs&#39; - used for bulk cells without grain boundaries; searching for pairs.</span>
+
+
+
+<span class="sd">    new_name - name of created structures; at first should be added to struct_des[]</span>
+<span class="sd">    in_calc - Calculation() type or path to geo file</span>
+<span class="sd">    region - list of numbers which determine region</span>
+<span class="sd">    central_atoms - list of atoms for which pairs are constructed (Warinig! numbers in new array xcart_pores!);</span>
+<span class="sd">    - parameter to change mode;</span>
+
+<span class="sd">    xcart1imp - coordinates of first interstitial in the  grain interior </span>
+
+<span class="sd">    input_dlist_coseg - list of configurations with cosegregation cases. Needed to construct corresponding segregation cases. the format is quiet tricky</span>
+
+<span class="sd">    prec - precision of lengths used to determine unique positions.</span>
+
+<span class="sd">    gvolume_config_num - number of configuration with two atoms in grain volume choosen by user (usually should be the most favourable) </span>
+
+<span class="sd">    gbpos - position of grain boundary</span>
+
+<span class="sd">    take_final_rprimd_from - path to geo file from which rprimd will be used</span>
+
+
+<span class="sd">    target_znucl - numbers of target atoms</span>
+
+<span class="sd">    max_dist_between_atoms - now at least used for &#39;bulk_pairs&#39; and &#39;bulk_triple&#39;; maximum length of found pairs.</span>
+
+<span class="sd">    add_typat - mannualy set please update</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">write_geometry_files</span><span class="p">(</span><span class="n">dlist</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">take_final_rprimd_from</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">add_name_before</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">tlist</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">configver</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">add_typat</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Creating files</span>
+<span class="sd">        dlist - list of pairs with distances and numbers</span>
+<span class="sd">        in_calc - base calculation without pores</span>
+
+<span class="sd">        tlist - list of additional atoms in the case of triples; list of structures</span>
+<span class="sd">        configver - if True each configuration saved as a new version</span>
+<span class="sd">        add_typat - manually determined; please automatize!</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">print</span><span class="p">((</span> <span class="s2">&quot;Warning! add_typat&quot;</span><span class="p">,</span> <span class="n">add_typat</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">tlist</span> <span class="o">==</span> <span class="p">[]:</span> <span class="c1">#convert dlist to tlist - to do earlier</span>
+            <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">dlist</span><span class="p">:</span>
+                <span class="n">config</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">typat</span> <span class="o">=</span> <span class="n">add_typat</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">xcart</span> <span class="o">=</span> <span class="p">[</span><span class="n">el</span><span class="p">[</span><span class="mi">7</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="p">]</span>
+                <span class="n">tlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">el</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span> <span class="n">tlist</span><span class="p">):</span> <span class="c1">#by all found structures</span>
+            <span class="nb">print</span><span class="p">((</span> <span class="s2">&quot;el name is &quot;</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="n">stn</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">in_calc</span><span class="o">.</span><span class="n">init</span><span class="p">)</span>
+            <span class="n">calc</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">in_calc</span><span class="p">)</span>
+
+            <span class="n">stn</span><span class="o">.</span><span class="n">typat</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">typat</span><span class="p">)</span>
+            <span class="n">stn</span><span class="o">.</span><span class="n">xcart</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">xcart</span><span class="p">)</span>
+
+
+            <span class="n">stn</span><span class="o">.</span><span class="n">xred</span> <span class="o">=</span> <span class="n">xcart2xred</span><span class="p">(</span><span class="n">stn</span><span class="o">.</span><span class="n">xcart</span><span class="p">,</span> <span class="n">stn</span><span class="o">.</span><span class="n">rprimd</span><span class="p">)</span>
+
+            <span class="n">xcart_check</span> <span class="o">=</span> <span class="n">xred2xcart</span><span class="p">(</span><span class="n">stn</span><span class="o">.</span><span class="n">xred</span><span class="p">,</span> <span class="n">stn</span><span class="o">.</span><span class="n">rprimd</span><span class="p">)</span>        
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">xcart_check</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">stn</span><span class="o">.</span><span class="n">xcart</span><span class="p">)</span> <span class="c1">#test</span>
+                  
+            <span class="k">assert</span> <span class="nb">all</span><span class="p">([</span> <span class="nb">all</span><span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">v2</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span> <span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">stn</span><span class="o">.</span><span class="n">xcart</span><span class="p">,</span> <span class="n">xcart_check</span><span class="p">)</span> <span class="p">])</span> <span class="c1">#check if xcart2xred(stn.xcart,r) and xred2xcart(stn.xred,r) are working correctly up to the eight digits after</span>
+            
+            <span class="n">stn</span><span class="o">.</span><span class="n">natom</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">stn</span><span class="o">.</span><span class="n">xcart</span><span class="p">)</span>
+
+
+            
+
+            <span class="sd">&quot;&quot;&quot;Adapt new rprimd&quot;&quot;&quot;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;take final rprimd is &quot;</span><span class="p">,</span> <span class="n">take_final_rprimd_from</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">take_final_rprimd_from</span><span class="p">:</span> <span class="c1">#read final rprimd and version</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Start to read rprimd and version from &quot;</span><span class="o">+</span><span class="n">take_final_rprimd_from</span><span class="p">)</span>
+                <span class="n">in_calc_rprimd</span> <span class="o">=</span> <span class="n">CalculationVasp</span><span class="p">()</span>
+                <span class="n">in_calc_rprimd</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;temp&#39;</span>
+                <span class="n">in_calc_rprimd</span><span class="o">.</span><span class="n">read_geometry</span><span class="p">(</span><span class="n">take_final_rprimd_from</span><span class="p">)</span>
+                
+                <span class="n">stn</span><span class="o">.</span><span class="n">rprimd</span> <span class="o">=</span> <span class="n">in_calc_rprimd</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">rprimd</span>
+                <span class="n">stn</span><span class="o">.</span><span class="n">xcart</span> <span class="o">=</span> <span class="n">xred2xcart</span><span class="p">(</span><span class="n">stn</span><span class="o">.</span><span class="n">xred</span><span class="p">,</span> <span class="n">stn</span><span class="o">.</span><span class="n">rprimd</span><span class="p">)</span>            
+
+                <span class="n">calc</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">in_calc_rprimd</span><span class="o">.</span><span class="n">version</span>
+            <span class="k">elif</span> <span class="n">configver</span><span class="p">:</span>
+                <span class="n">calc</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span>
+
+            
+            <span class="n">calc</span><span class="o">.</span><span class="n">init</span> <span class="o">=</span> <span class="n">stn</span>
+            
+            <span class="n">des</span> <span class="o">=</span> <span class="s1">&#39; was obtained by the insertion of C-O pair into &#39;</span><span class="o">+</span><span class="n">in_calc_name</span><span class="o">+</span><span class="s1">&#39;; final vectors taken from corresponding ver&#39;</span>
+            
+            <span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">ipairlen</span> <span class="o">=</span> <span class="n">el</span><span class="o">.</span><span class="n">length</span> <span class="c1"># Initial length of pair</span>
+            <span class="k">if</span>    <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="p">,</span> <span class="s1">&#39;nadded&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">nadded</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>      <span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">nadded</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="k">else</span><span class="p">:</span> <span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">nadded</span><span class="o">+=</span> <span class="mi">2</span>
+            <span class="k">if</span>    <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="p">,</span> <span class="s1">&#39;listadded&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">listadded</span> <span class="o">==</span> <span class="p">[</span><span class="kc">None</span><span class="p">]:</span> <span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">listadded</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">stn</span><span class="o">.</span><span class="n">natom</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="n">stn</span><span class="o">.</span><span class="n">natom</span><span class="p">))</span> <span class="c1">#list of atoms which were added</span>
+            <span class="k">else</span><span class="p">:</span> <span class="n">calc</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">listadded</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>                           <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">stn</span><span class="o">.</span><span class="n">natom</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="n">stn</span><span class="o">.</span><span class="n">natom</span><span class="p">))</span> <span class="p">)</span>
+
+            <span class="n">structure_name</span> <span class="o">=</span> <span class="n">calc</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1">#calc.name = add_name_before+calc.name+ &#39;.&#39; +el[2]+&#39;.&#39;+str(calc.version)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Structure_name&#39;</span><span class="p">,</span> <span class="n">structure_name</span><span class="p">)</span>
+            <span class="k">if</span>   <span class="n">structure_name</span> <span class="ow">in</span>      <span class="n">struct_des</span><span class="p">:</span>     
+
+                <span class="k">if</span> <span class="n">configver</span><span class="p">:</span>
+                    <span class="n">fname</span> <span class="o">=</span> <span class="n">structure_name</span><span class="c1"># calc.name+&#39;C2O2&#39;</span>
+                    <span class="n">calc</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="s2">&quot;input_geo&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">geo_folder</span> <span class="o">+</span> <span class="n">struct_des</span><span class="p">[</span><span class="n">fname</span><span class="p">]</span><span class="o">.</span><span class="n">sfolder</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">fname</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">structure_name</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="n">segtyp</span><span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">calc</span><span class="o">.</span><span class="n">version</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.geo&#39;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">calc</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="s2">&quot;input_geo&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">geo_folder</span> <span class="o">+</span> <span class="n">struct_des</span><span class="p">[</span><span class="n">structure_name</span><span class="p">]</span><span class="o">.</span><span class="n">sfolder</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">structure_name</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">structure_name</span> <span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span> <span class="n">segtyp</span><span class="o">+</span> <span class="s1">&#39;.&#39;</span> <span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">calc</span><span class="o">.</span><span class="n">version</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;.geo&#39;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;write geo to &quot;</span><span class="p">,</span> <span class="n">calc</span><span class="o">.</span><span class="n">path</span><span class="p">[</span><span class="s2">&quot;input_geo&quot;</span><span class="p">])</span>
+                <span class="n">calc</span><span class="o">.</span><span class="n">write_geometry</span><span class="p">(</span><span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="n">des</span> <span class="p">)</span>
+
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;write_geometry_files(): name &quot;</span><span class="p">,</span> <span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">stn</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">add_name_before</span><span class="o">+</span><span class="n">calc</span><span class="o">.</span><span class="n">name</span><span class="o">+</span> <span class="s1">&#39;&#39;</span> <span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">calc</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+            <span class="c1">#stn = replic(stn, (1,2,2))</span>
+            <span class="n">write_xyz</span><span class="p">(</span><span class="n">stn</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;__________________________</span><span class="se">\n\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">min_diff</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="n">diffprec</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        calculates difference between one number and list of other numbers. return the index of number with smallest difference.</span>
+<span class="sd">        if difference is smaller than diffprec returns true as the second argument.  </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#print list</span>
+        <span class="k">if</span> <span class="nb">list</span> <span class="o">==</span> <span class="p">[]:</span> <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">False</span>
+        <span class="n">mind</span>  <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="nb">abs</span><span class="p">(</span><span class="n">f</span> <span class="o">-</span> <span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">])</span>
+        <span class="n">with_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span> <span class="p">[</span><span class="nb">abs</span><span class="p">(</span><span class="n">f</span> <span class="o">-</span> <span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">]</span> <span class="p">)</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">with_i</span><span class="p">,</span> <span class="p">(</span><span class="n">mind</span> <span class="o">&lt;</span> <span class="n">diffprec</span><span class="p">)</span>
+
+
+
+
+
+    <span class="k">def</span> <span class="nf">pairs</span><span class="p">(</span><span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">central_atoms</span><span class="p">,</span> <span class="n">prec</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">max_dist</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">max_dist_from_gb</span> <span class="o">=</span> <span class="mi">4</span> <span class="p">,</span> <span class="n">pairtyp</span> <span class="o">=</span> <span class="s1">&#39;gvol&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Searhing for pairs and make list of distances and numbers of atoms</span>
+<span class="sd">        prec - precision, allows to control which distances can be related to the same configurations</span>
+<span class="sd">        max_dist - maximum distance between atoms in pair</span>
+<span class="sd">        max_dist_from_gb - </span>
+<span class="sd">        pairtyp - &#39;gvol&#39; assumes that central_atoms are in the grain volume, &#39;gb&#39; assumes that central_atoms are in the grain boundary region</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">init</span>
+        <span class="n">st_replic</span> <span class="o">=</span> <span class="n">replic</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">st_replic</span> <span class="o">=</span> <span class="n">replic</span><span class="p">(</span><span class="n">st_replic</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#replic in negative direction also</span>
+        <span class="n">r1x</span>   <span class="o">=</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">r3z</span>   <span class="o">=</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Half length of r1x is&quot;</span><span class="p">,</span> <span class="n">r1x</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">segtyp</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;segreg&#39;</span><span class="p">,</span> <span class="s1">&#39;coseg&#39;</span><span class="p">,</span> <span class="s1">&#39;grainvol&#39;</span><span class="p">]:</span>
+            <span class="n">gbpos2</span> <span class="o">=</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">gbpos</span>
+            <span class="n">gbpos1</span> <span class="o">=</span> <span class="n">gbpos2</span> <span class="o">-</span> <span class="n">r1x</span><span class="o">/</span><span class="mf">2.</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Positions of boundaries gb1 and gb2&quot;</span><span class="p">,</span><span class="n">gbpos1</span><span class="p">,</span> <span class="n">gbpos2</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Maximum possible distance between boundary and impurity&quot;</span><span class="p">,</span> <span class="n">r1x</span><span class="o">/</span><span class="mi">4</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">gbpos2</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">gbpos1</span> <span class="o">=</span> <span class="mi">0</span>      
+
+
+        <span class="n">dlist</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">d1list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">d2list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">dgb2list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        
+        <span class="n">n_neighbours</span> <span class="o">=</span> <span class="mi">8</span> <span class="c1"># number of atoms to calculate sums</span>
+
+        <span class="n">sumrulist</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1">#list of sums (sumr1 or sumr2) of unique pores</span>
+        <span class="n">unique_pores</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1">#the same list but also with coordinates of pores        </span>
+        
+        <span class="n">sumrlist</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1">#list of sumr1+sumr2</span>
+        
+        <span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">d2diff</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">d1diff</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1">#z1 = 6 #charge of added impurity</span>
+        <span class="c1">#z2 = 8</span>
+
+        <span class="n">diffprec</span> <span class="o">=</span> <span class="mf">0.02</span>
+
+        
+        
+
+
+
+        <span class="c1"># print xcart_pores</span>
+        
+
+
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart_pores</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">central_atoms</span><span class="p">:</span> <span class="k">continue</span>
+            <span class="c1">#iz = z1</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">x2</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart_pores</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">x1</span> <span class="o">==</span> <span class="n">x2</span><span class="p">):</span> <span class="k">continue</span>
+                
+                <span class="n">d</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">in_calc</span><span class="o">.</span><span class="n">gbpos</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">pairtyp</span> <span class="o">==</span> <span class="s1">&#39;gb&#39;</span> <span class="ow">and</span> <span class="n">d</span> <span class="o">&gt;</span> <span class="n">max_dist_from_gb</span><span class="p">:</span> <span class="k">continue</span> <span class="c1">#second atom is too far from grain boundary </span>
+                
+                <span class="n">d1</span><span class="p">,</span> <span class="n">d2</span> <span class="o">=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="c1"># the minimum distance and the next minimum dist</span>
+                <span class="k">if</span> <span class="n">d1</span> <span class="o">&gt;</span> <span class="n">max_dist</span><span class="p">:</span> <span class="k">continue</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">d2</span><span class="p">)</span> <span class="o">!=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span> <span class="k">raise</span> <span class="ne">RuntimeError</span>  <span class="c1">#test, searching in father images</span>
+                
+                <span class="c1">#d1 = round(d1,prec)</span>
+                <span class="c1">#d2 = round(d2,prec)</span>
+                <span class="n">dgb1</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">x2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">gbpos1</span><span class="p">,</span><span class="n">prec</span><span class="p">)</span>
+                <span class="n">dgb2</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">gbpos2</span><span class="o">-</span><span class="n">x2</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">prec</span><span class="p">)</span>
+                
+                <span class="n">sumr1</span> <span class="o">=</span> <span class="n">local_surrounding</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">st_replic</span><span class="p">,</span> <span class="n">n_neighbours</span><span class="p">)</span> <span class="c1"># sum of distances to surrounding atoms</span>
+                <span class="n">sumr2</span> <span class="o">=</span> <span class="n">local_surrounding</span><span class="p">(</span><span class="n">x2</span><span class="p">,</span> <span class="n">st_replic</span><span class="p">,</span> <span class="n">n_neighbours</span><span class="p">)</span>
+                <span class="n">sumr</span>  <span class="o">=</span> <span class="n">sumr2</span> <span class="o">+</span> <span class="n">sumr1</span>
+
+                <span class="k">if</span> <span class="n">sumr1</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sumrulist</span><span class="p">:</span>
+                    <span class="n">sumrulist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sumr1</span><span class="p">)</span> 
+                    <span class="n">unique_pores</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sumr1</span><span class="p">,</span> <span class="n">x1</span><span class="p">)</span> <span class="p">)</span> <span class="c1">#determine unique pores </span>
+
+                <span class="k">if</span> <span class="n">sumr2</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sumrulist</span><span class="p">:</span>
+                    <span class="n">sumrulist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sumr2</span><span class="p">)</span> 
+                    <span class="n">unique_pores</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sumr2</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span> <span class="p">)</span> <span class="c1">#determine unique pores </span>
+
+                <span class="c1">#if d1 in d1list: continue</span>
+                <span class="k">if</span> <span class="n">sumr</span> <span class="ow">in</span> <span class="n">sumrlist</span><span class="p">:</span><span class="c1"># new condition based on sumr</span>
+                    <span class="n">ind</span> <span class="o">=</span> <span class="n">sumrlist</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">sumr</span><span class="p">)</span>
+                    <span class="n">i_min</span><span class="p">,</span> <span class="n">smaller</span> <span class="o">=</span> <span class="n">min_diff</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">d1list</span><span class="p">,</span> <span class="n">diffprec</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">smaller</span><span class="p">:</span> <span class="k">continue</span>
+                    
+                <span class="c1"># if 0:#d1list: </span>
+                <span class="c1">#     i_min, smaller = min_diff(d1, d1list, diffprec)# d1 has the smallest difference with di</span>
+                <span class="c1">#     #print &quot;exist&quot;</span>
+                <span class="c1">#     d2diff = abs(d2list[i_min]-d2)</span>
+                <span class="c1">#     #print abs(d2list[i_min]-d2)</span>
+                <span class="c1">#     #print central_atoms</span>
+                <span class="c1">#     if smaller and abs(d2list[i_min]-d2) &lt; diffprec*2  : continue #and abs(dgb2list[i_min]-dgb2) &lt; diffprec</span>
+                    
+                <span class="c1">#     i_min, smaller = min_diff(d2, d2list, diffprec)# d1 has the smallest difference with di</span>
+                <span class="c1">#     d1diff = abs(d1list[i_min]-d1)</span>
+                <span class="c1">#     if smaller and abs(d1list[i_min]-d1) &lt; diffprec*2  : continue</span>
+
+                    <span class="c1">#print &quot;skiped&quot;</span>
+                <span class="c1">#di, smaller = min_diff(d2, d2list, diffprec)</span>
+                <span class="c1">#if di != None and smaller: continue</span>
+                <span class="c1">#if min_diff(d2, d2list, diffprec): continue # be carefull here. this condition can pass some unique configrations; should make additional check like below</span>
+                <span class="c1">#if d2 in d2list and dgb2list[d2list.index(d2)] == dgb2: continue</span>
+                <span class="c1">#jz = z2</span>
+
+                <span class="n">sumrlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sumr</span><span class="p">)</span>
+                <span class="n">d1list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d1</span><span class="p">)</span>
+                <span class="c1"># d2list.append(d2)</span>
+                <span class="c1"># dgb2list.append(dgb2)</span>
+
+                
+                <span class="n">sym</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+                <span class="k">if</span> <span class="mi">0</span><span class="p">:</span> <span class="c1">#mannualy switched off</span>
+                    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">x2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">diffprec</span><span class="p">:</span> <span class="c1">#Find symmetry</span>
+                        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x1</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">x2</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">diffprec</span><span class="p">:</span>
+                            <span class="n">sym</span> <span class="o">=</span> <span class="s1">&#39;ms&#39;</span> <span class="c1"># if y and z are the same, than mirror symmetry</span>
+                        <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x1</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">-</span><span class="n">x2</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">-</span> <span class="n">r3z</span> <span class="o">&lt;</span> <span class="n">diffprec</span><span class="p">:</span>
+                            <span class="n">sym</span> <span class="o">=</span> <span class="s1">&#39;is&#39;</span> <span class="c1"># inverse symmtry</span>
+                        <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x1</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">+</span><span class="n">x2</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">r3z</span> <span class="o">&lt;</span> <span class="n">diffprec</span><span class="p">:</span> <span class="c1"># only for t111g; should be extended for general case of existing periods along y or z</span>
+                            <span class="n">sym</span> <span class="o">=</span> <span class="s1">&#39;is&#39;</span>
+
+
+                <span class="n">dlist</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">round</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span><span class="n">prec</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="n">d2</span><span class="p">,</span> <span class="n">prec</span><span class="p">),</span> <span class="n">sym</span><span class="p">,</span> <span class="n">sumr1</span><span class="p">,</span> <span class="n">sumr2</span> <span class="p">,</span> <span class="n">dgb1</span><span class="p">,</span> <span class="n">dgb2</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">sumr1</span><span class="p">,</span> <span class="n">sumr2</span><span class="p">]</span> <span class="p">)</span> <span class="c1">#the first sumr1, sumr2 below replaced by their types</span>
+                                
+
+
+
+                <span class="n">k</span><span class="o">+=</span><span class="mi">1</span>
+
+        <span class="n">dlist</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span> <span class="o">=</span> <span class="n">itemgetter</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+
+        <span class="n">unique_pores</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span> <span class="o">=</span> <span class="n">itemgetter</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">sumrulist</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Number of unique pores     is&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_pores</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Pores have the following sums: &#39;</span><span class="p">,</span><span class="n">unique_pores</span><span class="p">)</span>
+
+
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Searching for similar pairs but with different distances ...&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;number, d1, d2, name,  sumr1, sumr2, dgb1, dgb2; parallel pair with larger distances&quot;</span><span class="p">)</span>
+        
+        <span class="n">bname</span> <span class="o">=</span> <span class="n">element_name_inv</span><span class="p">(</span><span class="n">target_znucl</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">element_name_inv</span><span class="p">(</span><span class="n">target_znucl</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">el1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dlist</span><span class="p">):</span>
+
+            <span class="n">typ1</span> <span class="o">=</span> <span class="n">sumrulist</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">el1</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span> <span class="c1">#typ of pore of the first atom</span>
+            <span class="n">typ2</span> <span class="o">=</span> <span class="n">sumrulist</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">el1</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span><span class="o">+</span><span class="mi">1</span> 
+            <span class="n">el1</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">typ1</span>
+            <span class="n">el1</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">typ2</span>
+            
+            <span class="k">if</span> <span class="n">pairtyp</span> <span class="o">==</span> <span class="s1">&#39;gb&#39;</span><span class="p">:</span>
+                <span class="n">dlist</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">bname</span><span class="o">+</span><span class="s1">&#39;i&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">el1</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">+</span><span class="s1">&#39;-&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">el1</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span> <span class="o">+</span> <span class="n">dlist</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+            
+            <span class="k">elif</span> <span class="n">pairtyp</span> <span class="o">==</span> <span class="s1">&#39;gvol&#39;</span><span class="p">:</span>
+                <span class="n">dlist</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">bname</span><span class="o">+</span><span class="s1">&#39;.v&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">dlist</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">el1</span><span class="p">[:</span><span class="mi">3</span><span class="p">],</span> <span class="n">el1</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span> <span class="p">,</span> <span class="n">el1</span><span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="p">],</span> <span class="n">el1</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">],</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span> <span class="c1">#number, d1, d2, name,  sumr1, sumr2, dgb1, dgb2</span>
+
+            <span class="k">for</span> <span class="n">el2</span> <span class="ow">in</span> <span class="n">dlist</span><span class="p">:</span> <span class="c1">#this loop looks for pairs which are parallel to the same direction as el1 but have larger interdistances</span>
+                
+                <span class="k">if</span> <span class="n">el1</span> <span class="o">==</span> <span class="n">el2</span><span class="p">:</span> <span class="k">continue</span>
+                
+                <span class="n">mod</span> <span class="o">=</span> <span class="n">el2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">el1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mi">1</span>
+                
+                <span class="k">if</span> <span class="p">(</span> <span class="n">mod</span> <span class="o">&lt;</span> <span class="mf">0.005</span> <span class="ow">or</span> <span class="n">mod</span> <span class="o">&gt;</span> <span class="mf">0.995</span> <span class="p">)</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">el1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">el2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">dlist</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span> <span class="c1">#only multiple distances and if difference is larger than smallest distance</span>
+                    <span class="c1">#if round(el1[2],prec-1) != round(el2[2],prec-1): continue #In either case the sum the distances should be the same for the same direction</span>
+                    <span class="k">if</span> <span class="n">el1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">el2</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="k">continue</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">el2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">el1</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span> <span class="c1"># el2, this pair of atoms is analogus to el1 but have larger interdistance</span>
+            <span class="nb">print</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Total number of structures is&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dlist</span><span class="p">))</span>
+
+
+      
+        <span class="k">if</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Searching for pairs with equal distances by periodic boundary conditions:&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">el1</span> <span class="ow">in</span> <span class="n">dlist</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">el1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">el1</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">el1</span><span class="p">)</span>        
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Searching for pairs with not equal distances by periodic boundary conditions:&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">el1</span> <span class="ow">in</span> <span class="n">dlist</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">el1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">el1</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">el1</span><span class="p">)</span>  
+
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Searching for pairs with d2/d1&gt;2:&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">el1</span> <span class="ow">in</span> <span class="n">dlist</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">el1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">el1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">el1</span><span class="p">)</span> 
+
+
+        <span class="n">dlist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">unique_pores</span><span class="p">)</span> <span class="c1"># last element of dlist[0] is sum and coordinates of unique pores</span>
+
+        <span class="k">return</span> <span class="n">dlist</span>
+
+
+
+
+
+
+
+
+
+
+    <span class="sd">&quot;&quot;&quot;0. BEGIN-------------------------------------------------------------------------------&quot;&quot;&quot;</span>
+
+    <span class="n">hstring</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">    #on </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span> <span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">extract_stack</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">2</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">],</span>   <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span> <span class="p">)</span> <span class="p">)</span>
+    <span class="k">if</span> <span class="n">hstring</span> <span class="o">!=</span> <span class="n">header</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="n">header</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">hstring</span>  <span class="p">)</span>
+
+    <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">------Starting find_pairs()-----------...</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">central_atoms</span><span class="p">)</span> <span class="o">==</span> <span class="nb">int</span><span class="p">:</span> <span class="c1">#not in [tuple, list]:</span>
+
+        <span class="n">central_atoms</span> <span class="o">=</span> <span class="p">[</span><span class="n">central_atoms</span><span class="p">];</span> <span class="c1">#transform to list</span>
+
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">in_calc</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">in_calc_name</span> <span class="o">=</span> <span class="n">in_calc</span>
+        <span class="n">in_calc</span> <span class="o">=</span> <span class="n">CalculationVasp</span><span class="p">()</span>
+        <span class="c1">#in_calc.name = str(in_calc_name)</span>
+        
+        <span class="n">in_calc</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">base_name</span> 
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;in_calc name is &quot;</span><span class="p">,</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        
+
+        <span class="n">in_calc</span><span class="o">.</span><span class="n">read_geometry</span><span class="p">(</span><span class="n">in_calc_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">gbpos</span><span class="p">:</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">gbpos</span> <span class="o">=</span> <span class="n">gbpos</span>    <span class="c1">#rewrite gbpos</span>
+
+        <span class="n">st</span> <span class="o">=</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">init</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;End relaxed structure is used!!!&quot;&quot;&quot;</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">in_calc</span><span class="o">.</span><span class="n">end</span><span class="p">)</span>
+        <span class="n">in_calc_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">in_calc</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+
+
+
+
+
+
+    
+
+    <span class="sd">&quot;&quot;&quot;1. Create separate list of pores and remove them from xcart--------------------------------------------------------&quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="s2">&quot;hcp_octa_xred&quot;</span><span class="p">:</span>
+        <span class="n">in_calc</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">segtyp</span><span class="o">+</span><span class="s1">&#39;_all_pores&#39;</span>
+        <span class="n">rep</span> <span class="o">=</span> <span class="n">replic</span><span class="p">(</span><span class="n">in_calc</span><span class="o">.</span><span class="n">init</span><span class="p">,</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span> <span class="n">write_xyz</span><span class="p">(</span><span class="n">rep</span><span class="p">)</span> <span class="c1">#just to check</span>
+        
+        <span class="sd">&quot;&quot;&quot;Coordinates of octapores provided in xcart; znucl = 200;&quot;&quot;&quot;</span>
+        <span class="n">xcart</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">;</span> <span class="n">typat</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="p">;</span> <span class="n">st</span><span class="o">.</span><span class="n">typat</span> <span class="o">=</span> <span class="p">[];</span> <span class="n">st</span><span class="o">.</span><span class="n">xcart</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">xcart_pores</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1">#clean structure from pores with z == 200 and construct xcart_pores</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart</span><span class="p">):</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="p">[</span> <span class="n">typat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span>  <span class="p">]</span>
+            <span class="k">if</span> <span class="n">z</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+                <span class="n">xcart_pores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">x</span> <span class="p">)</span>
+                <span class="c1">#print &quot;Found pore&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">x</span> <span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">typat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">natom</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Number of found pores with znucl = 200 is &#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">xcart_pores</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">central_atoms</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xcart_pores</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span>
+
+
+
+    <span class="sd">&quot;&quot;&quot;2. Preprocess segreg and grainvol cases--------------------------------------------------------&quot;&quot;&quot;</span>
+    <span class="c1"># in_calc can be of two types: pure and with C in grain volume; using pure we construct co-segregation cases; using carbon in volume we can construct segregation cases</span>
+
+    <span class="k">if</span> <span class="n">segtyp</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;segreg&#39;</span><span class="p">,</span> <span class="s1">&#39;grainvol&#39;</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="mi">2</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="p">:</span><span class="c1"># impurity in grain volume; (now assume that Carbon)</span>
+
+            <span class="n">iimp</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span> 
+
+            <span class="n">xcart1imp</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">[</span><span class="n">iimp</span><span class="p">]</span>  <span class="c1">#save coordinates of carbon atom </span>
+            
+            <span class="k">del</span> <span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">[</span><span class="n">iimp</span><span class="p">];</span> <span class="k">del</span> <span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="p">[</span><span class="n">iimp</span><span class="p">];</span> <span class="n">st</span><span class="o">.</span><span class="n">natom</span><span class="o">-=</span><span class="mi">1</span>   <span class="c1">#and remove it</span>
+            <span class="c1">#del st.xred[iimp]</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">ntypat</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="k">del</span> <span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Impurity atom was removed from cell&quot;</span><span class="p">)</span>  
+
+
+
+        <span class="k">if</span> <span class="n">xcart1imp</span><span class="p">:</span> <span class="c1">#for compatibility with previous cases; better not to use</span>
+
+            <span class="n">imp1</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xcart_pores</span><span class="p">);</span> 
+            <span class="n">xcart_pores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">xcart1imp</span> <span class="p">);</span>
+
+
+            <span class="n">xcart2imp</span> <span class="o">=</span> <span class="n">xcart1imp</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1">#determine coordinates of second impurity assuming that we have mirror symmetry</span>
+            <span class="k">if</span> <span class="n">xcart2imp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="p">:</span> <span class="n">xcart2imp</span> <span class="o">=</span> <span class="n">xcart1imp</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>        
+
+            <span class="n">imp2</span><span class="o">=</span><span class="n">imp1</span><span class="o">+</span><span class="mi">1</span> 
+            <span class="n">xcart_pores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">xcart2imp</span> <span class="p">)</span>
+
+
+        <span class="k">else</span><span class="p">:</span> <span class="c1">#new version; both central pores are found in the pure cell!!!</span>
+
+            <span class="c1">#We have pure cell here; Find central pore in 1st grain and 2nd grain:</span>
+            <span class="n">xcen1</span> <span class="o">=</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">gbpos</span> <span class="o">-</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="c1">#x center of the first grain</span>
+            <span class="n">xcen2</span> <span class="o">=</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">gbpos</span> <span class="o">-</span> <span class="mf">0.75</span> <span class="o">*</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="c1">#z center of the second grain</span>
+            <span class="c1"># print &quot;xcen&quot;, xcen1, xcen2</span>
+
+            <span class="n">d1l</span> <span class="o">=</span> <span class="p">[];</span> <span class="n">d2l</span> <span class="o">=</span> <span class="p">[];</span> <span class="n">rpxx05</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="mf">0.5</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xcart_pores</span><span class="p">:</span>
+                <span class="n">d1</span> <span class="o">=</span> <span class="n">xcen1</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">d2</span> <span class="o">=</span> <span class="n">xcen2</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> 
+                <span class="k">if</span> <span class="n">d2</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">rpxx05</span><span class="p">:</span> <span class="n">d2</span> <span class="o">+=</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># assuming that periodic boundary conditions needed only here</span>
+                
+                <span class="n">d1l</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">d1</span><span class="p">)</span> <span class="p">)</span>
+                <span class="n">d2l</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">d2</span><span class="p">)</span> <span class="p">)</span>
+                <span class="c1"># print d1,d2</span>
+            <span class="n">imp1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">d1l</span><span class="p">)</span> <span class="c1">#needed numbers of pores</span>
+            <span class="n">imp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">d2l</span><span class="p">)</span>
+            <span class="c1"># print imp1, imp2</span>
+            <span class="n">xcart1imp</span> <span class="o">=</span> <span class="n">xcart_pores</span><span class="p">[</span><span class="n">imp1</span><span class="p">]</span>
+            <span class="n">xcart2imp</span> <span class="o">=</span> <span class="n">xcart_pores</span><span class="p">[</span><span class="n">imp2</span><span class="p">]</span>
+            <span class="c1"># print &quot;xcartimp&quot;, xcart1imp, xcart2imp</span>
+
+
+
+
+
+
+
+
+
+    <span class="sd">&quot;&quot;&quot;3. Define central atoms for segregation and co-segregation cases--------------------------------------------------------&quot;&quot;&quot;</span>
+    <span class="n">max_dist_from_gb</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="k">if</span> <span class="n">segtyp</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;segreg&#39;</span><span class="p">,</span> <span class="s1">&#39;coseg&#39;</span><span class="p">):</span>
+
+        <span class="c1"># central_atoms = []</span>
+
+        <span class="n">max_dist_between_atoms</span> <span class="o">=</span> <span class="mf">4.8</span>    
+        <span class="n">max_dist_from_gb</span>       <span class="o">=</span> <span class="mi">3</span>   <span class="c1">#main controls</span>
+        
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart_pores</span><span class="p">):</span> <span class="c1">#generate central atoms</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">in_calc</span><span class="o">.</span><span class="n">gbpos</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;</span> <span class="n">max_dist_from_gb</span><span class="p">:</span> 
+                <span class="n">central_atoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+    <span class="sd">&quot;&quot;&quot;4. Assume that we always have target_znucl, but only three !!!--------------------------------------------------------&quot;&quot;&quot;</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">znucl</span> <span class="o">=</span> <span class="n">target_znucl</span> <span class="c1">#Please make this part more general</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">ntypat</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning! Found only &#39;</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">ntypat</span><span class="p">,</span> <span class="s1">&#39;of unique atoms in target_znucl&#39;</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">xred</span> <span class="o">=</span> <span class="n">xcart2xred</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">)</span>
+
+    <span class="sd">&quot;&quot;&quot;5. Find segreg and co-segreg cases--------------------------------------------------------&quot;&quot;&quot;</span>
+    <span class="n">in_calc</span><span class="o">.</span><span class="n">init</span> <span class="o">=</span> <span class="n">st</span>
+
+    <span class="n">dlist_coseg</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">segtyp</span> <span class="o">==</span> <span class="s1">&#39;coseg&#39;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Start searching pairs in  gb&quot;</span><span class="p">)</span>
+        <span class="c1"># main_path = &#39;T2/CO/&#39; #! please make more general</span>
+
+        
+        <span class="n">dlist_coseg</span> <span class="o">=</span> <span class="n">pairs</span><span class="p">(</span><span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">central_atoms</span><span class="p">,</span> <span class="n">prec</span><span class="p">,</span> <span class="n">max_dist_between_atoms</span><span class="p">,</span> <span class="n">max_dist_from_gb</span><span class="p">,</span> <span class="n">pairtyp</span> <span class="o">=</span> <span class="s1">&#39;gb&#39;</span> <span class="p">)</span> 
+        
+
+        <span class="n">dlist_coseg_exc</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">dlist_coseg</span><span class="p">):</span>         <span class="c1">#Exchange C and O only for unsymmetrical cases</span>
+            <span class="k">if</span> <span class="s1">&#39;s&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="k">continue</span> <span class="c1"># not needed for symmetrical cases</span>
+            <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;C&#39;</span><span class="p">,</span><span class="s1">&#39;x&#39;</span><span class="p">);</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">,</span><span class="s1">&#39;C&#39;</span><span class="p">);</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span><span class="s1">&#39;O&#39;</span><span class="p">)</span>
+            <span class="n">el</span><span class="p">[</span><span class="mi">7</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+            <span class="n">el</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+            <span class="n">dlist_coseg_exc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">el</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">dlist_coseg</span><span class="o">+</span><span class="n">dlist_coseg_exc</span><span class="p">:</span> <span class="c1"># Helper</span>
+            <span class="n">stname</span> <span class="o">=</span> <span class="n">base_name</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">path</span>   <span class="o">=</span> <span class="n">main_path</span><span class="o">+</span><span class="n">base_name</span><span class="o">+</span><span class="s1">&#39;_coseg&#39;</span>
+            <span class="nb">print</span><span class="p">((</span> <span class="p">(</span><span class="s2">&quot;struct_des[&#39;</span><span class="si">{0:s}</span><span class="s2">&#39;] = des(&#39;</span><span class="si">{1:s}</span><span class="s2">&#39;, &#39;co-segregation configurations; made from &quot;</span><span class="o">+</span><span class="n">based_on</span><span class="o">+</span><span class="s2">&quot;&#39;   )&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">stname</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>   <span class="p">))</span> 
+
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">dlist_coseg</span><span class="o">+</span><span class="n">dlist_coseg_exc</span><span class="p">:</span> <span class="c1"># Helper</span>
+            <span class="n">stname</span> <span class="o">=</span> <span class="n">base_name</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">path</span>   <span class="o">=</span> <span class="n">main_path</span><span class="o">+</span><span class="n">base_name</span><span class="o">+</span><span class="s1">&#39;_coseg&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;add_loop(&#39;&quot;</span><span class="o">+</span><span class="n">stname</span><span class="o">+</span><span class="s2">&quot;&#39;,&#39;&quot;</span><span class="o">+</span><span class="n">based_on</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;&#39;,range(1,5),calc,conv,varset, &#39;up1&#39;, inherit_option = &#39;inherit_xred&#39;)&quot;</span><span class="p">)</span>
+
+
+
+
+        <span class="n">write_geometry_files</span><span class="p">(</span><span class="n">dlist_coseg</span><span class="o">+</span><span class="n">dlist_coseg_exc</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">take_final_rprimd_from</span><span class="p">,</span> <span class="n">add_typat</span> <span class="o">=</span> <span class="n">add_typat</span> <span class="p">)</span> 
+    
+    <span class="k">elif</span> <span class="n">segtyp</span> <span class="o">==</span> <span class="s1">&#39;segreg&#39;</span><span class="p">:</span>
+
+        <span class="sd">&quot;&quot;&quot;Produce segregation cases only in the case of segreg&quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Start producing segragation cases&quot;</span><span class="p">)</span>
+
+        <span class="n">dlist_segreg</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># dlist_segreg1 = copy.deepcopy(input_dlist_coseg) #in this case we use input_dlist with co-segragation cases from pure cell. </span>
+        <span class="c1"># dlist_segreg2 = copy.deepcopy(input_dlist_coseg) #There is small error, because positions of pores at grain boundary </span>
+        <span class="c1">#                                            #differs in pure cell and cell with impurity in grain volume</span>
+        <span class="c1"># for i, el in enumerate(input_dlist_coseg):</span>
+        <span class="c1">#     sym = &#39;&#39;</span>
+        <span class="c1">#     if   &#39;is&#39; in el[2]: sym = &#39;is&#39;</span>
+        <span class="c1">#     elif &#39;ms&#39; in el[2]: sym = &#39;ms&#39;</span>
+        <span class="c1">#     dlist_segreg1[i][7] =  xcart1imp</span>
+        <span class="c1">#     dlist_segreg1[i][2] = &#39;CvOi&#39;+str(i+1)+sym</span>
+
+        <span class="c1">#     dlist_segreg2[i][8] =  xcart1imp</span>
+            
+        <span class="c1">#     dlist_segreg2[i][2] = &#39;CiOv&#39;+str(i+1)+sym</span>
+            
+        <span class="sd">&quot;&quot;&quot;new determination based on input_dlist_coseg[0][-1]&quot;&quot;&quot;</span>
+        <span class="n">el</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">input_dlist_coseg</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">unique</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1">#sums and coordinates of unique pores</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">unique</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique</span><span class="p">):</span>
+            <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Ci&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;Ov&#39;</span>
+            <span class="n">el</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">=</span> <span class="n">sx</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">d1</span><span class="p">,</span> <span class="n">dnext</span> <span class="o">=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">sx</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">xcart1imp</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">d2</span><span class="p">,</span> <span class="n">dnext</span> <span class="o">=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">sx</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">xcart2imp</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> 
+            <span class="k">if</span> <span class="n">d1</span> <span class="o">&gt;</span> <span class="n">d2</span><span class="p">:</span>
+                <span class="n">el</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="n">xcart1imp</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">el</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="n">xcart2imp</span> <span class="c1"># the farthest impurity in grain volume is used</span>
+            
+
+            <span class="n">dlist_segreg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">el</span><span class="p">)</span> <span class="p">)</span>
+
+
+
+        <span class="c1">#dlist_segreg = dlist_segreg1 + dlist_segreg2 #Segregation of the first impurity and of the second</span>
+
+
+        <span class="n">dlist_segreg_exc</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">dlist_segreg</span><span class="p">):</span>         <span class="c1">#Exchange C and O only for unsymmetrical cases</span>
+            <span class="k">if</span> <span class="s1">&#39;s&#39;</span> <span class="ow">in</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="k">continue</span> <span class="c1"># not needed for symmetrical cases</span>
+            <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;C&#39;</span><span class="p">,</span><span class="s1">&#39;x&#39;</span><span class="p">);</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">,</span><span class="s1">&#39;C&#39;</span><span class="p">);</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span><span class="s1">&#39;O&#39;</span><span class="p">)</span>
+            <span class="n">el</span><span class="p">[</span><span class="mi">7</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">8</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+            <span class="n">el</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+            <span class="n">dlist_segreg_exc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">el</span><span class="p">)</span>    
+
+
+        <span class="c1">#helper</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">dlist_segreg</span><span class="o">+</span><span class="n">dlist_segreg_exc</span><span class="p">:</span> 
+            <span class="n">stname</span> <span class="o">=</span> <span class="n">base_name</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">path</span>   <span class="o">=</span> <span class="n">main_path</span><span class="o">+</span><span class="n">base_name</span><span class="o">+</span><span class="s1">&#39;_segreg&#39;</span>
+            <span class="nb">print</span><span class="p">((</span> <span class="p">(</span><span class="s2">&quot;struct_des[&#39;</span><span class="si">{0:s}</span><span class="s2">&#39;] = des(&#39;</span><span class="si">{1:s}</span><span class="s2">&#39;, &#39;co-segregation configurations; made from &quot;</span><span class="o">+</span><span class="n">based_on</span><span class="o">+</span><span class="s2">&quot;&#39;   )&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">stname</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>   <span class="p">))</span> 
+
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">dlist_segreg</span><span class="o">+</span><span class="n">dlist_segreg_exc</span><span class="p">:</span> 
+            <span class="n">stname</span> <span class="o">=</span> <span class="n">base_name</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">path</span>   <span class="o">=</span> <span class="n">main_path</span><span class="o">+</span><span class="n">base_name</span><span class="o">+</span><span class="s1">&#39;_segreg&#39;</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;add_loop(&#39;&quot;</span><span class="o">+</span><span class="n">stname</span><span class="o">+</span><span class="s2">&quot;&#39;,&#39;&quot;</span><span class="o">+</span><span class="n">based_on</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;&#39;,range(1,5),calc,conv,varset, &#39;up1&#39;, inherit_option = &#39;inherit_xred&#39;)&quot;</span><span class="p">)</span>
+
+
+        <span class="n">write_geometry_files</span><span class="p">(</span><span class="n">dlist_segreg</span><span class="o">+</span><span class="n">dlist_segreg_exc</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">take_final_rprimd_from</span><span class="p">,</span> <span class="n">add_typat</span> <span class="o">=</span> <span class="n">add_typat</span>  <span class="p">)</span> 
+
+    
+
+    <span class="sd">&quot;&quot;&quot;6. Find volume cases--------------------------------------------------------&quot;&quot;&quot;</span>
+    <span class="c1"># this part for construction volume cases    </span>
+    <span class="k">if</span> <span class="n">segtyp</span> <span class="o">==</span> <span class="s2">&quot;grainvol&quot;</span><span class="p">:</span> <span class="c1">#take care that you have only one carbon atom in the grain</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Start searching pairs in the volume&quot;</span><span class="p">)</span>
+        <span class="n">central_atoms</span> <span class="o">=</span> <span class="p">[</span><span class="n">imp1</span><span class="p">]</span>
+        <span class="n">max_dist_between_atoms</span> <span class="o">=</span> <span class="mf">4.</span>
+        <span class="c1">#gvolume_config_num = 0 #please choose manually    </span>
+       
+        <span class="n">dlist</span> <span class="o">=</span> <span class="n">pairs</span><span class="p">(</span><span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">central_atoms</span><span class="p">,</span> <span class="n">prec</span><span class="p">,</span> <span class="n">max_dist_between_atoms</span><span class="p">,</span> <span class="n">max_dist_from_gb</span><span class="p">,</span> <span class="n">pairtyp</span> <span class="o">=</span> <span class="s1">&#39;gvol&#39;</span> <span class="p">)</span> 
+
+        <span class="c1">#dlist = [dlist[0], copy.deepcopy(dlist[gvolume_config_num-1])  ]</span>
+        
+        <span class="c1">#dlist[0][4] = imp2 #no matter wht was dlist[0]; used for vv case</span>
+        <span class="n">dlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">dlist</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="p">)</span>
+        <span class="n">dlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="n">xcart2imp</span> <span class="c1">#last element for both atoms in grain volumes</span>
+        <span class="n">dlist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;CvOvms&#39;</span>
+        
+        <span class="c1">#helper</span>
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">dlist</span><span class="p">:</span> 
+            <span class="n">stname</span> <span class="o">=</span> <span class="n">base_name</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">path</span>   <span class="o">=</span> <span class="n">main_path</span><span class="o">+</span><span class="n">base_name</span><span class="o">+</span><span class="s1">&#39;_gvol&#39;</span> <span class="c1">#grain volume</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;add_loop(&#39;&quot;</span><span class="o">+</span><span class="n">stname</span><span class="o">+</span><span class="s2">&quot;&#39;,&#39;&quot;</span><span class="o">+</span><span class="n">based_on</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;&#39;,range(1,5),calc,conv,varset, &#39;up1&#39;, inherit_option = &#39;inherit_xred&#39;)&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">dlist</span><span class="p">:</span> 
+            <span class="n">stname</span> <span class="o">=</span> <span class="n">base_name</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">path</span>   <span class="o">=</span> <span class="n">main_path</span><span class="o">+</span><span class="n">base_name</span><span class="o">+</span><span class="s1">&#39;_gvol&#39;</span> <span class="c1">#grain volume</span>
+            <span class="nb">print</span><span class="p">((</span> <span class="p">(</span><span class="s2">&quot;struct_des[&#39;</span><span class="si">{0:s}</span><span class="s2">&#39;] = des(&#39;</span><span class="si">{1:s}</span><span class="s2">&#39;, &#39;co-segregation configurations; made from &quot;</span><span class="o">+</span><span class="n">based_on</span><span class="o">+</span><span class="s2">&quot;&#39;   )&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">stname</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>   <span class="p">))</span> 
+
+
+
+        <span class="n">write_geometry_files</span><span class="p">(</span><span class="n">dlist</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">take_final_rprimd_from</span><span class="p">,</span> <span class="n">add_typat</span> <span class="o">=</span> <span class="n">add_typat</span>  <span class="p">)</span>
+
+    <span class="sd">&quot;&quot;&quot;. Triple cases--------------------------------------------------------&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">triples</span><span class="p">(</span><span class="n">addatom</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;O&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dlist</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">tlist</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">in_calc</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">xcart_pores</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">max_dist_to_next_atom</span> <span class="o">=</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add addatom to all configurations in tlist; </span>
+
+<span class="sd">        addatom[1] - type of atom in typat</span>
+<span class="sd">        dlist - list of configurations with two impurity atoms; Used if tlist == []; the format of dlist is quiet special</span>
+<span class="sd">        tlist - list of configurations with arbirtary number of atoms;</span>
+
+<span class="sd">        RETURN:</span>
+<span class="sd">        tlist - list of configurations with add atoms</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">in_calc</span><span class="o">.</span><span class="n">init</span>
+        
+        <span class="k">if</span> <span class="n">dlist</span> <span class="ow">and</span> <span class="n">tlist</span> <span class="o">==</span> <span class="p">[]:</span>
+            <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">dlist</span><span class="p">:</span>
+                <span class="n">par</span> <span class="o">=</span> <span class="n">el</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;pair 1&#39;</span><span class="p">,</span> <span class="n">par</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">)</span> 
+                <span class="n">x1</span> <span class="o">=</span> <span class="n">par</span><span class="p">[</span><span class="mi">7</span><span class="p">];</span> <span class="n">x2</span> <span class="o">=</span> <span class="n">par</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;x1 = &#39;</span><span class="p">,</span> <span class="n">x1</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;x2 = &#39;</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
+                <span class="n">config</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">xcart</span> <span class="o">=</span> <span class="p">[</span><span class="n">x1</span><span class="p">,</span><span class="n">x2</span><span class="p">]</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">typat</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">name</span>  <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+                <span class="n">tlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+
+
+        <span class="n">tlist_new</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">tlist</span><span class="p">:</span>
+            <span class="n">xcart</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">xcart</span>
+            <span class="n">typat</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">typat</span>
+            <span class="n">name</span>  <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">name</span>        
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n\n</span><span class="s1">Start to adding atom to &#39;</span><span class="p">,</span><span class="n">name</span><span class="p">)</span>
+
+            <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">dlistlist</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="n">diffprec</span> <span class="o">=</span> <span class="mf">0.001</span>
+
+
+            <span class="p">[</span><span class="n">dlistlist</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xcart</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dlistlist</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">xpor</span> <span class="ow">in</span> <span class="n">xcart_pores</span><span class="p">:</span>
+                
+                <span class="n">skip</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart</span><span class="p">):</span> <span class="c1"># list of 2 or 3 initial atoms to which additional atom will be added</span>
+                    <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">xpor</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span> <span class="p">):</span> <span class="n">skip</span> <span class="o">=</span> <span class="kc">True</span><span class="p">;</span> <span class="k">break</span> 
+                
+                    <span class="n">d1</span><span class="p">,</span> <span class="n">d2</span> <span class="o">=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">xpor</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="c1"># the minimum distance and the next minimum dist</span>
+                    <span class="k">if</span> <span class="n">d1</span> <span class="o">&gt;</span> <span class="n">max_dist_to_next_atom</span><span class="p">:</span> <span class="n">skip</span> <span class="o">=</span> <span class="kc">True</span><span class="p">;</span> <span class="k">break</span> <span class="c1">#if only one pore is larger from atom than limit, the pore is skiped</span>
+
+
+
+
+                    <span class="c1"># suml = d11+d21+par[0]</span>
+                    <span class="c1"># for dl in dlistlist:</span>
+                    <span class="c1"># print &#39;j is &#39;, j</span>
+                    
+
+                    <span class="n">i_min</span><span class="p">,</span> <span class="n">smaller</span> <span class="o">=</span> <span class="n">min_diff</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">dlistlist</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">diffprec</span><span class="p">)</span> <span class="c1">#old condition - bad - removes unique configurations</span>
+                    <span class="c1">#if smaller: skip = True; continue # symmetrical pores deleted</span>
+
+                    <span class="n">dlistlist</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d1</span><span class="p">)</span>
+                    <span class="n">skip</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># all conditions are fullfilled - this configuration is unique</span>
+                <span class="c1"># else:</span>
+                <span class="c1"># print &#39;List of distances to atoms&#39;</span>
+                <span class="k">if</span> <span class="n">skip</span><span class="p">:</span> <span class="k">continue</span> <span class="c1">#</span>
+
+                <span class="c1">#print &quot;Pore can be used&quot;, xpor #sum of distances for triple</span>
+                
+                <span class="n">new</span> <span class="o">=</span> <span class="n">Structure</span><span class="p">()</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">+</span><span class="n">addatom</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">xcart</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">xcart</span><span class="p">)</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">xcart</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xpor</span><span class="p">)</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">typat</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">typat</span><span class="p">)</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">typat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">addatom</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="c1"># print &#39;new.typat  =&#39;, new.typat</span>
+                
+                <span class="c1">#calculate sum of lengths</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">lengthCO</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">lengthCC</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">lengthOO</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">xcartC</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">new</span><span class="o">.</span><span class="n">xcartO</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">x1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">xcart</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">new</span><span class="o">.</span><span class="n">typat</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span> <span class="n">new</span><span class="o">.</span><span class="n">xcartC</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">new</span><span class="o">.</span><span class="n">typat</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span> <span class="n">new</span><span class="o">.</span><span class="n">xcartO</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+
+                    <span class="k">for</span> <span class="n">x2</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">xcart</span><span class="p">:</span>
+                        <span class="n">d1</span><span class="p">,</span> <span class="n">d2</span> <span class="o">=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+                        <span class="n">new</span><span class="o">.</span><span class="n">length</span> <span class="o">+=</span> <span class="n">d1</span>
+
+                <span class="k">for</span> <span class="n">xC</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">xcartC</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">xO</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">xcartO</span><span class="p">:</span>
+                        <span class="n">d1</span><span class="p">,</span> <span class="n">d2</span> <span class="o">=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">xC</span><span class="p">,</span> <span class="n">xO</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+                        <span class="n">new</span><span class="o">.</span><span class="n">lengthCO</span> <span class="o">+=</span> <span class="n">d1</span>                        
+
+                <span class="k">for</span> <span class="n">xC1</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">xcartC</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">xC2</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">xcartC</span><span class="p">:</span>
+
+                        <span class="n">d1</span><span class="p">,</span> <span class="n">d2</span> <span class="o">=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">xC1</span><span class="p">,</span> <span class="n">xC2</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+                        <span class="n">new</span><span class="o">.</span><span class="n">lengthCC</span> <span class="o">+=</span> <span class="n">d1</span>                     
+
+                <span class="k">for</span> <span class="n">xO1</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">xcartO</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">xO2</span> <span class="ow">in</span> <span class="n">new</span><span class="o">.</span><span class="n">xcartO</span><span class="p">:</span>
+
+                        <span class="n">d1</span><span class="p">,</span> <span class="n">d2</span> <span class="o">=</span> <span class="n">image_distance</span><span class="p">(</span><span class="n">xO1</span><span class="p">,</span> <span class="n">xO2</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+                        <span class="n">new</span><span class="o">.</span><span class="n">lengthOO</span> <span class="o">+=</span> <span class="n">d1</span>  
+
+                <span class="n">skip</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">xcart</span><span class="p">)</span>
+                
+                <span class="sd">&quot;&quot;&quot;additional conditions to leave only unique configurations&quot;&quot;&quot;</span>
+                <span class="k">for</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">tlist_new</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">nr</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="k">for</span> <span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">t1</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">xcart</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">typat</span><span class="p">):</span>
+                            <span class="k">for</span> <span class="p">(</span><span class="n">v2</span><span class="p">,</span> <span class="n">t2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">xcart</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">typat</span><span class="p">):</span>
+                                <span class="k">if</span> <span class="nb">all</span><span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">around</span><span class="p">(</span><span class="n">v2</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span> <span class="p">)</span> <span class="ow">and</span> <span class="n">t1</span> <span class="o">==</span> <span class="n">t2</span><span class="p">:</span>
+                                    <span class="n">nr</span><span class="o">+=</span><span class="mi">1</span><span class="p">;</span>
+                        <span class="k">if</span> <span class="n">nr</span> <span class="o">==</span> <span class="n">n</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The configurations&quot;</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;and&#39;</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;consist of the same atoms, continue&#39;</span><span class="p">)</span>
+                            <span class="n">skip</span> <span class="o">=</span> <span class="kc">True</span>
+                            <span class="k">break</span>
+
+                    <span class="c1"># print  all([ all( np.around(v1, 8) == np.around(v2, 8) ) for (v1, v2) in zip(new.xcart, config.xcart) ])</span>
+                
+                    <span class="c1">#check identity using sum of distances</span>
+                    <span class="c1"># i_min, smaller = min_diff(config.length, [new.length], diffprec)</span>
+                    <span class="c1"># if smaller: </span>
+                    <span class="c1">#     print &quot;Configuration &quot;, new.name, &quot;has the same sum of lengths as&quot;, config.name</span>
+                    <span class="n">i_min</span><span class="p">,</span> <span class="n">smaller1</span> <span class="o">=</span> <span class="n">min_diff</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">lengthCO</span><span class="p">,</span> <span class="p">[</span><span class="n">new</span><span class="o">.</span><span class="n">lengthCO</span><span class="p">],</span> <span class="n">diffprec</span><span class="p">)</span>
+                    <span class="n">i_min</span><span class="p">,</span> <span class="n">smaller2</span> <span class="o">=</span> <span class="n">min_diff</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">lengthCC</span><span class="p">,</span> <span class="p">[</span><span class="n">new</span><span class="o">.</span><span class="n">lengthCC</span><span class="p">],</span> <span class="n">diffprec</span><span class="p">)</span>
+                    <span class="n">i_min</span><span class="p">,</span> <span class="n">smaller3</span> <span class="o">=</span> <span class="n">min_diff</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">lengthOO</span><span class="p">,</span> <span class="p">[</span><span class="n">new</span><span class="o">.</span><span class="n">lengthOO</span><span class="p">],</span> <span class="n">diffprec</span><span class="p">)</span>
+                    <span class="c1"># print &#39;Compare&#39;, new.name, config.name, smaller1, smaller2, smaller3</span>
+                    <span class="k">if</span> <span class="n">smaller1</span> <span class="ow">and</span> <span class="n">smaller2</span> <span class="ow">and</span> <span class="n">smaller3</span><span class="p">:</span> 
+                        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Configuration &quot;</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;has the same sum of C-O, C-C  and O-O lengths as&quot;</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                        <span class="nb">print</span><span class="p">()</span> 
+                        <span class="n">skip</span> <span class="o">=</span> <span class="kc">True</span><span class="p">;</span> <span class="k">break</span>
+
+
+
+                <span class="k">if</span> <span class="n">skip</span><span class="p">:</span>     <span class="k">continue</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Sum of CO lengths in :&#39;</span><span class="p">,</span><span class="n">new</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">lengthCC</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">lengthOO</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">lengthCO</span><span class="p">)</span>
+
+
+
+
+
+
+                <span class="n">tlist_new</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new</span><span class="p">)</span>
+
+                <span class="n">i</span><span class="o">+=</span><span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">tlist_new</span>
+
+
+    <span class="k">if</span> <span class="n">segtyp</span> <span class="o">==</span> <span class="s2">&quot;bulk_triple&quot;</span> <span class="ow">or</span> <span class="n">segtyp</span> <span class="o">==</span> <span class="s2">&quot;bulk_pairs&quot;</span><span class="p">:</span>
+
+        <span class="c1"># max_dist_between_atoms = 4.8</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Searching pairs ...&quot;</span><span class="p">)</span>
+        <span class="n">dlist</span> <span class="o">=</span> <span class="n">pairs</span><span class="p">(</span><span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">central_atoms</span><span class="p">,</span> <span class="n">prec</span><span class="p">,</span> <span class="n">max_dist_between_atoms</span><span class="p">,</span> <span class="n">pairtyp</span> <span class="o">=</span> <span class="s1">&#39;gvol&#39;</span> <span class="p">)</span> 
+
+    <span class="k">if</span> <span class="n">segtyp</span> <span class="o">==</span> <span class="s2">&quot;bulk_pairs&quot;</span><span class="p">:</span>
+        <span class="n">write_geometry_files</span><span class="p">(</span><span class="n">dlist</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">take_final_rprimd_from</span><span class="p">,</span> <span class="n">configver</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">add_typat</span> <span class="o">=</span> <span class="n">add_typat</span>  <span class="p">)</span>
+
+
+        
+    <span class="k">if</span> <span class="n">segtyp</span> <span class="o">==</span> <span class="s2">&quot;bulk_triple&quot;</span><span class="p">:</span>
+
+        <span class="n">max_dist_to_next_atom</span> <span class="o">=</span> <span class="mf">5.5</span>    
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Searching triples ...&quot;</span><span class="p">)</span><span class="c1">#, tlist</span>
+        <span class="n">tlist</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">tlist</span> <span class="o">=</span> <span class="n">triples</span><span class="p">((</span><span class="s1">&#39;O&#39;</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span> <span class="n">dlist</span><span class="p">,</span> <span class="n">tlist</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">max_dist_to_next_atom</span><span class="p">)</span>
+
+        <span class="n">tlist</span> <span class="o">=</span> <span class="n">triples</span><span class="p">((</span><span class="s1">&#39;C&#39;</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">dlist</span><span class="p">,</span> <span class="n">tlist</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">max_dist_to_next_atom</span><span class="p">)</span>
+
+        <span class="n">write_geometry_files</span><span class="p">(</span><span class="n">dlist</span><span class="p">,</span> <span class="n">in_calc</span><span class="p">,</span> <span class="n">xcart_pores</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">take_final_rprimd_from</span><span class="p">,</span> <span class="n">tlist</span> <span class="o">=</span> <span class="n">tlist</span><span class="p">,</span> <span class="n">configver</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">add_typat</span> <span class="o">=</span> <span class="n">add_typat</span>  <span class="p">)</span>
+
+
+
+
+
+
+    <span class="k">return</span> <span class="n">dlist_coseg</span><span class="p">,</span> <span class="n">xcart_pores</span></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="viewcode-block" id="create_coseg_samples"><a class="viewcode-back" href="../../siman.html#siman.pairs.create_coseg_samples">[docs]</a><span class="k">def</span> <span class="nf">create_coseg_samples</span><span class="p">(</span><span class="n">base_name</span><span class="p">,</span> <span class="n">it_b</span><span class="p">,</span> <span class="n">ise_b</span><span class="p">,</span> <span class="n">ver</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">path_template</span><span class="p">,</span> <span class="n">imp_size</span> <span class="o">=</span> <span class="mf">0.44</span><span class="p">,</span> <span class="n">fine_mul</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">gbpos</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
+    <span class="n">segtyp</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">input_dlist_coseg</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">xcart1imp</span> <span class="o">=</span> <span class="kc">None</span> <span class="p">,</span> <span class="n">xcart2imp</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="kc">None</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create all cells for co-segregation calculations.</span>
+
+<span class="sd">    Input:</span>
+<span class="sd">    base_name - the names of seg and coseg cases will be started from this name</span>
+
+<span class="sd">    input_dlist_coseg - needed to construct corresponding segregation cases (segtyp = &#39;segreg&#39;), but in relaxed cell, where</span>
+<span class="sd">    one atom is in grain volume. Must be initialy constructed using segtyp = &#39;coseg&#39;;</span>
+
+<span class="sd">    1. it_b, ise_b, base cell with relaxed grain boundaries (self.gbpos - position of one gb) </span>
+<span class="sd">    ver - version to create</span>
+<span class="sd">    and one carbon atom in the volume of one grain </span>
+<span class="sd">    (can be several versions). </span>
+
+<span class="sd">    2. path_template - path to geo files with template cells with correct rprimd for cell with CO</span>
+<span class="sd">    (can be several versions).     </span>
+
+<span class="sd">    imp_size - size of pores, which are being found trying to insert impurity</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># id = (it_b, ise_b, verlist_b[0])</span>
+
+    <span class="c1">#cl = copy.deepcopy(calc[id])</span>
+    <span class="c1">#print &quot;gbpos is &quot;, calc[id].gbpos</span>
+
+
+
+    <span class="n">temp</span>    <span class="o">=</span> <span class="n">path_template</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">temp</span>    <span class="o">=</span> <span class="n">temp</span><span class="o">+</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">segtyp</span>
+
+    <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Please add these strings:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1">#print ( (&quot;struct_des[&#39;{0:s}&#39;] = des(&#39;path&#39;, &#39;template without impurities&#39;   )\n&quot;).format(temp)   )</span>
+    <span class="nb">print</span><span class="p">((</span> <span class="p">(</span><span class="s2">&quot;struct_des[&#39;</span><span class="si">{0:s}</span><span class="s2">&#39;] = des(&#39;path&#39;, &#39;template with correct rprimd; segreg - carbon in grain interior; coseg - pure&#39;   )</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>   <span class="p">))</span>
+
+    <span class="sd">&quot;&quot;&quot;0. remove carbon but save its position and pass it to find_pairs&quot;&quot;&quot;</span>
+    <span class="c1">#please remove both atoms if cell with carbon and oxygen</span>
+    <span class="c1">#not neccessary to remove at all?</span>
+     <span class="c1">#not needed </span>
+
+       
+
+
+    <span class="sd">&quot;&quot;&quot;1. Insert end.xred from base cell to template cell; for all found versions&quot;&quot;&quot;</span>
+    <span class="n">insert</span><span class="p">(</span><span class="n">it_b</span><span class="p">,</span> <span class="n">ise_b</span><span class="p">,</span> <span class="n">path_template</span><span class="p">,</span> <span class="n">temp</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="s2">&quot;xred&quot;</span> <span class="p">)</span> <span class="c1"># resulted cell is still template with one atom in grain iterior but correct rprimd</span>
+    <span class="c1">#Take care of versions!!!</span>
+    <span class="c1">#return    </span>
+    <span class="sd">&quot;&quot;&quot;2. Find all octapores and place in them atoms with znucl = 200&quot;&quot;&quot;</span>
+    <span class="c1">#v = 1</span>
+    <span class="n">path2temp</span> <span class="o">=</span> <span class="n">add_impurity</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="s1">&#39;octa&#39;</span><span class="p">,</span> <span class="s1">&#39;all_pores&#39;</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">write_geo</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">only_version</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">fine</span> <span class="o">=</span> <span class="n">fine_mul</span><span class="p">)</span>
+    <span class="c1">#print path2temp </span>
+    
+    <span class="c1">#&quot;&quot;&quot;2.5. Inherit rprimd from other versions&quot;&quot;&quot; #pores generated only for first version. than </span>
+    <span class="c1">#for v in 1,3,4,5:</span>
+    <span class="c1">#ver_new = v + 1</span>
+    <span class="c1">#inherit_icalc(&#39;r1r2r3&#39;, it_new = temp, ver_new = ver_new, id_base = path2temp, calc = calc, id_from = path_template+&#39;/from/&#39;+temp+&#39;.xred.&#39;+str(ver_new)+&#39;.geo&#39;)</span>
+
+    <span class="sd">&quot;&quot;&quot;3. Find pairs&quot;&quot;&quot;</span>
+    <span class="n">ver_rprimd_from</span> <span class="o">=</span> <span class="n">ver</span> <span class="c1"># this can be manually changed to obtain needed version</span>
+    <span class="n">dlist_coseg</span><span class="p">,</span> <span class="n">xcart_pores</span> <span class="o">=</span> <span class="n">find_pairs</span><span class="p">(</span><span class="n">base_name</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">path2temp</span><span class="p">,[],</span> <span class="n">xcart1imp</span><span class="p">,</span> <span class="n">input_dlist_coseg</span><span class="p">,</span> 
+                                          <span class="n">prec</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">gvolume_config_num</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                                          <span class="n">gbpos</span> <span class="o">=</span> <span class="n">gbpos</span><span class="p">,</span>
+                                          <span class="n">take_final_rprimd_from</span> <span class="o">=</span> <span class="n">geo_folder</span><span class="o">+</span> <span class="n">struct_des</span><span class="p">[</span><span class="n">temp</span><span class="p">]</span><span class="o">.</span><span class="n">sfolder</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="o">+</span><span class="n">temp</span><span class="o">+</span><span class="s1">&#39;/from/&#39;</span><span class="o">+</span><span class="n">temp</span><span class="o">+</span><span class="s1">&#39;.xred.&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">ver_rprimd_from</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.geo&#39;</span><span class="p">,</span>
+                                          <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span><span class="p">,</span> <span class="n">based_on</span> <span class="o">=</span> <span class="n">it_b</span><span class="o">+</span><span class="s1">&#39;.&#39;</span><span class="o">+</span><span class="n">ise_b</span>  <span class="p">)</span>
+
+
+    <span class="c1">#print &quot;Warning! Please check that dlist_coseg are the same:&quot;, dlist_coseg</span>
+    <span class="k">return</span> <span class="n">dlist_coseg</span></div>
+
+
+
+
+<div class="viewcode-block" id="wrapper_create_coseg"><a class="viewcode-back" href="../../siman.html#siman.pairs.wrapper_create_coseg">[docs]</a><span class="k">def</span> <span class="nf">wrapper_create_coseg</span><span class="p">():</span>
+    <span class="n">basename</span> <span class="o">=</span>  <span class="s1">&#39;t111g&#39;</span>
+    <span class="n">verlist</span>  <span class="o">=</span>   <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+    <span class="n">templatepath</span> <span class="o">=</span> <span class="n">gb4_geo_folder</span><span class="o">+</span><span class="s1">&#39;T1/t111gCO_template&#39;</span>
+    <span class="n">fine_mul</span> <span class="o">=</span> <span class="mi">4</span> <span class="c1"># for center defining</span>
+    <span class="n">imp_size</span> <span class="o">=</span> <span class="mf">0.44</span>
+
+    <span class="n">gbpos</span> <span class="o">=</span> <span class="mf">20.66</span> <span class="c1">#???</span>
+
+    <span class="c1">#in_calc.gbpos -= 0.3   # manually improve the value using jmol</span>
+    <span class="c1">#create_coseg_samples(               basename, &#39;t111gCv&#39;, &#39;93kp9&#39;, verlist, calc, templatepath, imp_size, fine_mul, gbpos, &#39;grainvol&#39; ) #to construct volume cases</span>
+
+    <span class="n">dlist_coseg</span>  <span class="o">=</span> <span class="n">create_coseg_samples</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;t111g&#39;</span><span class="p">,</span>   <span class="s1">&#39;9292&#39;</span><span class="p">,</span>  <span class="n">verlist</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;coseg&#39;</span><span class="p">)</span>  <span class="c1">#cell without carbon used for cosegragation cases</span>
+    
+    <span class="n">create_coseg_samples</span><span class="p">(</span>               <span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;t111gCv&#39;</span><span class="p">,</span> <span class="s1">&#39;93kp9&#39;</span><span class="p">,</span> <span class="n">verlist</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;segreg&#39;</span><span class="p">,</span> <span class="n">dlist_coseg</span> <span class="p">)</span> <span class="c1">#relaxed positions of cell with impurities in grain volume used for segregation cases</span>
+
+    <span class="c1"># #assert len(dlist_coseg_p) == len(dlist_coseg_C)</span>
+    <span class="c1"># print dlist_coseg_C</span>
+    <span class="c1"># print dlist_coseg_p</span>
+    <span class="c1"># print len(xcart_pores_C), len(xcart_pores_p)</span>
+
+    <span class="c1"># print xcart_pores_C</span>
+    <span class="c1"># print xcart_pores_p</span>
+    <span class="k">return</span></div>
+
+<div class="viewcode-block" id="wrapper_create_coseg_C1"><a class="viewcode-back" href="../../siman.html#siman.pairs.wrapper_create_coseg_C1">[docs]</a><span class="k">def</span> <span class="nf">wrapper_create_coseg_C1</span><span class="p">():</span>
+    <span class="n">basename</span> <span class="o">=</span>  <span class="s1">&#39;c1g&#39;</span>
+    <span class="n">verlist</span>  <span class="o">=</span>   <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+    <span class="n">templatepath</span> <span class="o">=</span> <span class="n">gb4_geo_folder</span><span class="o">+</span><span class="s1">&#39;C1/c1gCO_template&#39;</span> <span class="c1">#will search in target folder</span>
+    <span class="n">imp_size</span> <span class="o">=</span> <span class="mf">0.44</span> <span class="c1"># for finding pores</span>
+
+    <span class="n">fine_mul</span> <span class="o">=</span> <span class="mi">5</span> <span class="c1"># for center defining</span>
+    <span class="n">gbpos</span> <span class="o">=</span> <span class="mf">23.64</span>   
+
+    <span class="n">create_coseg_samples</span><span class="p">(</span>               <span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;c1gCv&#39;</span><span class="p">,</span> <span class="s1">&#39;93kp7&#39;</span><span class="p">,</span> <span class="n">verlist</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;grainvol&#39;</span> <span class="p">)</span> <span class="c1">#to construct volume cases</span>
+
+
+    <span class="n">dlist_coseg</span>  <span class="o">=</span> <span class="n">create_coseg_samples</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;c1g&#39;</span><span class="p">,</span>   <span class="s1">&#39;929&#39;</span><span class="p">,</span>  <span class="n">verlist</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;coseg&#39;</span><span class="p">)</span>  <span class="c1">#cell without carbon used for cosegragation cases</span>
+    
+
+    <span class="n">xcart1imp</span> <span class="o">=</span> <span class="n">calc</span><span class="p">[(</span><span class="s1">&#39;c1gCv&#39;</span><span class="p">,</span> <span class="s1">&#39;93kp7&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">xcart</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> 
+    <span class="n">create_coseg_samples</span><span class="p">(</span>               <span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;c1g&#39;</span><span class="p">,</span> <span class="s1">&#39;929&#39;</span><span class="p">,</span> <span class="n">verlist</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span><span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;segreg&#39;</span><span class="p">,</span> <span class="n">dlist_coseg</span><span class="p">,</span> <span class="n">xcart1imp</span> <span class="p">)</span> <span class="c1">#relaxed positions of cell with impurities in grain volume used for segregation cases</span>
+
+    <span class="c1"># #assert len(dlist_coseg_p) == len(dlist_coseg_C)</span>
+    <span class="c1"># print dlist_coseg_C</span>
+    <span class="c1"># print dlist_coseg_p</span>
+    <span class="c1"># print len(xcart_pores_C), len(xcart_pores_p)</span>
+
+    <span class="c1"># print xcart_pores_C</span>
+    <span class="c1"># print xcart_pores_p</span>
+    <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="wrapper_create_pairs_H"><a class="viewcode-back" href="../../siman.html#siman.pairs.wrapper_create_pairs_H">[docs]</a><span class="k">def</span> <span class="nf">wrapper_create_pairs_H</span><span class="p">(</span><span class="n">basename</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">add_typat</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>  <span class="n">path2temp</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="c1"># basename =  &#39;hs443CO_test&#39;</span>
+    <span class="c1"># path2temp = gb4_geo_folder+&#39;H/hps443CO2_template/grainA_s/hps443CO2_templategrainA_s.1.in.geo&#39; #will search in target folder</span>
+    <span class="c1"># path2temp = gb4_geo_folder+&#39;H/hps443C2O2_template/grainA_s/hps443C2O2_templategrainA_s.1.in.geo&#39; #will search in target folder</span>
+    <span class="c1"># path2temp = gb4_geo_folder+&#39;H/hps443CO_template/grainA_s/hps443CO_templategrainA_s.1.in.geo&#39; #will search in target folder</span>
+    
+
+    <span class="n">segtyp</span> <span class="o">=</span> <span class="s1">&#39;bulk_pairs&#39;</span>
+    <span class="n">find_pairs</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="n">segtyp</span><span class="p">,</span> <span class="n">path2temp</span><span class="p">,</span> <span class="n">central_atoms</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">],</span> <span class="n">prec</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">max_dist_between_atoms</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">target_znucl</span>  <span class="o">=</span> <span class="p">[</span><span class="mi">22</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">add_typat</span> <span class="o">=</span> <span class="n">add_typat</span> <span class="p">)</span>
+
+    <span class="c1"># segtyp = &#39;bulk_triple&#39;</span>
+    <span class="c1"># find_pairs(basename, segtyp, path2temp, central_atoms = [57], prec = 2)</span>
+
+
+
+    <span class="k">return</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="wrapper_create_coseg_T2"><a class="viewcode-back" href="../../siman.html#siman.pairs.wrapper_create_coseg_T2">[docs]</a><span class="k">def</span> <span class="nf">wrapper_create_coseg_T2</span><span class="p">(</span><span class="n">calc</span><span class="p">):</span>
+    <span class="n">basename</span> <span class="o">=</span>  <span class="s1">&#39;t21g&#39;</span>
+    <span class="n">main_path</span> <span class="o">=</span> <span class="s1">&#39;T2/CO/&#39;</span>
+    <span class="n">verlist</span>  <span class="o">=</span>   <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+    <span class="n">templatepath</span> <span class="o">=</span> <span class="n">gb4_geo_folder</span><span class="o">+</span><span class="s1">&#39;T2/t21gCO_template&#39;</span> <span class="c1">#will search in target folder</span>
+    <span class="n">imp_size</span> <span class="o">=</span> <span class="mf">0.44</span> <span class="c1"># for finding pores</span>
+
+    <span class="n">fine_mul</span> <span class="o">=</span> <span class="mi">5</span> <span class="c1"># for center defining</span>
+    <span class="n">gbpos</span> <span class="o">=</span> <span class="mf">15.86</span>   
+
+    <span class="n">create_coseg_samples</span><span class="p">(</span>               <span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;t21g&#39;</span><span class="p">,</span> <span class="s1">&#39;93&#39;</span><span class="p">,</span> <span class="n">verlist</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;grainvol&#39;</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span> <span class="p">)</span> <span class="c1">#to construct volume cases</span>
+
+
+    <span class="n">dlist_coseg</span>  <span class="o">=</span> <span class="n">create_coseg_samples</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;t21g&#39;</span><span class="p">,</span>   <span class="s1">&#39;93&#39;</span><span class="p">,</span>  <span class="n">verlist</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;coseg&#39;</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span><span class="p">)</span>  <span class="c1">#cell without carbon used for cosegragation cases</span>
+    
+
+    <span class="c1"># xcart1imp = calc[(&#39;t21gCv&#39;, &#39;93&#39;, 1)].end.xcart[-1] </span>
+    <span class="n">create_coseg_samples</span><span class="p">(</span>               <span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;t21g&#39;</span><span class="p">,</span> <span class="s1">&#39;93&#39;</span><span class="p">,</span> <span class="n">verlist</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span><span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;segreg&#39;</span><span class="p">,</span> <span class="n">dlist_coseg</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span><span class="p">)</span> <span class="c1">#relaxed positions of cell with impurities in grain volume used for segregation cases</span>
+
+    <span class="c1"># #assert len(dlist_coseg_p) == len(dlist_coseg_C)</span>
+    <span class="c1"># print dlist_coseg_C</span>
+    <span class="c1"># print dlist_coseg_p</span>
+    <span class="c1"># print len(xcart_pores_C), len(xcart_pores_p)</span>
+
+    <span class="c1"># print xcart_pores_C</span>
+    <span class="c1"># print xcart_pores_p</span>
+    <span class="k">return</span></div>
+
+
+
+<div class="viewcode-block" id="wrapper_create_coseg_T1s"><a class="viewcode-back" href="../../siman.html#siman.pairs.wrapper_create_coseg_T1s">[docs]</a><span class="k">def</span> <span class="nf">wrapper_create_coseg_T1s</span><span class="p">(</span><span class="n">calc</span><span class="p">):</span>
+    <span class="n">basename</span> <span class="o">=</span>  <span class="s1">&#39;t111sg&#39;</span>
+    <span class="n">main_path</span> <span class="o">=</span> <span class="s1">&#39;T1/CO/shift/&#39;</span>
+    <span class="n">verlist</span>  <span class="o">=</span>   <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+    <span class="n">templatepath</span> <span class="o">=</span> <span class="n">gb4_geo_folder</span><span class="o">+</span><span class="s1">&#39;T1/t111sgCO_template&#39;</span> <span class="c1">#will search in target folder</span>
+    <span class="n">imp_size</span> <span class="o">=</span> <span class="mf">0.44</span> <span class="c1"># for finding pores</span>
+
+    <span class="n">fine_mul</span> <span class="o">=</span> <span class="mi">5</span> <span class="c1"># for center defining</span>
+    <span class="n">gbpos</span> <span class="o">=</span> <span class="mf">20.97</span>   
+
+    <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">verlist</span><span class="p">:</span>
+        <span class="n">create_coseg_samples</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;t111sg&#39;</span><span class="p">,</span> <span class="s1">&#39;93kp9&#39;</span><span class="p">,</span> <span class="n">ver</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;grainvol&#39;</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span> <span class="p">)</span> <span class="c1">#to construct volume cases</span>
+
+
+        <span class="n">dlist_coseg</span>  <span class="o">=</span> <span class="n">create_coseg_samples</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;t111sg&#39;</span><span class="p">,</span>   <span class="s1">&#39;93kp9&#39;</span><span class="p">,</span>  <span class="n">ver</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;coseg&#39;</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span> <span class="p">)</span>  <span class="c1">#cell without carbon used for cosegragation cases</span>
+        
+
+        <span class="n">create_coseg_samples</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;t111sg&#39;</span><span class="p">,</span> <span class="s1">&#39;93kp9&#39;</span><span class="p">,</span> <span class="n">ver</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span><span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;segreg&#39;</span><span class="p">,</span> <span class="n">dlist_coseg</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span>  <span class="p">)</span> <span class="c1">#relaxed positions of cell with impurities in grain volume used for segregation cases</span>
+
+    <span class="k">return</span></div>
+
+<div class="viewcode-block" id="wrapper_create_coseg_CSL7s"><a class="viewcode-back" href="../../siman.html#siman.pairs.wrapper_create_coseg_CSL7s">[docs]</a><span class="k">def</span> <span class="nf">wrapper_create_coseg_CSL7s</span><span class="p">(</span><span class="n">calc</span><span class="p">):</span>
+    <span class="n">basename</span> <span class="o">=</span>  <span class="s1">&#39;csl71sg&#39;</span>
+    <span class="n">main_path</span> <span class="o">=</span> <span class="s1">&#39;CSL7/CO/&#39;</span>
+    <span class="n">verlist</span>  <span class="o">=</span>   <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+    <span class="n">templatepath</span> <span class="o">=</span> <span class="n">gb4_geo_folder</span><span class="o">+</span><span class="s1">&#39;CSL7/csl71sg15CO_template&#39;</span> <span class="c1">#will search in target folder</span>
+    <span class="n">imp_size</span> <span class="o">=</span> <span class="mf">0.44</span> <span class="c1"># for finding pores</span>
+
+    <span class="n">fine_mul</span> <span class="o">=</span> <span class="mi">5</span> <span class="c1"># for center defining</span>
+    <span class="n">gbpos</span> <span class="o">=</span> <span class="mf">17.55</span>   
+    <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">verlist</span><span class="p">:</span>
+        <span class="n">create_coseg_samples</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;csl71sg15&#39;</span><span class="p">,</span> <span class="s1">&#39;93&#39;</span><span class="p">,</span> <span class="n">ver</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;grainvol&#39;</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span> <span class="p">)</span> <span class="c1">#to construct volume cases</span>
+
+
+        <span class="n">dlist_coseg</span>  <span class="o">=</span> <span class="n">create_coseg_samples</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="s1">&#39;csl71sg15&#39;</span><span class="p">,</span>   <span class="s1">&#39;93&#39;</span><span class="p">,</span>  <span class="n">ver</span><span class="p">,</span> <span class="n">calc</span><span class="p">,</span> <span class="n">templatepath</span><span class="p">,</span> <span class="n">imp_size</span><span class="p">,</span> <span class="n">fine_mul</span><span class="p">,</span> <span class="n">gbpos</span><span class="p">,</span> <span class="s1">&#39;coseg&#39;</span><span class="p">,</span> <span class="n">main_path</span> <span class="o">=</span> <span class="n">main_path</span> <span class="p">)</span>  <span class="c1">#cell without carbon used for cosegragation cases</span>
+        
+
+        <span class="c1"># create_coseg_samples(basename, &#39;csl71sg15&#39;, &#39;93&#39;, ver, calc, templatepath,imp_size, fine_mul, gbpos, &#39;segreg&#39;, dlist_coseg, main_path = main_path  ) #relaxed positions of cell with impurities in grain volume used for segregation cases</span>
+
+    <span class="k">return</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="../../index.html">Table of Contents</a></h3>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Siman 0.9.5 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Dmitry Aksenov.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.1.
+    </div>
+  </body>
+</html>

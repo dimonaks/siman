@@ -22,7 +22,7 @@ except:
     print('Warning ase is not installed. I need ase to parse to DOSCAR. install ase with    pip install ase')
 
 
-import siman import header
+from siman import header
 from siman.header import printlog
 from siman.picture_functions import fit_and_plot
 from siman.functions import element_name_inv, smoother

@@ -2,15 +2,8 @@
 from __future__ import division, unicode_literals, absolute_import 
 import sys, os
 import copy
-# import header
-# from operator import itemgetter
-# from classes import res_loop , add_loop
-# from pairs import 
-# from functions import image_distance, local_surrounding
-# from chargeden.functions import chg_at_point, cal_chg_diff
-# from dos.functions import plot_dos
 
-# from ase.utils.eos import EquationOfState
+
 import scipy
 from scipy import interpolate
 from scipy.interpolate import spline 
@@ -39,6 +32,9 @@ from siman.inout import write_xyz
 from siman.small_functions import makedir
 from siman.geo import replic
 
+from siman.chg.chg_func import chg_at_point, cal_chg_diff
+# from dos.functions import plot_dos
+# from ase.utils.eos import EquationOfState
 
 def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, plot = 1, fitplot_args = None, style_dic = None):
     """

@@ -322,6 +322,7 @@ def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided descr
 
 
     ###INPUT:
+        
         - struct_des (dict)         - dict from project database
         * it (str)        - name of calculation
         * it_folder (str) - path and name of folder used for calculation in current project both on local and remote machines
@@ -330,6 +331,7 @@ def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided descr
 
 
     ###RETURN:
+        
         None
     """
 
@@ -751,28 +753,34 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     Main subroutine for creation of calculations, saving them to database and sending to server.
 
     Input:
+
         - it - arbitary name for your crystal structure 
         - setlist (list of str or str) - names of sets with vasp parameters from *varset* dictionary
         - verlist - list of versions of new calculations
         - calc, varset - database dictionaries; could be provided; if not then are taken from header
 
         - input_geo_format - format of files in input geo folder 
+
             'abinit' - the version is determined from the value inside the file
             'vasp', 'cif' -   the version is determined from the name of file; the names should be like POSCAR-1 for vasp files and 1.name.cif for cif
             'mat_proj' - take structure from materialsproject.org; use it_folder, len(verlist) = 1
 
 
         - up - string, possible values are: 'up1', 'up2', 'no_base'; if empty then test run is performed without saving and sending 
+            
             'up1' - needed for normal creation of calculation and copy to server all files
             'no_base': only relevant for typconv
             is the same as "up1", but the base set is ommited
             'up2' - update only unfinished calculations
             'up3' - run only if id does not exist
+        
         - coord - type of cooridnates written in POSCAR:
+            
             'direct'
             'cart'
 
         - savefile - controls which files are saved during VASP run on server; check
+            
             'ocvdawx' - outcar, chgcar, chg, dos, AECCAR,WAVECAR, xml
 
         - ifolder - explicit path to folder where to search for input geo file.
@@ -793,14 +801,18 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         inherit_args (dict) - to pass parameters to inherit_icalc; 
         confdic (dicts) - additional configuration parameters to inherit_icalc in dict, used for antisites
         - inherit_option (str):
+            
             - 'continue'     - copy last contcar to poscar, outcar to prev.outcar and run again; on the next launch prev.outcar
                 will be rewritten, please improve the code to save all previous outcars 
             - 'inherit_xred' - if verlist is provided, xred are copied from previous version to the next
             - all options available for inherit_icalc() subroutine (now only 'full' is tested)
+        
         - *id_from* - see inherit_icalc()
+        
         - ise_new (str) - name of new set for inherited calculation  ('uniform_scale')
 
         - occ_atom_coressp (dict) see inherit_icalc()
+        
         - ortho, mul_matrix - transfered to inherit_icalc
         
         - ngkpt (list) - the list of k-points provided explicitly added to struct_des
@@ -808,6 +820,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         - corenum - number of cores used for calculation; overwrites header.corenum
 
         - calc_method - provides additional functionality:
+            
             - 'u_ramping'    - realizes U ramping approach #Phys Rev B 82, 195128
             - 'afm_ordering' - 
             - 'uniform_scale' - creates uniformly scaled copies of the provided calculations
@@ -826,21 +839,25 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         - cluster_home - override value of header.CLUSTERS
 
         cee_args - arguments for taking files from cee database; see get_structure_from_cee_database
+            
             - cee_file (str) - name of file to be taken from cee database
             - section (str) - CEStorage, Catalysts, ets
 
         - run (bool) - complete the run file copy to server and run
 
         - params (dic) - dictionary of additional parameters, please move here numerous arguments
+            
             - 'occmatrix' - explicit path to occmatrix file
             - 'update_set_dic' (dict) - additional parameters to override the existing set
             - 'monte' - dictionary with parameters for Monte-Carlo regime
+                
                 - 'xvoid' - xcart coordinates of voids
                 - 'thickness' - thickness of slice where Monte-Carlo changes are allowed (from top surface)
                 - 'mcsteps' - number of Monte-Carlo steps
                 - 'temp'    - temperature (K) for Metropolis Algorithm
 
     Comments:
+        
         !Check To create folders and add calculations add_flag should have value 'add' 
 
 
@@ -1815,6 +1832,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     """
     Function for creating new geo files in geo folder based on different types of inheritance
     Input args: 
+        
         it_new, ver_new - name of new structure,
         id_base - new structure will be based on the final structure of this calculation;     (can be either Calculation() object or path to geo file)
         id_from - can be additionally used to adopt for example rprimd from id_from to it_new; (can be either Calculation() object or path to geo file)
@@ -1825,6 +1843,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
         
         inherit_type = '':
+            
             full          - full inheritance of final state
             full_chg      - full + chg file, works only if chg file is on the same cluster
             'full_nomag'  - full except magmom which are set to None
@@ -1842,6 +1861,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
             antisite  - create anitsite defect:
                         curent implimintation takes the first alkali cation and the closest to it transition metal and swap them
                 confdic
+                   
                     - st_from
                     - cation
                     - trans
@@ -1860,17 +1880,21 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         - use_init (bool) use init structure if end is empty
 
     Result: 
+        
         new geo file in the input geo folder
 
     Output:
+        
         no
 
     Depends from:
+        
         header.struct_des
         header.calc
 
 
     Comments: 
+        
         changes len_units of new to Angstrom!!!
         !nznucl is not calculated, since only geo is created here!
         make use of new methods for atom manipulation
@@ -2333,7 +2357,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None, style_dic = None, params = None):
     """Read results
     INPUT:
+        
         'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
+           
             bulk material,
             'e_imp' ('e_imp_kp', 'e_imp_ecut') - calculate impurity energy - just difference between cells with impurity and without.
             'fit_ac' - fit a and c lattice constants using 2-dimensianal spline
@@ -2345,11 +2371,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             'neb' - make neb path. The start and final configurations 
             should be versions 1 and 2, the intermidiate images are starting from 3 to 3+nimages
             )
+        
         voronoi - True of False - allows to calculate voronoi volume of impurities and provide them in output. only if lammps is installed
         b_id - key of base calculation (for example bulk cell), used in several regimes; 
         r_id - key of reference calculation; defines additional calculation (for example atom in vacuum or graphite to calculate formation energies); can contain directly the energy per one atom
 
         up - 
+            
             if equal to 'up2' the files are redownloaded; also can be used to download additional files can be 'xo' (deprecated?)
             - if 'un' is found in up then siman will try to read unfinished outcars
 
@@ -2365,6 +2393,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
         - show - (str), allows to show additional information:
+            
             - mag - magnetic moments on magnetic atoms
               maga
                 *alkali_ion_number* (int) - number of atom around which to sort mag moments from 1
@@ -2389,7 +2418,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         - description_for_archive - caption for images
 
         ret (str) - return some more information in results_dic
+            
             'energies' - just list of full energies
+        
         check_job - (bool) check status on server, use 0 if no internet connection
 
         fitplot_args - additional arguments for fit_and_plot function
@@ -2400,12 +2431,14 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         - inherit_option - dummy
         - savefile - dummy
         - cluster - dummy
-        -override - dummy
+        - override - dummy
         
-        - params - dictionary of additional parameters to control internal, many arguments could me moved here
+        - params - dictionary of additional parameters to control internal, many arguments could me moved here 
+            
             mep_shift_vector - visualization of mep in xyz format
 
     RETURN:
+        
         (results_dic,    result_list)
         or 
         (result_string, result_list)
@@ -2414,6 +2447,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         results_dic - should be used in current version! actually once was used as list, now should be used as dict
 
     TODO:
+        
         Make possible update of b_id and r_id with up = 'up2' flag; now only id works correctly
 
 
@@ -3257,6 +3291,7 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
     Find material with 'it' stoichiometry (lowest energy) from materialsproject.org, 
     download and create field in struct_des and input POSCAR file
     ###INPUT:
+        
         - struct_des-  
         - it        - materials name, such as 'LiCoO2', .... By default the structure with minimum *e_above_hull* is taken
         - it_folder - section folder in which the Poscar will be placed
@@ -3266,6 +3301,7 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
                 - 'conv' - conventional
 
     ###RETURN:
+        
         - ?
         - ?
 

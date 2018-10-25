@@ -240,13 +240,14 @@ def matrix_diff(cl1, cl2, energy_ref = 0):
 
 def form_en(sources, products, norm_el = None):
     """
-    Calculate formation energy of reaction
+    Calculate formation energy of reaction.
+
     sources, products - list of tuples (x, cl), where x is multiplier and cl is calculation
     norm_el  - which element to use for normalization
+
         'all' - normalize by total number of atoms
         'el'
         int - divide by this number
-
     """
 
     El = []

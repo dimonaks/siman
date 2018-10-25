@@ -1,0 +1,980 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>siman.inout &#8212; Siman 0.9.5 documentation</title>
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Siman 0.9.5 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for siman.inout</h1><div class="highlight"><pre>
+<span></span><span class="c1">#Copyright Aksyonov D.A</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">unicode_literals</span><span class="p">,</span> <span class="n">absolute_import</span> 
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span>  <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">siman</span> <span class="k">import</span> <span class="n">header</span>
+<span class="kn">from</span> <span class="nn">siman.header</span> <span class="k">import</span> <span class="n">printlog</span><span class="p">,</span> <span class="n">runBash</span>
+<span class="kn">from</span> <span class="nn">siman.functions</span> <span class="k">import</span> <span class="n">element_name_inv</span><span class="p">,</span> <span class="n">unique_elements</span>
+<span class="kn">from</span> <span class="nn">siman.small_functions</span> <span class="k">import</span> <span class="n">makedir</span><span class="p">,</span> <span class="n">is_list_like</span><span class="p">,</span> <span class="n">list2string</span>
+<span class="kn">from</span> <span class="nn">siman.geo</span> <span class="k">import</span> <span class="n">local_surrounding</span><span class="p">,</span> <span class="n">replic</span>
+
+
+<div class="viewcode-block" id="read_xyz"><a class="viewcode-back" href="../../siman.html#siman.inout.read_xyz">[docs]</a><span class="k">def</span> <span class="nf">read_xyz</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">rprimd</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read xyz file into st</span>
+
+<span class="sd">    rprimd (list of lists) - if None or [None, ] then Tv are read; if Tv does not exist then create automatically </span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">nlines</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        
+        <span class="c1"># try:</span>
+        <span class="k">if</span> <span class="s1">&#39;SG&#39;</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Error! Space group record detected in xyz, please finish code&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;Y&#39;</span><span class="p">)</span>
+            <span class="c1"># st.name.split(&#39;SG&#39;)</span>
+
+
+        <span class="n">elements</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">xcart</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlines</span><span class="p">):</span>
+            <span class="n">xc</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">xc</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Warning! xyz file is broken, not enough lines&#39;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="k">if</span> <span class="s1">&#39;Tv&#39;</span> <span class="ow">in</span> <span class="n">xc</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> 
+                <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">xc</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">dtype</span> <span class="o">=</span> <span class="nb">float</span><span class="p">)</span> <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">elements</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">xc</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">dtype</span> <span class="o">=</span> <span class="nb">float</span><span class="p">)</span> <span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">natom</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">)</span>
+        
+
+
+        
+
+    <span class="n">st</span><span class="o">.</span><span class="n">znucl</span> <span class="o">=</span> <span class="p">[</span><span class="n">element_name_inv</span><span class="p">(</span><span class="n">el</span><span class="p">)</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">unique_elements</span><span class="p">(</span><span class="n">elements</span><span class="p">)]</span>
+    
+
+    <span class="n">elements_z</span> <span class="o">=</span> <span class="p">[</span><span class="n">element_name_inv</span><span class="p">(</span><span class="n">el</span><span class="p">)</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">]</span>
+    <span class="n">st</span><span class="o">.</span><span class="n">typat</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">elements_z</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span> <span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">ntypat</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="p">)</span>
+
+
+    <span class="c1"># print(st.rprimd)</span>
+    <span class="k">if</span> <span class="n">rprimd</span> <span class="o">==</span> <span class="kc">None</span> <span class="ow">or</span> <span class="kc">None</span> <span class="ow">in</span> <span class="n">rprimd</span> <span class="ow">or</span> <span class="mi">0</span> <span class="ow">in</span> <span class="n">rprimd</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">rprimd</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;None detected in *rprimd*, I use vectors from xyz file&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Only these primitive vectors were found in xyz :</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">I take rest from *rprimd*&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">rprimd</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rprimd</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">is_list_like</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Error! Please provide vector in *rprimd*&#39;</span><span class="p">)</span>
+
+
+
+
+
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;I use vectors from *rprimd*&#39;</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span> <span class="o">=</span> <span class="n">rprimd</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Error! Check *rprimd* or Tv in xyz&#39;</span><span class="p">)</span>
+
+
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">get_volume</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Warning! rprimd gives negative volume, I exchange vectors 2 and 3&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">get_volume</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Error! still negative volume, check your primitive vectors&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">tmap</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">tmap</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Final rprimd = </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+
+
+
+    <span class="n">st</span><span class="o">.</span><span class="n">nznucl</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">get_nznucl</span><span class="p">()</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">recip</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">get_recip</span><span class="p">()</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">update_xred</span><span class="p">()</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">reorder_for_vasp</span><span class="p">(</span><span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># print(st.perm)</span>
+    <span class="k">return</span> <span class="n">st</span></div>
+
+
+<div class="viewcode-block" id="read_poscar"><a class="viewcode-back" href="../../siman.html#siman.inout.read_poscar">[docs]</a><span class="k">def</span> <span class="nf">read_poscar</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">new</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+    <span class="c1"># from classes import Structure</span>
+    <span class="c1">#read poscar</span>
+    <span class="n">selective_dynamics</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">elements_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># st = Structure()</span>
+    
+    <span class="k">if</span> <span class="n">new</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;POSCAR&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;CONTCAR&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s1">&#39;.&#39;</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">new</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">des</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c1"># print self.name, &quot;self.name&quot;</span>
+
+
+        <span class="c1"># st.name = self.name</span>
+        <span class="c1"># print(f.readline())</span>
+        <span class="n">mul</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;!&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span>
+        <span class="c1"># print &#39;mul&#39;, mul</span>
+
+
+        <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">vec</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="n">mul</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">*</span><span class="n">mul</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">*</span><span class="n">mul</span><span class="p">])</span> <span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">nznucl</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">ilist</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="c1">#nznucl of elements?</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">ilist</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">vasp5</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">vasp5</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+        <span class="k">if</span> <span class="n">vasp5</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Vasp5 detected&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">ilist</span><span class="p">:</span>
+                <span class="n">elements_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">el</span><span class="p">)</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;elements_list:&#39;</span><span class="p">,</span> <span class="n">elements_list</span><span class="p">)</span>
+
+            <span class="n">ilist</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Vasp4 detected&#39;</span><span class="p">)</span>
+
+
+        
+        <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">ilist</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">nznucl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>  <span class="p">)</span>
+
+
+        <span class="n">temp_line</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">temp_line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="s1">&#39;S&#39;</span><span class="p">]:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;selective dynamics detected&#39;</span><span class="p">)</span> 
+            <span class="n">selective_dynamics</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">temp_line</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+
+        <span class="n">type_of_coordinates</span> <span class="o">=</span> <span class="n">temp_line</span>
+
+
+        <span class="n">st</span><span class="o">.</span><span class="n">xred</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">coordinates</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">select</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">elements_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">read_elements</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">read_elements</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">nz</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">nznucl</span><span class="p">:</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nz</span><span class="p">):</span>
+                <span class="n">vec</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                <span class="n">coordinates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="mi">2</span><span class="p">])])</span> <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">read_elements</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span> <span class="c1"># elements may be added by pymatgen</span>
+                    <span class="c1"># printlog(&quot;Probably elements names are added at the end of coordinates, trying to read them&quot;)</span>
+                    <span class="k">if</span> <span class="n">vec</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">elements_list</span><span class="p">:</span>
+                        <span class="n">elements_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+                
+                <span class="k">if</span> <span class="n">selective_dynamics</span><span class="p">:</span>
+                    <span class="c1"># convert &#39;T&#39;/&#39;F&#39; to True/False</span>
+                    <span class="n">flagset</span> <span class="o">=</span> <span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">fi</span><span class="p">,</span> <span class="n">flag</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]):</span>
+                        <span class="k">if</span> <span class="n">flag</span> <span class="o">==</span> <span class="s1">&#39;F&#39;</span><span class="p">:</span>
+                            <span class="n">flagset</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="c1"># print(flagset)</span>
+                    <span class="n">select</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flagset</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">select</span> <span class="o">=</span> <span class="n">select</span>
+
+        <span class="k">if</span> <span class="s2">&quot;Car&quot;</span> <span class="ow">in</span> <span class="n">type_of_coordinates</span> <span class="ow">or</span> <span class="s1">&#39;car&#39;</span> <span class="ow">in</span> <span class="n">type_of_coordinates</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">xcart</span>  <span class="o">=</span> <span class="n">coordinates</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">update_xred</span><span class="p">()</span>
+
+            
+        <span class="k">elif</span> <span class="s2">&quot;dir&quot;</span> <span class="ow">in</span> <span class="n">type_of_coordinates</span> <span class="ow">or</span> <span class="s1">&#39;Dir&#39;</span> <span class="ow">in</span> <span class="n">type_of_coordinates</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">xred</span>  <span class="o">=</span> <span class="n">coordinates</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">update_xcart</span><span class="p">()</span>
+
+        <span class="k">elif</span> <span class="s1">&#39;None&#39;</span> <span class="ow">in</span> <span class="n">type_of_coordinates</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s2">&quot;Error! The type of coordinates should be &#39;car&#39; or &#39;dir&#39; &quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">NameError</span>
+
+
+
+        <span class="k">if</span> <span class="s1">&#39;Species order:&#39;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;I detect that input file was generated by cif2cell</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">elements_list</span><span class="p">:</span>
+            <span class="n">elements_list</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;!&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;I take elements from the first line, The line is &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;!&#39;</span><span class="p">))</span><span class="o">+</span><span class="s1">&#39; you could use ! to add comment after name+</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="c1"># print(elements_list)</span>
+            <span class="k">if</span> <span class="s1">&#39;i2a&#39;</span> <span class="ow">in</span> <span class="n">elements_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;i2a list detected&#39;</span><span class="p">)</span>
+                <span class="n">el</span> <span class="o">=</span> <span class="n">elements_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+                <span class="n">elements_list</span> <span class="o">=</span> <span class="n">el</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s2">&quot;Elements names have been taken from the end of coordinates, pymatgen file?</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+
+        <span class="n">st</span><span class="o">.</span><span class="n">znucl</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">elname</span> <span class="ow">in</span> <span class="n">elements_list</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">element_name_inv</span><span class="p">(</span><span class="n">elname</span><span class="p">)</span> <span class="p">)</span>
+        <span class="c1"># printlog(&#39;znucl is &#39;)</span>
+
+
+
+        <span class="n">st</span><span class="o">.</span><span class="n">natom</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xred</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">ntypat</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="p">)</span>
+
+        <span class="n">st</span><span class="o">.</span><span class="n">typat</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">nz</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">nznucl</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nz</span><span class="p">):</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1">#Determine reciprocal vectors</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">recip</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">get_recip</span><span class="p">()</span>
+
+
+            <span class="c1"># if hasattr(self.init, &#39;vel&#39;):</span>
+            <span class="c1">#     print &quot;I write to POSCAR velocity as well&quot;</span>
+            <span class="c1">#     f.write(&quot;Cartesian\n&quot;)</span>
+            <span class="c1">#     for v in self.init.vel:</span>
+            <span class="c1">#         f.write( &#39;%.12f %.12f %.12f\n&#39;%(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )</span>
+
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;The following Z were read = &#39;</span><span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;VASP POSCAR format&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="s2">&quot; was read</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">st</span></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="viewcode-block" id="write_jmol"><a class="viewcode-back" href="../../siman.html#siman.inout.write_jmol">[docs]</a><span class="k">def</span> <span class="nf">write_jmol</span><span class="p">(</span><span class="n">xyzfile</span><span class="p">,</span> <span class="n">pngfile</span><span class="p">,</span> <span class="n">scriptfile</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">atomselection</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">topview</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">orientation</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">axis</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">bonds</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">rprimd</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">shift</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rotate</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">high_contrast</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">specialcommand</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">boundbox</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">atom_labels</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    atomselection - string in gmol format with number of atoms to be nrotateSelected</span>
+<span class="sd">    topview - additional top view, requires two models in xyz</span>
+<span class="sd">    orientation - additional rotation</span>
+<span class="sd">    axis - add axes</span>
+<span class="sd">    rotate - rotation of all atoms around view axis in degrees</span>
+<span class="sd">    label (tuple ()) - used for impurities, please decribe</span>
+<span class="sd">    atom_labels (bool) - turn on atom labels</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">scriptfile</span><span class="p">:</span>
+        <span class="n">scriptfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="o">+</span><span class="s1">&#39;temporary_jmol_script&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">scriptfile</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;set frank off</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span> <span class="c1">#no jmol label</span>
+        <span class="k">if</span> <span class="n">bonds</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;set autobond on</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;set autobond off</span><span class="se">\n</span><span class="s1"> set bonds off</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;load &quot;&#39;</span><span class="o">+</span><span class="n">xyzfile</span><span class="o">+</span><span class="s1">&#39;&quot;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;select all </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span> <span class="c1">#250</span>
+        <span class="k">if</span> <span class="mi">0</span><span class="p">:</span>
+           <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;cpk 250 </span><span class="se">\n</span><span class="s1">wireframe 0.3</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span> 
+
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;background white </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="c1"># f.write(&#39;select Ti* \ncolor [20,120,250] \nselect C* \ncolor [80,80,80]\n cpk 100\n&#39;)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;set perspectivedepth off</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        
+
+
+
+        <span class="k">if</span> <span class="n">boundbox</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;set boundbox &#39;</span> <span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">boundbox</span><span class="p">)</span><span class="o">+</span> <span class="s1">&#39; </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+
+        <span class="c1"># f.write(&#39;set specular 85\n set specpower 85\n set diffuse 85\n&#39;)</span>
+        <span class="k">if</span> <span class="n">high_contrast</span><span class="p">:</span> <span class="c1">#allows to make better view for black and white printing </span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;set ambient 10 </span><span class="se">\n</span><span class="s1">set specular 95</span><span class="se">\n</span><span class="s1"> set specpower 95</span><span class="se">\n</span><span class="s1"> set diffuse 95</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+
+        
+        <span class="k">if</span> <span class="n">axis</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;set axes 10 </span><span class="se">\n</span><span class="s1">axes scale 2.5 </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;axes labels &quot;X&quot; &quot;Y&quot; &quot;Z&quot; &quot;&quot; </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;color  axes  red </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;font axes 26 </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+        <span class="k">if</span> <span class="n">orientation</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">orientation</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+        <span class="k">if</span> <span class="n">atomselection</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;select &#39;</span><span class="o">+</span><span class="n">atomselection</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;color purple    </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">topview</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;select * /2  </span><span class="se">\n</span><span class="s1">translateSelected 0 &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="o">-</span><span class="n">rprimd</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">shift</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39; 0</span><span class="se">\n</span><span class="s1">rotateSelected X 90</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;wireframe 0.1</span><span class="se">\n</span><span class="s1">cpk 150</span><span class="se">\n</span><span class="s1">model 0</span><span class="se">\n</span><span class="s1">#zoom 60</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+
+        <span class="k">if</span> <span class="n">label</span><span class="p">:</span>
+            <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">name_old</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">el</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">label</span><span class="p">):</span>
+                <span class="n">name</span>  <span class="o">=</span> <span class="n">el</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="n">name_old</span><span class="p">:</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="c1"># print &quot;label&quot;,label</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;select &#39;</span><span class="o">+</span><span class="n">el</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">cpk 200</span><span class="se">\n</span><span class="s1">set labeloffset 0 0</span><span class="se">\n</span><span class="s1">set labelfront</span><span class="se">\n</span><span class="s1">color label black</span><span class="se">\n</span><span class="s1">label &#39;</span><span class="o">+</span><span class="n">label</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1"> font label 24 bold </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">j</span><span class="o">+=</span><span class="mi">1</span>
+                <span class="n">name_old</span> <span class="o">=</span> <span class="n">name</span>
+
+
+
+        <span class="k">if</span> <span class="n">atom_labels</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;select all</span><span class="se">\n</span><span class="s1">set label &quot;</span><span class="si">%e</span><span class="s1">&quot;</span><span class="se">\n</span><span class="s1">set labeloffset 0 0</span><span class="se">\n</span><span class="s1">set labelfront off</span><span class="se">\n</span><span class="s1">color label black</span><span class="se">\n</span><span class="s1">font label 18 bold </span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+
+
+        <span class="k">if</span> <span class="n">rotate</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;rotate z &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">rotate</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">specialcommand</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">specialcommand</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;set displayCellParameters False ;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+
+        
+        <span class="c1"># f.write(&#39;write image 2800 2800 png &quot;&#39;+pngfile+&#39;&quot;&#39;)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;write image 1800 1800 png &quot;&#39;</span><span class="o">+</span><span class="n">pngfile</span><span class="o">+</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
+    
+    <span class="c1"># print(header.PATH2JMOL)</span>
+    <span class="c1"># sys.exit()</span>
+    <span class="n">printlog</span><span class="p">(</span> <span class="n">runBash</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">PATH2JMOL</span><span class="o">+</span><span class="s1">&#39; -ions &#39;</span><span class="o">+</span><span class="n">scriptfile</span><span class="p">)</span> <span class="p">)</span>
+    <span class="c1"># print runBash(&#39;convert &#39;+pngfile+&#39; -shave 0x5% -trim &#39;+pngfile) #cut by 5% from up and down (shave) and that trim left background</span>
+    <span class="n">printlog</span><span class="p">(</span> <span class="n">pngfile</span> <span class="p">)</span>
+    <span class="n">printlog</span><span class="p">(</span> <span class="n">runBash</span><span class="p">(</span><span class="s1">&#39;convert &#39;</span><span class="o">+</span><span class="n">pngfile</span><span class="o">+</span><span class="s1">&#39; -trim &#39;</span><span class="o">+</span><span class="n">pngfile</span><span class="p">)</span>  <span class="p">)</span> <span class="c1"># trim background</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;png file by Jmol&#39;</span><span class="p">,</span><span class="n">pngfile</span><span class="p">,</span> <span class="s1">&#39;was written&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span> <span class="p">)</span>
+    <span class="c1"># print(header.PATH2JMOL)</span>
+    <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="write_xyz"><a class="viewcode-back" href="../../siman.html#siman.inout.write_xyz">[docs]</a><span class="k">def</span> <span class="nf">write_xyz</span><span class="p">(</span><span class="n">st</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">file_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">include_vectors</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">repeat</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">shift_2view</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">replications</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">full_cell</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> 
+    <span class="n">analysis</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">show_around</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">show_around_x</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="n">nnumber</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">only_elements</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">gbpos2</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">gbwidth</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">withgb</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">include_boundary</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">imp_positions</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">imp_sub_positions</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">jmol</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">specialcommand</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">jmol_args</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">sts</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">mcif</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">suf</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Writes st structure in xyz format in the folder xyz/path</span>
+<span class="sd">    #void are visualized with Pu</span>
+<span class="sd">    if repeat == 2: produces jmol script</span>
+<span class="sd">    shift_2view - in rprimd[1][1] - shift of the second view</span>
+<span class="sd">    gbpos2 - position of grain boundary in A</span>
+<span class="sd">    gbwidth - atoms aroung gbpos2 will be colored differently</span>
+
+<span class="sd">    imp_positions - (x1,x2,x3, element, label)- xcart and element name coordinates additionally to be added to structure; to visulaze all impurity positions: for jmol, additional key &#39;s&#39;, &#39;i&#39; can be added after element</span>
+<span class="sd">    imp_sub_positions - list of atom numbers; the typat of these atoms is changed: not used now</span>
+
+
+<span class="sd">    analysis - additional processing, allows to show only specifice atoms, </span>
+<span class="sd">        &#39;imp_surrounding&#39; - shows Ti atoms only around impurity</span>
+<span class="sd">        nnumber - number of neighbours to show</span>
+<span class="sd">        show_around - choose atom number around which to show, from 1</span>
+<span class="sd">        show_around_x - show atoms around point, has higher priority</span>
+<span class="sd">        only_elements - see local_surrounding</span>
+
+<span class="sd">    replications - list of replications, (2,2,2) </span>
+
+<span class="sd">    full_cell - returns atoms to cell and replicate boundary atoms</span>
+
+<span class="sd">    include_vectors (bool) - write primitive vectors to xyz</span>
+
+<span class="sd">    jmol - 1,0 -  use jmol to produce png picture</span>
+<span class="sd">    jmol_args - see write_jmol()</span>
+<span class="sd">    mcif - write magnetic cif for jmol</span>
+
+
+<span class="sd">    specialcommand - any command at the end of jmol script</span>
+<span class="sd">    suf - additional suffix for name</span>
+
+<span class="sd">    sts - list of Structure - write several structures to xyz file - other options are not working in this regime</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">jmol_args</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">jmol_args</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="n">st</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">sts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+    <span class="k">if</span> <span class="n">replications</span><span class="p">:</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">replic</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="n">mul</span> <span class="o">=</span> <span class="n">replications</span><span class="p">,</span> <span class="n">inv</span> <span class="o">=</span> <span class="mi">1</span> <span class="p">)</span>
+  
+    <span class="k">def</span> <span class="nf">update_var</span><span class="p">(</span><span class="n">st</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">natom</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xred</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">max</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="p">):</span> 
+            <span class="n">printlog</span><span class="p">(</span> <span class="s2">&quot;Error! write_xyz: check your arrays.</span><span class="se">\n\n</span><span class="s2">&quot;</span>    <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">xcart</span> <span class="o">==</span> <span class="p">[]</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xred</span><span class="p">):</span>
+            <span class="n">printlog</span><span class="p">(</span> <span class="s2">&quot;Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">xcart</span> <span class="o">=</span> <span class="n">xred2xcart</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xred</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">)</span>
+            <span class="c1">#print xcart[1]</span>
+
+        <span class="k">return</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">xcart</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">xred</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">typat</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">znucl</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">xred</span><span class="p">)</span>
+
+    
+    <span class="n">st</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">rprimd</span><span class="p">,</span> <span class="n">xcart</span><span class="p">,</span> <span class="n">xred</span><span class="p">,</span> <span class="n">typat</span><span class="p">,</span> <span class="n">znucl</span><span class="p">,</span> <span class="n">natom</span> <span class="o">=</span> <span class="n">update_var</span><span class="p">(</span><span class="n">st</span><span class="p">)</span>
+
+
+
+
+    <span class="k">if</span> <span class="n">file_name</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">file_name</span>
+    <span class="k">elif</span> <span class="n">filename</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">filename</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="n">suf</span>
+
+
+    <span class="k">if</span> <span class="n">sts</span><span class="p">:</span>
+        <span class="n">name</span><span class="o">+=</span><span class="s1">&#39;_traj&#39;</span>
+
+    
+    <span class="n">printlog</span><span class="p">(</span><span class="s2">&quot;write_xyz(): Name is&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">important</span> <span class="o">=</span> <span class="s1">&#39;n&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span> 
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;noname&#39;</span>
+
+
+
+    
+    <span class="k">if</span> <span class="n">path</span><span class="p">:</span>
+        <span class="n">basepath</span> <span class="o">=</span> <span class="n">path</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">basepath</span> <span class="o">=</span> <span class="s1">&#39;xyz/&#39;</span>
+
+
+
+    <span class="n">suf</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+
+
+
+
+    <span class="sd">&quot;&quot;&quot;Processing section&quot;&quot;&quot;</span>
+
+
+    <span class="k">if</span> <span class="n">analysis</span> <span class="o">==</span> <span class="s1">&#39;imp_surrounding&#39;</span><span class="p">:</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;analysis = imp_surrounding&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show_around</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Error! number of atom *show_around* should start from 1&#39;</span><span class="p">)</span>
+
+        <span class="n">suf</span> <span class="o">=</span> <span class="s1">&#39;_loc&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">show_around</span><span class="p">)</span>
+        <span class="n">lxcart</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">ltypat</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">i</span><span class="o">=</span><span class="mi">0</span>
+
+
+        <span class="k">if</span> <span class="n">is_list_like</span><span class="p">(</span><span class="n">show_around_x</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">show_around_x</span>
+            <span class="n">x_t</span> <span class="o">=</span> <span class="n">local_surrounding</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="n">nnumber</span><span class="p">,</span> <span class="n">control</span> <span class="o">=</span> <span class="s1">&#39;atoms&#39;</span><span class="p">,</span> <span class="n">periodic</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">only_elements</span> <span class="o">=</span> <span class="n">only_elements</span><span class="p">)</span>
+            <span class="c1"># print(&#39;write_xyz: local_surround:&#39;, x_t)</span>
+            <span class="n">lxcart</span><span class="o">+=</span><span class="n">x_t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">ltypat</span><span class="o">+=</span><span class="n">x_t</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>            
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">typat</span><span class="p">,</span> <span class="n">xcart</span><span class="p">):</span>
+                
+                <span class="n">condition</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="c1"># print show_around, &#39;show&#39;</span>
+                <span class="k">if</span> <span class="n">show_around</span><span class="p">:</span>
+                    <span class="c1"># print i, condition</span>
+                    <span class="n">condition</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">show_around</span><span class="p">)</span>
+                    <span class="c1"># print i, condition</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">condition</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="c1"># compat with prev behav, to show around any impurities (all atoms with typat more than one)</span>
+                
+                <span class="c1"># print &#39;se&#39;, condition</span>
+
+                <span class="k">if</span> <span class="n">condition</span><span class="p">:</span> 
+                    <span class="c1"># print(&#39;Atom at&#39;, x, &#39;used as central&#39;)</span>
+                    <span class="c1"># lxcart.append(x)</span>
+                    <span class="c1"># ltypat.append(t)</span>
+                    <span class="c1"># print x, &#39; x&#39;</span>
+                    <span class="n">x_t</span> <span class="o">=</span> <span class="n">local_surrounding</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">st</span><span class="p">,</span> <span class="n">nnumber</span><span class="p">,</span> <span class="n">control</span> <span class="o">=</span> <span class="s1">&#39;atoms&#39;</span><span class="p">,</span> <span class="n">periodic</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">only_elements</span> <span class="o">=</span> <span class="n">only_elements</span><span class="p">)</span>
+                    <span class="nb">print</span> <span class="p">(</span><span class="n">x_t</span><span class="p">)</span>
+                    <span class="n">lxcart</span><span class="o">+=</span><span class="n">x_t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">ltypat</span><span class="o">+=</span><span class="n">x_t</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">i</span><span class="o">+=</span><span class="mi">1</span>
+        
+
+        <span class="n">xcart</span> <span class="o">=</span> <span class="n">lxcart</span>
+        <span class="n">typat</span> <span class="o">=</span> <span class="n">ltypat</span>
+        <span class="n">natom</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">typat</span><span class="p">)</span>
+        <span class="c1"># print natom, &#39;nat&#39;</span>
+        <span class="c1"># print(&#39;Number of neighbours&#39;, natom  )</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">xcart</span> <span class="o">=</span> <span class="n">xcart</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">typat</span> <span class="o">=</span> <span class="n">typat</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">natom</span> <span class="o">=</span> <span class="n">natom</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">update_xred</span><span class="p">()</span>
+
+
+
+
+
+    <span class="sd">&quot;&quot;&quot;Include atoms on the edge of cell&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">full_cell</span><span class="p">:</span>
+        <span class="c1"># print xred</span>
+        <span class="c1"># print natom</span>
+        <span class="c1"># st = return_atoms_to_cell(st)</span>
+        <span class="c1"># print xred</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">replic</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="n">mul</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span> <span class="n">inv</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cut_one_cell</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">include_boundary</span> <span class="o">=</span> <span class="n">include_boundary</span><span class="p">)</span>
+        <span class="c1"># print natom, st.natom</span>
+
+        <span class="c1"># print st.xred</span>
+
+        <span class="n">rprimd</span><span class="p">,</span> <span class="n">xcart</span><span class="p">,</span> <span class="n">xred</span><span class="p">,</span> <span class="n">typat</span><span class="p">,</span> <span class="n">znucl</span><span class="p">,</span> <span class="n">natom</span> <span class="o">=</span> <span class="n">update_var</span><span class="p">(</span><span class="n">st</span><span class="p">)</span>
+        
+    <span class="c1"># asdegf</span>
+
+    <span class="c1"># printlog(&quot;Writing xyz: &quot;+xyzfile, imp = &#39;y&#39;)</span>
+
+    <span class="c1">#analyze imp_positions</span>
+    <span class="k">if</span> <span class="n">imp_sub_positions</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">imp_sub_positions</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">nsub</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">imp_positions</span><span class="p">:</span>
+        <span class="c1"># if len(pos) &gt; 4:</span>
+        <span class="c1">#     if &#39;s&#39; not in pos[4]: continue # skip interstitial positions</span>
+        
+        <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">pos</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="n">pos</span><span class="p">[</span><span class="mi">2</span><span class="p">]])</span>
+        <span class="n">nsub</span><span class="o">+=</span><span class="mi">1</span>
+        <span class="c1"># print xs</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart</span><span class="p">):</span>
+            <span class="c1"># print np.linalg.norm( x-xs)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span> <span class="n">x</span><span class="o">-</span><span class="n">xs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">imp_sub_positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">imp_sub_positions</span> <span class="p">:</span> 
+        <span class="n">printlog</span><span class="p">(</span> <span class="n">imp_sub_positions</span><span class="p">,</span> <span class="s1">&#39;: numbers of found atoms to be changed &#39;</span> <span class="p">)</span>
+
+
+    <span class="c1"># for i in sorted(indices, reverse=True):</span>
+    <span class="c1">#     del somelist[i]</span>
+
+
+    <span class="k">if</span> <span class="n">include_vectors</span><span class="p">:</span>
+        <span class="n">nvect</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">nvect</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="sd">&quot;&quot;&quot;Writing section&quot;&quot;&quot;</span>   
+    <span class="n">name</span><span class="o">+=</span><span class="n">suf</span>
+    <span class="n">xyzfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basepath</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;.xyz&quot;</span><span class="p">)</span>
+    <span class="n">makedir</span><span class="p">(</span><span class="n">xyzfile</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="n">st</span><span class="p">):</span>
+        <span class="n">rprimd</span><span class="p">,</span> <span class="n">xcart</span><span class="p">,</span> <span class="n">xred</span><span class="p">,</span> <span class="n">typat</span><span class="p">,</span> <span class="n">znucl</span><span class="p">,</span> <span class="n">natom</span> <span class="o">=</span> <span class="n">update_var</span><span class="p">(</span><span class="n">st</span><span class="p">)</span>
+
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">natom</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">imp_positions</span><span class="p">)</span><span class="o">-</span><span class="n">nsub</span> <span class="o">+</span> <span class="n">nvect</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span> <span class="c1">#+3 vectors</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">imp_positions</span><span class="p">:</span> 
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">el</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">imp_positions</span><span class="p">):</span>
+                <span class="c1"># if len(el) != 4: continue</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%.5f</span><span class="s2"> </span><span class="si">%.5f</span><span class="s2"> </span><span class="si">%.5f</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span> <span class="n">el</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">el</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="c1"># print &#39;composite -pointsize 60 label:{0:d} -geometry +{1:d}+{2:d} 1.png 2.png&#39;.format(i, el[0], el[1])</span>
+
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">natom</span><span class="p">):</span>
+            <span class="n">typ</span> <span class="o">=</span> <span class="n">typat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+            
+            <span class="n">z</span> <span class="o">=</span> <span class="nb">int</span> <span class="p">(</span> <span class="n">znucl</span><span class="p">[</span> <span class="n">typ</span> <span class="p">]</span> <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">imp_sub_positions</span><span class="p">:</span> 
+                <span class="c1"># f.write( &quot;Be &quot; )</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">el</span> <span class="o">=</span> <span class="n">element_name_inv</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">el</span> <span class="o">==</span> <span class="s1">&#39;void&#39;</span><span class="p">:</span>
+                    <span class="n">el</span> <span class="o">=</span> <span class="s1">&#39;Pu&#39;</span>
+
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="n">el</span><span class="o">+</span><span class="s2">&quot; &quot;</span> <span class="p">)</span>
+
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="s2">&quot;</span><span class="si">%.5f</span><span class="s2"> </span><span class="si">%.5f</span><span class="s2"> </span><span class="si">%.5f</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span> <span class="n">xcart</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">xcart</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">xcart</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="p">)</span> <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">include_vectors</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Tv </span><span class="si">{:.10f}</span><span class="s1"> </span><span class="si">{:.10f}</span><span class="s1"> </span><span class="si">{:.10f}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">r</span><span class="p">)</span>  <span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">xyzfile</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sts</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">st</span> <span class="ow">in</span> <span class="n">sts</span><span class="p">:</span>
+                <span class="n">write</span><span class="p">(</span><span class="n">st</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">repeat</span><span class="p">):</span>
+                <span class="n">write</span><span class="p">(</span><span class="n">st</span><span class="p">)</span>
+
+
+
+    <span class="c1"># os._exit(1)</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;File&#39;</span><span class="p">,</span> <span class="n">xyzfile</span><span class="p">,</span> <span class="s1">&#39;was written&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+
+    <span class="n">pngfile</span> <span class="o">=</span> <span class="kc">None</span>
+    
+
+    <span class="k">if</span> <span class="n">jmol</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        script mode for jmol. Create script file as well for elobarate visualization</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="sd">&quot;&quot;&quot;Choose gb atoms to change their color&quot;&quot;&quot;</span>
+        <span class="n">printlog</span><span class="p">(</span> <span class="s1">&#39;position of boundary 2&#39;</span><span class="p">,</span> <span class="n">gbpos2</span><span class="p">)</span>
+        <span class="n">atomselection</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="c1">#create consistent xcart_new list like it will be in Jmol</span>
+        <span class="n">xcart_new</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">imp_sub_positions</span><span class="p">:</span> <span class="k">continue</span>
+            <span class="n">xcart_new</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>    
+
+
+
+        <span class="k">if</span> <span class="n">gbpos2</span><span class="p">:</span>
+            
+            <span class="n">gbpos1</span> <span class="o">=</span> <span class="n">gbpos2</span> <span class="o">-</span> <span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mf">2.</span>
+            <span class="n">gbatoms</span> <span class="o">=</span> <span class="p">[]</span>
+            
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart_new</span><span class="p">):</span>
+                <span class="c1"># print i</span>
+                <span class="c1"># if x[0] &gt; gbpos1 - gbwidth/2. and x[0] &lt; gbpos1 + gbwidth/2.:</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">gbpos1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">gbwidth</span><span class="o">/</span><span class="mf">2.</span><span class="p">:</span>
+                    <span class="n">gbatoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                    <span class="c1"># print i, x[0], abs(x[0] - gbpos1)</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">gbpos2</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">gbwidth</span><span class="o">/</span><span class="mf">2.</span><span class="p">:</span>
+                <span class="c1"># if x[0] &gt; gbpos2 - gbwidth/2. and x[0] &lt; gbpos2 + gbwidth/2.:</span>
+                    <span class="c1"># print i, x[0], abs(x[0] - gbpos2)</span>
+                    <span class="n">gbatoms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">printlog</span><span class="p">(</span> <span class="s1">&#39;Atoms at GB:&#39;</span><span class="p">,</span> <span class="n">gbatoms</span><span class="p">)</span>
+            <span class="n">atomselection</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">gbatoms</span><span class="p">:</span>
+                <span class="n">atomselection</span> <span class="o">+=</span><span class="s1">&#39;Ti&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">imp_positions</span><span class="p">))</span><span class="o">+</span><span class="s1">&#39;,&#39;</span>
+            <span class="n">atomselection</span> <span class="o">=</span> <span class="n">atomselection</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+
+        <span class="c1"># elif withgb: # color half of cell</span>
+        <span class="c1"># else: # color half of cell</span>
+        <span class="c1">#     # pass</span>
+            <span class="c1"># atomselection = &#39;atomno&gt;&#39;+str(0+len(imp_positions) )+&#39; and atomno&lt;&#39;+str(( natom + len(imp_positions)  )/2-1)</span>
+
+
+
+
+
+        <span class="c1"># xyzfile = os.getcwd()+&#39;/&#39;+xyzfile</span>
+        <span class="k">if</span> <span class="n">mcif</span><span class="p">:</span>
+            <span class="n">xyzfile</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">write_cif</span><span class="p">(</span><span class="n">mcif</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">xyzfile</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">write_poscar</span><span class="p">()</span>
+        
+        <span class="n">scriptfile</span> <span class="o">=</span> <span class="n">basepath</span><span class="o">+</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;.jmol&quot;</span>
+        <span class="n">bn</span> <span class="o">=</span> <span class="p">(</span><span class="n">basepath</span><span class="o">+</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span><span class="p">)</span>
+        <span class="n">pngfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="o">+</span><span class="n">bn</span><span class="o">+</span><span class="s2">&quot;.png&quot;</span>
+        
+        <span class="n">printlog</span><span class="p">(</span> <span class="s1">&#39;imp_positions = &#39;</span><span class="p">,</span><span class="n">imp_positions</span><span class="p">)</span>
+        <span class="n">write_jmol</span><span class="p">(</span><span class="n">xyzfile</span><span class="p">,</span> <span class="n">pngfile</span><span class="p">,</span> <span class="n">scriptfile</span><span class="p">,</span> <span class="n">atomselection</span><span class="p">,</span> <span class="n">rprimd</span> <span class="o">=</span><span class="n">rprimd</span><span class="p">,</span> <span class="n">shift</span> <span class="o">=</span> <span class="n">shift_2view</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="p">[(</span><span class="n">pos</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">pos</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">imp_positions</span><span class="p">],</span> 
+            <span class="n">specialcommand</span> <span class="o">=</span> <span class="n">specialcommand</span><span class="p">,</span> <span class="o">**</span><span class="n">jmol_args</span><span class="p">)</span>
+
+
+    <span class="k">return</span> <span class="n">xyzfile</span><span class="p">,</span> <span class="n">pngfile</span></div>
+
+
+
+<div class="viewcode-block" id="write_lammps"><a class="viewcode-back" href="../../siman.html#siman.inout.write_lammps">[docs]</a><span class="k">def</span> <span class="nf">write_lammps</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">charges</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Writes structure in lammps format </span>
+
+<span class="sd">    charges (list of float) - list of charges for each atom type</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">rprimd</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">rprimd</span>
+    <span class="n">xcart</span>  <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">xcart</span>
+    <span class="n">xred</span>   <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">xred</span>
+    <span class="n">typat</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">typat</span>
+    <span class="n">ntypat</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">ntypat</span>
+    <span class="n">znucl</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">znucl</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">natom</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">natom</span>
+
+    <span class="k">if</span> <span class="n">natom</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xred</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xcart</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">typat</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">znucl</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">max</span><span class="p">(</span><span class="n">typat</span><span class="p">):</span> 
+        <span class="n">printlog</span><span class="p">(</span> <span class="s2">&quot;Error! write_xyz: check your structure&quot;</span>    <span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span> 
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;noname&#39;</span>
+    <span class="k">if</span> <span class="n">xcart</span> <span class="o">==</span> <span class="p">[]</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">xcart</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">xred</span><span class="p">):</span>
+        <span class="n">printlog</span><span class="p">(</span> <span class="s2">&quot;Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        <span class="n">xcart</span> <span class="o">=</span> <span class="n">xred2xcart</span><span class="p">(</span><span class="n">xred</span><span class="p">,</span> <span class="n">rprimd</span><span class="p">)</span>
+        <span class="c1">#print xcart[1]</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">filename</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;lammps/&#39;</span><span class="o">+</span><span class="n">name</span>
+
+    <span class="n">filename</span><span class="o">+=</span><span class="s1">&#39;.inp&#39;</span>
+
+    <span class="n">makedir</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+
+
+    <span class="sd">&quot;&quot;&quot;Write lammps structure file;  &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; My version; valid only for octahedral cells&quot;&quot;&quot;</span> 
+        <span class="n">printlog</span><span class="p">(</span> <span class="s2">&quot;Warining! write_lammps(): this func supports only orthogonal cells&quot;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;Y&#39;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="o">+</span><span class="s1">&#39;&#39;</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Lammps format &quot;</span><span class="o">+</span><span class="n">name</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">natom</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; atoms</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ntypat</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; atom types</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{:10.8f}</span><span class="s2">  </span><span class="si">{:10.8f}</span><span class="s2">  xlo xhi</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rprimd</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{:10.8f}</span><span class="s2">  </span><span class="si">{:10.8f}</span><span class="s2">  ylo yhi</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rprimd</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{:10.8f}</span><span class="s2">  </span><span class="si">{:10.8f}</span><span class="s2">  zlo zhi</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rprimd</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;0.00000000  0.00000000  0.00000000  xy xz yz</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Atoms</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xcart</span><span class="p">):</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{0:8d}</span><span class="s2"> </span><span class="si">{1:2d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">typat</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+                <span class="k">if</span> <span class="n">charges</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; </span><span class="si">{:6.3f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">charges</span><span class="p">[</span><span class="n">typat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot; </span><span class="si">{:12.6f}</span><span class="s2">  </span><span class="si">{:12.6f}</span><span class="s2">  </span><span class="si">{:12.6f}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="p">))</span>
+            
+
+
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;File&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;was written&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+
+
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Write poscar and convert from poscar to lammps using external script; Valid for arbitary cells&quot;&quot;&quot;</span>
+        <span class="n">cl</span><span class="o">.</span><span class="n">write_structure</span><span class="p">(</span><span class="s1">&#39;POSCAR&#39;</span><span class="p">,</span> <span class="s1">&#39;dir&#39;</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="s1">&#39;voronoi_analysis/&#39;</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">state</span><span class="p">)</span>
+        <span class="n">runBash</span><span class="p">(</span><span class="s2">&quot;voronoi_analysis/VASP-poscar2lammps.awk voronoi_analysis/POSCAR &gt; &quot;</span><span class="o">+</span><span class="n">filepath</span><span class="p">)</span>
+    
+
+
+    <span class="k">if</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Write lammps.in file &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;voronoi_analysis/voronoi.in&#39;</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;units           metal</span>
+<span class="s2">                    atom_style atomic</span>
+<span class="s2">                    boundary        p p p</span><span class="se">\n</span><span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;read_data   /home/aksenov/programs/Simulation_wrapper/siman1/voronoi_analysis/structure.lammps</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1">#         f.write(&#39;lattice   custom 1 &#39;)</span>
+    <span class="c1">#         for i, a in enumerate(rprimd):</span>
+    <span class="c1">#             f.write(&#39; a&#39;+str(i+1))</span>
+    <span class="c1">#             for x in a:</span>
+    <span class="c1">#                 f.write(&#39; &#39;+str(x))</span>
+            
+    <span class="c1">#         f.write(&#39; &amp;\n&#39;)</span>
+    <span class="c1">#         for x in xred:</span>
+    <span class="c1">#             f.write(&#39; basis {0:f} {1:f} {2:f}&amp;\n &#39;.format(x[0], x[1], x[2]) )</span>
+    <span class="c1">#         f.write(&quot;&quot;&quot;\n</span>
+    <span class="c1"># region 1 prism 0 1 0 1 0 1  1 0 0</span>
+    <span class="c1"># create_box 1 prism</span>
+    <span class="c1"># create_atoms 1 prism&quot;&quot;&quot;)</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ntypat</span><span class="p">):</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">mass &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39; &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">znucl</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;pair_style      lj/cut 2.0</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ntypat</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">ntypat</span><span class="p">):</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;pair_coeff      &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39; &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39; 0.0 1.0</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;compute v1 all voronoi/atom</span>
+<span class="s2">                    dump    d1 all custom 1 /home/aksenov/programs/Simulation_wrapper/siman1/voronoi_analysis/dump.voro id type x y z c_v1[1] c_v1[2]</span>
+<span class="s2">                    run 0</span>
+<span class="s2">                    uncompute v1</span><span class="se">\n</span><span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="write_occmatrix"><a class="viewcode-back" href="../../siman.html#siman.inout.write_occmatrix">[docs]</a><span class="k">def</span> <span class="nf">write_occmatrix</span><span class="p">(</span><span class="n">occs</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+    <span class="c1">#create OCCMATRIX </span>
+    
+    <span class="n">makedir</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;I create OCCMATRIX in &#39;</span><span class="p">,</span> <span class="n">folder</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">folder</span><span class="o">+</span><span class="s1">&#39;/OCCMATRIX&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">newline</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">numat</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">occs</span><span class="p">)</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">numat</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;  #num of atoms to be specified</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        
+        <span class="n">at_nums</span> <span class="o">=</span> <span class="n">occs</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">at_spin</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># # 2 or 1</span>
+        <span class="n">at_ltyp</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># l - orbital type, 1 - s, 2 - d, 3 - f</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">occs</span><span class="p">:</span> 
+            <span class="n">occ</span> <span class="o">=</span> <span class="n">occs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">occ</span><span class="p">)</span> <span class="o">==</span> <span class="mi">10</span><span class="p">:</span> <span class="c1"># spin polarized, d orbital</span>
+                <span class="n">at_spin</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">at_ltyp</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span> <span class="c1"># please write by yourself for other cases</span>
+
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">at_nums</span><span class="p">,</span> <span class="n">at_spin</span><span class="p">,</span> <span class="n">at_ltyp</span><span class="p">):</span>
+
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">list2string</span><span class="p">([</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">s</span><span class="p">])</span><span class="o">+</span><span class="s1">&#39;    #i, l, s</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="c1"># for sp in range(s):</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;spin 1</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">occs</span><span class="p">[</span><span class="n">i</span><span class="p">][</span> <span class="mi">0</span><span class="p">:</span><span class="nb">len</span><span class="p">(</span><span class="n">occs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">//</span><span class="n">s</span> <span class="p">]:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">list2string</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">s</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;spin 2</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">occs</span><span class="p">[</span><span class="n">i</span><span class="p">][</span> <span class="nb">len</span><span class="p">(</span><span class="n">occs</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">//</span><span class="n">s</span><span class="p">:</span> <span class="p">]:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">list2string</span><span class="p">(</span><span class="n">row</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">filename</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="../../index.html">Table of Contents</a></h3>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Siman 0.9.5 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Dmitry Aksenov.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.1.
+    </div>
+  </body>
+</html>
