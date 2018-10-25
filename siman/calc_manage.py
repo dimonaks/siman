@@ -835,7 +835,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'occmatrix' - explicit path to occmatrix file
             - 'update_set_dic' (dict) - additional parameters to override the existing set
             - 'monte' - dictionary with parameters for Monte-Carlo regime
-            - 'xvoid' - xcart coordinates of voids 
+                - 'xvoid' - xcart coordinates of voids
+                - 'thickness' - thickness of slice where Monte-Carlo changes are allowed (from top surface)
+                - 'mcsteps' - number of Monte-Carlo steps
+                - 'temp'    - temperature (K) for Metropolis Algorithm
 
     Comments:
         !Check To create folders and add calculations add_flag should have value 'add' 

@@ -69,14 +69,21 @@ header.verbose_log = 1
 # params = read_monte_params()
 with open('monte.json', 'r') as fp:
     params = json.load(fp)
+
+
 vasprun_command = params['vasp_run']
-nmcstep = params['mcsteps']
-thickness = params['thickness']
+nmcstep = params.get('mcsteps') or 2 # minimum two steps are done
+thickness = params.get('thickness') or 6 # minimum layer 
+temperature = params.get('temp') or 1
+
+
+
 
 printlog('\n\n\nStarting Monte-Carlo script!')
 printlog('Command to run vasp', vasprun_command)
 printlog('Total number of steps is', nmcstep)
 printlog('Thickness is ', thickness)
+printlog('Temperature is ', temperature, 'K')
 
 
 
@@ -228,7 +235,7 @@ for i_mcstep in range(1+last_number, 1+last_number+nmcstep):
         with open('ENERGIES', 'a') as f:
             f.write('{:5d}  {:.5f}\n'.format(i_mcstep, cl_new.e0))
         
-        if metropolis(cl.e0, cl_new.e0):
+        if metropolis(cl.e0, cl_new.e0, temperature):
             cl = cl_new
 
             if voidz:

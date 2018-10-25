@@ -948,7 +948,7 @@ def suf_en(cl1, cl2, silent = 0):
     # print(A)
 
     if st1.natom%st2.natom > 0:
-        printlog('Warning! check system sizes: natom1 = ', st1.natom, 'natom2 = ', st2.natom, st1.natom/st2.natom)
+        printlog('Warning! non-stoichiometric slab, check system sizes: natom1 = ', st1.natom, 'natom2 = ', st2.natom, st1.natom/st2.natom)
 
     mul = st1.natom/st2.natom
     gamma = (cl1.e0 - cl2.e0*mul)/2/A* header.eV_A_to_J_m

@@ -8,7 +8,7 @@ import traceback
 import glob
 from random import randint, random
 
-from header import printlog
+from header import printlog, kB
 
 
 
@@ -21,7 +21,7 @@ def metropolis(E1, E2, T = 1):
     """
     decrease = False # energy reduction
     
-    kb = 1.3806488*10**-23  / 1.6 * 10 **19
+    # kb = 1.3806488*10**-23  / 1.6 * 10 **19
     dE = E2 - E1
     
     printlog("metropolis(): dE is ", dE)
