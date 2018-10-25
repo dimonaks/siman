@@ -11,7 +11,7 @@ import random
 
 from os.path import expanduser
 home = expanduser("~")
-sys.path.append(home+'/tools') # for numpy libraries
+sys.path.append(home+'/tools/') # for numpy libraries
 import numpy as np
 
 from siman import header
@@ -143,6 +143,7 @@ if __name__ == "__main__":
 
             cl.serialize('0-yes')
             copyfile('OSZICAR', 'OSZICAR-0')
+            copyfile('CONTCAR', 'CONTCAR-0')
 
             with open('ENERGIES', 'w') as f:
                 f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))

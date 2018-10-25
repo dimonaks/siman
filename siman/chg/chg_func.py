@@ -5,7 +5,7 @@ import numpy as np
 
 
 from ase.calculators.vasp import VaspChargeDensity
-from chg.vasputil_chgarith_module import chgarith
+from siman.chg.vasputil_chgarith_module import chgarith
 
 from siman.header import runBash, printlog
 
