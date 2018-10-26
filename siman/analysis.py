@@ -12,7 +12,7 @@ except:
 
 
 from siman import header
-from siman.header import printlog, mpl, db
+from siman.header import printlog, print_and_log, mpl, db
 from siman.functions import element_name_inv, invert, get_from_server
 from siman.picture_functions import plot_mep
 from siman.geo import determine_symmetry_positions, local_surrounding, find_moving_atom, image_distance
@@ -739,7 +739,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         atom_pos.append( cli.end.xcart[atom_num] )
 
         # Find polaron positions
-        if 1 or 'polaron' in show:
+        if 'polaron' in show: # if 1 cause error for nomag calc
             pol, mag = find_polaron(cli.end, atom_num)
             if pol:
                 for key in pol:
