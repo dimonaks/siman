@@ -5587,7 +5587,8 @@ class CalculationVasp(Calculation):
             p = ''
 
         from siman.calc_manage import create_phonopy_conf_file, read_phonopy_data
-
+        phonopy_command = siman.header.PATH2PHONOPY
+        
         self.get_file('vasprun.xml', nametype = 'asoutcar', up = up)
         create_phonopy_conf_file(self.end, mp = [10, 10, 10], dim = [1, 1, 1], path = self.dir)
         # create_phonopy_conf_file(self.end, mp = [36, 36, 36], path = self.dir) #almost no difference was found for Na2X
@@ -5600,7 +5601,7 @@ class CalculationVasp(Calculation):
 
         os.chdir(self.dir)
         print(self.dir)
-        out = runBash('phonopy --fc '+os.path.basename(self.path['xml']))
+        out = runBash(phonopy_command+' --fc '+os.path.basename(self.path['xml']))
 
         printlog('phonopy out: ', out)
 
@@ -5615,8 +5616,8 @@ class CalculationVasp(Calculation):
         if mode == 'pdos':
             # print('phonopy -c '+os.path.basename(self.path['poscar'])+p+'  mesh.conf --readfc ')
             # runBash('phonopy -c '+os.path.basename(self.path['poscar'])+p+' mesh.conf --readfc ')
-            print('phonopy -c '+poscar+p+'  mesh.conf --readfc ')
-            runBash('phonopy -c '+poscar+p+' mesh.conf --readfc ')
+            print(phonopy_command+' -c '+poscar+p+'  mesh.conf --readfc ')
+            runBash(phonopy_command+' -c '+poscar+p+' mesh.conf --readfc ')
 
         from siman.calc_manage import read_phonopy_dat_file
 
@@ -5627,13 +5628,13 @@ class CalculationVasp(Calculation):
         
 
         if mode == 'band':
-            print('phonopy -c '+os.path.basename(self.path['poscar'])+' -p band.conf --readfc ')
-            runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -p band.conf --readfc ')
+            print(phonopy_command+' -c '+os.path.basename(self.path['poscar'])+' -p band.conf --readfc ')
+            runBash(phonopy_command+' -c '+os.path.basename(self.path['poscar'])+' -p band.conf --readfc ')
 
         if mode == 'free':
-            print('phonopy -c '+os.path.basename(self.path['poscar'])+' -t -p mesh.conf --readfc ')
+            print(phonopy_command+' -c '+os.path.basename(self.path['poscar'])+' -t -p mesh.conf --readfc ')
 
-            runBash('phonopy -c '+os.path.basename(self.path['poscar'])+' -t' +p+' mesh.conf --readfc ')
+            runBash(phonopy_command+' -c '+os.path.basename(self.path['poscar'])+' -t' +p+' mesh.conf --readfc ')
 
 
             Trange, func = read_phonopy_data('thermal_properties.yaml', convert = 1)
