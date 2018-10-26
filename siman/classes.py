@@ -2236,8 +2236,10 @@ class Calculation(object):
 
             #read magnetic states; name of vasp variable
             curset = self.set
-            if hasattr(curset, 'magnetic_moments') and curset.magnetic_moments and ('ISPIN' in curset.vasp_params.keys()) and curset.vasp_params['ISPIN'] == 2:
-                self.init.magmom = read_list("magmom", self.natom, float, gen_words)
+#             if hasattr(curset, 'magnetic_moments') and curset.magnetic_moments and ('ISPIN' in curset.vasp_params.keys()) and curset.vasp_params['ISPIN'] == 2:
+            magmom = read_list("magmom", self.natom, float, gen_words)
+#             if magmom[0] is not None:
+#                 self.init.magmom = magmom
             # self.init.mag_moments 
 
 
