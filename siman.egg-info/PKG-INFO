@@ -1,0 +1,21 @@
+Metadata-Version: 2.1
+Name: siman
+Version: 0.9.5.post0
+Summary: Manager for DFT calculations
+Home-page: https://github.com/dimonaks/siman
+Author: Dmitry Aksenov
+Author-email: dimonaks@gmail.com
+License: GPL
+Description: Manager for first-principles calculations.  
+        For manual see wiki tab at [github](https://github.com/dimonaks/siman/wiki)
+        
+        If you use this package please cite:  
+        Aksyonov et. al, *Understanding migration barriers for monovalent ion insertion in transition metal oxide and phosphate based cathode materials: A DFT study*, [Comp. Mat. Sci. 154, 449-458, 2018](https://doi.org/10.1016/j.commatsci.2018.07.057)  
+        
+        
+Keywords: DFT VASP Density Functional Theory NEB DFT+U PAW GGA Monte-Carlo
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: GNU General Public License (GPL)
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown

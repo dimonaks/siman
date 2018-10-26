@@ -3844,6 +3844,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     up_res    = p.get('up_res') or 'up1'
     sc_set    = p.get('sc_set') or '4uis'
     run_neb   = p.get('run_neb')
+    end_z   = p.get('end_z')
     # atom_to_move 
 
 
@@ -3883,25 +3884,27 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         printlog('Name for DS is', it_ds)
 
         pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
-        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'scale_region':(-3, 5), 'readfiles':1, 'ortho':[10,10,10]}
+        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 
+        'scale_region':(-3, 5), 'readfiles':1, 'ortho':[10,10,10],
+        'end_pos_types_z':end_z}
 
 
         pd['atom_to_move'] = p.get('atom_to_move')
-        p = p.get('path')
+        path = p.get('path')
 
 
-        pd['start_pos'] = p[0] 
-        pd['end_pos']   = p[1] 
+        pd['start_pos'] = path[0] 
+        pd['end_pos']   = path[1] 
 
         add_loop_dic = { 'check_job':1, 'cluster':clust}
         fitplot_args = {'ylim':(-0.02, 1.8)}
 
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
-            a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+            a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
             
-            # print(a)
+            # print(a[0])
             if a[0] not in service_list:
                 service_list.append(a[0])
             # db[pn]['B'] = [ a[0]['B'] ]
