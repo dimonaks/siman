@@ -1,0 +1,9 @@
+*.pyc
+.ipynb_checkpoints
+*.o
+*~
+.DS_Store
+POTCAR
+*OUTCAR*
+*CHGCAR*
+*vasprun*
