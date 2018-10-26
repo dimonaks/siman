@@ -7,3 +7,5 @@ POTCAR
 *OUTCAR*
 *CHGCAR*
 *vasprun*
+dist/
+siman.egg-info/

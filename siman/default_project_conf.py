@@ -36,7 +36,8 @@ CLUSTERS['pardus'] = {
 
 """Local constants"""
 PATH2POTENTIALS = '~/potcars/'
-
+PATH2JMOL = 'jmol'
+PATH2PHONOPY = 'phonopy'
 pmgkey = "AWqKPyV8EmTRlf1t" #MAPI_KEY
 
 path_to_paper        = '/home/aksenov/Research/CEStorage/aksenov_report/'
