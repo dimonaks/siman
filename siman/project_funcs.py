@@ -3832,7 +3832,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
 
     """
-    from geo import determine_symmetry_positions, primitive, remove_x
+    from siman.geo import determine_symmetry_positions, primitive, remove_x
     pn = projectname
     
     m_set = '1u'; n_set  = '1u'; clust = 'cee' # 

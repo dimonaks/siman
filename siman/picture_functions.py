@@ -53,7 +53,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     """
 
 
-    from analysis import determine_barrier
+    from siman.analysis import determine_barrier
 
     if filename is None:
         filename = image_name

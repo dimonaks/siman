@@ -4516,8 +4516,12 @@ class CalculationVasp(Calculation):
                     if "in kB" in line:
                         # print(line)
                         line = line.replace('-', ' -')
-
-                        self.stress = [float(i)*100 for i in line.split()[2:]]  # in MPa 
+                        # print(line)
+                        if '*' in line:
+                            self.stress = [0,0,0] # problem with stresses
+                            printlog('Warning! Some problem with *in kB* line of OUTCAR')
+                        else:
+                            self.stress = [float(i)*100 for i in line.split()[2:]]  # in MPa 
                     if "Total  " in line:
                         # print(line)
                         line = line.replace('-', ' -')
@@ -4525,6 +4529,8 @@ class CalculationVasp(Calculation):
                             self.intstress = [int(float(i)*1000) for i in line.split()[1:]] #stress in internal units; can be regarded as forces
                         except:
                             self.intstress = [0,0,0]
+                            printlog('Warning! Some problem with *Total * line of OUTCAR')
+
                     if "external pressure =" in line: 
                         #print iterat
                         self.extpress = float(line.split()[3]) * 100 # in MPa 
