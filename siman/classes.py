@@ -5613,8 +5613,8 @@ class CalculationVasp(Calculation):
         if mode == 'pdos':
             # print('phonopy -c '+os.path.basename(self.path['poscar'])+p+'  mesh.conf --readfc ')
             # runBash('phonopy -c '+os.path.basename(self.path['poscar'])+p+' mesh.conf --readfc ')
-            print('python.exe phonopy -c '+poscar+p+'  mesh.conf --readfc ')
-            runBash('python.exe phonopy -c '+poscar+p+' mesh.conf --readfc ')
+            print('phonopy -c '+poscar+p+'  mesh.conf --readfc ')
+            runBash('phonopy -c '+poscar+p+' mesh.conf --readfc ')
 
         from siman.calc_manage import read_phonopy_dat_file
 
