@@ -2240,8 +2240,6 @@ class Calculation(object):
             self.init.magmom = read_list("magmom", self.natom, float, gen_words)
             # if magmom[0] is not None:
             #     self.init.magmom = magmom
-            # else:
-            #     self.init.m
 
 
 
@@ -5593,7 +5591,7 @@ class CalculationVasp(Calculation):
             p = ''
 
         from siman.calc_manage import create_phonopy_conf_file, read_phonopy_data
-        phonopy_command = siman.header.PATH2PHONOPY
+        from siman.header import PATH2PHONOPY as phonopy_command
         
         self.get_file('vasprun.xml', nametype = 'asoutcar', up = up)
         create_phonopy_conf_file(self.end, mp = [10, 10, 10], dim = [1, 1, 1], path = self.dir)
