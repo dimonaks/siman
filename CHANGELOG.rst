@@ -1,3 +1,35 @@
+0.9.6
+    
+    add_neb()
+
+        - now if *end_pos_types_z* is used only provided elements are chosen as possible final positions 
+        - new naming convention for neb calculations when *end_pos_types_z* parameter is used. Use *old_behaviour* = '261018' for old naming
+
+    Structure ()
+
+        - new method get_total_number_electrons(), works only with cl.init, when zval exist 
+
+    CalculationVasp()
+
+        - new fields after reading OUTCAR:
+
+            - memory (float) -  total amount of memory  per job (Gb)
+            - memory_max (float) -  Maximum memory used per job (Gb)
+            - nelect (int) - total number of electrons
+            - list_e_conv
+
+
+    IMPORTANT NOTES:
+
+        - To optimize the size of database file from time to time run siman using ::
+
+         header.reorganize = 1
+
+
+
+
+
+
 0.9.5
 new regime for calc_method in add_loop:
     'Monte-Carlo' - Monter Carlo simulation above DFT

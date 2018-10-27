@@ -146,10 +146,7 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
     #     databasefile3 = header.RAMDISK+databasefile3
     size = os.path.getsize
 
-    if 0: #please run me from time to time to reduce the size of the database file
-        import dbm
-        with dbm.open(databasefile3, 'w') as d:
-            d.reorganize()
+
     
 
 
@@ -188,23 +185,19 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
         d.close()
     else: #python3 
         import dbm
-        # d = shelve.Shelf(dbm.open('calc.gdbm', 'c'), protocol=1) #Write dbm database for python3
-        # d[calc_key]       = calc
-        # d[conv_key]       = conv
-        # d[varset_key]     = varset
-        # d[history_key]    = header.history
-        # d[struct_des_key] = header.struct_des 
-        # d.close()        
 
         d = shelve.Shelf(dbm.open(databasefile3, 'n'), protocol = 3) #Write dbm database for python3
-        # d[calc_key]       = calc
         d[conv_key]       = header.conv
         d[varset_key]     = header.varset
         d[history_key]    = header.history
         d[struct_des_key] = header.struct_des 
         d.close()   
 
-        # print(header.db[('Cu.su', '1lo', 100)].inh_id)
+        if 0: #please run me from time to time to reduce the size of the database file, calc
+            with dbm.open(databasefile3, 'w') as d:
+                d.reorganize()
+
+
         printlog('Opening ', header.calc_database, 'for writing')
 
         with shelve.Shelf(dbm.open(header.calc_database, 'w'), protocol = 3) as d:
@@ -214,7 +207,7 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
                 # print(key, header.calc[key].inh_id)
                 d[str(key)] = header.db[key]
         
-        if 0: #please run me from time to time to reduce the size of the database file
+        if header.reorganize: #please run me from time to time to reduce the size of the database file
             with dbm.open(header.calc_database, 'w') as d:
                 d.reorganize()
 

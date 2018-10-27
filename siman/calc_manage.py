@@ -2582,6 +2582,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 # sys.exit()
                 return
 
+            if 'out' in show:
+                runBash('subl '+cl.path['output'])
+
 
             if 'pos' in show:
                 cl.end.write_poscar()
@@ -2771,7 +2774,11 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         if id not in calc or '4' not in calc[id].state:
             # printlog(calc[id].state, imp = 'Y')
-            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',cl.dir, imp = 'Y')
+            try:
+                dire = cl.dir
+            except:
+                dire = ''
+            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',dire, imp = 'Y')
             return {}, []
         
 

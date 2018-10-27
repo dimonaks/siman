@@ -11,7 +11,7 @@ from siman.header import print_and_log, printlog, runBash
 from siman.calc_manage import add_loop, res_loop, add_des, inherit_ngkpt
 from siman.functions import  return_atoms_to_cell, push_to_server, invert
 from siman.inout import write_xyz
-from siman.small_functions import is_list_like, makedir
+from siman.small_functions import is_list_like, makedir, list2string
 from siman.classes import CalculationVasp, cd
 from siman.geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
 from siman.impurity import find_pores, determine_voids, determine_unique_voids
@@ -140,6 +140,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - upload_vts (bool) - if True upload Vasp.pm and nebmake.pl to server
         - run (bool)  - run on server
 
+        - old_behaviour (str) - choose naming behavior before some date in the past for compatibility with your projects
+            '020917'
+            '261018' - after this moment new namig convention applied if end_pos_types_z is used
+
     ###RETURN:
         None
 
@@ -152,10 +156,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
     """
-    if old_behaviour:
+    naming_conventions209 = True # set False to reproduce old behavior before 2.09.2017
+    if old_behaviour == '020917':
         naming_conventions209 = False #
-    else:
-        naming_conventions209 = True # set False to reproduce old behavior before 2.09.2017
+
 
     # print(atom_to_insert)
     # sys.exit()
@@ -169,6 +173,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     if not end_pos_types_z:
         end_pos_types_z = []
+        end_pos_types_z = sorted(end_pos_types_z)
+
 
     if not hasattr(calc_method, '__iter__'):
         calc_method = [calc_method]
@@ -467,8 +473,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             print_and_log( 'Type of atom to move = ', type_atom_to_move, imp = 'y')
             # print 'List of left atoms = ', np.array(st.leave_only(type_atom_to_move).xcart)
 
+            final_pos_z = end_pos_types_z or [invert(type_atom_to_move)] # by default only moving atom is considered
+            end_pos_types_el = [invert(z) for z in end_pos_types_z]
+
+
             sur = local_surrounding(x_m, st, n_neighbours = 12, control = 'atoms', 
-                only_elements = [invert(type_atom_to_move)]+end_pos_types_z,
+                only_elements = final_pos_z,
                 periodic  = True) #exclude the atom itself
 
             # print(x_m)
@@ -477,7 +487,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             # st.nn()
             print_and_log(
             'I can suggest you '+str (len(sur[0][1:]) )+' end positions. The distances to them are : ',np.round(sur[3][1:], 2), ' A\n ',
-            'They are ', type_atom_to_move, [invert(z) for z in end_pos_types_z], 'atoms, use *i_void_final* to choose required: 1, 2, 3 ..', imp = 'y')
+            'They are ', [invert(z) for z in final_pos_z], 'atoms, use *i_void_final* to choose required: 1, 2, 3 ..', imp = 'y')
 
 
             if not i_void_final:
@@ -486,7 +496,17 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
             print_and_log('Choosing position ', i_void_final, 'with distance', round(sur[3][i_void_final], 2), 'A', imp = 'y')
 
-            name_suffix += el_num_suffix+'v'+str(i_void_final)
+
+
+            if old_behaviour == '261018':
+                name_suffix += el_num_suffix+'v'+str(i_void_final)
+            else:
+
+                name_suffix += el_num_suffix+'v'+str(i_void_final)+list2string(end_pos_types_el, joiner = '')
+
+                # print(name_suffix)
+                # sys.exit()
+
 
             x_del = sur[0][i_void_final]
             printlog('xcart of atom to delete', x_del)

@@ -339,7 +339,7 @@ class Structure():
         return self.recip
 
     def get_nznucl(self):
-        """list of numbers of atoms of each type, order is not important
+        """list of numbers of atoms of each type, order is as in typat and znucl
             updated directly
         """
         self.nznucl = []
@@ -356,13 +356,18 @@ class Structure():
         return [self.znucl[t-1] for t in self.typat]
 
     def get_elements_zval(self):
-        #return list with number of valence electrons for each element
+        #return list with number of valence electrons for each atom
         zvals = []
         for z in self.get_elements_z():
             i = self.znucl.index(z)
             zv = self.zval[i]
             zvals.append(zv)
         return zvals
+
+    def get_total_number_electrons(self):
+        zvals = self.get_elements_zval()
+        return int(sum(zvals))
+
 
     def determine_symmetry_positions(self, element):
         from siman.geo import determine_symmetry_positions
@@ -3964,12 +3969,47 @@ class CalculationVasp(Calculation):
 
 
 
+    def plot_energy_force(self,):
+        # print(self.maxforce)
+        maxf = [m[1] for m in self.maxforce_list ]
+        # print(maxf)
+        plt.plot(maxf, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
+        # plt.xlabel('MD step')
+        # plt.ylabel('Energy per cell (eV')
+        plt.xlabel('Max. force on atom (meV/$\AA$)')
+        plt.ylabel('Energy per cell relative to min (meV)')
 
+        plt.show()
+        return
 
+    def plot_energy_step(self,):
+        # print(self.maxforce)
+        # maxf = [m[1] for m in self.maxforce_list ]
+        # print(maxf)
+        steps = range(len(self.list_e_sigma0))
+        plt.plot(steps, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
+        # plt.xlabel('MD step')
+        # plt.ylabel('Energy per cell (eV')
+        plt.xlabel('Step')
+        plt.ylabel('Energy per cell relative to min (meV)')
 
+        plt.show()
+        return
 
+    def plot_energy_conv(self,):
+        # print(self.maxforce)
+        # maxf = [m[1] for m in self.maxforce_list ]
+        # print(maxf)
+        en = self.list_e_conv[10:]
+        steps = range(len(en))
+        plt.plot(steps, (np.array(en)-self.energy_sigma0) , '-o')
+        # plt.xlabel('MD step')
+        # plt.ylabel('Energy per cell (eV')
+        plt.xlabel('SCF Step')
+        plt.ylabel('Energy per cell relative to min (eV)')
 
-
+        plt.show()
+        return
 
 
 
@@ -4187,11 +4227,13 @@ class CalculationVasp(Calculation):
                 self.mdstep = 1
                 warnings = 0#""
                 self.time = 0
+                self.memory = 0 # total memory per job
                 nscflist = []; mdstep_old = 1; niter_old = 0
                 maxforce = []; average = [];  gstress =[]
                 # mforce = []
                 self.list_e_sigma0 = []
                 self.list_e_without_entr = []
+                self.list_e_conv = [] # convergence of energy - all steps
                 # try:
                 #     self.end = copy.deepcopy(self.init) # below needed end values will be updated
                 # except:
@@ -4235,6 +4277,10 @@ class CalculationVasp(Calculation):
                     ff  = (3, 4, 5)
                     force_prefix = ' tot '
 
+                #detect neb
+                images = self.set.vasp_params['IMAGES'] or 1
+
+
 
 
                 # try:
@@ -4269,6 +4315,10 @@ class CalculationVasp(Calculation):
                     if 'GGA     =' in line:
                         # print(line)
                         self.xc_inc = line.split()[2].strip() #xc from incar
+
+                    if 'NELECT' in line:
+                        self.nelect = int(float(line.split()[2]))
+
 
                     if 'ions per type =' in line:
                         if not contcar_read:
@@ -4501,6 +4551,7 @@ class CalculationVasp(Calculation):
                         except:
                             e_sig0 = 0
                         de_each_md = e_sig0_prev - e_sig0
+                        self.list_e_conv.append(e_sig0)
 
                     if "free  energy   TOTEN  =" in line:
                         #self.energy = float(line.split()[4])
@@ -4543,6 +4594,17 @@ class CalculationVasp(Calculation):
 
                     if "Elapsed time" in line:
                         self.time = float(line.split()[3])
+                    
+                    if "Maximum memory used (kb):" in line:
+                        ''
+                        # self.memory_max = float(line.split()[-1]) * self.corenum / 1024 / 1024 
+                    
+                    if "total amount of memory" in line:
+                        ''
+                        # self.memory = float(line.split()[-2])   * self.corenum / 1024 / 1024          
+
+
+
                     if re_nkpts.search(line):
                         self.NKPTS = int(line.split()[3])
                     if "WARNING" in line:
@@ -4716,6 +4778,7 @@ class CalculationVasp(Calculation):
 
             max_magnitude = max(magnitudes)
             max_tdrift    = max(tdrift)
+            self.maxforce_list = maxforce
             self.maxforce = maxforce[-1][1]
             # if max_magnitude < self.set.toldff/10: max_magnitude = self.set.toldff
             # print 'magn', magnitudes
@@ -4809,7 +4872,7 @@ class CalculationVasp(Calculation):
                 for i, de in enumerate(de_each_md_list ):
                     if de/toldfe > 1.01:
                         printlog('Attention! bad SCF convergence {:6.1g} eV for MD step {:}; toldfe = {:6.0g} eV'.format(de, i+1, toldfe))
-
+                self.plot_energy_conv()
 
             #  Construct beatifull table
             #self.a1 = float(v[0])/2 ; self.a2 = float(v[1])/2/math.sqrt(0.75); self.c = float(v[2])  # o1b
@@ -4980,15 +5043,10 @@ class CalculationVasp(Calculation):
 
 
             if 'en' in show:
-                    maxf = [m[1] for m in maxforce ]
-                    # print(maxf)
-                    plt.plot(maxf, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
-                    # plt.xlabel('MD step')
-                    # plt.ylabel('Energy per cell (eV')
-                    plt.xlabel('Max. force on atom (meV/$\AA$)')
-                    plt.ylabel('Energy per cell relative to min (meV)')
+                self.plot_energy_force()
 
-                    plt.show()
+            if 'est' in show: # e step
+                self.plot_energy_step ()
 
             if 'smag' in show:
                 # printlog('{:s}'.format([round(m) for m in self.mag_sum]), imp = 'Y' )

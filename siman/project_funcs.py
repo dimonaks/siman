@@ -1750,21 +1750,27 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
             printlog('Start:', pd['start_pos'], '; End:', pd['end_pos'])
 
-            sup_key = (cat[0], pd['start_pos'], pd['end_pos'], pd['i_atom_to_move']) # support key - should be unique for current path, used to transfer xr from IS to DS 
+            sup_key = [cat[0], pd['start_pos'], pd['end_pos'], pd['i_atom_to_move']] # support key - should be unique for current path, used to transfer xr from IS to DS 
 
-            # if 'replace' in mode:
-            #     sup_key = (cat[0], pd['start_pos'], pd['end_pos'], pd['i_atom_to_move'])
+            neb_unique_id = [pd['start_pos'], pd['end_pos'], pd['i_atom_to_move'], atom_to_insert, ise_new]
+            
+            if pd.get('rep_moving_atom'):
+                neb_unique_id.append(pd['rep_moving_atom'])
+
+            if pd.get('end_pos_types_z'):
+                # print(pd['end_pos_types_z'])
+                endz = tuple(pd['end_pos_types_z'])
+                sup_key.append(endz) 
+                neb_unique_id.append(endz)
 
 
-            neb_unique_id = (pd['start_pos'], pd['end_pos'], pd['i_atom_to_move'], atom_to_insert, ise_new)
-            if 'rep_moving_atom' in pd:
-                # sys.exit()
-                neb_unique_id = (pd['start_pos'], pd['end_pos'], pd['i_atom_to_move'], atom_to_insert, ise_new, pd['rep_moving_atom'])
 
 
+            sup_key       = tuple(sup_key)
+            neb_unique_id = tuple(neb_unique_id)
 
             printlog('neb_unique_id = ', neb_unique_id)
-
+            # sys.exit()
             if 'images' in pd:
                 images = pd['images']
             else:
@@ -3835,7 +3841,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     from siman.geo import determine_symmetry_positions, primitive, remove_x
     pn = projectname
     
-    m_set = '1u'; n_set  = '1u'; clust = 'cee' # 
+    m_set = '1u';
+    clust = 'cee' # 
     
     p = params
     show_fit  = p.get('show_fit')
@@ -3843,6 +3850,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     up_SC  = p.get('up_SC')
     up_res    = p.get('up_res') or 'up1'
     sc_set    = p.get('sc_set') or '4uis'
+    n_set     = p.get('neb_set') or '1u'
     run_neb   = p.get('run_neb')
     end_z   = p.get('end_z')
     # atom_to_move 
