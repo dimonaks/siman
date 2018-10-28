@@ -25,11 +25,15 @@ def metropolis(E1, E2, T = 1):
     dE = E2 - E1
     
     printlog("metropolis(): dE is ", dE)
+    r = random()
+    e = math.exp(-dE/kB/T)
+    printlog("random number is ", r)
+    printlog("exponent is  ", e)
     if dE < -0.000001:
         printlog( "dE is ", dE, "Accept!")
         decrease = True
-    elif  1 > math.exp(-dE/kB/T) > random():
-        printlog ("Accepted due to the temperature; exponent is ", math.exp(-dE/kB/T) )
+    elif  1 > e > r:
+        printlog ("Accepted due to the temperature; exponent is ", e )
         decrease = True
     else:
         printlog('Not accepted')

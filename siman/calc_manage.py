@@ -2578,7 +2578,11 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
             if 'jmol' in show:
                 # printlog(os.getcwd()+'/'+cl.path['output'], imp = 'Y')
-                cl.jmol()
+                if 'r' in show:
+                    r = 1
+                else:
+                    r = 0
+                cl.jmol(r =r)
                 # sys.exit()
                 return
 
