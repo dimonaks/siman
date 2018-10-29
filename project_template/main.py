@@ -1,55 +1,35 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*- 
 """
-siman is needed; Author: Aksyonov D.A.
+To use this template, please install Siman package https://github.com/dimonaks/siman/wiki
 """
 from __future__ import division, unicode_literals, absolute_import, print_function
 
 if 1:
-    import sys, re, copy
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
+    import sys
+    # sys.path.append('/home/aksenov/Simulation_wrapper/siman') #path to siman package
+    from siman import header
+    from siman.header import printlog, runBash
 
+    from siman.SSHTools import SSHTools
+    from siman.calc_manage   import (smart_structure_read, update_des, add_loop, res_loop, add, res, complete_run)
+    from siman.database      import read_database, write_database
+    from siman.set_functions import read_vasp_sets
 
-    sys.path.append('/home/aksenov/Simulation_wrapper/siman') #path to siman package
-    # from header import *; 
     
-
-    import header
-    
-    # sys.exit()
-
-    from header import print_and_log as printlog
-
-    from calc_manage   import (clean_history_file, prepare_run,  manually_remove_from_struct_des, update_des, inherit_icalc, add_loop, res_loop, complete_run, add_des )
-
-    from functions     import  calc_ac, plot_charge_den
-    from inout import write_xyz
-
-    from database      import read_database, write_database
-    from set_functions import read_vasp_sets
-    from project_funcs import redox, potential_barriers, calc_antisite_defects
-    from project_funcs import workflow
-    from project_funcs import calc_barriers, cathode_screening
-    from analysis import calc_redox
-    
+    if 0:
+        #run this once to make migration from old database
+        from siman.header import pickle_module_migration_script
+        pickle_module_migration_script()
 
 
     header.conv, header.varset, size_on_start = read_database()
-
-
-    calc = header.calc; conv = header.conv; varset = header.varset
-    # header.db = calc; 
-    db = header.db
     header.struct_des = update_des(header.struct_des, header.MANUALLY_ADDED); #read manually added calculations from project_conf.py file
-    struct_des = header.struct_des
+    db                = header.db # main database dictionary
+
     import project_sets # should be after read_database
-    
-    varset = read_vasp_sets(project_sets.user_vasp_sets, override_global = 0) #3. read user sets
-   
-    # header.history = clean_history_file(header.history)
+    varset = read_vasp_sets(project_sets.user_vasp_sets, override_global = 0) #read user sets
+
 
 
 
@@ -57,7 +37,7 @@ if 1:
 save = 1
 header.warnings = 'neyY'
 header.warnings = 'yY'
-header.EXCLUDE_NODES = 0
+# header.check_job = 1
 # header.siman_run = 0
 # header.copy_to_cluster_flag = 0
 # header.corenum = 5
@@ -66,14 +46,10 @@ header.EXCLUDE_NODES = 0
 
 
 """Start working"""
-from SSHTools import SSHTools
 # header.ssh_object = SSHTools()
-# header.ssh_object.setup(user='Dmitry.Aksenov', host = '10.30.17.12', pkey = '/home/aksenov/.ssh/id_rsa')
+# header.ssh_object.setup(user="aksenov",host="fri.cnm.utexas.edu",pkey="/home/aksenov/.ssh/id_rsa")
 
-
-
-
-
+# print(runBash('ssh aksenov@fri.cnm.utexas.edu "pwd"'))
 
 
 
@@ -97,7 +73,7 @@ complete_run(header.close_run)
 
 
 if save:
-    write_database(calc, conv, varset, size_on_start)
+    write_database(db, header.conv, header.varset, size_on_start)
 
 
 

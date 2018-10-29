@@ -51,6 +51,8 @@ PBS_PROCS = False # if true than #PBS -l procs="+str(number_cores) is used
 WALLTIME_LIMIT = False # now only for PBS if True 72 hours limit is used
 
 
+
+
 try:
     from siman.default_project_conf import *
     from project_conf import *
@@ -58,11 +60,11 @@ try:
     siman_run = True
     log = open('log','a')
     warnings = 'neyY'
-    warnings = 'Y'
+    warnings = 'yY'
 
 
 except:
-    # print('Some module is used separately; default_project_conf.py is used')
+    print('Some module is used separately; default_project_conf.py is used')
     if mpl:
         mpl.use('agg') #switch matplotlib on or off; for running script using ssh
     siman_run = False
@@ -142,7 +144,7 @@ sshpass = None # using sshpass wrapper for rsync; see functions.py/push_to_serve
 show = None
 corenum = 1
 check_job = 1 # check job by additional ssh requests
-
+reorganize = 0 # use this from time to time to optimize database file size
 verbose_log = 0 # in addition to normal log write verbose log in any case by openning the log_verbose each time
 
 

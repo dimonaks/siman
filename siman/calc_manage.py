@@ -688,6 +688,8 @@ def choose_cluster(cluster_name, cluster_home, corenum):
         header.cluster_home = run_on_server('pwd', header.cluster_address)
     else:
         header.cluster_home = ''
+    
+    clust['homepath'] = header.cluster_home
 
     printlog('The home folder on cluster is ', header.cluster_home)
 
