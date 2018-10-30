@@ -57,7 +57,7 @@ from siman.default_project_conf import *
 #2. Read user-related settings for siman
 simanrc = os.path.expanduser("~/simanrc.py")
 if os.path.exists(simanrc):
-    sys.path.insert(0, os.path.basename(simanrc))
+    sys.path.insert(0, os.path.dirname(simanrc))
     from simanrc import *
 
 #3. Read project specific
@@ -67,7 +67,7 @@ if os.path.exists('./project_conf.py'):
     log = open('log','a')
 else:
     # print('Some module is used separately; default_project_conf.py is used')
-    if mpl:
+    if mpl and not os.path.exists(simanrc):
         mpl.use('agg') #switch matplotlib on or off; for running script using ssh
     siman_run = False
     history.append('separate run')

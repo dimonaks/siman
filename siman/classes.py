@@ -4284,7 +4284,7 @@ class CalculationVasp(Calculation):
                     force_prefix = ' tot '
 
                 #detect neb
-                images = self.set.vasp_params['IMAGES'] or 1
+                images = self.set.vasp_params.get('IMAGES') or 1
 
 
 
