@@ -36,9 +36,10 @@ class SSHTools:
 			if noerror:
 				if printout:
 					print("stderr:","".join(err))
-				return err
+				return ("".join(err)).strip()
 			else:
 				raise Warning("stderr: "+"".join(err))
+		
 		if printout:
 			if len(out)==1:
 				print("output:",out[0].rstrip())

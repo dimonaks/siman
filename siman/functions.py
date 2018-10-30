@@ -94,7 +94,9 @@ def run_on_server(command, addr = None):
 
     if header.ssh_object:
         # printlog('Using paramiko ...', imp = 'y')
-        out = header.ssh_object.run(command)
+        # if 'ne' in header.warnings:
+
+        out = header.ssh_object.run(command, noerror = True, printout = 'ne' in header.warnings)
 
     elif header.sshpass and header.sshpass == 'proxy':
         com = 'ssh -tt sdv sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'

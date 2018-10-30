@@ -2314,8 +2314,9 @@ class Calculation(object):
             if hasattr(st, 'gbpos'):
                 f.write("gbpos "+str(st.gbpos)+"\n")
             
+            if hasattr(st, 'version'):
 
-            f.write("version "+str(self.version)+"\n")
+                f.write("version "+str(self.version)+"\n")
             
             try: 
                 st.magmom
@@ -2323,9 +2324,14 @@ class Calculation(object):
                 st.magmom = [None]
             # print st.magmom 
             # sys.exit()
-            if not None in st.magmom:
-                f.write("magmom "+' '.join(np.array(st.magmom).astype(str)) +"\n")
+            if len(st.typat) != len(st.xred) or len(st.xred) != len(st.xcart):
+                printlog('Error! Check sizes of your atom lists')
 
+
+            if len(st.magmom) > 0 and not None in st.magmom:
+                f.write("magmom "+' '.join(np.array(st.magmom).astype(str)) +"\n")
+                if len(st.typat) != len(st.magmom):
+                    printlog('Error! Check size of your magmom list')
 
 
             f.write("acell 1 1 1\n")
