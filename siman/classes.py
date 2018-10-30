@@ -2314,7 +2314,7 @@ class Calculation(object):
             if hasattr(st, 'gbpos'):
                 f.write("gbpos "+str(st.gbpos)+"\n")
             
-            if hasattr(st, 'version'):
+            if hasattr(self, 'version'):
 
                 f.write("version "+str(self.version)+"\n")
             
