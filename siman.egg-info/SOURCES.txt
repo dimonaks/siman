@@ -25,6 +25,7 @@ siman/pairs.py
 siman/picture_functions.py
 siman/project_funcs.py
 siman/set_functions.py
+siman/simanrc.py
 siman/small_functions.py
 siman/table_functions.py
 siman/workflow_utilities.py
