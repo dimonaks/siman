@@ -799,6 +799,9 @@ def words(fileobj):
 def server_cp(copy_file, to, gz = True, scratch = False, new_filename = None):
     
     if scratch:
+        if not header.PATH2ARCHIVE:
+            printlog('Warning! PATH2ARCHIVE is empty! Please put path archive in ~/simanrc.py or ./project_conf.py ')
+
         copy_file = header.PATH2ARCHIVE + '/' + copy_file
     else:
         copy_file = header.project_path_cluster + '/' + copy_file
