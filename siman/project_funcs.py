@@ -3783,8 +3783,8 @@ def create_project_from_geofile(filename):
 
 
     if projectname not in db:
-
-        shutil.copyfile(filename, startgeofile)
+        if not os.path.exists(startgeofile):
+            shutil.copyfile(filename, startgeofile)
         db[projectname]  = {}
         db[projectname]['startgeofile'] = startgeofile
         db[projectname]['steps'] = [] 

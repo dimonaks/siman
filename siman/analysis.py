@@ -944,14 +944,16 @@ def suf_en(cl1, cl2, silent = 0):
     st1 = cl1.end
     st2 = cl2.end
     # pm = st1.convert2pymatgen(oxidation = {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'})
+    natom1 = st1.get_natom()
+    natom2 = st2.get_natom()
 
     A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
     # print(A)
 
-    if st1.natom%st2.natom > 0:
-        printlog('Warning! non-stoichiometric slab, check system sizes: natom1 = ', st1.natom, 'natom2 = ', st2.natom, st1.natom/st2.natom)
+    if natom1%natom2 > 0:
+        printlog('Warning! non-stoichiometric slab, check system sizes: natom1 = ', natom1, 'natom2 = ', natom2, natom1/natom2)
 
-    mul = st1.natom/st2.natom
+    mul = natom1/natom2
     gamma = (cl1.e0 - cl2.e0*mul)/2/A* header.eV_A_to_J_m
     if not silent:
         print('Surface energy = {:3.2f} J/m2   | {:} | {:} '.format(gamma, cl1.id, cl2.id))

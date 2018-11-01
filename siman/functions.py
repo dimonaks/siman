@@ -692,8 +692,12 @@ def headers():
 
 
 
-def read_vectors(token, number_of_vectors, list_of_words):
+def read_vectors(token, number_of_vectors, list_of_words, type_func = None, lists = False):
     """Returns the list of numpy vectors for the last match"""
+    # lists - return list of lists instead list of vectors
+
+    if type_func is None:
+        type_func = lambda a : float(a)
 
     number_of_matches = list_of_words.count( token )
     if number_of_matches == 0: 
@@ -708,14 +712,26 @@ def read_vectors(token, number_of_vectors, list_of_words):
     index = list_of_words.index(token, number_of_matches - 1 )     #Return the index of the last match
     #print list_of_words[index]
     list_of_vectors = []
+    list_of_lists = []
     vector = np.zeros((3))
     for i in range(number_of_vectors):
-        vector[0] = float(list_of_words[index + 1])
-        vector[1] = float(list_of_words[index + 2])
-        vector[2] = float(list_of_words[index + 3])
+        vector[0] = type_func(list_of_words[index + 1])
+        vector[1] = type_func(list_of_words[index + 2])
+        vector[2] = type_func(list_of_words[index + 3])
+        list3 = []
+        for j in 1,2,3:
+            list3.append(type_func(list_of_words[index + j]) )
+
         index+=3
         list_of_vectors.append(vector.copy())
-    return list_of_vectors
+        list_of_lists.append(list3)
+    
+    if lists:
+        out = list_of_lists
+    else:
+        out = list_of_vectors
+
+    return out
 
 
 def read_list(token, number_of_elements, ttype, list_of_words):

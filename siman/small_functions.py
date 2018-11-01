@@ -147,6 +147,16 @@ def get_common_chemical_base(st1,st2):
     base  = s1[match.a: match.a + match.size]
     return latex_chem(base)
 
+def b2s(b):
+    #bool to vasp str
+    if b:
+        s = 'T'
+    else:
+        s = 'F'
+
+    return s
+
+
 
 @contextmanager
 def cwd(path):

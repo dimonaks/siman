@@ -142,6 +142,7 @@ if __name__ == "__main__":
                 printlog('I found', len(params['xvoid']), 'voids in config file. Added to structure.')
 
             cl.serialize('0-yes')
+            copyfile('OUTCAR', 'OUTCAR-0')
             copyfile('OSZICAR', 'OSZICAR-0')
             copyfile('CONTCAR', 'CONTCAR-0')
 
@@ -258,6 +259,7 @@ if __name__ == "__main__":
                 cl_new.serialize(str(i_mcstep)+'-no')
             copyfile('OSZICAR', 'OSZICAR-'+str(i_mcstep))
             copyfile('CONTCAR', 'CONTCAR-'+str(i_mcstep))
+            copyfile('OUTCAR', 'OUTCAR-'+str(i_mcstep))
 
     copyfile('OUTCAR_last', 'OUTCAR')
     printlog('MC simulation finished!', imp = 'y')

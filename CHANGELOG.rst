@@ -1,5 +1,7 @@
 0.9.6
     
+
+
     add_neb()
 
         - now if *end_pos_types_z* is used only provided elements are chosen as possible final positions 
@@ -25,6 +27,7 @@
 
          header.reorganize = 1
 
+        - now select correctly works with inheritance 
 
 
 

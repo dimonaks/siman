@@ -38,7 +38,7 @@ from siman import header
 
 from siman.header import printlog, print_and_log, runBash, plt
 
-from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like
+from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s
 from siman.functions import (read_vectors, read_list, words,
      element_name_inv, invert, calculate_voronoi,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
@@ -133,6 +133,9 @@ class Structure():
         return Structure()
 
     def selective_all(self):
+        """
+        allow all atoms to relax
+        """
         st = copy.deepcopy(self)
         # if hasattr(self, 'select'):
         st.select = []
@@ -355,6 +358,11 @@ class Structure():
         #return list of elements names
         return [self.znucl[t-1] for t in self.typat]
 
+    def get_natom(self):
+        #get number of real atoms, excluding voids
+        # print([z for z in self.get_elements_z() if z != 300])
+        return len([z for z in self.get_elements_z() if z != 300])
+
     def get_elements_zval(self):
         #return list with number of valence electrons for each atom
         zvals = []
@@ -403,10 +411,12 @@ class Structure():
         return 
 
     def get_mag_tran(self):
-        #show mag moments of transition metals 
+        #show formatted mag moments of transition metals 
         l = self.get_maglist()[0]
         # print(l)
-        return np.array(self.magmom)[l]
+        mag = list(np.array(self.magmom)[l])
+        s = ' '.join(['{:4.1f}']*len(mag))
+        return s.format(*mag) 
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -1761,14 +1771,7 @@ class Structure():
             selective_dynamics for coord_type = 'cart'
         """
 
-        def b2s(b):
-            #bool to vasp str
-            if b:
-                s = 'T'
-            else:
-                s = 'F'
 
-            return s
 
 
         st = copy.deepcopy(self)
@@ -2247,7 +2250,9 @@ class Calculation(object):
             #     self.init.magmom = magmom
 
 
-
+            select = read_vectors("select", self.natom, gen_words, type_func = lambda a : int(a), lists = True )
+            if None not in select: 
+                self.init.select = select
 
 
 
@@ -2367,6 +2372,10 @@ class Calculation(object):
             for v in st.xcart:
                 f.write("%.12f %.12f %.12f \n"%(v[0], v[1], v[2])  )
 
+            if hasattr(st, 'select') and len(st.select) > 0 and not None in st.select:
+                f.write("\nselect  ")
+                for v in st.select:
+                    f.write("{:d} {:d} {:d}\n".format(v[0], v[1], v[2])  )
 
             #Write build information
             try:
@@ -5572,6 +5581,7 @@ class CalculationVasp(Calculation):
         however, it is not always what is needed, therefore use inherit_xred = continue
         """
 
+        add_flag  = add
         from siman.calc_manage import add_loop
 
         if not iopt:
