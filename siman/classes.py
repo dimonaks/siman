@@ -971,6 +971,10 @@ class Structure():
         # sys.exit()
 
         natom_to_add = len(atoms_xcart)
+        if natom_to_add == 0:
+            printlog('self.add_atoms(): Nothing to add, continiue')
+            return st
+
 
         st.natom+=natom_to_add
 
@@ -1017,7 +1021,7 @@ class Structure():
             
             typ = i+1
 
-
+            # print(el_z_to_add, typ)
             for j, t in enumerate(st.typat):
                 if t == typ:
                     j_ins = j+1 # place to insert
@@ -1204,7 +1208,7 @@ class Structure():
 
         typ = st.typat[i]
 
-        printlog('del_atom(): I remove atom ',  st.get_elements()[i], imp = 'n')
+        # printlog('del_atom(): I remove atom ',  st.get_elements()[i], imp = 'n')
         del st.typat[i]
         del st.xred[i]
         del st.xcart[i]
@@ -1661,7 +1665,8 @@ class Structure():
         """
         show neigbours
         i - number of central atom, from 1 or 0 (from_one = True or False)
-        ndict (dic) - number of specific neigbour atoms
+        n - number of neigbours to return
+        ndict (dic) - number of specific neigbour atoms to take into account e.g ndict = {8:3} - 3 oxygen atoms will be considered
         only - list of interesting z neighbours
 
         more_info - return more output - takes time

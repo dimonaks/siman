@@ -4,7 +4,7 @@ Program Monte-Carlo by Aksyonov Dmitry, Skoltech, Moscow
 
 """
 
-import sys, json, os, glob
+import sys, json, os, glob, copy
 print('Python version is', sys.version)
 from shutil import copyfile
 import random
@@ -16,7 +16,9 @@ import numpy as np
 
 from siman import header
 from siman.monte_functions import metropolis
-from siman.header import runBash, ALKALI_ION_ELEMENTS, TRANSITION_ELEMENTS, printlog
+from siman.header import runBash, printlog
+from siman.header import ALKALI_ION_ELEMENTS as AM
+from siman.header import TRANSITION_ELEMENTS as TM
 from siman.classes import CalculationVasp, Structure
 from siman.inout import read_poscar
 
@@ -59,8 +61,114 @@ def vasp_run(n, des):
 
     return cl   
 
+
+
+def exchange_atoms(st, voidz, z2, thickness, condition = None):
+    """
+    Swap two atoms 
+    voidz - list with z voids; actually either None or [300]
+
+    condition (str) - possible additional conditions
+
+        'no_surface_TM' - do not make swaps which reduce oxygen coordination of transition metals
+
+    """
+
+    z_groups = [AM, TM]
+    if voidz:
+        z_groups.append(voidz)
+
+
+    printlog('All Z groups are ', z_groups)
+    # sys.exit()
+    z_groups_original = copy.deepcopy(z_groups)
+
+    for i in range(100): # try 100 attempts until the condition is satisfied, otherwise terminate
+        z_groups = z_groups_original
+        gr1 = random.choice(z_groups)
+        z_groups.remove(gr1)
+        gr2 = random.choice(z_groups)
+
+        printlog('Chosen Z groups are ', gr1, gr2)
+
+        # print(st.get_elements_z())
+        # sys.exit()
+        nn1 = st.get_specific_elements(gr1, z_range = [z2 - thickness, z2]) # atom numbers
+        nn2 = st.get_specific_elements(gr2, z_range = [z2 - thickness, z2])
+        
+        
+        if len(nn1) == 0 or len(nn2) == 0:
+            printlog('Attention, nn1 or nn2 are too small:', nn1, nn2, 'trying another')
+            continue
+        
+        printlog('Two groups of atom numbers to swap are', nn1, nn2)
+        # sys.exit()
+
+        at1 = random.choice(nn1)
+        if at1 in nn1:
+            nn1.remove(at1)
+
+        at2 = random.choice(nn2)
+
+        els = st.get_elements()
+        st_new_init = st.swap_atoms(at1, at2)
+        printlog('I swapped', at1+1, els[at1],  'and', at2+1, els[at2], imp = 'y' )
+    
+
+        #condition check-up
+        if condition == 'no_surface_TM':
+            elsz = st.get_elements_z()
+            z1 = elsz[at1]
+            z2 = elsz[at2]
+            if (z1 in TM and z2 in TM) or (z1 not in TM and z2 not in TM):
+                break # nothing to do
+            # elif z1 in TM or z2 in TM:
+            if z1 in TM:
+                atTM = at1
+            else:
+                atTM = at2
+            printlog('I found that one swapping atom is transition metal', atTM, elsz[atTM], 'checking coordination')
+
+            # nO1 = st.nn(atTM,          6, only = [8], from_one = 0)['el'].count('O')
+            # nO2 = st_new_init.nn(atTM, 6, only = [8], from_one = 0)['el'].count('O')
+
+            av1 = st.nn(atTM,          6, only = [8], from_one = 0)['av(A-O,F)']
+            av2 = st_new_init.nn(atTM, 6, only = [8], from_one = 0)['av(A-O,F)']
+            
+            # printlog('The oxygen-TM average', av1, av2, imp = 'y')
+
+            if av2 > av1+0.5:
+                printlog('surface TM detected, trying another', av1, av2, imp = 'y')
+            else:
+                printlog('Good', av1, av2, imp = 'y')
+                break
+
+
+            # if nO1 == nO2:
+            #     printlog('The oxygen coordination of TM after swap is the same, accepting', nO1, nO2)
+            #     break
+            # else:
+            #     printlog('Warning! The oxygen coordination of TM was reduced, trying another step:', nO1, nO2)
+
+
+
+    else:
+        printlog('exchange_atoms(): The given condition on atom swapping cant be satisfied! exitting', imp = 'y' )
+        sys.exit()
+
+
+
+    return st_new_init
+
+
+
+
+
+
+
+
 if __name__ == "__main__":
-    debug = 0
+    debug = 1
 
     header.warnings = 'yY'
     # header.warnings = 'neyY'
@@ -81,6 +189,7 @@ if __name__ == "__main__":
     thickness = params.get('thickness') or 6 # minimum layer 
     temperature = params.get('temp') or 1
 
+    xcart_voids = params.get('xvoid')
 
 
 
@@ -100,6 +209,8 @@ if __name__ == "__main__":
         cl = CalculationVasp()
         cl.read_poscar('1.POSCAR')
         cl.end = cl.init
+        if xcart_voids: # read void coordinates
+            cl.end = cl.end.add_atoms(xcart_voids, 'void')
         last_number = 0
     else:
         
@@ -125,21 +236,14 @@ if __name__ == "__main__":
         if last_yes_file:
             cl = CalculationVasp().deserialize(last_yes_file)
             printlog('Successfully deserialized')
-
-            if 0:
-                #to correct mistake on first step and add void to pickle
-                if 'xvoid' in params and len(params['xvoid']) >0: # read void coordinates
-                    cl.end = cl.end.add_atoms(params['xvoid'], 'void')
-                    printlog('I found', len(params['xvoid']), 'voids in config file. Added to structure.')
-
-                cl.serialize('0-yes')
-
+            xcart_voids = cl.end.get_specific_elements([300], fmt = 'x') # extract voids form the last calculation
         
         else:
             cl = vasp_run(3, 'first run')
-            if 'xvoid' in params and len(params['xvoid']) >0: # read void coordinates
-                cl.end = cl.end.add_atoms(params['xvoid'], 'void')
-                printlog('I found', len(params['xvoid']), 'voids in config file. Added to structure.')
+            
+            if xcart_voids: # read void coordinates
+                cl.end = cl.end.add_atoms(xcart_voids, 'void')
+                printlog('I found', len(xcart_voids), 'voids in config file. Added to structure.')
 
             cl.serialize('0-yes')
             copyfile('OUTCAR', 'OUTCAR-0')
@@ -158,7 +262,6 @@ if __name__ == "__main__":
     z2 = st.get_surface_pos()[1]
     printlog('Position of top surface is {:3.2f}'.format(z2) )
 
-    xcart_voids = st.get_specific_elements([300], fmt = 'x')
     # printlog
     if xcart_voids:
         voidz = [300]
@@ -174,42 +277,9 @@ if __name__ == "__main__":
 
 
         """3. Exchange two atoms"""
-        #choose two atoms 
-        z_groups = [ALKALI_ION_ELEMENTS, TRANSITION_ELEMENTS]
-        if voidz:
-            z_groups.append(voidz)
 
+        st_new_init = exchange_atoms(st, voidz, z2, thickness, condition = 'no_surface_TM')
 
-        printlog('All Z groups are ', z_groups)
-        # sys.exit()
-        gr1 = random.choice(z_groups)
-        z_groups.remove(gr1)
-        gr2 = random.choice(z_groups)
-
-        printlog('Chosen Z groups are ', gr1, gr2)
-
-        # print(st.get_elements_z())
-        # sys.exit()
-        alk = st.get_specific_elements(gr1, z_range = [z2 - thickness, z2])
-        tra = st.get_specific_elements(gr2, z_range = [z2 - thickness, z2])
-        
-        
-        if len(alk) == 0 or len(tra) == 0:
-            printlog('Attention, alk or tra are too small:', alk, tra, 'trying another')
-            continue
-        
-        printlog('Two groups of atom numbers to swap are', alk, tra)
-        # sys.exit()
-
-        at1 = random.choice(alk)
-        if at1 in tra:
-            tra.remove(at1)
-
-        at2 = random.choice(tra)
-
-        els = st.get_elements()
-        st_new_init = st.swap_atoms(at1, at2)
-        printlog('I swapped', at1, els[at1],  'and', at2, els[at2], imp = 'y' )
 
         if voidz:
             xcart_voids = st_new_init.get_specific_elements([300], fmt = 'x')
@@ -218,6 +288,8 @@ if __name__ == "__main__":
         if debug:
             st_new_init.write_poscar('POSCAR-'+str(i_mcstep))
             st_new_init = read_poscar(st_new_init, 'POSCAR-'+str(i_mcstep))
+            # print(xcart_voids)
+            # sys.exit()
             st_new_init = st_new_init.add_atoms(xcart_voids, 'void')
             # xcart_voids = st_new_init.get_specific_elements([300], fmt = 'x')
             # print('After writing and reading the voids are ', xcart_voids)
@@ -261,5 +333,7 @@ if __name__ == "__main__":
             copyfile('CONTCAR', 'CONTCAR-'+str(i_mcstep))
             copyfile('OUTCAR', 'OUTCAR-'+str(i_mcstep))
 
-    copyfile('OUTCAR_last', 'OUTCAR')
+    if not debug:
+        copyfile('OUTCAR_last', 'OUTCAR')
+    
     printlog('MC simulation finished!', imp = 'y')
