@@ -22,6 +22,7 @@ from siman.header import TRANSITION_ELEMENTS as TM
 from siman.classes import CalculationVasp, Structure
 from siman.inout import read_poscar
 
+debug2 = 0
 
 def check(cl, exit = 0):
     # return 0 if ok, return 1 if failed
@@ -42,8 +43,11 @@ def vasp_run(n, des):
     #n - number of attempts
     #des - description of run
     for i in range(n): # max three attempts
-        out = runBash(vasprun_command)
-        printlog(des, 'attempt', i,'out is', out)
+        
+        if not debug2:
+            out = runBash(vasprun_command)
+            printlog(des, 'attempt', i,'out is', out)
+        
         cl = CalculationVasp(output = 'OUTCAR')
         out = cl.read_results(show = 'fo')
         printlog('Results are', imp = 'y')
@@ -63,7 +67,7 @@ def vasp_run(n, des):
 
 
 
-def exchange_atoms(st, voidz, z2, thickness, condition = None):
+def exchange_atoms(st, voidz, z2, thickness, zr = None, condition = None):
     """
     Swap two atoms 
     voidz - list with z voids; actually either None or [300]
@@ -71,6 +75,9 @@ def exchange_atoms(st, voidz, z2, thickness, condition = None):
     condition (str) - possible additional conditions
 
         'no_surface_TM' - do not make swaps which reduce oxygen coordination of transition metals
+            max_avdist_increase - maximum allowed increase of TM-O distance after swapping; 
+                (for example larger than 0.5 A allows to exclude swaps to surface) 
+        
 
     """
 
@@ -81,24 +88,36 @@ def exchange_atoms(st, voidz, z2, thickness, condition = None):
 
     printlog('All Z groups are ', z_groups)
     # sys.exit()
-    z_groups_original = copy.deepcopy(z_groups)
+    red_thick = thickness/np.linalg.norm(st.rprimd[2])
+    z_range = [z2 - thickness, z2]
+    zr_range = [zr - red_thick, zr]
+    print(zr_range)
+    # sys.exit()
 
     for i in range(100): # try 100 attempts until the condition is satisfied, otherwise terminate
-        z_groups = z_groups_original
-        gr1 = random.choice(z_groups)
-        z_groups.remove(gr1)
-        gr2 = random.choice(z_groups)
+        z_groups_cp = copy.deepcopy(z_groups)
+        # print('z_groups_cp', z_groups_cp)
+        gr1 = random.choice(z_groups_cp)
+        z_groups_cp.remove(gr1)
+        gr2 = random.choice(z_groups_cp)
 
         printlog('Chosen Z groups are ', gr1, gr2)
 
         # print(st.get_elements_z())
         # sys.exit()
-        nn1 = st.get_specific_elements(gr1, z_range = [z2 - thickness, z2]) # atom numbers
-        nn2 = st.get_specific_elements(gr2, z_range = [z2 - thickness, z2])
+        # nn1 = st.get_specific_elements(gr1, z_range = z_range) # atom numbers
+        # nn2 = st.get_specific_elements(gr2, z_range = z_range)
+
+        nn1 = st.get_specific_elements(gr1, zr_range = zr_range) # atom numbers
+        nn2 = st.get_specific_elements(gr2, zr_range = zr_range)
         
         
         if len(nn1) == 0 or len(nn2) == 0:
             printlog('Attention, nn1 or nn2 are too small:', nn1, nn2, 'trying another')
+            # print(st.get_elements())
+            print(gr1, gr2, zr_range)
+            print([st.xred[i] for i in st.get_specific_elements([300]) ])
+            # sys.exit()
             continue
         
         printlog('Two groups of atom numbers to swap are', nn1, nn2)
@@ -117,7 +136,7 @@ def exchange_atoms(st, voidz, z2, thickness, condition = None):
 
         #condition check-up
         if condition == 'no_surface_TM':
-            elsz = st.get_elements_z()
+            elsz = st_new_init.get_elements_z()
             z1 = elsz[at1]
             z2 = elsz[at2]
             if (z1 in TM and z2 in TM) or (z1 not in TM and z2 not in TM):
@@ -127,20 +146,20 @@ def exchange_atoms(st, voidz, z2, thickness, condition = None):
                 atTM = at1
             else:
                 atTM = at2
-            printlog('I found that one swapping atom is transition metal', atTM, elsz[atTM], 'checking coordination')
+            printlog('I found that one swapping atom is transition metal', atTM, els[atTM], 'checking coordination')
 
             # nO1 = st.nn(atTM,          6, only = [8], from_one = 0)['el'].count('O')
             # nO2 = st_new_init.nn(atTM, 6, only = [8], from_one = 0)['el'].count('O')
 
-            av1 = st.nn(atTM,          6, only = [8], from_one = 0)['av(A-O,F)']
-            av2 = st_new_init.nn(atTM, 6, only = [8], from_one = 0)['av(A-O,F)']
+            av1 = st.nn(atTM,          6, only = [8], from_one = 0, silent = 1)['av(A-O,F)']
+            av2 = st_new_init.nn(atTM, 6, only = [8], from_one = 0, silent = 1)['av(A-O,F)']
             
             # printlog('The oxygen-TM average', av1, av2, imp = 'y')
 
             if av2 > av1+0.5:
-                printlog('surface TM detected, trying another', av1, av2, imp = 'y')
+                printlog('Surface TM detected, the TM-O average distances before and after are {:.2f} {:.2f} A. Trying another swap.'.format(av1, av2), imp = 'y')
             else:
-                printlog('Good', av1, av2, imp = 'y')
+                printlog('TM-O av. dist before and after are {:.2f} {:.2f} A. Good, accepted'.format(av1, av2), imp = 'y')
                 break
 
 
@@ -168,7 +187,7 @@ def exchange_atoms(st, voidz, z2, thickness, condition = None):
 
 
 if __name__ == "__main__":
-    debug = 1
+    debug = 0
 
     header.warnings = 'yY'
     # header.warnings = 'neyY'
@@ -253,14 +272,15 @@ if __name__ == "__main__":
             with open('ENERGIES', 'w') as f:
                 f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))
 
-
-
+    if debug2:
+        sys.exit()
 
 
     """Define rest required parameters"""
     st = cl.end
     z2 = st.get_surface_pos()[1]
-    printlog('Position of top surface is {:3.2f}'.format(z2) )
+    zr2 = st.get_surface_pos(reduced = True)[1]
+    printlog('Position of top surface is {:3.2f} {:3.2f}'.format(z2, zr2) )
 
     # printlog
     if xcart_voids:
@@ -278,7 +298,7 @@ if __name__ == "__main__":
 
         """3. Exchange two atoms"""
 
-        st_new_init = exchange_atoms(st, voidz, z2, thickness, condition = 'no_surface_TM')
+        st_new_init = exchange_atoms(st, voidz, z2, thickness, zr = zr2, condition = 'no_surface_TM')
 
 
         if voidz:

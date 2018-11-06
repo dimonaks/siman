@@ -10,6 +10,7 @@ try:
     from tabulate import tabulate
 except:
     print('tabulate is not avail')
+    tabulate = None
 try:
     import pandas as pd
 except:
@@ -744,24 +745,30 @@ class Structure():
 
         return st
 
-    def get_surface_pos(self, ):
+    def get_surface_pos(self, reduced = False):
         #allows to return positions of top and bottom surfaces (edge atoms) in cartesian
         #assumed normal to R3
         #small number is added or subtracted to/from edge atom to overcome further numericall errors
+        # reduced - reduced coordinations
+
         st = self
 
         z1 = 100
         z2 = -100
         z = []
         # print(st.xcart)
-        for x in st.xcart:
+        if reduced:
+            l = st.xred
+        else:
+            l = st.xcart
+        for x in l:
             if z1 > x[2]:
                 z1 = x[2]
             if z2 < x[2]:
                 z2 = x[2]
 
-        z1-=0.01
-        z2+=0.01
+        # z1-=0.01
+        # z2+=0.01
         printlog('Surfaces are ', z1, z2)
 
         z.append(z1)
@@ -886,10 +893,10 @@ class Structure():
             tra = ns
         return tra
 
-    def get_specific_elements(self, required_elements = None, fmt = 'n', z_range = None):
+    def get_specific_elements(self, required_elements = None, fmt = 'n', z_range = None, zr_range = None):
         """Returns list of specific elements (chemical names. z, or numbers from 0) in the structure
         required_elements - list of elements z of interest
-        z_range - (2 index tuple) range of z coordinates: only atoms from z1 to z2 are taken
+        z_range - (2 index tuple) range of z coordinates in A: only atoms from z1 to z2 are taken
         fmt - format of output
             'names'
             'z'
@@ -902,18 +909,22 @@ class Structure():
         el = self.get_elements()
         tra = []
         ns = []
+        r3 = np.linalg.norm(self.rprimd[2])
 
-        if z_range:
-            def additional_condition(x):
-                return z_range[0] < x < z_range[1]
+        if zr_range is None and z_range is not None:
+            zr_range = [z_range[0]/r3, z_range[1]/r3]
+
+        if zr_range:
+            def additional_condition(xr):
+                return zr_range[0] < xr <= zr_range[1]
         else:
-            def additional_condition(x):
+            def additional_condition(xr):
                 return True
 
         xcart = []
-        for i, e, xc in zip( range(self.natom), el, self.xcart ):
+        for i, e, xc, xr in zip( range(self.natom), el, self.xcart, self.xred ):
             Z = invert(e)
-            if Z in required_elements and additional_condition(xc[2]):
+            if Z in required_elements and additional_condition(xr[2]):
                 tra.append(e)
                 ns.append(i)
                 xcart.append(xc)
@@ -1387,14 +1398,17 @@ class Structure():
         st = copy.deepcopy(self)
         # print(st.nznucl)
         r3 = np.linalg.norm(st.rprimd[2])
+        # print('r3',r3 )
         xcr = xcart_range
         if xcr:
             xred_range = [xcr[0]/r3, xcr[1]/r3]
             printlog('xcart_range converted to xred', xred_range)
+            
+            # print('xcart_range converted to xred',xcart_range, xred_range)
 
         dels = []
         for i, xr in enumerate(st.xred):
-            if xred_range[0]  < xr[2] < xred_range[1]:
+            if xred_range[0]  < xr[2] <= xred_range[1]:
                 # print(xred_range[0], xr[2], xred_range[1])
                 dels.append(i)
         # print(dels)
@@ -1696,10 +1710,16 @@ class Structure():
  
         # df = pd.DataFrame(tab)
         # print(df)
-        if not silent:
-            print('Neighbors around atom', i+1, self.get_elements()[i],':')
-            print( tabulate(tab[1:], headers = ['nn', 'No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f") )
-
+        if  silent:
+            imp = ''
+        else:
+            imp = 'Y'
+        printlog('Neighbors around atom', i+1, self.get_elements()[i],':', imp = imp)
+        # if not silent:
+        if tabulate:
+            printlog( tabulate(tab[1:], headers = ['nn', 'No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f"), imp = imp )
+        else:
+            printlog(tab[1:], imp = imp )
 
         info = {}
         info['numbers'] = out_or[2]
@@ -4297,8 +4317,11 @@ class CalculationVasp(Calculation):
                     ff  = (3, 4, 5)
                     force_prefix = ' tot '
 
-                #detect neb
-                images = self.set.vasp_params.get('IMAGES') or 1
+                #detect neb, improve this 
+                if hasattr(self.set, 'vasp_params'):
+                    images = self.set.vasp_params.get('IMAGES') or 1
+                else:
+                    images = 1
 
 
 

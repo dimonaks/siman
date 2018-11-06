@@ -14,7 +14,7 @@ except:
 from siman import header
 from siman.header import printlog, print_and_log, mpl, db
 from siman.functions import element_name_inv, invert, get_from_server
-from siman.picture_functions import plot_mep
+from siman.picture_functions import plot_mep, fit_and_plot
 from siman.geo import determine_symmetry_positions, local_surrounding, find_moving_atom, image_distance
 from siman.database import push_figure_to_archive
 from siman.small_functions import is_list_like, makedir
@@ -400,7 +400,6 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
     # e, v, emin, vmin       = plot_conv( conv[n], calc,  "fit_gb_volume2")
 
 
-    from picture_functions import fit_and_plot
 
     alist = []
     vlist = []

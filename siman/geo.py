@@ -1767,10 +1767,12 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         return_one = True
         # print(slabs[surface_i])
         
-        z = st.get_surface_pos()[1]
+        z = st.get_surface_pos(reduced = True)[1]
         # st.printme()
-
-        st = st.del_layers(xcart_range = [z-cut_thickness+0.1, z+0.1])
+        print('surface position ', z )
+        red_thick = cut_thickness/np.linalg.norm(st.rprimd[2])
+        st = st.del_layers(xred_range = [z-red_thick+0.001, z+0.001], )
+        # st = st.del_layers(xcart_range = [z-cut_thickness+0.1, z+0.1], )
 
         # print(st.rprimd[2])
         st.rprimd[2][2]-=cut_thickness
