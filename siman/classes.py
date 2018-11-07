@@ -288,14 +288,14 @@ class Structure():
         return z_unique
 
 
-    def get_slice(self, thickness):
-        #return element numbers from the top part of slab along z
+    def get_slice(self, zr_range):
+        #return element numbers from the zr_range
         #slab should start from bottom
         st = self
         z2 = st.get_surface_pos()[1]
         nn = []
-        for i, x in enumerate(st.xcart):
-            if z2-thickness < x[2] < z2:
+        for i, xr in enumerate(st.xred):
+            if zr_range[0] < xr[2] <= zr_range[1]:
                 nn.append(i)
 
         return nn
