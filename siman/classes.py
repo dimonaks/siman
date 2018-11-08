@@ -2069,13 +2069,17 @@ class Structure():
         return read_xyz(self, *args, **kwargs)
 
 
-    def jmol(self, shift = None, r = 0):
+    def jmol(self, shift = None, r = 0, show_voids = False):
         # self.write_poscar('CONTCAR', vasp5 = 1)
         #if r == 1 then open outcar
-        st = self
+        #if show voids then replace them with Po
+        st = copy.deepcopy(self)
         if shift:
             st = st.shift_atoms(shift)
 
+        if show_voids:
+            atom_numbers = st.get_specific_elements([300])
+            st = st.replace_atoms(atom_numbers, 'Po')
 
         # filename, _ = st.write_xyz()
         if r == 1:

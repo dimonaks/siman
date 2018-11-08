@@ -1786,6 +1786,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
 
     if return_one:
+        print('Final structure contains ', st.natom, 'atoms')
         return st
     else:
         return slabs

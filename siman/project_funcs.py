@@ -3795,19 +3795,22 @@ def create_project_from_geofile(filename):
 
     return projectname
 
-def get_alkali_ion(st):
+def get_alkali_ion(st, active_cation = None):
 
-    for_diffusion = []
-    for el in st.get_elements():
-        if el in ['Li', 'Na', 'K', 'Rb', 'Mg']:
-            if el not in for_diffusion:
-                for_diffusion.append(el)
+    if active_cation is None:
+        for_diffusion = []
+        for el in st.get_elements():
+            if el in ['Li', 'Na', 'K', 'Rb', 'Mg']:
+                if el not in for_diffusion:
+                    for_diffusion.append(el)
 
-    el = for_diffusion[0]
-    if len(for_diffusion) > 1:
-        printlog('Warning! More than one candidate for NEB was found, I use first', el)
+        active_cation = for_diffusion[0]
+        if len(for_diffusion) > 1:
+            printlog('Warning! More than one candidate for NEB and removing was found, I use first', el)
 
-    return el
+    printlog('Active cation is', active_cation, imp = 'y')
+
+    return active_cation
 
 
 
@@ -3830,11 +3833,13 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     target_x (float) - required concentration of Na in DS state
     update - allows to rewrite service table
     params (dic)
+        active_cation - if more than one type of cations exists in structure choose required
         show_fit
         run_neb
         up_SC
         up_res
         atom_to_move
+        del_pos
 
 
     """
@@ -3853,8 +3858,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     n_set     = p.get('neb_set') or '1u'
     run_neb   = p.get('run_neb')
     end_z   = p.get('end_z')
+    ortho   = p.get('ortho') or [10,10,10]
+    active_cation = p.get('active_cation')
     # atom_to_move 
-
+    del_pos = p.get('del_pos') or 0
 
 
 
@@ -3886,19 +3893,19 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         it = pn
         cl = db[it, m_set, 1]
 
-        el  = get_alkali_ion(cl.end)
+        el  = get_alkali_ion(cl.end, active_cation)
 
         it_ds = it.replace(el, '')
         printlog('Name for DS is', it_ds)
 
         pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
-        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 
-        'scale_region':(-3, 5), 'readfiles':1, 'ortho':[10,10,10],
+        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
+        'scale_region':(-3, 5), 'readfiles':1, 'ortho':ortho,
         'end_pos_types_z':end_z}
 
 
         pd['atom_to_move'] = p.get('atom_to_move')
-        path = p.get('path')
+        path = p.get('path') or (1,1)
 
 
         pd['start_pos'] = path[0] 
