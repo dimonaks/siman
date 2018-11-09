@@ -1013,7 +1013,7 @@ def create_deintercalated_structure(st, element, del_pos = 1):
     """
     positions = determine_symmetry_positions(st, element)
     # position_list = sorted(list(positions.keys()))
-    printlog('Choose from the following list using *del_pos*:', end = '\n', imp = 'y')
+    printlog('Choose from the following list using *del_pos* starting from 1:', end = '\n', imp = 'y')
     
     for i, pos in enumerate(positions):
         printlog('     ', i+1,'--->' , pos[0], end = '\n', imp = 'y')

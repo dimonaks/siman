@@ -347,7 +347,12 @@ if __name__ == "__main__":
                 copyfile('OUTCAR', 'OUTCAR_last')
 
                 st = cl_new.end
+
+                printlog('The step was accepted', imp = 'y')
+
             else:
+                printlog('The step was rejected', imp = 'y')
+
                 cl_new.serialize(str(i_mcstep)+'-no')
             copyfile('OSZICAR', 'OSZICAR-'+str(i_mcstep))
             copyfile('CONTCAR', 'CONTCAR-'+str(i_mcstep))

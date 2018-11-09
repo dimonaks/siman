@@ -1505,7 +1505,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
         dic = cat[7]
 
 
-        if 'del_pos' in dic:
+        if dic.get('del_pos'):
             itS = cat[2]+'.id'+str(dic['del_pos']) #inherit delete
             del_pos = dic['del_pos']
         else:
@@ -1764,6 +1764,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 neb_unique_id.append(endz)
 
 
+            if pd.get('atom_to_move'):
+                sup_key.append(pd['atom_to_move'])
+                neb_unique_id.append(pd['atom_to_move'])
 
 
             sup_key       = tuple(sup_key)
@@ -3861,7 +3864,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     ortho   = p.get('ortho') or [10,10,10]
     active_cation = p.get('active_cation')
     # atom_to_move 
-    del_pos = p.get('del_pos') or 0
+    del_pos = p.get('del_pos')
 
 
 
@@ -3906,7 +3909,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         pd['atom_to_move'] = p.get('atom_to_move')
         path = p.get('path') or (1,1)
-
+        # print(pd['atom_to_move'])
 
         pd['start_pos'] = path[0] 
         pd['end_pos']   = path[1] 
@@ -3934,7 +3937,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             # cl.me()
 
             if target_x == 0:
-                a = calc_barriers('make_ds', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                 fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
                 if a[0] not in service_list:
                 
