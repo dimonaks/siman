@@ -1525,6 +1525,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         els = st.get_elements()
         if 'void' in els:
             pm['xvoid'] = [ list(x) for x in st.get_specific_elements([300], fmt = 'x')]
+        if 'bulk' in pm:
+            del pm['bulk'] # is CalculationVasp object - cant be serialized
 
         pm['vasp_run'] = vasp_run_com + ' > ' + name+'.log'
         with io.open(  file, 'w', newline = '') as fp:
@@ -1774,8 +1776,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 list_to_copy = []
 
                 if 'monte' in cl.calc_method:
+                    if 'external' in params['monte']:
+                        monte_bulk = params['monte']['bulk']
+                        monte_bulk.serialize_json(cl.dir +'bulk')
+                        list_to_copy.append(cl.dir +'bulk.json')
                     monte_params_file = write_parameters_for_monte(cl.name, header.vasp_command, params)
                     list_to_copy.append(monte_params_file)
+
                 
                 cl.write_sge_script(mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )

@@ -212,7 +212,7 @@ class InputSet():
 
 
     """
-    def __init__(self, ise, path_to_potcar = None):
+    def __init__(self, ise = None, path_to_potcar = None):
         #super(InputSet, self).__init__()
         self.ise = ise
         self.name = ise

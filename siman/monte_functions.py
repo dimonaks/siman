@@ -26,10 +26,16 @@ def metropolis(E1, E2, T = 1):
     
     printlog("metropolis(): dE is ", dE)
     r = random()
-    e = math.exp(-dE/kB/T)
-    printlog("random number is ", r)
-    printlog("exponent is  ", e)
-    if dE < -0.000001:
+    # printlog(-dE,kB,T)
+    small = -0.000001
+    if dE > small:
+        e = math.exp(-dE/kB/T)
+        printlog("exponent is  ", e)
+        printlog("random number is ", r)
+    else:
+        e = 0.9999999
+        
+    if dE < small:
         printlog( "dE is ", dE, "Accept!")
         decrease = True
     elif  1 > e > r:

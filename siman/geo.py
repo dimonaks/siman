@@ -261,6 +261,9 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
     """
     st = copy.deepcopy(structure)
     # print 'Structure has before replication', st.natom,'atoms' 
+    if not hasattr(st, 'select'):
+        st.select = [None]
+
 
     if hasattr(st, 'init_numbers') and st.init_numbers:
         numbers = st.init_numbers

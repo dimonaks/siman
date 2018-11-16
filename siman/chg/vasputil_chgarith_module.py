@@ -10,11 +10,13 @@
 
 from optparse import OptionParser
 import sys
-sys.path.append('/home/aksenov/Simulation_wrapper/ase')
-from ase.calculators.vasp import VaspChargeDensity
-import ase.calculators.vasp
-# print(ase.calculators.vasp.__file__) 
-
+try:
+    sys.path.append('/home/aksenov/Simulation_wrapper/ase')
+    from ase.calculators.vasp import VaspChargeDensity
+    import ase.calculators.vasp
+    # print(ase.calculators.vasp.__file__) 
+except:
+    print('No ase')
 
 
 usage = """%prog [options] chgfile0 op chgfile1

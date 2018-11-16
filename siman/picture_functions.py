@@ -3,20 +3,26 @@ from __future__ import division, unicode_literals, absolute_import
 import sys, os
 import copy
 
+import numpy as np
 
-import scipy
-from scipy import interpolate
-from scipy.interpolate import spline 
-# print (scipy.__version__)
-# print (dir(interpolate))
+try:
+    import scipy
+    from scipy import interpolate
+    from scipy.interpolate import spline 
+    # print (scipy.__version__)
+    # print (dir(interpolate))
+except:
+    print('scipy is not avail')
 try:
     from scipy.interpolate import  CubicSpline
 except:
     print('scipy.interpolate.CubicSpline is not avail')
+try:
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.pyplot as plt
+except:
+    print('mpl_toolkits or matplotlib are not avail')
 
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
 
 try:
     from adjustText import adjust_text

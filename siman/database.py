@@ -4,9 +4,10 @@ from __future__ import division, unicode_literals, absolute_import
 import shelve, sys, datetime, shutil, tempfile, os, json, re, glob
 import json
 
-
-import pandas as pd
-
+try:
+    import pandas as pd
+except:
+    print('no pandas')
 
 from siman import header
 from siman.header import runBash, printlog

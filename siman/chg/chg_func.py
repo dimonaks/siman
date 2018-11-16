@@ -3,11 +3,12 @@ import sys, os
 import shutil
 import numpy as np
 
-
-from ase.calculators.vasp import VaspChargeDensity
-from siman.chg.vasputil_chgarith_module import chgarith
-
+try:
+    from ase.calculators.vasp import VaspChargeDensity
+except:
+    print('No ase')
 from siman.header import runBash, printlog
+from siman.chg.vasputil_chgarith_module import chgarith
 
 
 def chg_at_point(chgfile, xred1, ):

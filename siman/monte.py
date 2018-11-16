@@ -21,6 +21,8 @@ from siman.header import ALKALI_ION_ELEMENTS as AM
 from siman.header import TRANSITION_ELEMENTS as TM
 from siman.classes import CalculationVasp, Structure
 from siman.inout import read_poscar
+from siman.functions import invert
+from siman.analysis import suf_en
 
 debug2 = 0
 
@@ -67,10 +69,77 @@ def vasp_run(n, des):
 
 
 
-def exchange_atoms(st, voidz, z2, thickness, zr = None, condition = None):
+def initial_run(xcart_voids, ):
+    """1. Run initial calculation"""
+    if debug:
+        cl = CalculationVasp()
+        cl.read_poscar('1.POSCAR')
+        cl.end = cl.init
+        if xcart_voids: # read void coordinates
+            cl.end = cl.end.add_atoms(xcart_voids, 'void')
+        last_number = 0
+    else:
+        
+        files_yes = glob.glob('*yes.pickle') #get list of calculated yes files
+        files_all = glob.glob('*.pickle') #get list of all calculated files
+        
+
+        """Find last yes pickle file"""
+        if files_yes:
+            yes_numbers = [int(file.split('-')[0]) for file in files_yes]
+            all_numbers = [int(file.split('-')[0]) for file in files_all]
+            last_yes_n = max(yes_numbers)
+            last_number = max(all_numbers)
+            last_yes_file = str(last_yes_n)+'-yes.pickle'
+            printlog('Last calculation file is ', last_yes_file, imp = 'y')
+        
+        else:
+            last_number = 0
+            last_yes_file = None
+
+        """Read last pickle file or run vasp """
+        
+        if last_yes_file:
+            cl = CalculationVasp().deserialize(last_yes_file)
+            printlog('Successfully deserialized')
+            xcart_voids = cl.end.get_specific_elements([300], fmt = 'x') # extract voids form the last calculation
+        
+        else:
+            cl = vasp_run(3, 'first run')
+            
+            if xcart_voids: # read void coordinates
+                cl.end = cl.end.add_atoms(xcart_voids, 'void')
+                printlog('I found', len(xcart_voids), 'voids in config file. Added to structure.')
+
+            cl.serialize('0-yes')
+            copyfile('OUTCAR', 'OUTCAR-0')
+            copyfile('OSZICAR', 'OSZICAR-0')
+            copyfile('CONTCAR', 'CONTCAR-0')
+
+            with open('ENERGIES', 'w') as f:
+                f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))
+
+    if debug2:
+        sys.exit()
+
+    return cl, last_number
+
+def get_zr_range(st, thickness, zr):
+
+    red_thick = thickness/np.linalg.norm(st.rprimd[2])
+    # z_range = [z2 - thickness, z2]
+    zr_range = [zr - red_thick, zr]
+    printlog('zr_range is ', zr_range)
+    return zr_range
+
+
+def exchange_atoms(st, xcart_voids, z2, thickness, zr = None, condition = None, ):
     """
     Swap two atoms 
+    xcart_voids - list of xcart of voids
     voidz - list with z voids; actually either None or [300]
+    zr - position of surface
+
 
     condition (str) - possible additional conditions
 
@@ -81,6 +150,13 @@ def exchange_atoms(st, voidz, z2, thickness, zr = None, condition = None):
 
     """
 
+    if xcart_voids:
+        voidz = [300]
+        printlog('Voids were extracted from st, adding them to z group for Monte-Carlo', xcart_voids)
+    else:
+        voidz = None
+
+
     z_groups = [AM, TM]
     if voidz:
         z_groups.append(voidz)
@@ -88,11 +164,9 @@ def exchange_atoms(st, voidz, z2, thickness, zr = None, condition = None):
 
     printlog('All Z groups are ', z_groups)
     # sys.exit()
-    red_thick = thickness/np.linalg.norm(st.rprimd[2])
-    z_range = [z2 - thickness, z2]
-    zr_range = [zr - red_thick, zr]
-    print(zr_range)
-    # sys.exit()
+
+
+    zr_range = get_zr_range(st, thickness, zr)
 
     for i in range(100): # try 100 attempts until the condition is satisfied, otherwise terminate
         z_groups_cp = copy.deepcopy(z_groups)
@@ -180,18 +254,63 @@ def exchange_atoms(st, voidz, z2, thickness, zr = None, condition = None):
     return st_new_init
 
 
+def exchange_with_external(st, zr, thickness, external = None):
+    """
+    external (dict) - {'Ni':['Li']} - atoms from external reservior which can replace existing elements, in this example Ni can replace Li
+    """
+    
+    printlog('Starting exchange with external')
+
+    zr_range = get_zr_range(st, thickness, zr)
+
+    # get  external 
+    # print(external.keys())
+    el_ext = random.choice(list(external.keys()))
+
+    # get element to change
+    el_int = random.choice(external[el_ext])
 
 
+    nn1 = st.get_specific_elements([invert(el_int)], zr_range = zr_range)
+
+    nn2 = st.get_specific_elements([invert(el_ext)], zr_range = zr_range) # just to know good TM-O distance
+
+    j = random.choice(nn2)
+
+    av2 = st.nn(j, 6, only = [8], from_one = 0, silent = 1)['av(A-O,F)'] # in slab
+
+    if len(nn1) == 0:
+        printlog('All atoms were replaced, exiting ', imp = 'y')
+        sys.exit()
 
 
+    for k in range(10):
+        i = random.choice(nn1)
+        av1 = st.nn(i,          6, only = [8], from_one = 0, silent = 1)['av(A-O,F)']
+        if av1 < av2+0.4:
+            printlog('The chosen position is compared to the existing in slab for {:s}: {:.2f} {:.2f} A'.format(el_ext, av1, av2), imp = 'y')
+            break
+        else:
+            printlog('Trying ', i)
+    else:
+        printlog('No more good options, trying all', imp = 'y')
 
+    st_new = st.replace_atoms([i], el_ext)
+    printlog('Atom', el_int, i, 'was replaced by ', el_ext, 'from external reservoir')
+
+    return st_new 
 
 if __name__ == "__main__":
+
+
     debug = 0
 
     header.warnings = 'yY'
     # header.warnings = 'neyY'
     header.verbose_log = 1
+
+    printlog('\n\n\nStarting Monte-Carlo script!')
+    
 
     """0. Read configuration file """
     # params = read_monte_params()
@@ -207,101 +326,62 @@ if __name__ == "__main__":
     nmcstep = params.get('mcsteps') or 2 # minimum two steps are done
     thickness = params.get('thickness') or 6 # minimum layer 
     temperature = params.get('temp') or 1
-
     xcart_voids = params.get('xvoid')
 
 
+    if params.get('external'):
+        if not params.get('chem_pot'):
+            printlog('Error! no chem_pot parameter detected in external mode')
+        cl_bulk = CalculationVasp().deserialize_json('bulk.json')
+        printlog('Mode with external chemical potential. Reading of bulk structure is OK', cl_bulk.e0)
 
-    printlog('\n\n\nStarting Monte-Carlo script!')
+
+
+
     printlog('Command to run vasp', vasprun_command)
     printlog('Total number of steps is', nmcstep)
     printlog('Thickness is ', thickness)
     printlog('Temperature is ', temperature, 'K')
 
 
-
-
-
-
-    """1. Run initial calculation"""
-    if debug:
-        cl = CalculationVasp()
-        cl.read_poscar('1.POSCAR')
-        cl.end = cl.init
-        if xcart_voids: # read void coordinates
-            cl.end = cl.end.add_atoms(xcart_voids, 'void')
-        last_number = 0
-    else:
-        
-        files_yes = glob.glob('*yes.pickle') #get list of calculated yes files
-        files_all = glob.glob('*.pickle') #get list of all calculated files
-        
-
-        """Find last yes pickle file"""
-        if files_yes:
-            yes_numbers = [int(file.split('-')[0]) for file in files_yes]
-            all_numbers = [int(file.split('-')[0]) for file in files_all]
-            last_yes_n = max(yes_numbers)
-            last_number = max(all_numbers)
-            last_yes_file = str(last_yes_n)+'-yes.pickle'
-            printlog('Last calculation file is ', last_yes_file, imp = 'y')
-        
-        else:
-            last_number = 0
-            last_yes_file = None
-
-        """Read last pickle file or run vasp """
-        
-        if last_yes_file:
-            cl = CalculationVasp().deserialize(last_yes_file)
-            printlog('Successfully deserialized')
-            xcart_voids = cl.end.get_specific_elements([300], fmt = 'x') # extract voids form the last calculation
-        
-        else:
-            cl = vasp_run(3, 'first run')
-            
-            if xcart_voids: # read void coordinates
-                cl.end = cl.end.add_atoms(xcart_voids, 'void')
-                printlog('I found', len(xcart_voids), 'voids in config file. Added to structure.')
-
-            cl.serialize('0-yes')
-            copyfile('OUTCAR', 'OUTCAR-0')
-            copyfile('OSZICAR', 'OSZICAR-0')
-            copyfile('CONTCAR', 'CONTCAR-0')
-
-            with open('ENERGIES', 'w') as f:
-                f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))
-
-    if debug2:
-        sys.exit()
-
-
-    """Define rest required parameters"""
+    cl, last_number = initial_run(xcart_voids, )
     st = cl.end
+
+
+    """Determine surface position"""
     z2 = st.get_surface_pos()[1]
     zr2 = st.get_surface_pos(reduced = True)[1]
     printlog('Position of top surface is {:3.2f} {:3.2f}'.format(z2, zr2) )
 
     # printlog
-    if xcart_voids:
-        voidz = [300]
-        printlog('Voids were extracted from st, adding them to z group for Monte-Carlo', xcart_voids)
-    else:
-        voidz = None
 
 
+
+
+    """Start Monte-Carlo"""
 
     for i_mcstep in range(1+last_number, 1+last_number+nmcstep):
         printlog('---------------------------------', imp = 'y')
         printlog('\n\n\n\nMonte-Carlo step = ', i_mcstep, imp = 'y')
 
 
-        """3. Exchange two atoms"""
-
-        st_new_init = exchange_atoms(st, voidz, z2, thickness, zr = zr2, condition = 'no_surface_TM')
 
 
-        if voidz:
+        """3. The section where changes are done """
+
+        if params.get('external'):
+            st_new_init = exchange_with_external(st, zr2, thickness, external = params.get('external'))
+        else:
+            st_new_init = exchange_atoms(st, xcart_voids, z2, thickness, zr = zr2, condition = 'no_surface_TM')
+
+
+
+
+
+
+
+
+        if xcart_voids:
             xcart_voids = st_new_init.get_specific_elements([300], fmt = 'x')
             printlog('The following voids after changes were extracted from st:', xcart_voids)
 
@@ -310,12 +390,17 @@ if __name__ == "__main__":
             st_new_init = read_poscar(st_new_init, 'POSCAR-'+str(i_mcstep))
             # print(xcart_voids)
             # sys.exit()
-            st_new_init = st_new_init.add_atoms(xcart_voids, 'void')
+            if xcart_voids:
+                st_new_init = st_new_init.add_atoms(xcart_voids, 'void')
             # xcart_voids = st_new_init.get_specific_elements([300], fmt = 'x')
             # print('After writing and reading the voids are ', xcart_voids)
             st = st_new_init
-
-
+            cl = CalculationVasp()
+            cl_new = CalculationVasp()
+            cl.end = st
+            cl_new.end = st_new_init
+            cl.e0 = random.random()
+            cl_new.e0 = random.random()
         else:
             """4. Write new structure and calculate energy  """
 
@@ -329,31 +414,47 @@ if __name__ == "__main__":
 
 
 
-            """5. Check if to accept new structure  """
-            printlog('Energies before and after are {:3.3f} and {:3.3f}, dE = {:3.3f}'.format(cl.e0, cl_new.e0, cl_new.e0 - cl.e0), imp = 'y')
-            with open('ENERGIES', 'a') as f:
-                f.write('{:5d}  {:.5f}\n'.format(i_mcstep, cl_new.e0))
-            
-            if metropolis(cl.e0, cl_new.e0, temperature):
-                cl = cl_new
+        """5. Check if to accept new structure  """
+        if params.get('external'):
+            # print('')
+            gamma, E1         = suf_en(cl,     cl_bulk, chem_pot = params.get('chem_pot'), return_diff_energy =1)
+            gamma_new, E2     = suf_en(cl_new, cl_bulk, chem_pot = params.get('chem_pot'),  return_diff_energy =1)
 
-                if voidz:
-                    #insert voids
-                    cl_new.end = cl_new.end.add_atoms(xcart_voids, 'void') # here voids are inserted back
+        else:
+            E1 = cl.e0
+            E2 = cl_new.e0
 
-                
+
+
+        printlog('Energies before and after are {:3.3f} and {:3.3f}, dE = {:3.3f}'.format(E1, E2, E2 - E1), imp = 'y')
+        with open('ENERGIES', 'a') as f:
+            f.write('{:5d}  {:.5f}\n'.format(i_mcstep, cl_new.e0))
+
+
+        
+        if metropolis(E1, E2, temperature):
+            cl = cl_new
+
+            if xcart_voids:
+                #insert voids
+                cl_new.end = cl_new.end.add_atoms(xcart_voids, 'void') # here voids are inserted back
+
+            if not debug:
                 cl.serialize(str(i_mcstep)+'-yes')
                 copyfile('CONTCAR', 'CONTCAR_last')
                 copyfile('OUTCAR', 'OUTCAR_last')
 
-                st = cl_new.end
+            st = cl_new.end
 
-                printlog('The step was accepted', imp = 'y')
+            printlog('The step was accepted', imp = 'y')
 
-            else:
-                printlog('The step was rejected', imp = 'y')
+        else:
+            printlog('The step was rejected', imp = 'y')
 
+            if not debug:
                 cl_new.serialize(str(i_mcstep)+'-no')
+
+        if not debug:
             copyfile('OSZICAR', 'OSZICAR-'+str(i_mcstep))
             copyfile('CONTCAR', 'CONTCAR-'+str(i_mcstep))
             copyfile('OUTCAR', 'OUTCAR-'+str(i_mcstep))

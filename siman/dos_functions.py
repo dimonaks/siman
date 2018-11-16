@@ -700,6 +700,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
         """Additional dos analysis; to be refined"""
+        gc = None
         if show_gravity:
             if show_gravity[0] == 1:
                 d = d1
@@ -711,10 +712,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             else:
                 erange = (-100, 0)
 
-            if show_gravity[1] == 'p6':
+            mod = show_gravity[1]
+
+            if mod == 'p6':
                 
                 gc = det_gravity2(d.energy, d.p6, erange)
-                printlog('Gravity center for cl1 for p6 for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
                 # gc = det_gravity2(d.energy, d.d[0], erange)
                 # printlog('Gravity center for cl1 for d for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
             
@@ -724,7 +726,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
             elif show_gravity[1] == 'p_all':
                 gc = det_gravity2(d.energy, d.p_all, erange) # for first atom for cl2
-                printlog('Gravity center for cl1 for p_all for {:} is {:5.2f}'.format(erange, gc), imp = 'Y')
+
+            elif mod == 'd':
+                gc = det_gravity2(d.energy, d.d[0], erange) # for first atom for cl2
+
+            printlog('Gravity center for cl1 for {:} for {:} is {:5.2f}'.format(mod , erange, gc), imp = 'Y')
 
 
             
@@ -810,4 +816,4 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     printlog("------End plot_dos()-----\n\n")
 
 
-    return {'name':cl1.name, 'filename':image_name}
+    return {'name':cl1.name, 'filename':image_name, 'gc':gc}

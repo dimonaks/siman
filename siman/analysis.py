@@ -933,13 +933,20 @@ def set_oxidation_states(st):
 
 
 
-def suf_en(cl1, cl2, silent = 0):
+def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
     """Calculate surface energy
     cl1 - supercell with surface
     cl2 - comensurate bulk supercell
     the area is determined from r[0] and r[1];- i.e they lie in surface
+    chem_pot (dic) - dictionary of chemical potentials for nonstoichiometric slabs
 
+    return_diff_energy (bool) - in addtion to gamma return difference of energies 
     """
+    
+    if chem_pot is None:
+        chem_pot = {}
+
+
     st1 = cl1.end
     st2 = cl2.end
     # pm = st1.convert2pymatgen(oxidation = {'Y':'Y3+', 'Ba':'Ba2+', 'Co':'Co2.25+', 'O':'O2-'})
@@ -948,13 +955,59 @@ def suf_en(cl1, cl2, silent = 0):
 
     A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
     # print(A)
+    # get_reduced_formula
+    # print(natom1, natom2)
 
-    if natom1%natom2 > 0:
-        printlog('Warning! non-stoichiometric slab, check system sizes: natom1 = ', natom1, 'natom2 = ', natom2, natom1/natom2)
 
-    mul = natom1/natom2
-    gamma = (cl1.e0 - cl2.e0*mul)/2/A* header.eV_A_to_J_m
+    tra1 = st1.get_transition_elements()
+    tra2 = st2.get_transition_elements()
+    ntra1 = len(tra1)
+    ntra2 = len(tra2)
+    rat1 = natom1/ntra1
+    rat2 = natom2/ntra2
+    mul = ntra1/ntra2
+
+
+    if rat1 != rat2:
+        printlog('Non-stoichiometric slab, ratios are ', 
+            rat1, rat2, 'provide chemical potentials', imp = 'y')
+
+        #get number of TM atoms in slab
+        if len(set(tra1)) > 1:
+            printlog('More than one type of TM is not supported yet')
+            return
+
+        els1 = st1.get_elements()
+        els2 = st2.get_elements()
+        uniqe_elements = list(set(els1))
+        el_dif = {} # difference of elements between slab and normalized by transition metals bulk phase
+        for el in uniqe_elements:
+            dif = els1.count(el) - mul * els2.count(el)
+            if not float(dif).is_integer():
+                printlog('Error! difference of atom numbers is not integer for element ', el, 'something is wrong')
+            if abs(dif) > 0:
+                el_dif[el] = int(dif) 
+
+        print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')
+        
+        E_nonst = 0
+        for key in el_dif:
+            if key not in chem_pot:
+                printlog('Warning! no chemical potential for ', key, 'in chem_pot, return')
+                return
+
+            E_nonst += el_dif[key]*chem_pot[key]
+
+    else:
+        E_nonst = 0
+
+    diff  = cl1.e0 - (cl2.e0 * mul + E_nonst)
+    gamma = diff / 2 / A * header.eV_A_to_J_m
+
     if not silent:
         print('Surface energy = {:3.2f} J/m2   | {:} | {:} '.format(gamma, cl1.id, cl2.id))
     
-    return gamma
+    if return_diff_energy:
+        return gamma, diff
+    else:
+        return gamma

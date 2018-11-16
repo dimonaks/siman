@@ -2,7 +2,7 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import, print_function
 import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil
-import re, io
+import re, io, json
 
 
 #additional packages
@@ -45,7 +45,7 @@ from siman.functions import (read_vectors, read_list, words,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar
 from siman.geo import image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
-
+from siman.set_functions import InputSet
 
 
 """
@@ -2104,7 +2104,10 @@ class Calculation(object):
     def __init__(self, inset = None, iid = None, output = None):
         #super(CalculationAbinit, self).__init__()
         self.name = "noname"
-        self.set = copy.deepcopy(inset)
+        if inset:
+            self.set = copy.deepcopy(inset)
+        else:
+            self.set = InputSet()
         
         # if self.set.set_sequence:
 
@@ -2463,6 +2466,59 @@ class Calculation(object):
         return self
 
 
+    def serialize_json(self, filename):
+        """
+        save in json object - works
+        the problem is how to decode correctly
+        """
+        cl = copy.deepcopy(self)
+        for st in cl.init, cl.end:
+            st.xcart = [list(xc) for xc in st.xcart]
+            st.xred = [list(xc) for xc in st.xred]
+            st.rprimd = [list(xc) for xc in st.rprimd]
+            st.recip = [list(xc) for xc in st.recip]
+        for mat in cl.occ_matrices:
+            cl.occ_matrices[mat] = [list(line) for line in cl.occ_matrices[mat]]
+
+        cl.ldauu = list(cl.ldauu)
+
+        file = filename+'.json'
+        makedir(file)
+        # print(cl.__dict__)
+        # print(cl.e0)
+        with open(file, 'w') as f:
+            json.dump(cl, f, default=lambda o: o.__dict__, 
+            sort_keys=True, indent=4)
+        
+
+
+        # print(cl.__dict__)
+
+        return file
+
+    def deserialize_json(self, filename):
+        """
+        limited support, should be generalized
+        """
+        with open(filename, 'r') as fp:
+            d = json.load(fp,) # works incorrect
+
+        cl = CalculationVasp()
+        
+        sup = {}
+        ats = ['set', 'init', 'end']
+        for attr in ats: 
+            sup[attr] = d[attr]
+            del d[attr]
+        cl.__dict__.update(d)
+        # for attr in sup: 
+            # print(sup[attr])
+            # setattr(cl, attr+'.__dict__', sup[attr])
+        cl.set.__dict__ = sup['set']
+        cl.init.__dict__ = sup['init']
+        cl.end.__dict__ = sup['end']
+        # print(cl.end.rprimd)
+        return cl
     def get_kpoints_density(self):
         """
         Number of k-points per atom
@@ -4892,7 +4948,7 @@ class CalculationVasp(Calculation):
             #deal with ldauu
             u_hubbard = 0
             if ldauu: 
-                ldauu = np.array(ldauu.split()[7:]).astype(float)
+                ldauu = list(np.array(ldauu.split()[7:]).astype(float))
                 # print (ldauu)
                 #find first non-zero
                 self.ldauu = ldauu
