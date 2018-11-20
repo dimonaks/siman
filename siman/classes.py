@@ -4321,6 +4321,7 @@ class CalculationVasp(Calculation):
                 re_eltime = re.compile("Elapsed time")
                 re_nkpts = re.compile("NKPTS")
                 iterat = 0
+                niter = 1
                 i_line = 0
                 mdstep_prev = 0
                 dipol = None
