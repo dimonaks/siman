@@ -60,37 +60,13 @@ def read_database(scratch = False):
     # mod = __import__("gdbm")
     # d = shelve.Shelf(mod.open(databasefile, protocol=1))
 
-    # print(databasefile3)
-    d = shelve.open(databasefile3, protocol = 3)
-
-    # for key in d:
-        # print(key)
-    # print(d['varset'])
-
-
-    # sys.exit()
-
-    try:
-        # calc              = d[calc_key]; 
-        # calc              = {}; 
-        header.conv       = d[conv_key]; 
-        header.varset     = d[varset_key]; 
-        header.history    = d[history_key]
-        header.struct_des = d[struct_des_key]
-
-    except KeyError: 
-        
-        # try: calc = d[calc_key] #dictionary of calculations
-        # except KeyError:
-        #     printlog( "There is no database of calculations. I create new"); calc = {}
-        
-
+    with shelve.open(databasefile3, protocol = 3) as d:
 
         try: 
             header.conv = d[conv_key] #dictionary of convergence lists
         except KeyError:
             printlog( "There is no dictionary of convergence lists. I create new"); 
-            conv = {}   
+            header.conv = {}   
         
 
 
@@ -98,7 +74,7 @@ def read_database(scratch = False):
             header.varset = d[varset_key] 
         except KeyError:
             printlog( "There is no dictionary of inputsets. I create new");  
-            varset = {} 
+            header.varset = {} 
         
 
 
@@ -115,7 +91,6 @@ def read_database(scratch = False):
         except KeyError:
             printlog( "There is no struct_des in database. The dict is in header module "); 
 
-    d.close()
     #print history
     init_default_sets()
 

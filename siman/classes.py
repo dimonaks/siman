@@ -5627,8 +5627,10 @@ class CalculationVasp(Calculation):
                 elif 'PBS' in cl.schedule_system:
                     job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
 
+                elif 'SGE' in cl.schedule_system:
+                    job_in_queue = check_string in run_on_server("qstat -xml ", cl.cluster_address)
                 else:
-                    print_and_log('Attention! unknown SCHEDULE_SYSTEM='+'; Please teach me here! ', imp = 'y')
+                    print_and_log('Attention! unknown SCHEDULE_SYSTEM='+cl.schedule_system+'; Please teach me here! ', imp = 'y')
                     job_in_queue = ''
 
 

@@ -32,6 +32,13 @@ CLUSTERS['pardus'] = {
 
 }
 
+CLUSTERS['ut1'] = {'address':'ut1',
+'schedule':'SGE',
+'vasp_com':'mpirun  -n $NSLOTS vasp',
+'pe':'mpi24',
+'shell':'/bin/bash',
+'corenum':24,
+}
 
 
 """Local constants"""
