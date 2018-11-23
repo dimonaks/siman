@@ -115,6 +115,8 @@ def initial_run(xcart_voids, ):
             copyfile('OUTCAR', 'OUTCAR-0')
             copyfile('OSZICAR', 'OSZICAR-0')
             copyfile('CONTCAR', 'CONTCAR-0')
+            copyfile('OUTCAR', 'OUTCAR_last')
+            copyfile('CONTCAR', 'CONTCAR_last')
 
             with open('ENERGIES', 'w') as f:
                 f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))

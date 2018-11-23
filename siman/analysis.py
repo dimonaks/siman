@@ -1011,3 +1011,73 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
         return gamma, diff
     else:
         return gamma
+
+
+def suf_en_polar_layered(formula, cl_surf, cl_ideal, dmu_a = 0, dmu_b = 0, dmu_c = 0):
+    #This function calculates an energy of polar surface using chemical potentials for every elements
+    #Ef = Etot(AxByCz) - (xμA + yμB + zμC)
+
+    #cl1 - db[structure with surface]
+    #cl2 - db[ideal structure]
+    #dmu_x - the change of chemical pot at finite temp and pressure (and other add parameters) dmux = mu(T,p) - mu(0K)
+    #a,b,c - type of element in the sequence as in formula: LiNiO2 (a - Li, b - Ni, c - O)
+
+    mu_li = -1.90424
+    mu_na = 0 #it will be later
+    mu_O = -4.24919
+
+    # mu_linio2 = -19.94887665
+    mu_linio2 = cl_ideal.e0
+    mu_licoo2 = 0
+    mu_limno2 = 0
+
+
+    mu_nanio2 = 0
+    mu_nacoo2 = 0
+    mu_namno2 = 0
+
+
+    print('\n\nOxide has a structural formula - ', formula)
+
+
+    mu3 = mu_O + dmu_c # it is a standart for our systems
+
+    #definition of mu1 (in our systems it can be Li or Na) and mu2(Ni, Co or Mn)
+    if 'Li' in formula: 
+        mu1 = mu_li + dmu_a
+        if 'Ni' in formula:
+            mu_cell = mu_linio2
+        elif 'Co' in formula:
+            mu_cell = mu_licoo2
+        elif 'Mn' in formula:
+            mu_cell = mu_limno2
+
+
+    elif 'Na' in formula: 
+        mu1 = mu_na + dmu_a
+        if 'Ni' in formula:
+            mu_cell = mu_nanio2
+        elif 'Co' in formula:
+            mu_cell = mu_nacoo2
+        elif 'Mn' in formula:
+            mu_cell = mu_namno2
+    
+
+    mu2 = mu_cell - 2*mu3-mu1        
+
+    st1 = cl_surf.end
+    st2 = cl_ideal.end
+
+
+    n1 = st1.typat.count(1)
+    n2 = st1.typat.count(2)
+    n3 = st1.typat.count(3)
+
+    print('\nStructure with polar surface has the next atoms of every type - ',n1,n2,n3)
+
+    A = np.linalg.norm( np.cross(st1.rprimd[0], st1.rprimd[1]) )
+    # print(st1.natom,st2.natom)
+
+
+    gamma = (cl_surf.energy_sigma0 - (n1*mu1 + n2*mu2 + n3*mu3))/2/A*header.eV_A_to_J_m
+    print('Surface energy = {:3.2f} J/m2   | {:} | {:} \n\n'.format(gamma, cl_surf.id, cl_ideal.id))
