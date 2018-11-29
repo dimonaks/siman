@@ -4216,7 +4216,7 @@ class CalculationVasp(Calculation):
 
             #reduce size of downloadable file by removing occupations: vasp 4 and 5
             command_reduce = """ssh {0:s} nbands=\`grep \\"NBANDS=\\" \{1:s} \| awk \\'{{print \$NF - 1}}\\'\`\; sed -i -e \\"/band No./,+\${{nbands}}d\\" \{1:s} """.format(
-                self.cluster_address, join(self.project_path_cluster, path_to_outcar) )
+                self.cluster['address'], join(self.project_path_cluster, path_to_outcar) )
             # runBash(command_reduce)
 
 
@@ -5351,7 +5351,7 @@ class CalculationVasp(Calculation):
             cl = self
             try:
                 os.rename(cl.path['output'], cl.path['output']+"_unfinished") 
-                printlog('read_results():',cl.id, 'is unfinished, continue:', cl.dir, cl.cluster_address, imp = 'y')
+                printlog('read_results():',cl.id, 'is unfinished, continue:', cl.dir, cl.cluster['address'], imp = 'y')
                 cl.state = '5. Unfinished'
             except:
                 printlog('read_results():',cl.id, 'probably was not submitted:', cl.dir, imp = 'y')
@@ -5402,7 +5402,7 @@ class CalculationVasp(Calculation):
         if os.path.exists(path_to_file) and 'up2' not in up: 
             out = None
         else:
-            out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = self.cluster_address)
+            out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = self.cluster['address'])
 
 
         if out:
@@ -5415,7 +5415,7 @@ class CalculationVasp(Calculation):
             # print(pp)
             path_to_file_scratch = header.PATH2ARCHIVE+'/'+pp+'/'+path_to_file
 
-            out = get_from_server(path_to_file_scratch, os.path.dirname(path_to_file), addr = self.cluster_address)
+            out = get_from_server(path_to_file_scratch, os.path.dirname(path_to_file), addr = self.cluster['address'])
             
             if out:
                 printlog('File', path_to_file_scratch, 'was not found', imp = 'Y')
@@ -5500,7 +5500,7 @@ class CalculationVasp(Calculation):
         no_AECCAR2 = bash_chk_file_cmd(AECCAR2)
         
         def remote(cmd):
-            return run_on_server(cmd, self.cluster_address)
+            return run_on_server(cmd, self.cluster['address'])
 
 
 
@@ -5621,20 +5621,20 @@ class CalculationVasp(Calculation):
                 check_string =  cl.id[0]+'.'+cl.id[1]
                 if 'SLURM' in cl.schedule_system:
 
-                    job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster_address)
+                    job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster['address'])
                     printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
 
                 elif 'PBS' in cl.schedule_system:
-                    job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster_address)
+                    job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster['address'])
 
                 elif 'SGE' in cl.schedule_system:
-                    job_in_queue = check_string in run_on_server("qstat -xml ", cl.cluster_address)
+                    job_in_queue = check_string in run_on_server("qstat -xml ", cl.cluster['address'])
                 else:
                     print_and_log('Attention! unknown SCHEDULE_SYSTEM='+cl.schedule_system+'; Please teach me here! ', imp = 'y')
                     job_in_queue = ''
 
 
-            if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster_address) and job_in_queue: 
+            if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster['address']) and job_in_queue: 
                 
                 cl.state = '3. Running'
 

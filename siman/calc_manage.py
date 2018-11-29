@@ -2492,6 +2492,16 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 header.sshpass = None
 
 
+    def override_cluster_address(cl):
+        nonlocal cluster
+        if header.override_cluster_address:
+            if not cluster:
+                cluster = header.DEFAULT_CLUSTER
+            if cl.cluster['address'] != header.CLUSTERS[cluster]['address']:
+                cl.cluster['address'] = header.CLUSTERS[cluster]['address']
+                # cl.cluster_address = cl.cluster['address'] # depricated should not be used
+                printlog('Cluster address was overriden to ', header.CLUSTERS[cluster]['address'])
+
 
 
     try:
@@ -2572,7 +2582,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             cl = calc[id]
             
             setting_sshpass(cl) # checking if special download commands are needed
-            
+            override_cluster_address(cl)
             if readfiles and check_job:
                 if '3' in cl.check_job_state():
                     printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')

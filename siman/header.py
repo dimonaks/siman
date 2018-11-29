@@ -159,6 +159,7 @@ check_job = 1 # check job by additional ssh requests
 reorganize = 0 # use this from time to time to optimize database file size
 verbose_log = 0 # in addition to normal log write verbose log in any case by openning the log_verbose each time
 
+override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
 
 db = CalcDict()
 # global db
