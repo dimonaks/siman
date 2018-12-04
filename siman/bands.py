@@ -105,12 +105,14 @@ def plot_bands(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, None)
     # ------------
     name = element 
     pbands = bands.get_projections_on_elements_and_orbitals({name: ["s", "p", "d"]})
-    # print(pbands)
+    print(bands)
 
     # compute s, p, d normalized contributions
     contrib = np.zeros((bands.nb_bands, len(bands.kpoints), 3))
+    # print(pbands)
     for b in range(bands.nb_bands):
         for k in range(len(bands.kpoints)):
+            # print(Spin.up)
             sc = pbands[Spin.up][b][k][name]["s"]**2
             pc = pbands[Spin.up][b][k][name]["p"]**2
             dc = pbands[Spin.up][b][k][name]["d"]**2

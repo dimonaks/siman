@@ -5390,6 +5390,7 @@ class CalculationVasp(Calculation):
 
         if 'CHGCAR' in filetype:
             self.path['chgcar'] = path_to_file
+            self.path['charge'] = path_to_file
         elif 'xml' in filetype:
             self.path['xml'] = path_to_file
 
@@ -5427,7 +5428,8 @@ class CalculationVasp(Calculation):
 
     def get_chg_file(self, *args, **kwargs):
         """just wrapper to get chgcar files """
-        del kwargs['CHGCAR']
+        if 'CHGCAR' in kwargs:
+            del kwargs['CHGCAR']
         return self.get_file(self, filetype = 'CHGCAR', **kwargs)
 
 
