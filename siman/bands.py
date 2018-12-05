@@ -4,6 +4,7 @@
 import sys
 import numpy as np
 
+
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.gridspec import GridSpec
@@ -13,6 +14,8 @@ from matplotlib.gridspec import GridSpec
 from pymatgen.io.vasp import Vasprun
 from pymatgen.electronic_structure.core import Spin, OrbitalType
 
+
+from siman.small_functions import makedir
 
 def rgbline(ax, k, e, red, green, blue, alpha=1.):
     # creation of segments based on
@@ -105,7 +108,7 @@ def plot_bands(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, None)
     # ------------
     name = element 
     pbands = bands.get_projections_on_elements_and_orbitals({name: ["s", "p", "d"]})
-    print(bands)
+    # print(bands)
 
     # compute s, p, d normalized contributions
     contrib = np.zeros((bands.nb_bands, len(bands.kpoints), 3))
@@ -188,4 +191,5 @@ def plot_bands(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, None)
     plt.subplots_adjust(wspace=0)
 
     # plt.show()
+    makedir("figs/bands.png")
     plt.savefig("figs/bands.png")

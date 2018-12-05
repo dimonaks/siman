@@ -1161,6 +1161,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
                     cl_temp.dir = blockdir+"/"+ str(cl_temp.id[0]) +'.'+ str(cl_temp.id[1])+'/'
                     cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
+                    cl_temp.cluster      = header.cluster
                     cl_temp.cluster_address      = header.cluster_address
                     cl_temp.project_path_cluster = header.project_path_cluster
                     calc[cl_temp.id] = cl_temp
@@ -1645,12 +1646,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         #pass using object
         # if header.copy_to_cluster_flag:
-        cl.cluster = header.cluster
         cl.cluster_address      = header.cluster_address
         cl.project_path_cluster = header.project_path_cluster
         cl.cluster_home = header.cluster_home
         cl.corenum = header.corenum 
         cl.schedule_system = header.schedule_system
+        cl.cluster = header.cluster
 
 
         if mat_proj_st_id:
