@@ -10,6 +10,12 @@ except:
     print('ase is not avail; run   pip install ase')
     ase_flag = False
 
+try:
+    from pymatgen.analysis.wulff import WulffShape
+
+except:
+    print('pymatgen is not avail; run   pip install pymatgen')
+
 
 from siman import header
 from siman.header import printlog, print_and_log, mpl, db
@@ -1081,3 +1087,23 @@ def suf_en_polar_layered(formula, cl_surf, cl_ideal, dmu_a = 0, dmu_b = 0, dmu_c
 
     gamma = (cl_surf.energy_sigma0 - (n1*mu1 + n2*mu2 + n3*mu3))/2/A*header.eV_A_to_J_m
     print('Surface energy = {:3.2f} J/m2   | {:} | {:} \n\n'.format(gamma, cl_surf.id, cl_ideal.id))
+
+
+
+def wulff(st, miller_list = None, e_surf_list = None):
+
+    from pymatgen.core.structure import Structure
+    stpm = st.convert2pymatgen()
+
+    lat = stpm.lattice
+
+    recp_lattice = stpm.lattice.reciprocal_lattice_crystallographic
+
+    recp = Structure(recp_lattice, ["H"], [[0, 0, 0]])
+    dire = Structure(stpm.lattice, ["H"], [[0, 0, 0]])
+
+    print(dire.get_space_group_info())
+    print(recp.get_space_group_info())
+    print(lat)
+    # from 
+    # WS = WulffShape(lat)
