@@ -2495,6 +2495,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
     def override_cluster_address(cl):
         nonlocal cluster
+
+        if not hasattr(cl, 'cluster'):
+            cl.cluster = {}
+            cl.cluster['address'] = cl.cluster_address
         if header.override_cluster_address:
             if not cluster:
                 cluster = header.DEFAULT_CLUSTER
@@ -2583,6 +2587,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             cl = calc[id]
             
             setting_sshpass(cl) # checking if special download commands are needed
+            
+
             override_cluster_address(cl)
             if readfiles and check_job:
                 if '3' in cl.check_job_state():

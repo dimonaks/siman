@@ -493,9 +493,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             if not i_void_final:
                 printlog('Changing i_void_final: None -> 1', imp = 'y')
                 i_void_final = 1 #since zero is itself
-
-            print_and_log('Choosing position ', i_void_final, 'with distance', round(sur[3][i_void_final], 2), 'A', imp = 'y')
-
+            chosen_dist = sur[3][i_void_final]
+            print_and_log('Choosing position ', i_void_final, 'with distance', round(chosen_dist, 2), 'A', imp = 'y')
+            header.temp_chosen_dist = chosen_dist
 
 
             if old_behaviour == '261018':
