@@ -477,7 +477,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             end_pos_types_el = [invert(z) for z in end_pos_types_z]
 
 
-            sur = local_surrounding(x_m, st, n_neighbours = 12, control = 'atoms', 
+            sur = local_surrounding(x_m, st, n_neighbours = 14, control = 'atoms', 
                 only_elements = final_pos_z,
                 periodic  = True) #exclude the atom itself
 

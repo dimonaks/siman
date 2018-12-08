@@ -693,6 +693,7 @@ class Structure():
         stpm = st.convert2pymatgen()
         stpmr1 = rot.apply_transformation(stpm)
         st_r1 = st.update_from_pymatgen(stpmr1)
+        st_r1 = st_r1.return_atoms_to_cell()
         return st_r1
 
 

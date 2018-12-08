@@ -313,6 +313,12 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
     rotate - rotation of all atoms around view axis in degrees
     label (tuple ()) - used for impurities, please decribe
     atom_labels (bool) - turn on atom labels
+
+    
+    help:
+    frame all - turn on all frames
+
+
     """
     if not scriptfile:
         scriptfile = os.getcwd()+'/'+'temporary_jmol_script'
@@ -326,6 +332,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 
         f.write('load "'+xyzfile+'"\n')
 
+        # f.write('frame all\n') #no jmol label
         f.write('select all \n') #250
         if 0:
            f.write('cpk 250 \nwireframe 0.3\n') 
@@ -350,9 +357,10 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
 
         
         if axis:
-            f.write('set axes 10 \naxes scale 2.5 \n')
+            # f.write('set axes 10 \naxes scale 2.5 \n')
+            f.write('set axes 10 \naxes scale 2.0 \n')
             f.write('axes labels "X" "Y" "Z" "" \n')
-            f.write('color  axes  red \n')
+            # f.write('color  axes  red \n')
             f.write('font axes 26 \n')
 
 
@@ -422,7 +430,9 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     analysis = None, show_around = None, show_around_x = None,  nnumber = 6, only_elements = None,
     gbpos2 = None, gbwidth = 1, withgb = False, include_boundary = 2,
     imp_positions = [], imp_sub_positions = None,
-    jmol = None, specialcommand = None, jmol_args = None, sts = None, mcif = 0, suf = ''
+    jmol = None, 
+    # specialcommand = None, # shoud be in jmol_args
+    jmol_args = None, sts = None, mcif = 0, suf = ''
     ):
     """Writes st structure in xyz format in the folder xyz/path
     #void are visualized with Pu
@@ -734,6 +744,8 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         # xyzfile = os.getcwd()+'/'+xyzfile
         if mcif:
             xyzfile = st.write_cif(mcif = 1)
+        elif sts:
+            ''
         else:
             xyzfile = st.write_poscar()
         
@@ -743,7 +755,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         
         printlog( 'imp_positions = ',imp_positions)
         write_jmol(xyzfile, pngfile, scriptfile, atomselection, rprimd =rprimd, shift = shift_2view, label = [(pos[3], pos[4]) for pos in imp_positions], 
-            specialcommand = specialcommand, **jmol_args)
+             **jmol_args)
 
 
     return xyzfile, pngfile

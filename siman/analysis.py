@@ -822,6 +822,10 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     write_xyz(sts = sts) # write traectory
     write_xyz(sts = sts_loc) # write traectory
 
+    if 'jmol' in params:
+        write_xyz(sts = sts, jmol  = 1, jmol_args = params['jmol']) # write jmol
+
+
     st1 = st1.shift_atoms(vec)
     st1.name +='_all'
     # st1.write_cif('xyz/'+st1.name)
