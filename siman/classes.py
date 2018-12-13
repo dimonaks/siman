@@ -414,13 +414,17 @@ class Structure():
     def get_mag_tran(self, to_ox = None):
         #show formatted mag moments of transition metals 
         #to_ox - convert to oxidation state, substract from to_ox
+        # if to_ox is negative, then m-to_ox
         l = self.get_maglist()[0]
         # print(l)
         mag = list(np.array(self.magmom)[l])
         s = ' '.join(['{:5.1f} ']*len(mag))
         print(s.format(*mag))
         if to_ox:
-            ox = [to_ox-abs(m) for m in mag]
+            if to_ox > 0:
+                ox = [to_ox-abs(m) for m in mag]
+            else:
+                ox = [abs(m)+to_ox for m in mag]
             s2 = ' '.join(['{:5.1f}+']*len(mag))
             print(s2.format(*ox))
             print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
@@ -2080,9 +2084,18 @@ class Structure():
 
 
     def jmol(self, shift = None, r = 0, show_voids = False):
-        # self.write_poscar('CONTCAR', vasp5 = 1)
-        #if r == 1 then open outcar
-        #if show voids then replace them with Po
+        """open structure in Jmol
+        
+        INPUT:
+        shift (list) - shift vector  in reduced coordinates
+        r (int ) - parameter
+            0 - open POSCAR
+            1 - open OUTCAR to see optimization steps
+            2 - open mcif to see magnetic moments
+            3 - xyz
+        show_voids (bool) - replace voids (z = 300) with Po to visualize them
+        
+        """
         st = copy.deepcopy(self)
         if shift:
             st = st.shift_atoms(shift)
@@ -2094,6 +2107,10 @@ class Structure():
         # filename, _ = st.write_xyz()
         if r == 1:
             filename = st.outfile 
+        elif r == 2:
+            filename = st.write_cif(mcif = 1)
+        elif r == 3:
+            filename = st.write_xyz()[0]
         else:
             filename = st.write_poscar(vasp5 = 1)
         
@@ -4499,7 +4516,7 @@ class CalculationVasp(Calculation):
 
 
                         if any(v > 1e-3 for v in low+high):
-                            print_and_log("W(q)/X(q) are too high, check output!\n")
+                            print_and_log("W(q)/X(q) are too high, check output!\n", 'Y')
                             print_and_log('Low + high = ', low+high, imp = 'Y' )
                             print_and_log([v > 1e-3 for v in low+high], imp = 'Y' )
                     

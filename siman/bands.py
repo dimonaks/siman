@@ -55,6 +55,7 @@ def read_kpoint_labels(filename):
 # if __name__ == "__main__":
 def plot_bands(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, None)):
     # read data
+    # Credit https://github.com/gVallverdu/bandstructureplots
     # ---------
 
     # kpoints labels
