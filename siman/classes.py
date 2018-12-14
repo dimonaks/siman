@@ -4,6 +4,7 @@ from __future__ import division, unicode_literals, absolute_import, print_functi
 import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil
 import re, io, json
 
+import numpy as np
 
 #additional packages
 try:
@@ -30,9 +31,7 @@ except:
     print('pymatgen is not avail')
     pymatgen_flag = False
 
-import numpy as np
 # import matplotlib.pyplot as plt
-
 
 #siman packages
 from siman import header
@@ -1112,6 +1111,12 @@ class Structure():
         st = self.add_atoms([xc], element = element, selective = selective)
         return st 
 
+
+
+
+
+
+
     def reorder_for_vasp(self, inplace = False):
         """
         
@@ -1692,6 +1697,8 @@ class Structure():
     def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True, more_info = 0):
         """
         show neigbours
+
+        INPUT:
         i - number of central atom, from 1 or 0 (from_one = True or False)
         n - number of neigbours to return
         ndict (dic) - number of specific neigbour atoms to take into account e.g ndict = {8:3} - 3 oxygen atoms will be considered
@@ -1699,11 +1706,23 @@ class Structure():
 
         more_info - return more output - takes time
 
-        out
+
+
+        RETURN
+            dict with the following keys:
+            'av(A-O,F)'
+            'numbers'
+            'dist'
+            'xcart'
+        
+
+
+        Important:
             'numbers' from 0 in the new version!!!!!
+
+
         """
-        import itertools
-        from siman.functions import invert
+
         if from_one:
             i -= 1
 
@@ -1737,6 +1756,8 @@ class Structure():
 
         info = {}
         info['numbers'] = out_or[2]
+        info['dist'] = out_or[3]
+        info['xcart'] = out_or[0]
 
 
         el = self.get_elements()
@@ -1790,6 +1811,53 @@ class Structure():
         # print(dv)
         # print(dv+x_r)
         return dv
+
+
+
+
+
+
+
+    def localize_polaron(self, i, d):
+        """
+        Localize small polaron at transition metal by adjusting TM-O distances
+        i - number of transition atom, from 0
+        d - shift in angstrom; positive increade TM-O, negative reduce TM-O
+        """
+        st = copy.deepcopy(self)
+        TM = st.get_elements_z()[i]
+        if TM not in header.TRANSITION_ELEMENTS:
+            printlog('Warning! provided ', TM, 'is not transition metal, I hope you know what you are doing. ')
+
+        dic = st.nn(i, 6, from_one = 0, silent = 1)
+        printlog('Average TM-O distance before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = 'y')
+
+        #updated xcart
+        xc = st.xcart[i]
+        for j, x in zip(dic['numbers'][1:], dic['xcart'][1:]):
+            x1 = st.xcart[j]
+            
+            # print(xc, x)
+            v = xc-x
+            # print(v)
+            vn = np.linalg.norm(v)
+            mul = d/vn
+            # print(vn, mul)
+            dv = v * mul
+            # print(st.xcart[j])
+            st.xcart[j] = st.xcart[j] -  dv 
+            # print(st.xcart[j])
+
+        st.update_xred()
+
+        dic = st.nn(i, 6, from_one = 0, silent = 1)
+        printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = 'y')
+
+        st.name+='pol'+str(i+1)
+
+        return st
+
+
 
 
     def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None, selective_dynamics = False):
@@ -2827,8 +2895,10 @@ class CalculationVasp(Calculation):
         return path_to_potcar
 
 
-    def calculate_nbands(self, curset, path_to_potcar = None):
-        """Should be run after add_potcar()"""
+    def calculate_nbands(self, curset, path_to_potcar = None, params = None):
+        """Should be run after add_potcar()
+            updates set, including number of electrons
+        """
         #1 add additional information to set
         if not curset:
             curset = self.set
@@ -2872,6 +2942,12 @@ class CalculationVasp(Calculation):
                 # print (vp)
                 printlog('SOC calculation detected; increasing number of bands by two', imp = 'Y')
                 vp['NBANDS']*=2
+
+
+            if params and 'charge' in params:
+                vp['NELECT'] = int(tve + params['charge'])
+
+
         else:
             printlog('Attention! No path_to_potcar! skipping NBANDS calculation')
 
@@ -3084,6 +3160,11 @@ class CalculationVasp(Calculation):
         # print (self.init.magmom, 'asdfaaaaaaaaaaaa')
         
         # sys.exit()
+
+        # number of electrons
+
+
+
 
         return
 

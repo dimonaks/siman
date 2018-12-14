@@ -860,6 +860,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 - 'mcsteps' - number of Monte-Carlo steps
                 - 'temp'    - temperature (K) for Metropolis Algorithm
 
+            - 'charge' - charge of the system, +1, -1
+
+
+
     Comments:
         
         !Check To create folders and add calculations add_flag should have value 'add' 
@@ -1768,7 +1772,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 path_to_potcar = cl.add_potcar()
             
             for curset in setseq: #for each set
-                cl.calculate_nbands(curset, calc[id_first].path['potcar'])
+                cl.calculate_nbands(curset, calc[id_first].path['potcar'], params = params)
 
 
 
