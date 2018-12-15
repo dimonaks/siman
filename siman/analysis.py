@@ -252,7 +252,7 @@ def form_en(sources, products, norm_el = None):
     norm_el  - which element to use for normalization
 
         'all' - normalize by total number of atoms
-        'el'
+        'el' - normalize by this element
         int - divide by this number
     """
 
