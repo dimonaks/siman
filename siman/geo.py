@@ -1793,3 +1793,31 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         return st
     else:
         return slabs
+
+
+def interpolate(st1, st2, images, write_poscar = 0):
+    """
+    Linear interpolation between two structures.
+    The number of atoms and order should be the same
+
+    INPUT:
+    images (int) - number of intermediate images
+    write_poscar (int) - starting from given number
+    """
+
+
+    xl = np.linspace(0, 1, images)
+    # print(xl)
+    nl = range(st1.natom)
+    sts = []
+    for j, x in enumerate(xl):
+        st_inter = copy.deepcopy(st1)
+        for i, xc1, xc2 in zip(nl, st1.xcart, st2.xcart):
+            st_inter.xcart[i] = (1-x) * xc1 + x * xc2
+        st_inter.update_xred()
+        sts.append(st_inter)
+        if write_poscar:
+            st_inter.name+='.'+str(j)
+            st_inter.write_poscar(str(write_poscar+j)+'.POSCAR')
+
+    return sts

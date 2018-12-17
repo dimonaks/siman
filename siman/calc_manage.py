@@ -26,7 +26,7 @@ from siman.functions import (gb_energy_volume, element_name_inv, get_from_server
 from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.picture_functions import plot_mep, fit_and_plot, plot_conv
 from siman.analysis import find_polaron, neb_analysis, calc_redox, matrix_diff, fit_a
-from siman.geo import replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
+from siman.geo import interpolate, replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 from siman.set_functions import init_default_sets
 from siman.database import push_figure_to_archive
 
@@ -835,6 +835,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             Copies to cluster *fit* utility that finds volume corresp. to energy minimum, creates 100.POSCAR and continues run 
             - 'monte' - Monte-Carlo functionality
 
+            - 'polaron' - polaron hopping, only input_st is supported
+
 
 
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
@@ -880,6 +882,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     - occmatrix in params better to rename to occfile or something like this, 
 
+    - first run function which read input structure in multiple ways and return structure object. All subsequent code works with object.
+    no duplication of different input is realized in different places
 
     """
 
@@ -908,6 +912,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if not calc:
             calc = header.calc
             varset = header.varset
+
 
 
 
@@ -1035,6 +1040,95 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             it = it_new
         return
+
+
+    def add_loop_modify():
+        struct_des = header.struct_des
+
+        nonlocal  it, setlist, verlist, id_base, it_suffix
+        db = calc
+        it_new = it
+        v = verlist[0]
+
+        if it_new not in struct_des:
+            if it_folder:
+                section_folder = it_folder
+            else:
+                section_folder = struct_des[it].sfolder
+
+            add_des(struct_des, it_new, section_folder, 'scale: scaled "images" for '+it+'.'+str(setlist)+'.'+str(v)   )
+
+
+
+        if 'polaron' in calc_method:
+            pm = params['polaron']
+            am = abs(pm['amp']) # amplitude of polaron, the sign is not important here
+
+            if pm['polaron_type'] == 'electron':
+                am = am * -1 
+                params['charge'] = -1
+            elif pm['polaron_type'] == 'hole':
+                ''
+                params['charge'] = 1
+
+            st1 = input_st.localize_polaron(pm['istart'],  am)
+            st2 = input_st.localize_polaron(pm['iend'], am)
+
+            sts = interpolate(st1, st2, images= pm['images'], write_poscar = 0 )
+
+
+            inputset =setlist[0]
+
+
+            for i, s in enumerate([st1, st2]+sts):
+                
+                ver_new = i+ 1 # start from 1; before it was v+i
+                id_s = (it,inputset,ver_new)
+                cl_temp = CalculationVasp(varset[inputset], id_s)
+                s.name = it_new+'.'+str(ver_new)
+                cl_temp.init = s
+                cl_temp.version = ver_new
+                cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
+                                            it_new+"/"+it_new+'.auto_created_for_polaron'+'.'+str(ver_new)+'.'+'geo'
+
+                write_xyz(s)
+
+                if ver_new in [1]:
+                    cl_temp.write_siman_geo(geotype = "init", 
+                        description = s.des, override = True)
+                else:
+                    if ver_new ==2:
+                        cl_temp.des = 'end position separatly prepared'
+                    else:
+                        cl_temp.des = 'init created from init start and end position on local machine. end from end start and end positions '
+
+                    cl_temp.state = '2. separately prepared'
+                    cl_temp.id = (it_new, inputset, ver_new)
+                    blockdir = struct_des[it_new].sfolder+"/"+varset[inputset].blockfolder #calculation folder
+                    # iid = cl_temp.id          
+                    cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
+                    cl_temp.dir = blockdir+"/"+ str(cl_temp.id[0]) +'.'+ str(cl_temp.id[1])+'/'
+                    cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
+                    cl_temp.cluster      = header.cluster
+                    cl_temp.cluster_address      = header.cluster_address
+                    cl_temp.project_path_cluster = header.project_path_cluster
+                    db[cl_temp.id] = cl_temp
+                
+                    if ver_new ==2:
+                        cl_temp.write_structure("2.POSCAR") # create it already here               
+ 
+            
+            verlist = [1] # only 1.POSCAR is created, the rest is controlled by python script on cluster
+                
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1450,6 +1544,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     
     add_loop_inherit()
     
+    add_loop_modify()
+
     add_loop_prepare2()
 
     """Main Loop by setlist and verlist"""
@@ -1538,6 +1634,17 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             json.dump(pm, fp,)
 
         return file
+
+    def write_configuration_file_for_cluster(name, vasp_run_com, params):
+        file = cl.dir +  'conf.json'  
+        pm = params
+
+        pm['vasp_run'] = vasp_run_com + ' > ' + name+'.log'
+        with io.open(  file, 'w', newline = '') as fp:
+            json.dump(pm, fp,)
+
+        return file
+
 
 
 
@@ -1787,6 +1894,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                         list_to_copy.append(cl.dir +'bulk.json')
                     monte_params_file = write_parameters_for_monte(cl.name, header.vasp_command, params)
                     list_to_copy.append(monte_params_file)
+
+                if 'polaron' in cl.calc_method:
+                    conf_file = write_configuration_file_for_cluster(cl.name, header.vasp_command, params['polaron'])
+                    list_to_copy.append(conf_file)
+
+
 
                 
                 cl.write_sge_script(mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 

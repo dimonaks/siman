@@ -40,7 +40,7 @@ from siman.header import printlog, print_and_log, runBash, plt
 
 from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s
 from siman.functions import (read_vectors, read_list, words,
-     element_name_inv, invert, calculate_voronoi,
+     element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar
 from siman.geo import image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
@@ -1830,7 +1830,7 @@ class Structure():
             printlog('Warning! provided ', TM, 'is not transition metal, I hope you know what you are doing. ')
 
         dic = st.nn(i, 6, from_one = 0, silent = 1)
-        printlog('Average TM-O distance before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = 'y')
+        printlog('Average TM-O distance before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
 
         #updated xcart
         xc = st.xcart[i]
@@ -1851,7 +1851,7 @@ class Structure():
         st.update_xred()
 
         dic = st.nn(i, 6, from_one = 0, silent = 1)
-        printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = 'y')
+        printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
 
         st.name+='pol'+str(i+1)
 
@@ -3423,54 +3423,7 @@ class CalculationVasp(Calculation):
 
 
 
-        def update_incar(parameter = None, value = None, u_ramp_step = None, write = True):    
-            """Modifications of INCAR. Take attention that *parameter* will be changed to new *value*
-            if it only already exist in INCAR.  *u_ramp_step*-current step to determine u,
-            *write*-sometimes just the return value is needed. 
-            Returns U value corresponding to *u_ramp_step*.
-            """
 
-            u_step = None
-            if parameter == 'LDAUU':
-                #Update only non-zero elements of LDAUU with value
-
-                set_LDAUU_list = self.set.vasp_params['LDAUU']
-                new_LDAUU_list = copy.deepcopy(set_LDAUU_list)
-                
-                # print set_LDAUU_list
-                u_step = 0.0
-                for i, u in enumerate(set_LDAUU_list):
-                    if u == 0:
-                        continue
-                    u_step = np.linspace(0, u, self.set.u_ramping_nstep)[u_ramp_step]
-                    u_step = np.round(u_step, 1)
-                    # new_LDAUU_list[i] = value
-                    new_LDAUU_list[i] = u_step
-
-
-                new_LDAUU = 'LDAUU = '+' '.join(['{:}']*len(new_LDAUU_list)).format(*new_LDAUU_list)
-                
-                command = "sed -i.bak '/LDAUU/c\\" + new_LDAUU + "' INCAR\n"
-                #print('u_step',u_step)
-                #sys.exit()
-
-            elif parameter == 'MAGMOM':
-
-                new_incar_string = parameter + ' = ' + ' '.join(['{:}']*len(value)).format(*value)
-                command = "sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n"
-
-            elif parameter in ['IMAGES', 'ISPIN']:
-
-                new_incar_string = parameter + ' = ' + str(value)
-                command = "sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n"
-
-
-
-
-            if write:
-                f.write(command)
-
-            return  u_step #for last element
 
         def run_command(option, name, parrallel_run_command, condition = False, write = True):
             """2. write commands for running vasp. condition = true allows override additional conditions""" 
@@ -3487,6 +3440,9 @@ class CalculationVasp(Calculation):
 
                 elif 'monte' in self.calc_method:
                     f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
+
+                elif 'polaron' in self.calc_method:
+                    f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
 
                 else:
                     f.write(parrallel_run_command +" >"+name+".log\n")
@@ -3506,10 +3462,14 @@ class CalculationVasp(Calculation):
 
             """   
             printlog('The value of savefile is', savefile)
-            if write:
-                pre = v + name_mod
+            
+            if 'polaron' in self.calc_method:
+                write = 0 # not needed, since files are automatically saved by python script
 
-                contcar = pre+'.CONTCAR'
+            pre = v + name_mod
+            contcar = pre+'.CONTCAR'
+
+            if write:
 
                 if "o" in savefile:
 
@@ -3575,6 +3535,7 @@ class CalculationVasp(Calculation):
                     ''
                     f.write("rm CHG   # rm_chg_wav flag\n") #
 
+
             return contcar
 
 
@@ -3590,7 +3551,7 @@ class CalculationVasp(Calculation):
         def name_mod_U_last():
             name_mod_last = 'U'+str(
                         update_incar(parameter = 'LDAUU', 
-                            u_ramp_step = self.set.u_ramping_nstep-1, write = False)).replace('.','') #used to det last U
+                            u_ramp_step = self.set.u_ramping_nstep-1, write = False, f = f )).replace('.','') #used to det last U
 
             return name_mod_last
 

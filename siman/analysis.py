@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*- 
+#Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
 import os, copy, shutil, sys
 import numpy as np
@@ -1025,7 +1027,7 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
 
 def suf_en_polar_layered(formula, cl_surf, cl_ideal, dmu_a = 0, dmu_b = 0, dmu_c = 0):
     #This function calculates an energy of polar surface using chemical potentials for every elements
-    #Ef = Etot(AxByCz) - (xμA + yμB + zμC)
+    #Ef = Etot(AxByCz) - (xmuA + ymuB + zμC)
 
     #cl1 - db[structure with surface]
     #cl2 - db[ideal structure]

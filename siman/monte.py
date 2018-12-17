@@ -40,7 +40,7 @@ def check(cl, exit = 0):
     return out
 
 
-def vasp_run(n, des):
+def vasp_run(n, des, vasprun_command = None):
     #allows to run vasp several times, here fireworks can be used
     #n - number of attempts
     #des - description of run
@@ -105,7 +105,7 @@ def initial_run(xcart_voids, ):
             xcart_voids = cl.end.get_specific_elements([300], fmt = 'x') # extract voids form the last calculation
         
         else:
-            cl = vasp_run(3, 'first run')
+            cl = vasp_run(3, 'first run', vasprun_command = vasprun_command)
             
             if xcart_voids: # read void coordinates
                 cl.end = cl.end.add_atoms(xcart_voids, 'void')
@@ -408,7 +408,7 @@ if __name__ == "__main__":
 
             st_new_init.write_poscar('POSCAR') #here voids are lost
             
-            cl_new = vasp_run(3, 'mcstep '+str(i_mcstep))
+            cl_new = vasp_run(3, 'mcstep '+str(i_mcstep), vasprun_command = vasprun_command)
 
             if check(cl_new):
                 printlog('{:5d} is unlucky configuration, trying another ... '.format(i_mcstep), imp = 'y')

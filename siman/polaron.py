@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # header.warnings = 'neyY'
     header.verbose_log = 1
 
-    printlog('\n\n\nStarting Polaron hop script!')
+    printlog('\n\n\nStarting Polaron hop script!\n', imp = 'y')
     
     """0. Read configuration file """
     if os.path.exists('conf.json'):
@@ -65,24 +65,30 @@ if __name__ == "__main__":
 
 
     """1. Calculate (relax) initial and final positions """
+    
+    printlog('Calculating start point!\n', imp = 'y')
     copyfile('1.POSCAR', 'POSCAR')
-    cl1 = vasp_run(3, 'Start position ')
-    copy_vasp_files(v)
+    cl1 = vasp_run(3, 'Start position ', vasprun_command = vasprun_command)
+    copy_vasp_files(1)
 
 
+    printlog('Calculating end point!\n', imp = 'y')
     copyfile('2.POSCAR', 'POSCAR')
-    cl2 = vasp_run(3, 'End position ')
-    copy_vasp_files(v)
+    cl2 = vasp_run(3, 'End position ', vasprun_command = vasprun_command)
+    copy_vasp_files(2)
 
     """2. Create intermediate steps"""
     interpolate(cl1.end, cl2.end, images, 3)
+    printlog('Interpolation was successful!\n', imp = 'y')
 
     """3. Calculate energies of intermediate steps"""
     update_incar(parameter = 'NSW', value = 0)
     
     for v in range(3, 3+images):
+        printlog('Calculating intermediate step {:}!\n'.format(v), imp = 'y')
+
         copyfile(str(v)+'.POSCAR', 'POSCAR')
-        vasp_run(3, 'End position ')
+        vasp_run(3, 'End position ', vasprun_command = vasprun_command)
         copy_vasp_files(v)
 
 

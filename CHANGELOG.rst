@@ -1,6 +1,8 @@
 0.9.6
     
 
+    update_incar() moved to functions.py
+
 
     add_neb()
 
@@ -27,7 +29,7 @@
 
          header.reorganize = 1
 
-        - now select correctly works with inheritance 
+        - now select works correctly  with inheritance 
 
 
 
