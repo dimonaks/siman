@@ -33,7 +33,7 @@ def copy_vasp_files(v):
     Tool to treat vasp files after calculation
     v (int) - version
     """
-    for file in ['OUTCAR', 'CONTCAR', 'CHGCAR']:
+    for file in ['OUTCAR', 'CONTCAR', 'CHGCAR', 'OSZICAR']:
         copyfile(file, str(v)+'.'+file)
         if 'CHGCAR' in file:
             runBash('gzip -f '+str(v)+'.'+file)
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     printlog('Interpolation was successful!\n', imp = 'y')
 
     """3. Calculate energies of intermediate steps"""
-    update_incar(parameter = 'NSW', value = 0)
+    update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
     
     for v in range(3, 3+images):
         printlog('Calculating intermediate step {:}!\n'.format(v), imp = 'y')

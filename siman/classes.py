@@ -154,6 +154,7 @@ class Structure():
         if self.select is not None:
             for sel in self.select:
                 # print (not all(sel))
+                # print(sel)
                 if not all(sel):
                     selective_dyn = True
         return selective_dyn
@@ -2945,7 +2946,7 @@ class CalculationVasp(Calculation):
 
 
             if params and 'charge' in params:
-                vp['NELECT'] = int(tve + params['charge'])
+                vp['NELECT'] = int(tve - params['charge'])
 
 
         else:

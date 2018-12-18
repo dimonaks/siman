@@ -1065,11 +1065,11 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             am = abs(pm['amp']) # amplitude of polaron, the sign is not important here
 
             if pm['polaron_type'] == 'electron':
-                am = am * -1 
                 params['charge'] = -1
             elif pm['polaron_type'] == 'hole':
                 ''
-                params['charge'] = 1
+                am = am * -1 
+                params['charge'] = +1
 
             st1 = input_st.localize_polaron(pm['istart'],  am)
             st2 = input_st.localize_polaron(pm['iend'], am)
