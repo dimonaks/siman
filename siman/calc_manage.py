@@ -25,7 +25,7 @@ from siman.classes import Calculation, CalculationVasp, Description
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.picture_functions import plot_mep, fit_and_plot, plot_conv
-from siman.analysis import find_polaron, neb_analysis, calc_redox, matrix_diff, fit_a
+from siman.analysis import find_polaron, neb_analysis,polaron_analysis, calc_redox, matrix_diff, fit_a
 from siman.geo import interpolate, replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 from siman.set_functions import init_default_sets
 from siman.database import push_figure_to_archive
@@ -1045,7 +1045,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     def add_loop_modify():
         struct_des = header.struct_des
 
-        nonlocal  it, setlist, verlist, id_base, it_suffix
+        nonlocal  it, setlist, verlist, id_base, it_suffix, input_st
         db = calc
         it_new = it
         v = verlist[0]
@@ -1074,7 +1074,11 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             st1 = input_st.localize_polaron(pm['istart'],  am)
             st2 = input_st.localize_polaron(pm['iend'], am)
 
-            sts = interpolate(st1, st2, images= pm['images'], write_poscar = 0 )
+            st1_vis = st1.replace_atoms([pm['istart']], 'U')
+            st2_vis = st2.replace_atoms([pm['iend']], 'U')
+            st1_vis.write_poscar('xyz/'+it+'/1.POSCAR')
+            st2_vis.write_poscar('xyz/'+it+'/100.POSCAR')
+            sts = interpolate(st1, st2, images= pm['images'], write_poscar = 3, poscar_folder = 'xyz/'+it+'/' )
 
 
             inputset =setlist[0]
@@ -1091,7 +1095,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
                                             it_new+"/"+it_new+'.auto_created_for_polaron'+'.'+str(ver_new)+'.'+'geo'
 
-                write_xyz(s)
+                # write_xyz(s)
 
                 if ver_new in [1]:
                     cl_temp.write_siman_geo(geotype = "init", 
@@ -1115,11 +1119,13 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     db[cl_temp.id] = cl_temp
                 
                     if ver_new ==2:
-                        cl_temp.write_structure("2.POSCAR") # create it already here               
+                        cl_temp.write_structure("2.POSCAR") # create it already here, it will copied automatically since all POSCARs are copied             
  
+            # input_st.write_poscar(cl_temp.dir+'/0.POSCAR')
+            # st1.write_poscar(cl_temp.dir+'/1.POSCAR_test')
             
             verlist = [1] # only 1.POSCAR is created, the rest is controlled by python script on cluster
-                
+            input_st = st1
 
 
 
@@ -1763,7 +1769,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         cl.corenum = header.corenum 
         cl.schedule_system = header.schedule_system
         cl.cluster = header.cluster
-
+        cl.params = params
 
         if mat_proj_st_id:
             cl.mat_proj_st_id = mat_proj_st_id
@@ -3106,6 +3112,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         if analys_type == 'neb':
             results_dic = neb_analysis(cl, show, up, push2archive, old_behaviour, results_dic, fitplot_args, style_dic, params)
 
+        if analys_type == 'polaron':
+            # print(cl.id)
+            results_dic = polaron_analysis(cl)
 
 
 

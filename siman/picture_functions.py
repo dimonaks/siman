@@ -35,7 +35,7 @@ except:
 from siman import header
 from siman.header import calc, print_and_log, printlog
 from siman.inout import write_xyz
-from siman.small_functions import makedir
+from siman.small_functions import makedir, is_list_like
 from siman.geo import replic
 
 from siman.chg.chg_func import chg_at_point, cal_chg_diff
@@ -45,7 +45,7 @@ from siman.chg.chg_func import chg_at_point, cal_chg_diff
 def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, plot = 1, fitplot_args = None, style_dic = None):
     """
     Used for NEB method
-    atom_pos (list) - xcart positions of diffusing atom along the path,
+    atom_pos (list) - xcart positions of diffusing atom along the path or just coordinates along one line (for polarons)
     mep_energies (list) - full energies of the system corresponding to atom_pos
 
     image_name - deprecated, use filename
@@ -72,18 +72,20 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
         fitplot_args = {}
 
     # print
+    if is_list_like(atom_pos[0]):
+        atom_pos = np.array(atom_pos)
+        data = atom_pos.T #
+        tck, u= interpolate.splprep(data) #now we get all the knots and info about the interpolated spline
+        path = interpolate.splev(np.linspace(0,1,500), tck) #increase the resolution by increasing the spacing, 500 in this example
+        path = np.array(path)
 
-    atom_pos = np.array(atom_pos)
-    data = atom_pos.T #
-    tck, u= interpolate.splprep(data) #now we get all the knots and info about the interpolated spline
-    path = interpolate.splev(np.linspace(0,1,500), tck) #increase the resolution by increasing the spacing, 500 in this example
-    path = np.array(path)
 
-
-    diffs = np.diff(path.T, axis = 0)
-    path_length =  np.linalg.norm( diffs, axis = 1).sum()
-    mep_pos =  np.array([p*path_length for p in u])
-
+        diffs = np.diff(path.T, axis = 0)
+        path_length =  np.linalg.norm( diffs, axis = 1).sum()
+        mep_pos =  np.array([p*path_length for p in u])
+    else:
+        mep_pos = atom_pos
+        path_length  = atom_pos[-1]
 
     if 0: #plot the path in 3d
         fig = plt.figure()

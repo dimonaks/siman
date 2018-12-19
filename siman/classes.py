@@ -418,7 +418,7 @@ class Structure():
         l = self.get_maglist()[0]
         # print(l)
         mag = list(np.array(self.magmom)[l])
-        s = ' '.join(['{:5.1f} ']*len(mag))
+        s = ' '.join(['{:5.2f} ']*len(mag))
         print(s.format(*mag))
         if to_ox:
             if to_ox > 0:
@@ -1641,6 +1641,13 @@ class Structure():
         return image_distance(*args, **kwargs)
 
 
+    def distance(self, i1, i2):
+        """
+        Shortest distance between two atoms acounting PBC, from 0
+        """
+        x1 = self.xcart[i1]
+        x2 = self.xcart[i2]
+        return image_distance(x1, x2, self.rprimd)[0]
 
     def remove_close_lying(self, rm_both = 0, rm_first = 0):
         """
@@ -1830,7 +1837,13 @@ class Structure():
         if TM not in header.TRANSITION_ELEMENTS:
             printlog('Warning! provided ', TM, 'is not transition metal, I hope you know what you are doing. ')
 
-        dic = st.nn(i, 6, from_one = 0, silent = 1)
+        silent = 1
+        if 'n' in header.warnings or 'e' in header.warnings:
+            silent = 0
+        # silent = 0
+
+
+        dic = st.nn(i, 6, from_one = 0, silent = silent)
         printlog('Average TM-O distance before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
 
         #updated xcart
@@ -1851,7 +1864,7 @@ class Structure():
 
         st.update_xred()
 
-        dic = st.nn(i, 6, from_one = 0, silent = 1)
+        dic = st.nn(i, 6, from_one = 0, silent = silent)
         printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
 
         st.name+='pol'+str(i+1)
@@ -4003,7 +4016,7 @@ class CalculationVasp(Calculation):
                 set_mod = '.'+curset.ise
                 final_analysis_flag = False
             else: #last set
-                set_mod = '' # the last step do no use modifications of names 
+                set_mod = '' # the last step do not use modifications of names 
                 final_analysis_flag = True #for footer
 
 

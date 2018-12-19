@@ -936,6 +936,39 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
 
+def polaron_analysis(cl, ):
+    """
+    Plot MEP for polaron migration
+    """
+
+
+    itise = cl.id[0]+'.'+cl.id[1]
+    # print(cl.ldauu)
+    # sys.exit()
+    name_without_ext = 'mep.'+itise+'.U'+str(max(cl.ldauu))
+
+    cl = db[cl.id[0], cl.id[1], 1]
+    images = cl.params['polaron']['images']
+    iat1 = cl.params['polaron']['istart']
+    iat2 = cl.params['polaron']['iend']
+
+    d = cl.end.distance(iat1, iat2)
+    verlist = [1]+list(range(3, 3+images))+[2]
+
+    atom_pos = np.linspace(0,d, images+2)
+
+    mep_energies = []
+    for i, v in enumerate(verlist):
+        mep_energies.append( db[cl.id[0], cl.id[1], v].e0 )
+
+    # print(len(atom_pos), len(mep_energies))
+
+    _, diff_barrier = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = 0, 
+        # fitplot_args = fitplot_args, style_dic = style_dic
+        )
+
+    return
+
 def set_oxidation_states(st):
     pm = st.convert2pymatgen()
     pm.add_oxidation_state_by_guess()

@@ -1795,7 +1795,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         return slabs
 
 
-def interpolate(st1, st2, images, write_poscar = 0):
+def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = ''):
     """
     Linear interpolation between two structures.
     The number of atoms and order should be the same
@@ -1806,7 +1806,7 @@ def interpolate(st1, st2, images, write_poscar = 0):
     """
 
 
-    xl = np.linspace(0, 1, images)
+    xl = np.linspace(0, 1, images+2)[1:-1]
     # print(xl)
     nl = range(st1.natom)
     sts = []
@@ -1818,6 +1818,6 @@ def interpolate(st1, st2, images, write_poscar = 0):
         sts.append(st_inter)
         if write_poscar:
             st_inter.name+='.'+str(j)
-            st_inter.write_poscar(str(write_poscar+j)+'.POSCAR')
+            st_inter.write_poscar(poscar_folder+str(write_poscar+j)+'.POSCAR')
 
     return sts

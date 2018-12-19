@@ -63,19 +63,27 @@ if __name__ == "__main__":
     vasprun_command = params.get('vasp_run') or 'vasp'
     images = params.get('images') or 3 # number of images
 
+    if 1:
+        """1. Calculate (relax) initial and final positions """
+        
+        printlog('Calculating start point!\n', imp = 'y')
+        copyfile('1.POSCAR', 'POSCAR')
+        cl1 = vasp_run(3, 'Start position ', vasprun_command = vasprun_command)
+        copy_vasp_files(1)
+        runBash('rm CHGCAR CHG WAVECAR')
 
-    """1. Calculate (relax) initial and final positions """
-    
-    printlog('Calculating start point!\n', imp = 'y')
-    copyfile('1.POSCAR', 'POSCAR')
-    cl1 = vasp_run(3, 'Start position ', vasprun_command = vasprun_command)
-    copy_vasp_files(1)
 
-
-    printlog('Calculating end point!\n', imp = 'y')
-    copyfile('2.POSCAR', 'POSCAR')
-    cl2 = vasp_run(3, 'End position ', vasprun_command = vasprun_command)
-    copy_vasp_files(2)
+        printlog('Calculating end point!\n', imp = 'y')
+        copyfile('2.POSCAR', 'POSCAR')
+        cl2 = vasp_run(3, 'End position ', vasprun_command = vasprun_command)
+        copy_vasp_files(2)
+        runBash('rm CHGCAR CHG WAVECAR')
+        
+    else:
+        cl1 = CalculationVasp(output = '1.OUTCAR')
+        cl1.read_results(show = 'fo')
+        cl2 = CalculationVasp(output = '2.OUTCAR')
+        cl2.read_results(show = 'fo')
 
     """2. Create intermediate steps"""
     interpolate(cl1.end, cl2.end, images, 3)
@@ -85,11 +93,13 @@ if __name__ == "__main__":
     update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
     
     for v in range(3, 3+images):
-        printlog('Calculating intermediate step {:}!\n'.format(v), imp = 'y')
+        printlog('\n\nCalculating intermediate step {:}:'.format(v), imp = 'y')
 
         copyfile(str(v)+'.POSCAR', 'POSCAR')
         vasp_run(3, 'End position ', vasprun_command = vasprun_command)
         copy_vasp_files(v)
+        runBash('rm CHGCAR CHG WAVECAR')
 
 
+    runBash('rm CHG WAVECAR')
     printlog('PH simulation finished!', imp = 'y')
