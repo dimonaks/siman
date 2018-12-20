@@ -1,11 +1,15 @@
 0.9.6
     
 
+    procmemgb key added for PBS schedule 
+    -neb analysis on cluster is switched off
+
     update_incar() moved to functions.py
 
 
     add_neb()
 
+        - corenum arg removed , use add_loop_dic dictionary
         - now if *end_pos_types_z* is used only provided elements are chosen as possible final positions 
         - new naming convention for neb calculations when *end_pos_types_z* parameter is used. Use *old_behaviour* = '261018' for old naming
 

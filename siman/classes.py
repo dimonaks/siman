@@ -3614,7 +3614,7 @@ class CalculationVasp(Calculation):
             if 'neb' in self.calc_method: 
                 if write: 
                     f.write("#NEB run, start and final configurations, then IMAGES:\n") 
-                update_incar(parameter = 'IMAGES', value = 0, write = write) # start and final runs
+                update_incar(parameter = 'IMAGES', value = 0, write = write, f = f) # start and final runs
 
             
             if 0: #experimental preliminary non-magnetic run
@@ -3676,7 +3676,7 @@ class CalculationVasp(Calculation):
                 u_last = 100
                 for i_u in usteps:
 
-                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write)
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write, f = f )
                     if u == u_last:
                         continue
                     name_mod   = '.U'+str(u).replace('.', '')+set_mod
@@ -3729,7 +3729,7 @@ class CalculationVasp(Calculation):
 
                     name_mod   = '.AFM'+str(i)+set_mod
 
-                    update_incar(parameter = 'MAGMOM', value = magmom)
+                    update_incar(parameter = 'MAGMOM', value = magmom, write = write, f = f)
 
                     prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile,
                         copy_poscar_flag = copy_poscar_flag)
@@ -3780,7 +3780,7 @@ class CalculationVasp(Calculation):
             
             def u_ramp_prepare():
                 if 'u_ramping' in self.calc_method:
-                    u = update_incar(parameter = 'LDAUU', u_ramp_step = self.set.u_ramping_nstep-1, write = False)
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = self.set.u_ramping_nstep-1, write = False, f = f)
                     name_mod   = '.U'+str(u).replace('.', '')
                     # name_mod_last = name_mod_U_last()+'.'
                     name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
@@ -3809,7 +3809,7 @@ class CalculationVasp(Calculation):
                 for i_u in usteps:
 
 
-                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u)
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = 1,  f = f)
                     if u == u_last:
                         continue
 
@@ -3885,7 +3885,7 @@ class CalculationVasp(Calculation):
                     f.write('cp '+final +  nim_plus_one_str + '/OUTCAR\n' )
 
 
-                update_incar(parameter = 'IMAGES', value = nim)
+                update_incar(parameter = 'IMAGES', value = nim, write  =1, f  = f )
 
 
                 if 'u_ramping' in self.calc_method:
@@ -3925,8 +3925,8 @@ class CalculationVasp(Calculation):
 
 
                 if final_analysis_flag:
-                    f.write('export PATH=$PATH:'+header.cluster_home+'/tools/gnuplot/bin/ \n')
-                    f.write(header.cluster_home+'/tools/vts/nebresults.pl  \n')
+                    # f.write('export PATH=$PATH:'+header.cluster_home+'/tools/gnuplot/bin/ \n')
+                    # f.write(header.cluster_home+'/tools/vts/nebresults.pl  \n')
                     f.write('find . -name WAVECAR -delete\n')
                     f.write('find . -name PROCAR -delete\n')
                 # for n in range

@@ -83,7 +83,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     it_new = None, ise_new = None, i_atom_to_move = None, 
     up = 'up2',
     search_type = 'vacancy_creation',
-    images  = None, r_impurity = None, corenum = None, 
+    images  = None, r_impurity = None, 
     calc_method = ['neb'], 
     inherit_option  = None, mag_config = None, i_void_start = None, i_void_final = None, 
     atom_to_insert = None,
@@ -197,7 +197,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     else:
         printlog('Error! no input structure. Use either *starting_calc* or *st*')
 
-
+    corenum = add_loop_dic.get('corenum')
 
     if corenum == None:
         if images == 3:
@@ -485,9 +485,19 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             # print(sur)
 
             # st.nn()
+            end_pos_n = sur[2][1:]
             print_and_log(
-            'I can suggest you '+str (len(sur[0][1:]) )+' end positions. The distances to them are : ',np.round(sur[3][1:], 2), ' A\n ',
+            'I can suggest you '+str (len(end_pos_n) )+' end positions. The distances to them are : ',np.round(sur[3][1:], 2), ' A\n ',
             'They are ', [invert(z) for z in final_pos_z], 'atoms, use *i_void_final* to choose required: 1, 2, 3 ..', imp = 'y')
+
+            i_sym_final_l = []
+            for j in end_pos_n:
+                for i, l in enumerate(numbers):
+                    if j in l: 
+                        i_sym_final_l.append(i+1)
+            printlog('Their symmetry positions are ', i_sym_final_l, imp = 'y')
+
+            # sys.exit()
 
 
             if not i_void_final:
@@ -495,6 +505,17 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                 i_void_final = 1 #since zero is itself
             chosen_dist = sur[3][i_void_final]
             print_and_log('Choosing position ', i_void_final, 'with distance', round(chosen_dist, 2), 'A', imp = 'y')
+
+            # print(end_pos_n)
+            i_sym_final = 0
+            n_final = sur[2][i_void_final]
+            for i, l in enumerate(numbers):
+                if n_final in l:
+                    i_sym_final = i+1
+            printlog('It is symmetrically non-equiv position #', i_sym_final, imp = 'y')
+
+            # sys.exit()
+
             header.temp_chosen_dist = chosen_dist
 
 
@@ -830,7 +851,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         add_loop_dic['run'] = run
 
 
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, corenum = corenum, params=params, **add_loop_dic  )
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, params=params, **add_loop_dic  )
     
 
     if upload_vts:

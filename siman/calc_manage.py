@@ -101,7 +101,12 @@ def write_batch_header(batch_script_filename = None,
                 f.write("#PBS -l procs="+str(number_cores)+"\n")
             else: # 1 node option 
                 f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            
+            if 'procmemgb' in header.cluster:
+                f.write("#PBS -l pmem="+str(header.cluster['procmemgb'])+'gb\n')
+
             # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
+            
             f.write("#PBS -r n\n")
             f.write("#PBS -j eo\n")
             f.write("#PBS -m bea\n")
