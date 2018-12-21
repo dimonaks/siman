@@ -670,6 +670,7 @@ def choose_cluster(cluster_name, cluster_home, corenum):
         printlog('Attention!, cluster', cluster_name, 'is not found, using default', header.DEFAULT_CLUSTER)
         clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
 
+    clust['name'] = cluster_name
     header.cluster = clust # dict
     header.cluster_address = clust['address']
     header.CLUSTER_ADDRESS = clust['address']
@@ -1341,7 +1342,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
             if header.corenum % n_neb_images > 0:
-                print_and_log('Error! Number of cores should be dividable by number of IMAGES')
+                print_and_log('Error! add_loop_neb(): Number of cores should be dividable by number of IMAGES', header.corenum, n_neb_images)
                 raise RuntimeError
 
             nebsets = [curset]
@@ -2624,16 +2625,22 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     def override_cluster_address(cl):
         nonlocal cluster
 
+        cluster_name = cluster
         if not hasattr(cl, 'cluster'):
             cl.cluster = {}
             cl.cluster['address'] = cl.cluster_address
+            # cluster = cl.cluster 
+
         if header.override_cluster_address:
-            if not cluster:
-                cluster = header.DEFAULT_CLUSTER
-            if cl.cluster['address'] != header.CLUSTERS[cluster]['address']:
-                cl.cluster['address'] = header.CLUSTERS[cluster]['address']
+            if not cluster_name:
+                cluster_name = cl.cluster.get('name')
+            if not cluster_name:
+                cluster_name = header.DEFAULT_CLUSTER
+
+            if cl.cluster['address'] != header.CLUSTERS[cluster_name]['address']:
+                cl.cluster['address'] = header.CLUSTERS[cluster_name]['address']
                 # cl.cluster_address = cl.cluster['address'] # depricated should not be used
-                printlog('Cluster address was overriden to ', header.CLUSTERS[cluster]['address'])
+                printlog('Cluster address was overriden to ', header.CLUSTERS[cluster_name]['address'], imp = 'y')
 
 
 

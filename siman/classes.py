@@ -4152,14 +4152,22 @@ class CalculationVasp(Calculation):
 
 
 
-    def plot_energy_force(self,):
+    def plot_energy_force(self, force_type = 'max'):
         # print(self.maxforce)
-        maxf = [m[1] for m in self.maxforce_list ]
+        if 'max' in force_type:
+            force = [m[1] for m in self.maxforce_list ]
+            lab = 'Max.'
+        elif 'av' in force_type:
+            # print(self.average_list)
+            force = [m for m in self.average_list ]
+            lab = 'Av.'
+
+
         # print(maxf)
-        plt.plot(maxf, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
+        plt.plot(force, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
         # plt.xlabel('MD step')
         # plt.ylabel('Energy per cell (eV')
-        plt.xlabel('Max. force on atom (meV/$\AA$)')
+        plt.xlabel(lab+' force on atom (meV/$\AA$)')
         plt.ylabel('Energy per cell relative to min (meV)')
 
         plt.show()
@@ -4968,6 +4976,7 @@ class CalculationVasp(Calculation):
             max_magnitude = max(magnitudes)
             max_tdrift    = max(tdrift)
             self.maxforce_list = maxforce
+            self.average_list = average
             self.maxforce = maxforce[-1][1]
             # if max_magnitude < self.set.toldff/10: max_magnitude = self.set.toldff
             # print 'magn', magnitudes
@@ -5232,7 +5241,13 @@ class CalculationVasp(Calculation):
 
 
             if 'en' in show:
+                # energy - max force
+
                 self.plot_energy_force()
+
+            if 'efav' in show:
+                # energy - average force
+                self.plot_energy_force(force_type = 'av')
 
             if 'est' in show: # e step
                 self.plot_energy_step ()

@@ -198,6 +198,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         printlog('Error! no input structure. Use either *starting_calc* or *st*')
 
     corenum = add_loop_dic.get('corenum')
+    # print(corenum)
+    # sys.exit()
 
     if corenum == None:
         if images == 3:
@@ -209,6 +211,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         else:
             printlog('add_neb(): Error! number of images', images,'is unknown to me; please provide corenum!')
 
+    # print(corenum)
+    # sys.exit()
 
 
     # print(atom_to_insert)
@@ -850,7 +854,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     if run:
         add_loop_dic['run'] = run
 
-
+    add_loop_dic['corenum'] = corenum
     add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, params=params, **add_loop_dic  )
     
 
