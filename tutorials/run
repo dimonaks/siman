@@ -1,4 +1,0 @@
-#!/bin/bash
-qsub  /home/aksenov/topologic/Bi2Se3//Bi2Se3.static/Bi2Se3.static.run
-qstat
-mv run last_run
