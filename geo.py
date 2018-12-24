@@ -1741,5 +1741,44 @@ def create_surface2(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, 
     for i, slab in enumerate(slabs):
         pos = Poscar(slab)
         pos.write_file('xyz/POSCAR_suf'+str(i)+str(suf))
+    for slab in slabs:
+        print('\nPolar?   ',slab.is_polar(), '\nSymmetric?    ', slab.is_symmetric())
 
     return slabs
+
+
+
+
+def wulff_shape(st, oxidation, surf_en_dic):
+    # Import the neccesary tools for making a Wulff shape
+    from pymatgen.analysis.wulff import WulffShape
+    import os
+    from pymatgen.core.surface import SlabGenerator, generate_all_slabs
+    from pymatgen.io.vasp.inputs import Poscar
+    from geo import replic
+
+
+    miller_list = surf_en_dic.keys()
+    e_surf_list = surf_en_dic.values()
+
+
+    pm = st.convert2pymatgen(oxidation = oxidation)
+    # print(dir(pm))
+    # print(pm.lattice)
+
+    # all_slabs = generate_all_slabs(pm, 4, 10,10)
+    # for slab in all_slabs:
+    #     print(slab.miller_index)
+
+
+    wulffshape = WulffShape(pm.lattice, miller_list, e_surf_list)
+
+    # Let's get some useful information from our wulffshape object
+    print("shape factor: %.3f, anisotropy: \
+    %.3f, weighted surface energy: %.3f J/m^2" %(wulffshape.shape_factor, 
+                                           wulffshape.anisotropy,
+                                           wulffshape.weighted_surface_energy))
+    # print(dir(wulffshape))
+    # print(wulffshape.area_fraction_dict)
+    # print(wulffshape.structure)
+    wulffshape.show(direction = (1,0,0))

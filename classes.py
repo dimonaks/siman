@@ -375,12 +375,24 @@ class Structure():
 
         return 
 
-    def get_mag_tran(self):
-        #show mag moments of transition metals 
+    # def get_mag_tran(self):
+    #     #show mag moments of transition metals 
+    #     l = self.get_maglist()[0]
+    #     # print(l)
+    #     return np.array(self.magmom)[l]
+    def get_mag_tran(self, to_ox = None):
+        #show formatted mag moments of transition metals 
+        #to_ox - convert to oxidation state, substract from to_ox
         l = self.get_maglist()[0]
         # print(l)
-        return np.array(self.magmom)[l]
-
+        mag = list(np.array(self.magmom)[l])
+        s = ' '.join(['{:5.1f} ']*len(mag))
+        print(s.format(*mag))
+        if to_ox:
+            ox = [to_ox-abs(m) for m in mag]
+            s2 = ' '.join(['{:5.1f}+']*len(mag))
+            print(s2.format(*ox))
+            print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
         # element (str) - elements for which moments should be set 
