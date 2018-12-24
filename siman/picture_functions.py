@@ -148,8 +148,8 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     path2saved = None
     if plot:
         # print(image_name)
-        path2saved = fit_and_plot(orig = (mep_pos, eners, style_dic['p'], style_dic['label']), 
-            spline = (xnew, ynew, style_dic['l'], None), 
+        path2saved = fit_and_plot(orig = {'x':mep_pos, 'y':eners, 'fmt':style_dic['p'], 'label':style_dic['label'], 'color':style_dic.get('color')}, 
+            spline = {'x':xnew, 'y':ynew, 'fmt':style_dic['l'], 'label':None, 'color':style_dic.get('color')}, 
         image_name =  image_name, filename = filename, show = show, 
         **fitplot_args)
 
@@ -267,7 +267,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     if image_name == None:
         image_name  = filename
 
-
+    # print(fontsize)
+    # sys.exit()
     if fontsize:
         header.mpl.rcParams.update({'font.size': fontsize+4})
         if legend_fontsize is None:
@@ -396,7 +397,11 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             for k in ['x', 'y', 'fmt', 'annotates']:
                 if k in con_other_args:
                     del con_other_args[k]
-
+            if 'color' in con_other_args:
+                if con_other_args['color'] is None:
+                    del con_other_args['color']
+            # print(con_other_args)
+            # sys.exit()
             ax.plot(*xyf, alpha = alpha, **con_other_args)
 
             if power:

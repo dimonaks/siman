@@ -1821,3 +1821,23 @@ def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = ''):
             st_inter.write_poscar(poscar_folder+str(write_poscar+j)+'.POSCAR')
 
     return sts
+
+
+def rms_pos_diff(st1, st2):
+
+    """
+    Calculate rms difference of atomic positions, excluding moving atom 
+    """
+
+    atom_num = find_moving_atom(st1, st2)
+
+    atoms = range(st1.natom)
+    summa = 0
+    for i, x1, x2 in zip(atoms, st1.xcart, st2.xcart):
+        if i == atom_num:
+            continue
+        dx = image_distance(x1, x2, r = st1.rprimd)[0]
+        summa+=dx**2
+    rms = (summa/st1.natom)**0.5
+
+    return rms 
