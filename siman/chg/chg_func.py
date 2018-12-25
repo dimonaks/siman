@@ -92,3 +92,50 @@ def cal_chg_diff(cl1, cl2, wcell, chg = 'CHGCAR'):
     printlog('Charge difference saved to', dendiff_filename, imp = 'Y')
 
     return dendiff_filename
+
+
+def chg_at_z_direct(st, k_p = 20):
+    """
+    Return the the value of charge density or electrostatic potential along z direction of slab; 
+
+    chgfile - full path to the file with charge density
+    st - structure of slab in the format db[it,ise,version]; 
+    it is needed for the definition of the correct coordinates of points in a structure  in which  will be calculated of el/stat pot 
+
+    RETURN: 
+    List of z-coordinates and respective average value of electrostatic pot in the z slice.
+    """
+
+    chgfile = st.get_chg_file(filetype = 'LOCPOT')
+
+
+    vasp_charge = VaspChargeDensity(chgfile)
+    density = vasp_charge.chg[-1]
+    atoms = vasp_charge.atoms[-1]
+    del vasp_charge
+
+
+    ngridpts = np.array(density.shape) # size of grid
+    # print ('Size of grid', ngridpts)
+
+    z = int(st.end.rprimd[2][2]*10)
+
+    elst = []
+    z_coord = []
+    xred1 = [0,0,0]
+    for n3 in range(0,z):
+        dens = 0
+        # for more accurate calculation of electrostatic pot, it is needed to split the z-sliced plane into a grid of points k_p (20 x 20) 
+        # and find the average value for the slice
+        for n1 in range(0,k_p):
+            for n2 in range(0,k_p):
+                xred1[0] = n1/k_p
+                xred1[1] = n2/k_p
+                xred1[2] = n3/z
+                i,j,k =  [ int(round(x * (n-1) ) ) for x, n in zip(xred1, ngridpts)]# corresponding to xred1 point
+                dens += density[i][j][k]
+
+        elst.append(dens/k_p**2)
+        z_coord.append(n3/10)
+
+    return z_coord, elst
