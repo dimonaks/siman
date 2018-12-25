@@ -1,5 +1,0 @@
-Project started on 2018-11-21
-add_des("Bi2Se3", "Bi2Se3", "auto add_des ")    #on 2018-11-21)
-res_loop('Bi2Se3', ['static'], [1], show = 'fo'  )     # , on 2018-11-21  
-add_des("Bi2Se3.su", "Bi2Se3", "scale: scaled "images" for Bi2Se3.['static'].1")    #on 2018-11-21)
-res_loop('Bi2Se3.su', ['static'], [1, 2, 3, 4, 5, 6, 7], show = 'fo'  )     # , on 2018-11-21  

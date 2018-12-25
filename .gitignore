@@ -1,9 +1,9 @@
 *.pyc
 *.gdbm3
-tutorials/history
-tutorials/run
-tutorials/xyz/
-turorials/figs/
+history
+run
+xyz/
+figs/
 .ipynb_checkpoints
 *.o
 *~
