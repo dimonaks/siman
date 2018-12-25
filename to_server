@@ -1,0 +1,6 @@
+#!/bin/bash
+cd "$(dirname "$0")"
+git checkout simanaks
+git add .
+git commit -m 'auto'
+git push origin simanaks

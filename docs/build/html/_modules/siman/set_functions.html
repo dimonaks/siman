@@ -1,0 +1,854 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>siman.set_functions &#8212; Siman 0.9.5 documentation</title>
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Siman 0.9.5 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for siman.set_functions</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*- </span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">unicode_literals</span><span class="p">,</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Oграничения режима sequence_set:</span>
+<span class="sd">1) OCCMATRIX не копируется для дочерних сетов</span>
+<span class="sd">2) Режим U-ramping выключен для дочерних сетов</span>
+<span class="sd">3) Есть еще, режим afm_ordering, возможно neb </span>
+<span class="sd">4) kpoints file только для первого сета</span>
+<span class="sd">5) u-ramping inherit_xred - могут быть проблемы более чем для двух сетов</span>
+
+
+<span class="sd">TODO:</span>
+<span class="sd">ngkpt_dict_for_kspacings - when ngkpt is used could be problems, please test.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+
+<span class="kn">from</span> <span class="nn">siman</span> <span class="k">import</span> <span class="n">header</span>
+<span class="kn">from</span> <span class="nn">siman.header</span> <span class="k">import</span> <span class="n">print_and_log</span><span class="p">,</span> <span class="n">printlog</span><span class="p">;</span>
+<span class="kn">from</span> <span class="nn">siman.small_functions</span> <span class="k">import</span> <span class="n">is_list_like</span>
+<span class="kn">from</span> <span class="nn">siman.functions</span> <span class="k">import</span> <span class="n">invert</span>
+
+<span class="c1">#Vasp keys</span>
+<span class="n">vasp_electronic_keys</span> <span class="o">=</span> <span class="p">[</span>
+<span class="s1">&#39;ALGO&#39;</span><span class="p">,</span>
+<span class="s1">&#39;PREC&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LREAL&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ENCUT&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ENAUG&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ISMEAR&#39;</span><span class="p">,</span>
+<span class="s1">&#39;SIGMA&#39;</span><span class="p">,</span>
+<span class="s1">&#39;EDIFF&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NELM&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NELMIN&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NELMDL&#39;</span><span class="p">,</span>
+<span class="s1">&#39;MAXMIX&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NELECT&#39;</span>
+<span class="p">]</span>
+
+<span class="n">vasp_ionic_keys</span> <span class="o">=</span> <span class="p">[</span>
+<span class="s1">&#39;IBRION&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ISIF&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NSW&#39;</span><span class="p">,</span>
+<span class="s1">&#39;EDIFFG&#39;</span><span class="p">,</span>
+<span class="s1">&#39;POTIM&#39;</span><span class="p">,</span>
+<span class="s1">&#39;POMASS&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ZVAL&#39;</span><span class="p">,</span>
+<span class="s1">&#39;SMASS&#39;</span>
+
+<span class="p">]</span>
+
+
+<span class="n">vasp_other_keys</span> <span class="o">=</span> <span class="p">[</span>
+<span class="s1">&#39;SYSTEM&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ISTART&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ICHARG&#39;</span><span class="p">,</span>
+<span class="s1">&#39;KGAMMA&#39;</span><span class="p">,</span>
+<span class="s1">&#39;KSPACING&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LPLANE&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NCORE&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NPAR&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LSCALU&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NSIM&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ISYM&#39;</span><span class="p">,</span>
+<span class="s1">&#39;SYMPREC&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LORBIT&#39;</span><span class="p">,</span>
+<span class="s1">&#39;EMIN&#39;</span><span class="p">,</span>
+<span class="s1">&#39;EMAX&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NEDOS&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LAECHG&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LSORBIT&#39;</span><span class="p">,</span>
+<span class="s1">&#39;SAXIS&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ISPIN&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NBANDS&#39;</span><span class="p">,</span>
+<span class="s1">&#39;PSTRESS&#39;</span><span class="p">,</span>
+<span class="s1">&#39;ADDGRID&#39;</span><span class="p">,</span>
+<span class="s1">&#39;MAGMOM&#39;</span><span class="p">,</span>
+<span class="s1">&#39;GGA_COMPAT&#39;</span><span class="p">,</span>
+<span class="s1">&#39;IMAGES&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LDAU&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LDAUTYPE&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LDAUL&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LDAUU&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LDAUJ&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LDAUPRINT&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LASPH&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LMAXMIX&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NFREE&#39;</span><span class="p">,</span>
+<span class="s1">&#39;AMIX&#39;</span><span class="p">,</span>
+<span class="s1">&#39;BMIX&#39;</span><span class="p">,</span>
+<span class="s1">&#39;AMIX_MAG&#39;</span><span class="p">,</span>
+<span class="s1">&#39;BMIX_MAG&#39;</span><span class="p">,</span>
+<span class="s1">&#39;WC&#39;</span><span class="p">,</span>
+<span class="s1">&#39;MAXMIX&#39;</span><span class="p">,</span>
+<span class="s1">&#39;OCCDIR1&#39;</span><span class="p">,</span>
+<span class="s1">&#39;OCCEXT&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LHFCALC&#39;</span><span class="p">,</span>
+<span class="s1">&#39;HFSCREEN&#39;</span><span class="p">,</span>
+<span class="s1">&#39;TIME&#39;</span><span class="p">,</span>
+<span class="s1">&#39;PRECFOCK&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NKRED&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NGX&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NGY&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NGZ&#39;</span><span class="p">,</span>
+<span class="s1">&#39;NBMOD&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LPARD&#39;</span><span class="p">,</span>
+<span class="s1">&#39;EINT&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LWAVE&#39;</span><span class="p">,</span>
+<span class="s1">&#39;GGA&#39;</span><span class="p">,</span>
+<span class="s1">&#39;IALGO&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LSCALAPACK&#39;</span><span class="p">,</span>
+<span class="s1">&#39;AMIN&#39;</span><span class="p">,</span>
+<span class="s1">&#39;IDIPOL&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LDIPOL&#39;</span><span class="p">,</span>
+<span class="s1">&#39;DIPOL&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LVTOT&#39;</span><span class="p">,</span>
+<span class="s1">&#39;TEBEG&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LSOL&#39;</span><span class="p">,</span>
+<span class="s1">&#39;EB_K&#39;</span><span class="p">,</span>
+<span class="s1">&#39;LAMBDA_D_K&#39;</span><span class="p">,</span>
+<span class="s1">&#39;CORE_C&#39;</span>
+<span class="p">]</span>
+<span class="n">vasp_keys</span> <span class="o">=</span> <span class="n">vasp_electronic_keys</span><span class="o">+</span><span class="n">vasp_ionic_keys</span><span class="o">+</span><span class="n">vasp_other_keys</span>
+
+<span class="n">siman_keys</span> <span class="o">=</span> <span class="p">[</span>
+<span class="s1">&#39;u_ramping_region&#39;</span><span class="p">,</span> <span class="c1">#deprecated</span>
+<span class="s1">&#39;u_ramping_nstep&#39;</span><span class="p">,</span> <span class="c1">#number of u ramping steps</span>
+<span class="s1">&#39;magnetic_moments&#39;</span><span class="p">,</span>
+<span class="s1">&#39;afm_ordering&#39;</span><span class="p">,</span>
+<span class="s1">&#39;set_sequence&#39;</span><span class="p">,</span><span class="c1"># sequence of sets</span>
+<span class="s1">&#39;savefile&#39;</span><span class="p">,</span> <span class="c1">#additional keys pointing which files should be saved</span>
+<span class="s1">&#39;k_band_structure&#39;</span><span class="p">,</span> <span class="c1"># list, first position is number of points, then high-symmetry k-points in the form [&#39;G&#39;, 0, 0, 0] in reciprocal space for calculating band structure </span>
+<span class="s1">&#39;path2pot&#39;</span><span class="p">,</span> <span class="c1"># path to folder with potentials - used with potdir; if not provided that header.path2potentials is used</span>
+<span class="s1">&#39;path_to_potcar&#39;</span><span class="p">,</span> <span class="c1"># explicit path to potential - depreacated</span>
+<span class="p">]</span>
+
+<div class="viewcode-block" id="read_vasp_sets"><a class="viewcode-back" href="../../siman.html#siman.set_functions.read_vasp_sets">[docs]</a><span class="k">def</span> <span class="nf">read_vasp_sets</span><span class="p">(</span><span class="n">user_vasp_sets</span><span class="p">,</span> <span class="n">override_global</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read user sets and add them to project database</span>
+<span class="sd">    Now for VASP</span>
+<span class="sd">    ###INPUT:</span>
+<span class="sd">        - varset (dict) - database dict with all sets of a project</span>
+<span class="sd">        - user_vasp_sets (list) - list of user sets that describes creation of new sets based on inheritance </span>
+<span class="sd">        - override - allows to recreate all sets; can be usefull than you want to add some new property to all your sets - very dangerous to do!</span>
+
+<span class="sd">    ###RETURN:</span>
+<span class="sd">        - user_vasp_sets (list)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+    <span class="n">varset</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">varset</span>
+
+    <span class="n">bfolder</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="c1">#by default no blockfolder</span>
+    <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">user_vasp_sets</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">override_global</span> <span class="ow">or</span> <span class="s1">&#39;over&#39;</span> <span class="ow">in</span> <span class="n">l</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> 
+            <span class="n">override</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">override</span> <span class="o">=</span> <span class="kc">False</span>
+        
+        <span class="k">if</span> <span class="n">override</span> <span class="ow">or</span> <span class="n">l</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">:</span>
+            <span class="c1"># print override, &#39;override&#39;</span>
+            <span class="n">param</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="s1">&#39;bfolder&#39;</span> <span class="ow">in</span> <span class="n">param</span><span class="p">:</span>
+                <span class="n">bfolder</span> <span class="o">=</span> <span class="n">param</span><span class="p">[</span><span class="s1">&#39;bfolder&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">bfolder</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+            <span class="n">s</span> <span class="o">=</span> <span class="n">inherit_iset</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">l</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">varset</span><span class="p">,</span> <span class="n">override</span> <span class="o">=</span> <span class="n">override</span><span class="p">,</span> <span class="n">newblockfolder</span> <span class="o">=</span> <span class="n">bfolder</span><span class="p">)</span> 
+            <span class="c1"># print param</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+            
+        <span class="n">header</span><span class="o">.</span><span class="n">varset</span> <span class="o">=</span> <span class="n">varset</span>
+
+    <span class="k">return</span> <span class="n">varset</span></div>
+
+
+
+
+<div class="viewcode-block" id="InputSet"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet">[docs]</a><span class="k">class</span> <span class="nc">InputSet</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;docstring for InputSet</span>
+<span class="sd">    The second important class which is used to store </span>
+<span class="sd">    parameters of calculation</span>
+
+<span class="sd">    For VASP parameters *self.vasp_params* dict is used;</span>
+<span class="sd">    usually it contains the parameters in the same format as INCAR file.</span>
+<span class="sd">    However, several exceptions are:</span>
+<span class="sd">    for &#39;LDAUU&#39;, &#39;LDAUJ&#39;, &#39;LDAUL&#39; you should provide</span>
+<span class="sd">    dictionaries with correponding values for each element in the form: {&#39;Co&#39;:3.4,}.</span>
+<span class="sd">    </span>
+<span class="sd">    self.potdir (dict) - name of POTCAR folder for each element, for example {3:&#39;Li&#39;, 8:&#39;O&#39;}</span>
+
+<span class="sd">    self.blockfolder (str) - additional subfolder will be created calculation with this set</span>
+
+<span class="sd">    self.save_last_wave (bool) - set True to save last WAVECAR in u-ramping mode</span>
+
+<span class="sd">    self.kpoints_file - if True, k-points file is created, if string then it is considered as path to external kpoints file</span>
+
+<span class="sd">    self.path_to_potcar (str) - explicit path to potcar, can be used instead of self.potdir</span>
+
+<span class="sd">    self.set_sequence (list)  - list of InputSet() objects to make multiset runs. The current set is used as a first one.</span>
+
+
+<span class="sd">    TODO</span>
+<span class="sd">    Describe the difference between update() and load() methods !</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ise</span><span class="p">,</span> <span class="n">path_to_potcar</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="c1">#super(InputSet, self).__init__()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ise</span> <span class="o">=</span> <span class="n">ise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">ise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">des</span>   <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="c1"># description</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">potdir</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="s2">&quot;vasp&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mul_enaug</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="s2">&quot;Here is my uneasy history( :</span><span class="se">\n</span><span class="s2">&quot;</span>    
+        <span class="bp">self</span><span class="o">.</span><span class="n">tsmear</span> <span class="o">=</span> <span class="kc">None</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">tolmxf</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ngkpt</span>  <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">blockfolder</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_sequence</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpoints_file</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># can be path to external file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_last_wave</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1">#if True than do no remove last wavefunction</span>
+        <span class="c1"># self.use_ngkpt = False</span>
+        
+        <span class="k">if</span> <span class="n">path_to_potcar</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path_to_potcar</span> <span class="o">=</span> <span class="n">path_to_potcar</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">path_to_potcar</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+        <span class="c1">#Code scpecific parameters, now only for Vasp</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">vasp_electronic_keys</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> 
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">vasp_ionic_keys</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> 
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">vasp_other_keys</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> 
+
+
+        <span class="c1">#add to varset</span>
+        <span class="c1"># if ise not in header.varset:</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">varset</span><span class="p">[</span><span class="n">ise</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
+
+
+
+
+<div class="viewcode-block" id="InputSet.printme"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.printme">[docs]</a>    <span class="k">def</span> <span class="nf">printme</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span> <span class="k">continue</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;</span><span class="si">{:30s}</span><span class="s2"> = </span><span class="si">{:s}</span><span class="s2"> &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;s.vasp_params[&#39;&quot;</span><span class="o">+</span><span class="n">key</span><span class="o">+</span><span class="s2">&quot;&#39;]&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="p">),</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;Y&#39;</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="p">)</span>
+
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;ngkpt:&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ngkpt</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;Y&#39;</span><span class="p">)</span>
+
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;POTDIR:&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">potdir</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;Y&#39;</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="p">)</span></div>
+
+<div class="viewcode-block" id="InputSet.update"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1">#deprecated, but still can be usefull</span>
+        <span class="c1"># print_and_log(&#39;Updating set ...\n&#39;)</span>
+        <span class="n">c1</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">c2</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="s2">&quot;abinit&quot;</span><span class="p">:</span>
+            <span class="n">c1</span> <span class="o">=</span> <span class="n">to_eV</span>
+            <span class="n">c2</span> <span class="o">=</span> <span class="n">Ha_Bohr_to_eV_A</span>
+        <span class="c1">#Update Vasp parameters</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">==</span> <span class="s2">&quot;vasp&quot;</span><span class="p">:</span>
+            <span class="n">c1</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">c2</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="c1"># if self.ecut == None:</span>
+        <span class="c1">#     self.vasp_params[&#39;ENCUT&#39;] = None</span>
+        <span class="c1">#     self.vasp_params[&#39;ENAUG&#39;] = None</span>
+        <span class="c1"># else:           </span>
+        <span class="c1">#     self.vasp_params[&#39;ENCUT&#39;] = self.ecut * c1* self.dilatmx * self.dilatmx</span>
+        <span class="c1">#     self.vasp_params[&#39;ENAUG&#39;] = self.mul_enaug * self.vasp_params[&#39;ENCUT&#39;]</span>
+        <span class="c1"># self.vasp_params[&#39;SIGMA&#39;] = self.tsmear * c1</span>
+        <span class="n">vp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span>
+        <span class="k">if</span> <span class="s1">&#39;SIGMA&#39;</span> <span class="ow">in</span> <span class="n">vp</span> <span class="ow">and</span> <span class="n">vp</span><span class="p">[</span><span class="s1">&#39;SIGMA&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tsmear</span> <span class="o">=</span> <span class="n">vp</span><span class="p">[</span><span class="s1">&#39;SIGMA&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">c1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tsmear</span> <span class="o">=</span> <span class="kc">None</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">tolmxf</span> <span class="o">=</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s1">&#39;EDIFFG&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">c2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">toldfe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s1">&#39;EDIFF&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">c1</span>
+        <span class="c1"># self.vasp_params[&#39;EDIFF&#39;] = self.toldfe * c1</span>
+        <span class="c1"># self.vasp_params[&#39;NELM&#39;] = self.nstep</span>
+        <span class="c1"># self.vasp_params[&#39;NSW&#39;] = self.ntime</span>
+        <span class="c1"># self.vasp_params[&#39;EDIFFG&#39;] = -self.tolmxf * c2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kspacing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s1">&#39;KSPACING&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ecut</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s1">&#39;ENCUT&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">c1</span>
+        <span class="c1"># print (self.vasp_params)</span>
+        <span class="k">if</span> <span class="s1">&#39;LDAUU&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s1">&#39;LDAUU&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dftu</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dftu</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="s1">&#39;ISPIN&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s1">&#39;ISPIN&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spin_polarized</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spin_polarized</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="InputSet.load"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">param</span><span class="p">,</span> <span class="n">inplace</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update parameters of set from dict param</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">param</span><span class="p">:</span>
+            
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">vasp_keys</span><span class="p">:</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">set_vaspp</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+            <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;set_potential&#39;</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key2</span> <span class="ow">in</span> <span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+                    <span class="c1"># print key2, &#39;key2&#39;</span>
+                    <span class="n">s</span><span class="o">.</span><span class="n">set_potential</span><span class="p">(</span><span class="n">key2</span><span class="p">,</span> <span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">key2</span><span class="p">])</span>
+
+            <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;add_nbands&#39;</span><span class="p">:</span>
+                <span class="c1"># print param[key]</span>
+
+                <span class="n">s</span><span class="o">.</span><span class="n">set_add_nbands</span><span class="p">(</span><span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+            <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;ngkpt&#39;</span><span class="p">:</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">set_ngkpt</span><span class="p">(</span><span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+
+            <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;bfolder&#39;</span><span class="p">:</span>
+                <span class="n">print_and_log</span><span class="p">(</span> <span class="s1">&#39;New blockfolder&#39;</span><span class="p">,</span> <span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+            <span class="k">elif</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">siman_keys</span><span class="p">:</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">set_attrp</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">param</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="p">)</span>
+            
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">print_and_log</span><span class="p">(</span><span class="s1">&#39;Error! Uknown key: &#39;</span><span class="o">+</span><span class="n">key</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span>
+         
+
+            <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;set_sequence&#39;</span><span class="p">:</span>
+                <span class="n">sets</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">se</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">set_sequence</span><span class="p">:</span>
+                    <span class="n">sets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">varset</span><span class="p">[</span><span class="n">se</span><span class="p">]))</span>
+
+                <span class="n">s</span><span class="o">.</span><span class="n">set_sequence</span> <span class="o">=</span> <span class="n">sets</span>  <span class="c1">#put objects instead of names</span>
+
+            <span class="c1"># if hasattr(s, &#39;set_sequence&#39;) and s.set_sequence:</span>
+            <span class="c1">#     sets = []</span>
+            <span class="c1">#     for se in s.set_sequence:</span>
+            <span class="c1">#         if type(se) == str:</span>
+            <span class="c1">#             sets.append(copy.deepcopy(varset[se]))</span>
+            <span class="c1">#         else:</span>
+            <span class="c1">#             sets.append(copy.deepcopy(se))</span>
+
+            <span class="c1">#     s.set_sequence = sets  #put objects instead of names</span>
+        <span class="k">return</span> <span class="n">s</span></div>
+
+
+
+
+
+
+
+
+
+
+<div class="viewcode-block" id="InputSet.read_incar"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.read_incar">[docs]</a>    <span class="k">def</span> <span class="nf">read_incar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">fil</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="n">fil</span> <span class="o">=</span> <span class="n">fil</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;;&#39;</span><span class="p">,</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">fil</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s1">&#39;=&#39;</span> <span class="ow">in</span> <span class="n">l</span><span class="p">:</span>
+                    <span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="s1">&#39;.&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+                            <span class="n">value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">pass</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">token</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span> <span class="o">=</span> <span class="n">value</span></div>
+        <span class="c1"># self.update()</span>
+
+
+<div class="viewcode-block" id="InputSet.add_conv_kpoint"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.add_conv_kpoint">[docs]</a>    <span class="k">def</span> <span class="nf">add_conv_kpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">add_conv_kpoint error</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_kpoint</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Warning! You already have this name in list&quot;</span><span class="p">)</span>
+            <span class="k">return</span>    
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_kpoint</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot;Name &quot;</span><span class="o">+</span><span class="n">arg</span><span class="o">+</span><span class="s2">&quot; was added to self.conv_kpoint</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="InputSet.add_conv_tsmear"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.add_conv_tsmear">[docs]</a>    <span class="k">def</span> <span class="nf">add_conv_tsmear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">add_conv_tsmear type error</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conv_tsmear</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Error! Set &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; does not have conv_tsmear, I create new</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conv_tsmear</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_tsmear</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Warning! You already have this name in list&quot;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+            <span class="k">return</span>    
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_tsmear</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot;Name &quot;</span><span class="o">+</span><span class="n">arg</span><span class="o">+</span><span class="s2">&quot; was added to self.conv_tsmear</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="InputSet.add_conv"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.add_conv">[docs]</a>    <span class="k">def</span> <span class="nf">add_conv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">arg</span><span class="p">,</span><span class="n">type_of_conv</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span>
+        <span class="k">if</span> <span class="n">type_of_conv</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;kpoint_conv&quot;</span><span class="p">,</span><span class="s2">&quot;tsmear_conv&quot;</span><span class="p">,</span><span class="s2">&quot;ecut_conv&quot;</span><span class="p">,</span><span class="s2">&quot;nband_conv&quot;</span><span class="p">,</span><span class="s2">&quot;npar_conv&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">type_of_conv</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Warning! Set &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; does not have conv, I create new</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conv</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Warning! Set &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; does not have list for this key in conv, I add new</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">type_of_conv</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">if</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">type_of_conv</span><span class="p">]:</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Warning! You already have name </span><span class="si">%s</span><span class="s2"> in list of conv </span><span class="si">%s</span><span class="s2">. Nothing done.</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> \
+            <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">type_of_conv</span><span class="p">])</span>    <span class="p">)</span> <span class="p">)</span>
+            <span class="k">return</span>    
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">type_of_conv</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot;Name &quot;</span><span class="o">+</span><span class="n">arg</span><span class="o">+</span><span class="s2">&quot; was added to self.conv[&quot;</span><span class="o">+</span><span class="n">type_of_conv</span><span class="o">+</span><span class="s2">&quot;]</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Name &quot;</span><span class="o">+</span><span class="n">arg</span><span class="o">+</span><span class="s2">&quot; was added to self.conv[&quot;</span><span class="o">+</span><span class="n">type_of_conv</span><span class="o">+</span><span class="s2">&quot;] of set &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="InputSet.set_compare_with"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.set_compare_with">[docs]</a>    <span class="k">def</span> <span class="nf">set_compare_with</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span> <span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">set_compare_with error</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compare_with</span> <span class="o">+=</span> <span class="n">arg</span><span class="o">+</span><span class="s2">&quot; &quot;</span></div>
+
+
+<div class="viewcode-block" id="InputSet.set_potential"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.set_potential">[docs]</a>    <span class="k">def</span> <span class="nf">set_potential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">znucl</span><span class="p">,</span> <span class="n">arg</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="c1"># print arg</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">arg</span><span class="p">:</span>
+            <span class="n">arg</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">PATH2POTENTIALS</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="o">+</span><span class="n">invert</span><span class="p">(</span><span class="n">znucl</span><span class="p">)</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Attention!, Default potentials is chosen from &#39;</span><span class="p">,</span><span class="n">header</span><span class="o">.</span><span class="n">PATH2POTENTIALS</span><span class="p">,</span> <span class="s1">&#39;for&#39;</span><span class="p">,</span><span class="n">invert</span><span class="p">(</span><span class="n">znucl</span><span class="p">)</span> <span class="p">,</span> <span class="n">imp</span> <span class="o">=</span><span class="s1">&#39;Y&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">str</span><span class="p">,):</span>
+            <span class="c1"># sys.exit(&quot;\nset_potential error\n&quot;)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span>
+
+
+
+        <span class="k">if</span> <span class="n">znucl</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">potdir</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">arg</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">potdir</span><span class="p">[</span><span class="n">znucl</span><span class="p">]:</span>
+                <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Warning! You already have the same potential for &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">znucl</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; element</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="p">)</span>
+        <span class="c1"># print type(self.potdir)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">potdir</span><span class="p">[</span><span class="n">znucl</span><span class="p">]</span> <span class="o">=</span> <span class="n">arg</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot;Potential for &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">znucl</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; was changed to &quot;</span><span class="o">+</span><span class="n">arg</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Potential for &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">znucl</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; was changed to &quot;</span><span class="o">+</span><span class="n">arg</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="p">)</span>
+
+        <span class="c1"># self.update()</span>
+        <span class="k">return</span></div>
+
+
+
+<div class="viewcode-block" id="InputSet.set_relaxation_type"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.set_relaxation_type">[docs]</a>    <span class="k">def</span> <span class="nf">set_relaxation_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">type_of_relaxation</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Type of relaxation ISIF&quot;</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">type_of_relaxation</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span>
+        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s2">&quot;ISIF&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;ions&quot;</span> <span class="o">==</span> <span class="n">type_of_relaxation</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">9</span><span class="p">:</span>
+                <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Warning! The name of set is uncostintent with relaxation type</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span>     
+            <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s2">&quot;ISIF&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="c1"># self.set_nmdsteps(200)</span>
+        <span class="k">elif</span> <span class="n">type_of_relaxation</span> <span class="o">==</span> <span class="s2">&quot;full&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Warning! The name of set is uncostintent with relaxation type</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span>              
+            <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s2">&quot;ISIF&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Error! Uncorrect type of relaxation</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span>
+        <span class="n">arg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s2">&quot;ISIF&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">old</span> <span class="o">==</span> <span class="n">arg</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Warning! You did not change  &quot;</span><span class="o">+</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;  in &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; set</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span><span class="o">+</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;  was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">print_and_log</span><span class="p">(</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;  was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; in set &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>                
+        <span class="c1">#print self.history</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="InputSet.set_add_nbands"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.set_add_nbands">[docs]</a>    <span class="k">def</span> <span class="nf">set_add_nbands</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">arg</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;add_nbands&quot;</span>  
+        <span class="c1"># print(type(arg))</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span>
+        <span class="k">try</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_nbands</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_nbands</span> <span class="o">=</span> <span class="kc">None</span>
+        
+        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_nbands</span>    
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_nbands</span> <span class="o">=</span> <span class="n">arg</span>
+        
+        <span class="k">if</span> <span class="n">old</span> <span class="o">==</span> <span class="n">arg</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Warning! You did not change  &quot;</span><span class="o">+</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;  in &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; set</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span><span class="o">+</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;  was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">+</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;  was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; in set &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="InputSet.set_ngkpt"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.set_ngkpt">[docs]</a>    <span class="k">def</span> <span class="nf">set_ngkpt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_list_like</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s2">&quot;Error! set_ngkpt type error&quot;</span><span class="p">)</span>
+        <span class="n">old</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ngkpt</span><span class="p">)</span>     
+        <span class="bp">self</span><span class="o">.</span><span class="n">ngkpt</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kpoints_file</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s1">&#39;KSPACING&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">old</span> <span class="o">==</span> <span class="n">arg</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Warning! You did not change one of your parameters in new set&quot;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot;ngkpt was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; and KPOINTS file was swithed on</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="InputSet.set_vaspp"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.set_vaspp">[docs]</a>    <span class="k">def</span> <span class="nf">set_vaspp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">des</span> <span class="o">=</span> <span class="s2">&quot;see manual&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Used for setting vasp parameters.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+
+        <span class="k">if</span> <span class="n">token</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;ISMEAR&quot;</span><span class="p">,):</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">]:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span>
+        <span class="k">if</span> <span class="n">token</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;KSPACING&quot;</span><span class="p">,):</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">]:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span>
+
+
+        <span class="n">old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">token</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">token</span><span class="p">]</span> <span class="o">=</span> <span class="n">arg</span>
+        
+        <span class="k">if</span> <span class="n">old</span> <span class="o">==</span> <span class="n">arg</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Warning! You did not change  &quot;</span><span class="o">+</span><span class="n">token</span><span class="o">+</span><span class="s2">&quot;  in &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; set</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span><span class="o">+</span><span class="n">token</span><span class="o">+</span><span class="s2">&quot;  was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="n">print_and_log</span><span class="p">(</span><span class="n">token</span><span class="o">+</span><span class="s2">&quot;  was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span><span class="s2">&quot; - &quot;</span><span class="o">+</span> <span class="n">des</span><span class="o">+</span><span class="s2">&quot; in set &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>                
+
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="InputSet.set_attrp"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.set_attrp">[docs]</a>    <span class="k">def</span> <span class="nf">set_attrp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">des</span> <span class="o">=</span> <span class="s2">&quot;see manual&quot;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        set any attribute.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># print token</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">):</span>
+            <span class="n">old</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">old</span> <span class="o">==</span> <span class="n">arg</span><span class="p">:</span>
+                <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Warning! You did not change  &quot;</span><span class="o">+</span><span class="n">token</span><span class="o">+</span><span class="s2">&quot;  in &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; set</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span><span class="o">+</span><span class="n">token</span><span class="o">+</span><span class="s2">&quot;  was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="n">print_and_log</span><span class="p">(</span><span class="n">token</span><span class="o">+</span><span class="s2">&quot;  was changed from &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">old</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot; to &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span><span class="s2">&quot; - &quot;</span><span class="o">+</span> <span class="n">des</span><span class="o">+</span><span class="s2">&quot; in set &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span>
+            <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;New attribute  &quot;</span><span class="o">+</span><span class="n">token</span><span class="o">+</span><span class="s2">&quot;  added to &quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">ise</span><span class="o">+</span><span class="s2">&quot; set</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s2">&quot; &quot;</span><span class="o">+</span><span class="n">token</span><span class="o">+</span><span class="s2">&quot;  was added as a new attr with &quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; value </span><span class="se">\n</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="InputSet.toJSON"><a class="viewcode-back" href="../../siman.html#siman.set_functions.InputSet.toJSON">[docs]</a>    <span class="k">def</span> <span class="nf">toJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="k">lambda</span> <span class="n">o</span><span class="p">:</span> <span class="n">o</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> 
+                <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span></div></div>
+
+
+
+
+
+
+
+
+
+
+<div class="viewcode-block" id="inherit_iset"><a class="viewcode-back" href="../../siman.html#siman.set_functions.inherit_iset">[docs]</a><span class="k">def</span> <span class="nf">inherit_iset</span><span class="p">(</span><span class="n">ise_new</span><span class="p">,</span> <span class="n">ise_from</span><span class="p">,</span> <span class="n">varset</span><span class="p">,</span> <span class="n">override</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">newblockfolder</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Create new set copying from existing and update some fields. If ise_from does not exist create new&quot;&quot;&quot;</span>
+
+    <span class="n">ise_new</span> <span class="o">=</span> <span class="n">ise_new</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">ise_from</span> <span class="o">=</span> <span class="n">ise_from</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">ise_from</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">:</span>
+        <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Error! Set &quot;</span><span class="o">+</span><span class="n">ise_from</span><span class="o">+</span><span class="s2">&quot; does not exist. I return new empty set</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">InputSet</span><span class="p">(</span><span class="n">ise_new</span><span class="p">)</span>
+
+    <span class="n">old</span> <span class="o">=</span> <span class="n">varset</span><span class="p">[</span><span class="n">ise_from</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">vasp_electronic_keys</span><span class="o">+</span><span class="n">vasp_ionic_keys</span><span class="o">+</span><span class="n">vasp_other_keys</span><span class="p">:</span> <span class="c1">#check if new keys was added</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">old</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">:</span> 
+            <span class="n">old</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> 
+
+    <span class="k">if</span> <span class="n">override</span><span class="p">:</span>
+        <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Attention! You have chosen to override set &quot;</span><span class="o">+</span><span class="n">ise_new</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ise_new</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">:</span>
+        <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Set &quot;</span><span class="o">+</span><span class="n">ise_new</span><span class="o">+</span><span class="s2">&quot; already exists. I return it without changes. Be carefull not to spoil it</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">varset</span><span class="p">[</span><span class="n">ise_new</span><span class="p">]</span>           
+
+
+
+    <span class="n">new</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span> <span class="n">old</span> <span class="p">)</span>
+    <span class="n">new</span><span class="o">.</span><span class="n">ise</span> <span class="o">=</span> <span class="n">ise_new</span>
+    <span class="n">new</span><span class="o">.</span><span class="n">compare_with</span> <span class="o">=</span> <span class="n">ise_from</span><span class="o">+</span><span class="s2">&quot; &quot;</span>
+    <span class="n">new</span><span class="o">.</span><span class="n">des</span> <span class="o">=</span> <span class="s2">&quot;no description for these set, see history&quot;</span>
+    <span class="n">new</span><span class="o">.</span><span class="n">conv</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;New set &quot;</span><span class="o">+</span><span class="n">ise_new</span><span class="o">+</span><span class="s2">&quot; was inherited from set &quot;</span><span class="o">+</span><span class="n">ise_from</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">new</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">old</span><span class="o">.</span><span class="n">history</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Set &quot;</span><span class="o">+</span><span class="n">ise_new</span><span class="o">+</span><span class="s2">&quot; was inherited from: &quot;</span><span class="o">+</span> <span class="n">ise_from</span> <span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+    <span class="k">if</span> <span class="n">newblockfolder</span><span class="p">:</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">history</span> <span class="o">+=</span> <span class="s1">&#39;blockfolder changed from &#39;</span><span class="o">+</span><span class="n">new</span><span class="o">.</span><span class="n">blockfolder</span><span class="o">+</span><span class="s1">&#39; to &#39;</span><span class="o">+</span><span class="n">newblockfolder</span><span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">blockfolder</span> <span class="o">=</span> <span class="n">newblockfolder</span>
+    
+    <span class="n">varset</span><span class="p">[</span><span class="n">ise_new</span><span class="p">]</span> <span class="o">=</span> <span class="n">new</span>
+    
+
+    <span class="k">return</span> <span class="n">new</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="make_sets_for_conv"><a class="viewcode-back" href="../../siman.html#siman.set_functions.make_sets_for_conv">[docs]</a><span class="k">def</span> <span class="nf">make_sets_for_conv</span><span class="p">(</span><span class="n">isefrom</span><span class="p">,</span><span class="n">conv</span><span class="p">,</span><span class="n">list_of_parameters</span><span class="p">,</span><span class="n">varset</span><span class="p">):</span>
+
+    <span class="n">varset</span><span class="p">[</span><span class="n">isefrom</span><span class="p">]</span><span class="o">.</span><span class="n">add_conv</span><span class="p">(</span> <span class="n">isefrom</span><span class="p">,</span> <span class="n">conv</span> <span class="p">);</span> <span class="n">i</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">varset</span><span class="p">[</span><span class="n">isefrom</span><span class="p">]</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">conv</span><span class="p">])</span>
+    <span class="c1">#print varset[isefrom].conv[conv]</span>
+    <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">list_of_parameters</span><span class="p">:</span>
+        <span class="n">newise</span> <span class="o">=</span> <span class="n">isefrom</span><span class="o">+</span><span class="n">conv</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="p">;</span> <span class="n">i</span><span class="o">+=</span><span class="mi">1</span>
+        <span class="k">if</span> <span class="n">newise</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span><span class="s2">&quot;Set </span><span class="si">%s</span><span class="s2"> already in varset; continue</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">newise</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span> 
+            <span class="k">continue</span>
+           
+        <span class="k">if</span> <span class="n">conv</span> <span class="o">==</span> <span class="s2">&quot;kpoint_conv&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">[</span><span class="n">isefrom</span><span class="p">]</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">conv</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">varset</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">ngkpt</span> <span class="o">==</span> <span class="n">param</span><span class="p">:</span>
+                    <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Set </span><span class="si">%s</span><span class="s2"> already contains param </span><span class="si">%s</span><span class="s2">; please check; return; </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">param</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+                    <span class="k">return</span>
+            <span class="c1">#print newise</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">inherit_iset</span><span class="p">(</span><span class="n">newise</span><span class="p">,</span> <span class="n">isefrom</span><span class="p">,</span> <span class="n">varset</span><span class="p">,</span><span class="n">newblockfolder</span> <span class="o">=</span> <span class="n">conv</span><span class="p">)</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">set_ngkpt</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+            <span class="c1">#print s</span>
+
+        <span class="k">elif</span> <span class="n">conv</span> <span class="o">==</span> <span class="s2">&quot;tsmear_conv&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">[</span><span class="n">isefrom</span><span class="p">]</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">conv</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">varset</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">tsmear</span> <span class="o">==</span> <span class="n">param</span><span class="p">:</span>
+                    <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Set </span><span class="si">%s</span><span class="s2"> already contains param </span><span class="si">%s</span><span class="s2">; please check; return; </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">param</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+                    <span class="k">return</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">inherit_iset</span><span class="p">(</span><span class="n">newise</span><span class="p">,</span> <span class="n">isefrom</span><span class="p">,</span> <span class="n">varset</span><span class="p">,</span><span class="n">newblockfolder</span> <span class="o">=</span> <span class="n">conv</span><span class="p">)</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">set_tsmear</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">conv</span> <span class="o">==</span> <span class="s2">&quot;ecut_conv&quot;</span><span class="p">:</span>
+            <span class="c1">#automatically set dilatmx == 1</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">[</span><span class="n">isefrom</span><span class="p">]</span><span class="o">.</span><span class="n">conv</span><span class="p">[</span><span class="n">conv</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">varset</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">vasp_params</span><span class="p">[</span><span class="s2">&quot;ENCUT&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">param</span><span class="p">:</span>
+                    <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Set </span><span class="si">%s</span><span class="s2"> already contains param </span><span class="si">%s</span><span class="s2">; please check; return; </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">param</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+                    <span class="k">return</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">inherit_iset</span><span class="p">(</span><span class="n">newise</span><span class="p">,</span> <span class="n">isefrom</span><span class="p">,</span> <span class="n">varset</span><span class="p">,</span><span class="n">newblockfolder</span> <span class="o">=</span> <span class="n">conv</span><span class="p">)</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">set_dilatmx</span><span class="p">(</span><span class="mf">1.</span><span class="p">)</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">set_ecut</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>           
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;Warning! Unknown type of conv; return</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+
+        <span class="n">varset</span><span class="p">[</span><span class="n">isefrom</span><span class="p">]</span><span class="o">.</span><span class="n">add_conv</span><span class="p">(</span> <span class="n">newise</span><span class="p">,</span> <span class="n">conv</span> <span class="p">)</span>
+
+    <span class="n">print_and_log</span><span class="p">(</span> <span class="s2">&quot;The following sets are in varset[</span><span class="si">%s</span><span class="s2">].conv </span><span class="si">%s</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">isefrom</span><span class="p">),</span><span class="nb">str</span><span class="p">(</span><span class="n">varset</span><span class="p">[</span><span class="n">isefrom</span><span class="p">]</span><span class="o">.</span><span class="n">conv</span><span class="p">)</span>   <span class="p">)</span> <span class="p">)</span> 
+
+
+    <span class="k">return</span></div>
+
+
+
+<div class="viewcode-block" id="init_default_sets"><a class="viewcode-back" href="../../siman.html#siman.set_functions.init_default_sets">[docs]</a><span class="k">def</span> <span class="nf">init_default_sets</span><span class="p">(</span><span class="n">init</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Pre-defined sets for Vasp</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">varset</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">varset</span>
+
+    <span class="n">setname</span> <span class="o">=</span> <span class="s1">&#39;static&#39;</span>
+    <span class="k">if</span> <span class="n">init</span> <span class="ow">or</span> <span class="n">setname</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">:</span> <span class="c1">#init only once</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">InputSet</span><span class="p">(</span><span class="n">setname</span><span class="p">)</span> <span class="c1">#default starting set without relaxation</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">kpoints_file</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add_nbands</span> <span class="o">=</span> <span class="mf">1.25</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">vasp_params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;NELM&#39;</span>      <span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+            <span class="s1">&#39;IBRION&#39;</span>    <span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;KGAMMA&#39;</span>    <span class="p">:</span> <span class="s2">&quot;.TRUE.&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;ENCUT&#39;</span>     <span class="p">:</span> <span class="mf">441.0</span><span class="p">,</span>
+            <span class="s1">&#39;EDIFFG&#39;</span>    <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;SIGMA&#39;</span>     <span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+            <span class="s1">&#39;NELMIN&#39;</span>    <span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="s1">&#39;ISTART&#39;</span>    <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;LSCALU&#39;</span>    <span class="p">:</span> <span class="s2">&quot;.FALSE.&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;MAXMIX&#39;</span>    <span class="p">:</span> <span class="mi">40</span><span class="p">,</span>
+            <span class="s1">&#39;NSIM&#39;</span>      <span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="s1">&#39;ISIF&#39;</span>      <span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s1">&#39;EDIFF&#39;</span>     <span class="p">:</span> <span class="mf">6e-06</span><span class="p">,</span>
+            <span class="s1">&#39;ENAUG&#39;</span>     <span class="p">:</span> <span class="mf">776.16</span><span class="p">,</span>
+            <span class="s1">&#39;NSW&#39;</span>       <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;LPLANE&#39;</span>    <span class="p">:</span> <span class="s2">&quot;.TRUE.&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;LREAL&#39;</span>     <span class="p">:</span> <span class="s2">&quot;Auto&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;ISMEAR&#39;</span>    <span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s1">&#39;NPAR&#39;</span>      <span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;ALGO&#39;</span>      <span class="p">:</span> <span class="s2">&quot;Normal&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;PREC&#39;</span>      <span class="p">:</span> <span class="s2">&quot;Normal&quot;</span><span class="p">,</span>
+            <span class="s1">&#39;KSPACING&#39;</span>  <span class="p">:</span> <span class="mf">0.235</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">potdir</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">nu_dict</span><span class="p">)</span>
+
+        <span class="n">s</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">varset</span><span class="p">[</span><span class="n">setname</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    
+
+
+    <span class="n">setname</span> <span class="o">=</span> <span class="s1">&#39;opt&#39;</span>
+    <span class="k">if</span> <span class="n">init</span> <span class="ow">or</span> <span class="n">setname</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">varset</span><span class="p">:</span> <span class="c1">#init only once</span>
+        <span class="c1"># sys.exit()</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">InputSet</span><span class="p">(</span><span class="n">setname</span><span class="p">)</span> 
+        <span class="n">s</span><span class="o">.</span><span class="n">kpoints_file</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add_nbands</span> <span class="o">=</span> <span class="mf">1.25</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">vasp_params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;IBRION&#39;</span>    <span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;ENCUT&#39;</span>     <span class="p">:</span> <span class="mi">150</span><span class="p">,</span>
+            <span class="s1">&#39;EDIFFG&#39;</span>    <span class="p">:</span> <span class="o">-</span><span class="mf">0.01</span><span class="p">,</span>
+            <span class="s1">&#39;SIGMA&#39;</span>     <span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+            <span class="s1">&#39;ISIF&#39;</span>      <span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s1">&#39;EDIFF&#39;</span>     <span class="p">:</span> <span class="mf">1e-05</span><span class="p">,</span>
+            <span class="s1">&#39;NSW&#39;</span>       <span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+            <span class="s1">&#39;ISMEAR&#39;</span>    <span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s1">&#39;KSPACING&#39;</span>  <span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">potdir</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">nu_dict</span><span class="p">)</span>
+        
+        <span class="n">s</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="n">header</span><span class="o">.</span><span class="n">varset</span><span class="p">[</span><span class="n">setname</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="c1"># print(header.varset[setname], setname)</span>
+
+
+
+    <span class="k">return</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="../../index.html">Table of Contents</a></h3>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Siman 0.9.5 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Dmitry Aksenov.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.1.
+    </div>
+  </body>
+</html>

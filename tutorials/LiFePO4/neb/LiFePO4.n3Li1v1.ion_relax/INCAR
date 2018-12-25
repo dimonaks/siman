@@ -1,0 +1,26 @@
+SYSTEM = Final conf. for neb from mp-19017; Automatically created and added from mp-19017; no description for these set, see history
+
+ALGO = Normal
+EDIFF = 6e-06
+EDIFFG = -0.025
+ENAUG = 776.16
+ENCUT = 441.0
+IBRION = 1
+IMAGES = 3
+ISIF = 2
+ISMEAR = 2
+ISTART = 0
+KGAMMA = .TRUE.
+LPLANE = .TRUE.
+LREAL = Auto
+LSCALU = .FALSE.
+MAXMIX = 40
+NBANDS = 95
+NELM = 50
+NELMIN = 4
+NPAR = 1
+NSIM = 4
+NSW = 20
+PREC = Normal
+SIGMA = 0.2
+
