@@ -9,12 +9,3 @@ POTCAR
 *vasprun*
 dist/
 siman.egg-info/
-tutorials/
-docs/
-tests/
-__pycache__/
-*.rst
-LICENSE
-README*
-setup.py
-*server

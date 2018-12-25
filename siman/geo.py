@@ -1753,7 +1753,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
     # print(min_vacuum_size)
     # sys.exit()
-    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size, in_unit_planes= False ,  primitive = primitive )
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size,   primitive = primitive )
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
