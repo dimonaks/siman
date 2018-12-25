@@ -651,10 +651,9 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         for st in sts:
             local_born_e.append(  site_repulsive_e(st, i) )
 
-        import matplotlib.pyplot as plt
-
-        plt.plot(local_born_e)
-        plt.show()
+        # import matplotlib.pyplot as plt
+        # plt.plot(local_born_e)
+        # plt.show()
 
 
         return abs(min(local_born_e) - max(local_born_e))
@@ -862,6 +861,9 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
                 print('Av.         dist  A-2(O,F) {:.3f} A'.format(info1['av(A-O,F)']))
                 # print('Av. squared dist  A-2(O,F) {:.3f} A'.format(info1['avsq(A-O,F)']))
                 dAO2.append(info1['av(A-O,F)'])
+
+                info12 = st.nn(atom_num, 3, from_one = False, silent = 1)
+                print('Average distance  A-3(O,F) {:.2f} A'.format(info12['av(A-O,F)']))
 
                 info2 = st.nn(atom_num, 4, from_one = False, silent = 1)
                 print('Average distance  A-4(O,F) {:.2f} A'.format(info2['av(A-O,F)']))
