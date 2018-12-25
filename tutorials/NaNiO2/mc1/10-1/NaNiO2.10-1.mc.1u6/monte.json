@@ -1,1 +1,0 @@
-{"temp": 1073, "mcsteps": 20, "normal": 2, "vasp_run": "prun /opt/vasp/bin/vasp5.4.1MPI_aksenov > NaNiO2.10-1.mc.1u6.1.log", "thickness": 6}
