@@ -1,0 +1,24 @@
+#!/bin/bash
+#$ -m be
+#$ -S /bin/bash
+#$ -cwd 
+#$ -R y 
+#$ -V  
+#$ -o /home/aksenov/topologic/Bi2Se3//Bi2Se3.static/ -j y
+#$ -pe mpi24 24
+
+cd /home/aksenov/topologic/Bi2Se3//Bi2Se3.static/
+export LD_LIBRARY_PATH=/usr/local/openmpi/openmpi-1.10.2_intel/lib/:$LD_LIBRARY_PATH
+#Basic run:
+cp 1.POSCAR POSCAR
+/usr/local/openmpi/openmpi-1.10.2_intel/bin/mpirun  -n $NSLOTS vasp_std >Bi2Se3.static.1.log
+sleep 20
+mv OUTCAR 1.OUTCAR
+mv CONTCAR 1.CONTCAR
+cp CHGCAR 1.CHGCAR
+gzip -f 1.CHGCAR
+rm WAVECAR  # rm_chg_wav flag
+
+#Footer section: 
+rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml
+rm RUNNING

@@ -1,0 +1,56 @@
+#!/bin/bash   
+#SBATCH -J LiFePO4.n3Li1v1.ion_relax
+#SBATCH -t 250:00:00 
+#SBATCH -N 1
+#SBATCH -n 15
+#SBATCH -o /home/aksenov/neb/LiFePO4/neb//LiFePO4.n3Li1v1.ion_relax/sbatch.out
+#SBATCH -e /home/aksenov/neb/LiFePO4/neb//LiFePO4.n3Li1v1.ion_relax/sbatch.err
+#SBATCH --mem-per-cpu=7675
+cd /home/aksenov/neb/LiFePO4/neb//LiFePO4.n3Li1v1.ion_relax/
+export OMP_NUM_THREADS=1
+module add prun/1.0
+module add intel/16.0.2.181
+module add impi/5.1.3.181
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/aksenov/tools/lib64:/home/aksenov/tools/atlas
+export PATH=$PATH:/home/aksenov/tools
+touch RUNNING
+#NEB run, start and final configurations, then IMAGES:
+sed -i.bak '/IMAGES/c\IMAGES = 0' INCAR
+#Basic run:
+cp 1.POSCAR POSCAR
+prun /opt/vasp/bin/vasp5.4.1MPI >LiFePO4.n3Li1v1.ion_relax.1.log
+sleep 20
+mv OUTCAR 1.OUTCAR
+mv CONTCAR 1.CONTCAR
+mv CHG 1.CHG
+gzip -f 1.CHG
+rm WAVECAR  # rm_chg_wav flag
+#NEB run, start and final configurations, then IMAGES:
+sed -i.bak '/IMAGES/c\IMAGES = 0' INCAR
+#Basic run:
+cp 2.POSCAR POSCAR
+prun /opt/vasp/bin/vasp5.4.1MPI >LiFePO4.n3Li1v1.ion_relax.2.log
+sleep 20
+mv OUTCAR 2.OUTCAR
+mv CONTCAR 2.CONTCAR
+mv CHG 2.CHG
+gzip -f 2.CHG
+rm WAVECAR  # rm_chg_wav flag
+
+#Footer section: 
+
+
+#Starting NEB script 
+export PATH=$PATH:/home/aksenov/neb/tools/vts/
+nebmake.pl 1.CONTCAR 2.CONTCAR 3 
+cp 1.OUTCAR 00/OUTCAR
+cp 2.OUTCAR 04/OUTCAR
+sed -i.bak '/IMAGES/c\IMAGES = 3' INCAR
+prun /opt/vasp/bin/vasp5.4.1MPI >LiFePO4.n3Li1v1.ion_relax.2.n_3.log
+sleep 20
+export PATH=$PATH:/home/aksenov/tools/gnuplot/bin/ 
+/home/aksenov/tools/vts/nebresults.pl  
+find . -name WAVECAR -delete
+find . -name PROCAR -delete
+rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml
+rm RUNNING

@@ -1,0 +1,27 @@
+SYSTEM = Fully inherited from the final state of Bi2Se3.rho.static.1; auto Fully inherited from the final state of Bi2Se3.rho.static.1; no description for these set, see history
+
+ALGO = Normal
+EDIFF = 6e-06
+EDIFFG = 0
+ENAUG = 776.16
+ENCUT = 441.0
+IBRION = 1
+ICHARG = 11
+ISIF = 2
+ISMEAR = 2
+ISTART = 0
+KGAMMA = .TRUE.
+LORBIT = 11
+LPLANE = .TRUE.
+LREAL = Auto
+LSCALU = .FALSE.
+MAXMIX = 40
+NBANDS = 38
+NELM = 50
+NELMIN = 4
+NPAR = 1
+NSIM = 4
+NSW = 0
+PREC = Normal
+SIGMA = 0.2
+

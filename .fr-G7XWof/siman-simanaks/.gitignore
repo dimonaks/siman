@@ -1,0 +1,17 @@
+*.pyc
+*.gdbm3
+history
+run
+xyz/
+figs/
+.ipynb_checkpoints
+*.o
+*~
+.DS_Store
+POTCAR
+*OUTCAR*
+*CONTCAR*
+*CHGCAR*
+*vasprun*
+dist/
+siman.egg-info/

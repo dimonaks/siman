@@ -1,0 +1,30 @@
+SYSTEM = Bi2 Se3 auto add_des ; no description for these set, see history
+
+ALGO = Normal
+EDIFF = 6e-06
+EDIFFG = 0
+EMAX = 14
+EMIN = -10
+ENAUG = 776.16
+ENCUT = 441.0
+IBRION = 1
+ISIF = 2
+ISMEAR = -5
+ISTART = 0
+KGAMMA = .TRUE.
+LAECHG = .TRUE.
+LORBIT = 11
+LPLANE = .TRUE.
+LREAL = Auto
+LSCALU = .FALSE.
+MAXMIX = 40
+NBANDS = 38
+NEDOS = 2000
+NELM = 50
+NELMIN = 4
+NPAR = 1
+NSIM = 4
+NSW = 0
+PREC = Normal
+SIGMA = 0.2
+
