@@ -27,7 +27,7 @@ from siman.geo import determine_symmetry_positions, local_surrounding, find_movi
 from siman.database import push_figure_to_archive
 from siman.small_functions import is_list_like, makedir
 from siman.inout import write_xyz, read_xyz, write_occmatrix
-
+from siman.calcul import site_repulsive_e
 
 
 
@@ -643,15 +643,21 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         return rms_change
 
 
-    def determing_born_barrier(sts)
+    def determing_born_barrier(sts):
         #here first and last structures should correspond to first and last images
         local_born_e = []
         i = find_moving_atom(sts[0], sts[-1])
 
         for st in sts:
-            local_born_e.append(   )
+            local_born_e.append(  site_repulsive_e(st, i) )
+
+        import matplotlib.pyplot as plt
+
+        plt.plot(local_born_e)
+        plt.show()
 
 
+        return abs(min(local_born_e) - max(local_born_e))
 
 
 
@@ -876,6 +882,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     
     if 'neb_born' in show:
         results_dic['born_barrier'] = determing_born_barrier(sts)
+        print('Born barrier is {:.2f} eV '.format(results_dic['born_barrier']))
 
     # print(results_dic['rms_change'])
     # print('show is', show)
