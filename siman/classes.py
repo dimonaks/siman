@@ -43,7 +43,8 @@ from siman.functions import (read_vectors, read_list, words,
      element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar
-from siman.geo import image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, local_surrounding, determine_symmetry_positions
+from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
+local_surrounding, local_surrounding2, determine_symmetry_positions)
 from siman.set_functions import InputSet
 
 
@@ -1770,12 +1771,13 @@ class Structure():
 
         el = self.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
-        info['av(A-O,F)'] = local_surrounding(x, self, n, 'av', True, only_elements = [8,9], round_flag = 0)
+        info['av(A-O,F)'] = local_surrounding2(x, self, n, 'av', True, only_elements = [8,9], round_flag = 0)
         
         if more_info:
-            info['avsq(A-O,F)'] = local_surrounding(x, self, n, 'avsq', True, only_elements = [8,9])
-            info['avdev(A-O,F)'], _   = local_surrounding(x, self, n, 'av_dev', True, only_elements = [8, 9])
-            info['sum(A-O,F)'] = local_surrounding(x, self, n, 'sum', True, only_elements = [8,9])
+            info['avsq(A-O,F)'] = local_surrounding2(x, self, n, 'avsq', True, only_elements = [8,9])
+            info['avharm(A-O,F)'] = local_surrounding2(x, self, n, 'avharm', True, only_elements = [8,9])
+            info['avdev(A-O,F)'], _   = local_surrounding2(x, self, n, 'av_dev', True, only_elements = [8, 9])
+            info['sum(A-O,F)'] = local_surrounding2(x, self, n, 'sum', True, only_elements = [8,9])
 
         t = set(out_or[2])
         s = set(range(self.natom)) 

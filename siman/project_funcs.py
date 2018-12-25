@@ -1921,10 +1921,15 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     ''
                     printlog('up key of res_loop = ', up_res)
                     # printlog('choose_outcar = ', choose_outcar)
-
+                    # print(pd.get('show'))
+                    if pd.get('show') is None:
+                        show = 'fomep'
+                    else:
+                        show = pd['show']
                     # sys.exit()
 
-                    res, _ = res_loop(idC[0],ise_new,range(1, images+3), up = up_res, show = 'fomep', readfiles = readfiles, 
+
+                    res, _ = res_loop(idC[0],ise_new,range(1, images+3), up = up_res, show = show, readfiles = readfiles, 
                         choose_outcar = choose_outcar, 
                         analys_type = 'neb', fitplot_args = fitplot_args, 
                         check_job = add_loop_dic['check_job'], style_dic = style_dic, params = pd)
@@ -1937,14 +1942,14 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 # if '5' in calc[idC].state: #some error
                 #     clB.neb_id[3] = None
-                
+                # print(res)
                 if '4' in calc[idC].state:
-                    # try:
-                        # curres['dAO_change'] = res['dAO_change']
-                    curres['sts'] = res['sts']
-                    # except:
-                    #     pass
-                    
+                    # curres['sts'] = res['sts']
+                    # curres['dEm1'] = res['dEm1'] #difference of energies between middle and first image of NEB
+                    # curres['atom_pos']     = res['atom_pos']
+                    # curres['mep_energies'] = res['mep_energies']
+                    curres.update(res)
+
 
                     try:
                         curres.update({'barrier':calc[idC].barrier})
@@ -1952,7 +1957,6 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     except:
                         curres.update({'barrier':0})
                     
-                    curres['dEm1'] = res['dEm1'] #difference of energies between middle and first image of NEB
 
                     # print(curres['barrier'], curres['dEm1'])
 
@@ -1962,8 +1966,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     curres['id_end']   = (idC[0], idC[1],2)
 
 
-                    curres['atom_pos']     = res['atom_pos']
-                    curres['mep_energies'] = res['mep_energies']
+
 
                     # dn = calc[idC].end.natom - calc[idB].end.natom
                     # v_int1 = calc[idC[0], idC[1],1].energy_sigma0 - calc[idB].energy_sigma0 - dn * curres['Eref']

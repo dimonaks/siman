@@ -1,6 +1,8 @@
 0.9.6
     
 
+    to show neb xyz files use show = 'neb_geo'
+
     procmemgb key added for PBS schedule 
     -neb analysis on cluster is switched off
 
