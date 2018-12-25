@@ -1,10 +1,16 @@
 *.pyc
+*.gdbm3
+tutorials/history
+tutorials/run
+tutorials/xyz/
+turorials/figs/
 .ipynb_checkpoints
 *.o
 *~
 .DS_Store
 POTCAR
 *OUTCAR*
+*CONTCAR*
 *CHGCAR*
 *vasprun*
 dist/
