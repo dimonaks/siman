@@ -23,11 +23,11 @@ from siman import header
 from siman.header import printlog, print_and_log, mpl, db
 from siman.functions import element_name_inv, invert, get_from_server
 from siman.picture_functions import plot_mep, fit_and_plot
-from siman.geo import determine_symmetry_positions, local_surrounding, find_moving_atom, image_distance
+from siman.geo import determine_symmetry_positions, local_surrounding, find_moving_atom, image_distance, rms_pos_diff, interpolate
 from siman.database import push_figure_to_archive
 from siman.small_functions import is_list_like, makedir
 from siman.inout import write_xyz, read_xyz, write_occmatrix
-
+from siman.calcul import site_repulsive_e
 
 
 
@@ -619,7 +619,50 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     params
         mep_shift_vector
     """
+
+    def determing_rms_for_surrounding_atoms(sts):
+        # change of rms on each step compared to first structure
+        #here first and last structures should correspond to first and last images
+
+        st1 = sts[0]
+
+        st_interp = interpolate(sts[0], sts[-1], 1)[0]
+        rms_list = []
+
+
+        for st in sts:
+            rms = rms_pos_diff(st_interp, st)
+            rms_list.append(rms)
+            print('rms is {:.3f}'.format(rms) )
+
+        print('d rms is {:.3f}'.format(abs(rms_list[3]-rms_list[0])) )
+
+        rms_change = abs(min(rms_list) - max(rms_list))
+
+
+        return rms_change
+
+
+    def determing_born_barrier(sts):
+        #here first and last structures should correspond to first and last images
+        local_born_e = []
+        i = find_moving_atom(sts[0], sts[-1])
+
+        for st in sts:
+            local_born_e.append(  site_repulsive_e(st, i) )
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(local_born_e)
+        # plt.show()
+
+
+        return abs(min(local_born_e) - max(local_born_e))
+
+
+
+
     if results_dic is None:
+
         results_dic = {}
 
     calc = header.calc
@@ -639,6 +682,9 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         if os.path.exists(movie_to):
             makedir('figs/'+name_without_ext+'.xyz')
             shutil.copyfile(movie_to, 'figs/'+name_without_ext+'.xyz')
+
+
+
 
 
 
@@ -731,9 +777,14 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     pols = []
     sts = []
     sts_loc = []
-    dAO = [] # A-(O,F) distance for each image
+    dAO2 = [] # A-(O,F) distance for each image
+    dAO4 = [] # A-(O,F) distance for each image
+    dAO6 = [] 
+    dAO6harm = [] 
+    dAO6dev = [] 
 
     for v in vlist:
+        printlog('\n\nVersion {:}:'.format(v), imp = 'y')
         cli = calc[cl.id[0], cl.id[1], v]
         # print(cl.id[0], cl.id[1], v, cli.state)
         if '4' not in cli.state and 'un' not in up:
@@ -758,7 +809,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
                 ''
                 # print('Mag_moments on trans,', mag.round(1))
         
-        if 1 or 'neb_geo' in show:
+        
+        if 0 or 'neb_geo' in show:
             #visualization of path
             # print(atom_num)
             st = copy.deepcopy(cli.end)
@@ -792,7 +844,9 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             if 0:
                 st_loc.write_xyz()
             # st.write_cif('xyz/'+st.name)
-            st.shift_atoms(vec).write_xyz()
+            if 0:
+                st.shift_atoms(vec).write_xyz()
+            
             sts_loc.append(st_loc)
 
             st1 = st1.add_atom(st.xred[atom_num], 'Rb')
@@ -800,43 +854,70 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             sts.append(st.shift_atoms(vec))
 
 
-            if 0:
-                info1 = st.nn(atom_num, 2, from_one = False, silent = 1)
-                print('Average_distance A-2(O,F)', info1['av(A-O,F)'], 'A')
-                dAO.append (info1['av(A-O,F)'])
 
 
-            if 0 or 'neb_geo' in show:
-                av = st.nn(atom_num, 2, from_one = False, silent = 1, more_info = 1)['avsq(A-O,F)']
-                print('Average squared distance A-2(O,F)', av, 'A')
+            if 0 or 'neb_geo2' in show:
+                info1 = st.nn(atom_num, 2, from_one = False, silent = 1, more_info = 1)
+                print('Av.         dist  A-2(O,F) {:.3f} A'.format(info1['av(A-O,F)']))
+                # print('Av. squared dist  A-2(O,F) {:.3f} A'.format(info1['avsq(A-O,F)']))
+                dAO2.append(info1['av(A-O,F)'])
+
+                info12 = st.nn(atom_num, 3, from_one = False, silent = 1)
+                print('Average distance  A-3(O,F) {:.2f} A'.format(info12['av(A-O,F)']))
 
                 info2 = st.nn(atom_num, 4, from_one = False, silent = 1)
-                print('Average_distance A-4(O,F)', info2['av(A-O,F)'], 'A')
-                print('Elements are ', info2['el'])
+                print('Average distance  A-4(O,F) {:.2f} A'.format(info2['av(A-O,F)']))
+                dAO4.append(info2['av(A-O,F)'])
+
 
                 info3 = st.nn(atom_num, 6, from_one = False, silent = 1, more_info = 1)
-                print('Average_distance A-6(O,F)', info3['av(A-O,F)'], 'A')
-                print('Average_deviation A-6(O,F)', info3['avdev(A-O,F)'], 'mA')
-                print('Elements are ', info3['el'])
+                print('Average_distance  A-6(O,F) {:.2f} A '.format(info3['av(A-O,F)']))
+                print('Av. harm.   dist  A-6(O,F) {:.2f} A'.format(info3['avharm(A-O,F)']))
+                print('Average_deviation A-6(O,F) {:.1f} mA'.format(info3['avdev(A-O,F)']))
+                dAO6.append(info3['av(A-O,F)'])
+                dAO6dev.append(info3['avdev(A-O,F)'])
+                dAO6harm.append(info3['avharm(A-O,F)'])
+    
+    if 'neb_rms' in show:
+        rms_change = determing_rms_for_surrounding_atoms(sts)
+        results_dic['rms_change'] = rms_change
+    
+    if 'neb_born' in show:
+        results_dic['born_barrier'] = determing_born_barrier(sts)
+        print('Born barrier is {:.2f} eV '.format(results_dic['born_barrier']))
+
+    # print(results_dic['rms_change'])
+    # print('show is', show)
+    # sys.exit()
+
+    # print('flag ', 'neb_noxyz' not in show, show)
+    if 'neb_noxyz' not in show and sts:
+        write_xyz(sts = sts) # write traectory
+        write_xyz(sts = sts_loc) # write traectory
+
+        if 'jmol' in params:
+            write_xyz(sts = sts, jmol  = 1, jmol_args = params['jmol']) # write jmol
 
 
-
-    write_xyz(sts = sts) # write traectory
-    write_xyz(sts = sts_loc) # write traectory
-
-    if 'jmol' in params:
-        write_xyz(sts = sts, jmol  = 1, jmol_args = params['jmol']) # write jmol
+        st1 = st1.shift_atoms(vec)
+        st1.name +='_all'
+        # st1.write_cif('xyz/'+st1.name)
+        st1.write_xyz()
 
 
-    st1 = st1.shift_atoms(vec)
-    st1.name +='_all'
-    # st1.write_cif('xyz/'+st1.name)
-    st1.write_xyz()
-
-
-    if dAO: # find maximum change of distance during migration
-        dAO_change = abs(min(dAO) - max(dAO))
-        results_dic['dAO_change'] = dAO_change
+    if dAO2: # find maximum change of distance during migration
+        dAO2_change = abs(min(dAO2) - max(dAO2))
+        results_dic['dAO2_change'] = dAO2_change
+    if dAO4: # find maximum change of distance during migration
+        dAO4_change = abs(min(dAO4) - max(dAO4))
+        results_dic['dAO4_change'] = dAO4_change
+    if dAO6: # 
+        dAO6_change = abs(min(dAO6) - max(dAO6))
+        results_dic['dAO6_change'] = dAO6_change
+    if dAO6harm: # 
+        results_dic['dAO6harm_change'] = abs(min(dAO6harm) - max(dAO6harm))
+    if dAO6dev: # 
+        results_dic['dAO6dev_change'] = abs(min(dAO6dev) - max(dAO6dev))
 
     results_dic['sts_loc'] = sts_loc # list of local structures, each structure contains dlist - distances from central cation to anions, and ellist - types of elements
     results_dic['sts'] = sts # list of mep structures, each structure contains moving_atom_i - number of moving atom

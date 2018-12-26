@@ -3124,6 +3124,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         if analys_type == 'neb':
             results_dic = neb_analysis(cl, show, up, push2archive, old_behaviour, results_dic, fitplot_args, style_dic, params)
 
+            # print(results_dic['rms_change'])
+
         if analys_type == 'polaron':
             # print(cl.id)
             results_dic = polaron_analysis(cl)

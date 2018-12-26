@@ -385,6 +385,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
               sum - sum of distances, 
               av - average distance, 
               avsq - average squared dist
+              avharm - average harmonic - it minimal average
               'mavm': #min, av, max, av excluding min and max
               av_dev - return (average deviation, maximum deviation) from average distance in mA.
               list - list of distances; 
@@ -470,14 +471,22 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
     elif control == 'av':
         n_neighbours = float(n_neighbours)
         dav = sum(dlistnn)/n_neighbours
-        output = my_round(dav, 2)
+        # output = my_round(dav, 2)
+        print(dlistnn)
+        output = dav
 
     elif control == 'avsq':
         n_neighbours = float(n_neighbours)
         # print(dlistnn)
         davsq = sum([d*d for d in dlistnn])/n_neighbours
         davsq = davsq**(0.5)
-        output = my_round(davsq, 2)
+        # output = my_round(davsq, 2)
+        output = davsq
+
+    elif control == 'avharm':
+        n_neighbours = float(n_neighbours)
+        davharm = n_neighbours/sum([1./d for d in dlistnn])
+        output = davharm
 
 
     elif control == 'mavm': #min, av, max
@@ -669,6 +678,12 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
         output = my_round(davsq, 2)
 
 
+    elif control == 'avharm':
+        n_neighbours = float(n_neighbours)
+        davharm = n_neighbours/sum([1./d for d in dlistnn])
+        output = davharm
+
+
     elif control == 'mavm': #min, av, max
         dsort = sorted(dlistnn)
         if n_neighbours > 2:
@@ -716,28 +731,7 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
         numbers     = temp2[3][:n_neighbours+1]
         # print temp2[0][:n_neighbours]
         # print xcart_local[:n_neighbours]
-        
 
-
-
-
-
-
-        #check if atoms in output are from neighboring cells
-        if 0:
-            xred_local = xcart2xred(xcart_local, st_original.rprimd)
-            # print 'xred_local', xred_local
-            for x_l in xred_local:
-                for i, x in enumerate(x_l):
-                    if x > 1: 
-                        x_l[i]-=1
-                        # print 'returning to prim cell', x,x_l[i]
-                    if x < 0: 
-                        x_l[i]+=1
-                        # print 'returning to prim cell', x,x_l[i]
-            xcart_local = xred2xcart(xred_local, st_original.rprimd)
-
-        # print 'Warning! local_surrounding() can return several atoms in one position due to incomplete PBC implementation; Improve please\n'
 
         output =  (xcart_local, typat_local, numbers, dlist )
 
@@ -1821,3 +1815,23 @@ def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = ''):
             st_inter.write_poscar(poscar_folder+str(write_poscar+j)+'.POSCAR')
 
     return sts
+
+
+def rms_pos_diff(st1, st2):
+
+    """
+    Calculate rms difference of atomic positions, excluding moving atom 
+    """
+
+    atom_num = find_moving_atom(st1, st2)
+
+    atoms = range(st1.natom)
+    summa = 0
+    for i, x1, x2 in zip(atoms, st1.xcart, st2.xcart):
+        if i == atom_num:
+            continue
+        dx = image_distance(x1, x2, r = st1.rprimd)[0]
+        summa+=dx**2
+    rms = (summa/st1.natom)**0.5
+
+    return rms 
