@@ -39,6 +39,14 @@ def copy_vasp_files(v):
             runBash('gzip -f '+str(v)+'.'+file)
 
 
+def vasp_step(v, msg, rm = 0):
+    printlog('Calculating start point!\n', imp = 'y')
+    copyfile(str(v)+'.POSCAR', 'POSCAR')
+    cl = vasp_run(3, msg, vasprun_command = vasprun_command)
+    copy_vasp_files(v)
+    if rm:
+        runBash('rm CHGCAR CHG WAVECAR')
+    return cl
 
 if __name__ == "__main__":
 
@@ -63,42 +71,44 @@ if __name__ == "__main__":
     vasprun_command = params.get('vasp_run') or 'vasp'
     images = params.get('images') or 3 # number of images
 
-    if 1:
-        """1. Calculate (relax) initial and final positions """
+
+
+    if mode =='independet':
+        if 1:
+            """1. Calculate (relax) initial and final positions """
+            
+
+            cl1 = vasp_step(1, 'Start position', 1)
+            cl2 = vasp_step(2, 'End position', 1 )
+            
+        else:
+            cl1 = CalculationVasp(output = '1.OUTCAR')
+            cl1.read_results(show = 'fo')
+            cl2 = CalculationVasp(output = '2.OUTCAR')
+            cl2.read_results(show = 'fo')
+
+        """2. Create intermediate steps"""
+        interpolate(cl1.end, cl2.end, images, 3)
+        printlog('Interpolation was successful!\n', imp = 'y')
+
+        """3. Calculate energies of intermediate steps"""
+        update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
         
-        printlog('Calculating start point!\n', imp = 'y')
-        copyfile('1.POSCAR', 'POSCAR')
-        cl1 = vasp_run(3, 'Start position ', vasprun_command = vasprun_command)
-        copy_vasp_files(1)
-        runBash('rm CHGCAR CHG WAVECAR')
+        for v in range(3, 3+images):
 
+            vasp_step(v, 'Intermediate position'+str(v), 1 )
 
-        printlog('Calculating end point!\n', imp = 'y')
-        copyfile('2.POSCAR', 'POSCAR')
-        cl2 = vasp_run(3, 'End position ', vasprun_command = vasprun_command)
-        copy_vasp_files(2)
-        runBash('rm CHGCAR CHG WAVECAR')
-        
-    else:
-        cl1 = CalculationVasp(output = '1.OUTCAR')
-        cl1.read_results(show = 'fo')
-        cl2 = CalculationVasp(output = '2.OUTCAR')
-        cl2.read_results(show = 'fo')
+    elif mode =='inherit':
 
-    """2. Create intermediate steps"""
-    interpolate(cl1.end, cl2.end, images, 3)
-    printlog('Interpolation was successful!\n', imp = 'y')
-
-    """3. Calculate energies of intermediate steps"""
-    update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
-    
-    for v in range(3, 3+images):
-        printlog('\n\nCalculating intermediate step {:}:'.format(v), imp = 'y')
-
+        #from initial to last
+        cl1 = vasp_step(1, 'Start position', 1)
         copyfile(str(v)+'.POSCAR', 'POSCAR')
-        vasp_run(3, 'End position ', vasprun_command = vasprun_command)
-        copy_vasp_files(v)
-        runBash('rm CHGCAR CHG WAVECAR')
+        
+        cl2 = vasp_step(2, 'End position', 1 )
+
+
+
+
 
 
     runBash('rm CHG WAVECAR')

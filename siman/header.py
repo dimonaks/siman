@@ -57,11 +57,15 @@ from siman.default_project_conf import *
 #2. Read user-related settings for siman
 simanrc = os.path.expanduser("~/simanrc.py")
 if os.path.exists(simanrc):
+    # if 'n' in war
+    print(simanrc, 'was read')
     sys.path.insert(0, os.path.dirname(simanrc))
     from simanrc import *
 
 #3. Read project specific
 if os.path.exists('./project_conf.py'):
+    print('Reading ./project_conf.py')
+
     from project_conf import *
     siman_run = True
     log = open('log','a')

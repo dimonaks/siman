@@ -784,7 +784,6 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     dAO6dev = [] 
 
     for v in vlist:
-        printlog('\n\nVersion {:}:'.format(v), imp = 'y')
         cli = calc[cl.id[0], cl.id[1], v]
         # print(cl.id[0], cl.id[1], v, cli.state)
         if '4' not in cli.state and 'un' not in up:
@@ -793,7 +792,12 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         # print cli.id
         # cli.end = return_to_cell(cli.end)
         # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy - not very good, sometimes unconverged energy could be lower! 
-        mep_energies.append(  cli.energy_sigma0   ) #use last energy 
+        
+        e0 = cli.energy_sigma0
+        if params.get('neb_penult_e'):
+            e0 = cli.list_e_sigma0[-2]
+
+        mep_energies.append(  e0   ) #use last energy 
         atom_pos.append( cli.end.xcart[atom_num] )
 
         # Find polaron positions
@@ -857,6 +861,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
             if 0 or 'neb_geo2' in show:
+                printlog('\n\nVersion {:}:'.format(v), imp = 'y')
                 info1 = st.nn(atom_num, 2, from_one = False, silent = 1, more_info = 1)
                 print('Av.         dist  A-2(O,F) {:.3f} A'.format(info1['av(A-O,F)']))
                 # print('Av. squared dist  A-2(O,F) {:.3f} A'.format(info1['avsq(A-O,F)']))

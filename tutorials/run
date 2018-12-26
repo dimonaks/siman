@@ -1,0 +1,4 @@
+squeue
+sbatch -p AMG /home/aksenov//NaNiO2/mc1/10-1///NaNiO2.10-1.mc.1u6/NaNiO2.10-1.mc.1u6.run
+squeue
+mv run last_run

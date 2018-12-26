@@ -1,4 +1,4 @@
-SYSTEM =  scale: scaled "images" for NaNiO2.10-1.mc.['1u5'].1; no description for these set, see history
+SYSTEM =  scale: scaled "images" for NaNiO2.10-1.mc.['1u6'].1; no description for these set, see history
 ALGO = Normal
 EDIFF = 0.0001
 EDIFFG = -0.05
