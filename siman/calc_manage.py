@@ -1089,6 +1089,14 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             inputset =setlist[0]
 
+            if mode == 'independent':
+                verst_list = [(i+1, s) for i, s in enumerate([st1, st2]+sts)]
+            elif mode == 'inherit':
+                ver0 = [(1, st1), (2, st2)]
+                ver1 = [(i+20, s) for i, s in enumerate([st1]+sts+[st2])]
+                ver2 = [(i+42, s) for i, s in enumerate([st2]+sts.reverse()+[st1]]
+
+                verst_list = ver0+ver1+ver2
 
             for i, s in enumerate([st1, st2]+sts):
                 

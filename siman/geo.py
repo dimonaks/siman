@@ -1789,7 +1789,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         return slabs
 
 
-def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = ''):
+def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = '', omit_edges = 1):
     """
     Linear interpolation between two structures.
     The number of atoms and order should be the same
@@ -1797,10 +1797,16 @@ def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = ''):
     INPUT:
     images (int) - number of intermediate images
     write_poscar (int) - starting from given number
+
+    omit_edges (bool) - first and last corresponding to st1 and st2 are omitted, 
+
     """
 
 
-    xl = np.linspace(0, 1, images+2)[1:-1]
+    xl = np.linspace(0, 1, images+2)
+    if omit_edges:
+        xl = xl[1:-1]
+
     # print(xl)
     nl = range(st1.natom)
     sts = []

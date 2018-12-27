@@ -2,6 +2,19 @@
 """  
 Program Polaron hop by Aksyonov Dmitry, Skoltech, Moscow
 Multiset is not supported yet
+Version naming 
+AR - atomic relaxation
+SP - single point
+1 - polaron and deformation at start position (AR)
+2 - polaron and deformation at final position (AR)
+21 - polaron and deform at start position (SP)
+21+images - polaron at start position, deformation at final position (SP)
+22:22+images - intermediate between 21 and 
+42 - polaron and deformation at final position (SP)
+42+images - polaron at final position, deformation at start position (SP)
+43:43+images -  intermediate deformation between 42 and  (sP)
+
+
 """
 
 import sys, json, os, glob, copy
@@ -40,7 +53,7 @@ def copy_vasp_files(v):
 
 
 def vasp_step(v, msg, rm = 0):
-    printlog('Calculating start point!\n', imp = 'y')
+    printlog('Calculating '+msg+ ' point!\n', imp = 'y')
     copyfile(str(v)+'.POSCAR', 'POSCAR')
     cl = vasp_run(3, msg, vasprun_command = vasprun_command)
     copy_vasp_files(v)
@@ -70,10 +83,12 @@ if __name__ == "__main__":
 
     vasprun_command = params.get('vasp_run') or 'vasp'
     images = params.get('images') or 3 # number of images
+    mode   = params.get('mode') or 'inherit' # number of images
+    printlog('Choosing mode', mode, imp = 'y')
 
 
 
-    if mode =='independet':
+    if mode =='independent':
         if 1:
             """1. Calculate (relax) initial and final positions """
             
@@ -101,12 +116,20 @@ if __name__ == "__main__":
     elif mode =='inherit':
 
         #from initial to last
-        cl1 = vasp_step(1, 'Start position', 1)
-        copyfile(str(v)+'.POSCAR', 'POSCAR')
+        cl2 = vasp_step(2, 'Final position', 1 )
+        cl1 = vasp_step(1, 'Start position', 0)
+        # copyfile(str(v)+'.POSCAR', 'POSCAR')
+        update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
         
-        cl2 = vasp_step(2, 'End position', 1 )
+        interpolate(cl1.end, cl2.end, images, 21, omit_edges = 0)
+        for v in range(21, 21+images):
+            vasp_step(v, 'Intermediate position'+str(v), rm = 0 )
 
+        runBash('rm CHGCAR WAVECAR; gunzip 2.CHGCAR.gz; mv 2.CHGCAR CHGCAR')
 
+        interpolate(cl2.end, cl1.end, images, 42, omit_edges = 0)
+        for v in range(42, 42+images):
+            vasp_step(v, 'Intermediate position'+str(v), rm = 0 )
 
 
 
