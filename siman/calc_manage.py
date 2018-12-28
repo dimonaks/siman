@@ -1088,19 +1088,21 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
             inputset =setlist[0]
-
+            mode = 'inherit'
             if mode == 'independent':
                 verst_list = [(i+1, s) for i, s in enumerate([st1, st2]+sts)]
             elif mode == 'inherit':
+
+                # print(sts, sts.reverse())
                 ver0 = [(1, st1), (2, st2)]
                 ver1 = [(i+20, s) for i, s in enumerate([st1]+sts+[st2])]
-                ver2 = [(i+42, s) for i, s in enumerate([st2]+sts.reverse()+[st1]]
+                ver2 = [(i+42, s) for i, s in enumerate([st2]+list(reversed(sts))+[st1])]
 
                 verst_list = ver0+ver1+ver2
 
-            for i, s in enumerate([st1, st2]+sts):
+            for ver_new, s in verst_list:
                 
-                ver_new = i+ 1 # start from 1; before it was v+i
+                # ver_new = i+ 1 # start from 1; before it was v+i
                 id_s = (it,inputset,ver_new)
                 cl_temp = CalculationVasp(varset[inputset], id_s)
                 s.name = it_new+'.'+str(ver_new)

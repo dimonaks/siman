@@ -1034,24 +1034,48 @@ def polaron_analysis(cl, ):
     name_without_ext = 'mep.'+itise+'.U'+str(max(cl.ldauu))
 
     cl = db[cl.id[0], cl.id[1], 1]
+    cl2 = db[cl.id[0], cl.id[1], 2]
     images = cl.params['polaron']['images']
     iat1 = cl.params['polaron']['istart']
     iat2 = cl.params['polaron']['iend']
-
+    mode = cl.params['polaron'].get('mode') or 'inherit'
+    cl2.res()
     d = cl.end.distance(iat1, iat2)
-    verlist = [1]+list(range(3, 3+images))+[2]
 
-    atom_pos = np.linspace(0,d, images+2)
+    if mode == 'inherit':
+        verlist1 = list(range(21, 21+images))  
+        verlist2 = list(range(42, 42+images)) 
+        atom_pos1 = np.linspace(0,d, len(verlist1))
+        atom_pos2 = list(reversed(np.linspace(0,d, len(verlist2))))
 
-    mep_energies = []
-    for i, v in enumerate(verlist):
-        mep_energies.append( db[cl.id[0], cl.id[1], v].e0 )
+        verlist = verlist1 + verlist2
+        atom_pos = atom_pos1 + atom_pos2
+    else:
+        verlist = [1]+list(range(3, 3+images))+[2]
+
+        atom_pos = np.linspace(0,d, images+2)
+
+    mep_energies1 = []
+    mep_energies2 = []
+    # print(verlist)
+    for i, v in enumerate(verlist1):
+        cl = db[cl.id[0], cl.id[1], v]
+        cl.res()
+        mep_energies1.append( cl.e0 )
+    for i, v in enumerate(verlist2):
+        cl = db[cl.id[0], cl.id[1], v]
+        cl.res()
+        mep_energies2.append( cl.e0 )
 
     # print(len(atom_pos), len(mep_energies))
+    n = 6
+    fit_and_plot(a1 = (atom_pos1[0:n], mep_energies1[0:n], '-or'), b1 = (atom_pos2[0:n], mep_energies2[0:n], '-og'), 
+        power = 2, params = {'xlim_power':(0, 4), 'y0':1}, ylim = (-0.02, 0.2))
 
-    _, diff_barrier = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = 0, 
-        # fitplot_args = fitplot_args, style_dic = style_dic
-        )
+
+    # _, diff_barrier = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = 0, 
+    #     # fitplot_args = fitplot_args, style_dic = style_dic
+    #             )
 
     return
 

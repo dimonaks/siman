@@ -206,6 +206,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     first = True, last = True, 
     convex = None, dashes = None,
     corner_letter = None, hide_ylabels = None, hide_xlabels= None, annotate = None,
+    params = None,
     **data):
     """
     Plot multiple plots on one axes using *data*
@@ -258,9 +259,14 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     x_nbins - number of ticks
 
+
+    params - dictionary with parameters 
+        - 'xlim_power' - xlim for power
+        - 'y0' - move plot to have y = 0
+
     TODO:
     remove some arguments that can be provided in data dict
-
+    move all rare arguments to params
 
     """
 
@@ -331,9 +337,10 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         from scipy.spatial import ConvexHull
 
 
-
+    keys = []
+    shift = 0
     for key in sorted(data):
-
+        keys.append(key)
         if scatter:
             
             ax.scatter(data[key][0], data[key][1],  s = data[key][2], c = data[key][-1], alpha = alpha, label = key)
@@ -402,13 +409,28 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                     del con_other_args['color']
             # print(con_other_args)
             # sys.exit()
+            
+            if params.get('y0'):
+                if key == keys[0]:
+                    shift = min(xyf[1])
+
+            if shift:
+                xyf[1] = list(np.array(xyf[1])-shift)
+
+
             ax.plot(*xyf, alpha = alpha, **con_other_args)
 
             if power:
                 coeffs1 = np.polyfit(xyf[0], xyf[1], power)        
                 
                 fit_func1 = np.poly1d(coeffs1)
-                x_range = np.linspace(min(xyf[0]), max(xyf[0]))
+
+                if params.get('xlim_power'):
+                    x_range = np.linspace(params['xlim_power'][0], params['xlim_power'][1])
+
+                else:
+                    x_range = np.linspace(min(xyf[0]), max(xyf[0]))
+                
                 fit_y1 = fit_func1(x_range); 
          
 

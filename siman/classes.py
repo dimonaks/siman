@@ -1646,6 +1646,7 @@ class Structure():
         """
         Shortest distance between two atoms acounting PBC, from 0
         """
+        # print(self.xcart)
         x1 = self.xcart[i1]
         x2 = self.xcart[i2]
         return image_distance(x1, x2, self.rprimd)[0]
