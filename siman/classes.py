@@ -4205,6 +4205,10 @@ class CalculationVasp(Calculation):
         return
 
 
+    def show_force(self,):
+        force_prefix = ' tot '
+        
+        print_and_log("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in self.maxforce_list ])[:]  ), imp = 'Y'  )
 
 
     def read_results(self, load = '', out_type = '', voronoi = False, show = '', choose_outcar = None, alkali_ion_number = None, only_load = False):
