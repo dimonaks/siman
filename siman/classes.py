@@ -416,11 +416,19 @@ class Structure():
         #show formatted mag moments of transition metals 
         #to_ox - convert to oxidation state, substract from to_ox
         # if to_ox is negative, then m-to_ox
-        l = self.get_maglist()[0]
+        l, mag_numbers = self.get_maglist()
         # print(l)
         mag = list(np.array(self.magmom)[l])
         s = ' '.join(['{:5.2f} ']*len(mag))
-        print(s.format(*mag))
+        
+        s0 = ' '.join(['{:5d} ']*len(mag))
+
+        key = list(mag_numbers.keys())[0]
+        # print(key)
+        print(' '+s0.format(*mag_numbers[key]))
+
+
+        print(' '+s.format(*mag))
         if to_ox:
             if to_ox > 0:
                 ox = [to_ox-abs(m) for m in mag]
@@ -1716,7 +1724,7 @@ class Structure():
 
         more_info - return more output - takes time
 
-
+        from_one - if True, strart first atom from 1, otherwise from 0
 
         RETURN
             dict with the following keys:
@@ -1735,6 +1743,9 @@ class Structure():
 
         if from_one:
             i -= 1
+            mod = 0
+        else:
+            mod = 1 # for table 
 
         zn = self.znucl
         x = self.xcart[i]
@@ -1746,7 +1757,7 @@ class Structure():
         out[1] = [invert(zn[o-1]) for o in out[1]]
         out[2] = [o+1 for o in out[2]]
 
-        out_tab = [range(0, len(out[2])), out[2], out[1], out[3]]
+        out_tab = [range(0, len(out[2])), np.array(out[2])-mod, out[1], out[3]]
 
         tab = np.asarray(out_tab).T.tolist()
 
@@ -3568,7 +3579,7 @@ class CalculationVasp(Calculation):
         def name_mod_U_last():
             name_mod_last = 'U'+str(
                         update_incar(parameter = 'LDAUU', 
-                            u_ramp_step = self.set.u_ramping_nstep-1, write = False, f = f )).replace('.','') #used to det last U
+                            u_ramp_step = self.set.u_ramping_nstep-1, write = False, f = f, st = self )).replace('.','') #used to det last U
 
             return name_mod_last
 
@@ -3617,7 +3628,7 @@ class CalculationVasp(Calculation):
             if 'neb' in self.calc_method: 
                 if write: 
                     f.write("#NEB run, start and final configurations, then IMAGES:\n") 
-                update_incar(parameter = 'IMAGES', value = 0, write = write, f = f) # start and final runs
+                update_incar(parameter = 'IMAGES', value = 0, write = write, f = f, st = self) # start and final runs
 
             
             if 0: #experimental preliminary non-magnetic run
@@ -3679,7 +3690,7 @@ class CalculationVasp(Calculation):
                 u_last = 100
                 for i_u in usteps:
 
-                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write, f = f )
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write, f = f , st = self)
                     if u == u_last:
                         continue
                     name_mod   = '.U'+str(u).replace('.', '')+set_mod
@@ -3732,7 +3743,7 @@ class CalculationVasp(Calculation):
 
                     name_mod   = '.AFM'+str(i)+set_mod
 
-                    update_incar(parameter = 'MAGMOM', value = magmom, write = write, f = f)
+                    update_incar(parameter = 'MAGMOM', value = magmom, write = write, f = f, st = self)
 
                     prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile,
                         copy_poscar_flag = copy_poscar_flag)
@@ -3783,7 +3794,7 @@ class CalculationVasp(Calculation):
             
             def u_ramp_prepare():
                 if 'u_ramping' in self.calc_method:
-                    u = update_incar(parameter = 'LDAUU', u_ramp_step = self.set.u_ramping_nstep-1, write = False, f = f)
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = self.set.u_ramping_nstep-1, write = False, f = f, st = self)
                     name_mod   = '.U'+str(u).replace('.', '')
                     # name_mod_last = name_mod_U_last()+'.'
                     name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
@@ -3812,7 +3823,7 @@ class CalculationVasp(Calculation):
                 for i_u in usteps:
 
 
-                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = 1,  f = f)
+                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = 1,  f = f, st = self)
                     if u == u_last:
                         continue
 
@@ -3888,7 +3899,7 @@ class CalculationVasp(Calculation):
                     f.write('cp '+final +  nim_plus_one_str + '/OUTCAR\n' )
 
 
-                update_incar(parameter = 'IMAGES', value = nim, write  =1, f  = f )
+                update_incar(parameter = 'IMAGES', value = nim, write  =1, f  = f , st = self)
 
 
                 if 'u_ramping' in self.calc_method:

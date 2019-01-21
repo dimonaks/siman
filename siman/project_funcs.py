@@ -3853,7 +3853,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     pn = projectname
     
     m_set = '1u';
-    clust = 'cee' # 
+    # clust = 'cee' # 
     
     p = params
     show_fit  = p.get('show_fit')
@@ -3868,6 +3868,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     active_cation = p.get('active_cation')
     # atom_to_move 
     del_pos = p.get('del_pos')
+    clust = p.get('cluster') or 'cee'
+    corenum = p.get('corenum')
 
 
 
@@ -3917,7 +3919,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         pd['start_pos'] = path[0] 
         pd['end_pos']   = path[1] 
 
-        add_loop_dic = { 'check_job':1, 'cluster':clust}
+        add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum}
         fitplot_args = {'ylim':(-0.02, 1.8)}
 
         if step == 2:

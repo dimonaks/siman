@@ -157,6 +157,22 @@ def b2s(b):
     return s
 
 
+def is_unique(d, dist, prec = 0.001):
+    """
+    check if d is unique within the provided precision in the given list dist
+    return 1 if unique, else 0 
+    """
+
+    if len(dist)>0: 
+        if min([abs(d-d1) for d1 in dist])>prec:
+            out = 1
+        else:
+            out = 0
+    else:
+        out = 1
+
+    return out 
+
 
 @contextmanager
 def cwd(path):

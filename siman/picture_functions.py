@@ -312,17 +312,18 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     # plt.ylabel(ylabel, axes = ax)
     # print(ylabel)
-    if ylabel != None:
+    if ylabel is not None:
 
         ax.set_ylabel(ylabel)
     
 
-    if xlabel != None:
+    if xlabel is not None:
         ''
         # plt.xlabel(xlabel, axes = ax)
         ax.set_xlabel(xlabel)
 
-
+    if params is None:
+        params = {}
 
 
     if corner_letter:
