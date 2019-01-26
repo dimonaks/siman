@@ -144,6 +144,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             '020917'
             '261018' - after this moment new namig convention applied if end_pos_types_z is used
 
+        - add_loop_dic - standart parameters of add()
+        - params (dic) - provide additional parameters to add()
+
     ###RETURN:
         None
 
