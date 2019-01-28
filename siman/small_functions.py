@@ -21,7 +21,6 @@ from siman.header import printlog
 
 
 
-
 class TracePrints(object):
   def __init__(self):    
     self.stdout = sys.stdout
@@ -172,6 +171,17 @@ def is_unique(d, dist, prec = 0.001):
         out = 1
 
     return out 
+
+
+def calc_ngkpt(recip, kspacing):
+    to_ang_local = 1
+    
+    N_from_kspacing = []
+    for i in 0, 1, 2:
+        N_from_kspacing.append( math.ceil( (np.linalg.norm(recip[i]) / to_ang_local) / kspacing) )
+
+    return N_from_kspacing
+
 
 
 @contextmanager

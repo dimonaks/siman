@@ -122,7 +122,11 @@ vasp_other_keys = [
 'LSOL',
 'EB_K',
 'LAMBDA_D_K',
-'CORE_C'
+'CORE_C',
+'MAGATOM', #atat keys
+'DOSTATIC',
+'USEPOT',
+'KPPRA',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -310,6 +314,8 @@ class InputSet():
         """
         Update parameters of set from dict param
         """
+        print(param)
+
         if inplace:
             s = self
         else:
@@ -544,7 +550,7 @@ class InputSet():
 
         """
 
-
+        # print(token, arg)
         if token in ("ISMEAR",):
             if type(arg) not in [int, None, ]:
                 raise TypeError
@@ -553,7 +559,7 @@ class InputSet():
                 raise TypeError
 
 
-        old = self.vasp_params[token]
+        old = self.vasp_params.get(token)
         self.vasp_params[token] = arg
         
         if old == arg:
@@ -571,7 +577,7 @@ class InputSet():
         set any attribute.
 
         """
-        # print token
+        # print (token)
         if hasattr(self, token):
             old = getattr(self, token)
             if old == arg:

@@ -38,7 +38,7 @@ from siman import header
 
 from siman.header import printlog, print_and_log, runBash, plt
 
-from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s
+from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt
 from siman.functions import (read_vectors, read_list, words,
      element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
@@ -1184,7 +1184,7 @@ class Structure():
         """
         
         Group and order atoms by atom types; consistent with VASP
-        order (list) -required order e.g. ['O', 'Li']
+        order (list) -required order e.g. ['O', 'Li'] or str 'alphabet'
 
         return st
         """
@@ -1202,6 +1202,13 @@ class Structure():
 
 
         els = st.get_elements()
+
+        if 'alphabet' in order:
+            order =  list(sorted(set(els)))
+        # print(unique_sorted)
+        # sys.exit()
+
+
         t = 1
         for el in order:
             if el not in els:
@@ -2797,8 +2804,8 @@ class CalculationVasp(Calculation):
 
         elif kspacing:
             self.init.recip = self.init.get_recip()
-            for i in 0, 1, 2:
-                N_from_kspacing.append( math.ceil( (np.linalg.norm(self.init.recip[i]) / to_ang_local) / kspacing) )
+            
+            N_from_kspacing = calc_ngkpt(self.init.recip, kspacing)
 
             N = N_from_kspacing
             printlog('check_kpoints(): k-points are determined from kspacing',kspacing)
@@ -2972,6 +2979,8 @@ class CalculationVasp(Calculation):
                 vp['NBANDS']*=2
 
 
+
+
             if params and 'charge' in params:
                 vp['NELECT'] = int(tve - params['charge'])
 
@@ -2982,9 +2991,12 @@ class CalculationVasp(Calculation):
         return
 
 
-    def actualize_set(self, curset = None):
+    def actualize_set(self, curset = None, params = None):
         """
         Makes additional processing of set parameters, which also depends on calculation
+    
+        adding parameters for atat
+
         """
 
 
@@ -3191,6 +3203,11 @@ class CalculationVasp(Calculation):
 
         # number of electrons
 
+        if vp.get('MAGATOM') is not None: # for ATAT
+            # print (vp['MAGATOM'])
+            vp['MAGMOM'] = None
+            self.init.magmom = [None]
+            # sys.exit()
 
 
 
@@ -3471,6 +3488,10 @@ class CalculationVasp(Calculation):
 
                 elif 'polaron' in self.calc_method:
                     f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
+
+                elif 'atat' in  self.calc_method:
+                    f.write('maps -d&\npollmach runstruct_vasp prun\n')
+
 
                 else:
                     f.write(parrallel_run_command +" >"+name+".log\n")

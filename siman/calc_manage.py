@@ -20,7 +20,7 @@ except:
 import siman
 from siman import header
 from siman.header import print_and_log, runBash, mpl, plt
-from siman.small_functions import is_list_like, makedir, list2string
+from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt
 from siman.classes import Calculation, CalculationVasp, Description
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import write_xyz, read_xyz, write_occmatrix
@@ -843,6 +843,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             - 'polaron' - polaron hopping, only input_st is supported
 
+            - 'atat' - create all input for ATAT
+                params['atat']
+                    'active_atoms' - now dictionary of elements, which can be substituted by what e.g. {'Li':'Vac'}
 
 
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
@@ -1144,13 +1147,27 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             input_st = st1
 
 
+        if 'atat' in calc_method:
 
+            ks = varset[setlist[0]].vasp_params['KSPACING']
+            input_st = input_st.reorder_element_groups(order = 'alphabet') # required for correct work of ATAT
 
+            N = calc_ngkpt(input_st.get_recip(), ks)
+            # print(N)
+            KPPRA = N[0]*N[1]*N[2]*input_st.natom # here probably symmetry should taken into account? not really good working
 
+            if ks == 0.3:
+                KPPRA = 1200
+            else:
+                KPPRA = 1200
+                printlog('Warning! KPPRA = 1200 for all kspacings! please contact developer to improve or modify this code in calc_manage.py')
 
+            printlog('Atat mode, KPPRA is', KPPRA, imp = 'Y')
+            # sys.exit()
 
-
-
+            params['update_set_dic']={'add_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
+            'MAGATOM':list2string(input_st.magmom), 'MAGMOM':None,
+            'DOSTATIC':''}
 
 
 
@@ -1668,8 +1685,35 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         return file
 
 
+    def write_lat_in(st, params):
+        file = cl.dir +  'lat.in'
+        to_ang = 1
+        rprimd = st.rprimd
+        with open(file, 'w') as f:
+            for i in 0, 1, 2:
+                f.write('{:10.6f} {:10.6f} {:10.6f}\n'.format(rprimd[i][0]*to_ang,rprimd[i][1]*to_ang,rprimd[i][2]*to_ang) )
+                # f.write("\n")
+            f.write(' 1 0 0\n 0 1 0\n 0 0 1\n')
+
+            active_atoms = params['atat']['active_atoms']
+            subs = []
+
+            # print(active_atoms)
+            # sys.exit()
+            for el in st.get_elements():
+                if el in active_atoms:
+                    subs.append(active_atoms[el])
+                else:
+                    subs.append(None)
 
 
+            for x, el, sub in zip(st.xcart, st.get_elements(), subs):
+                f.write('{:10.6f} {:10.6f} {:10.6f} {:s}'.format(*x, el))
+                if sub:
+                    f.write(','+sub)
+                f.write("\n")
+
+        return file
 
     struct_des = header.struct_des
 
@@ -1865,7 +1909,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             if len(setseq) > 1:
                 printlog('sequence set mode: set', curset.ise,':', end = '\n')
             curset.load(params['update_set_dic'], inplace = True)
-            cl.actualize_set(curset)
+            cl.actualize_set(curset, params = params)
 
 
 
@@ -1923,6 +1967,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
+
                 
                 cl.write_sge_script(mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )
@@ -1933,6 +1978,24 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                 list_to_copy.append(batch_script_filename)
                 
+
+
+                if 'atat' in cl.calc_method:
+                    lat_in = write_lat_in(cl.init, params)
+                    list_to_copy.append(lat_in)
+                    wrap = cl.dir+'/vasp.wrap'
+                    shutil.copyfile(cl.dir+'/INCAR', wrap)
+
+                    with open(wrap, "r") as fwr:
+                        wrap_cont = fwr.readlines()
+
+                    with open(wrap, "w") as fwr:
+                        fwr.write("[INCAR]\n"+"".join(wrap_cont[1:])) # remove first line with SYSTEM tag - not working in ATAT for some reason
+
+                    list_to_copy.append(wrap)
+
+
+
                 if header.copy_to_cluster_flag: 
                     cl.copy_to_cluster(list_to_copy, up)
 
