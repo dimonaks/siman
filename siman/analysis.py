@@ -660,6 +660,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
 
+    if params is None:
+        params = {}
 
     if results_dic is None:
 
@@ -794,7 +796,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy - not very good, sometimes unconverged energy could be lower! 
         
         e0 = cli.energy_sigma0
-        if params.get('neb_penult_e'):
+        if params and params.get('neb_penult_e'): # allows to take  e from the previous relaxation step in case the calculation was aborted
             e0 = cli.list_e_sigma0[-2]
 
         mep_energies.append(  e0   ) #use last energy 

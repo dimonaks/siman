@@ -1707,7 +1707,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     subs.append(None)
 
 
-            for x, el, sub in zip(st.xcart, st.get_elements(), subs):
+            for x, el, sub in zip(st.xred, st.get_elements(), subs):
                 f.write('{:10.6f} {:10.6f} {:10.6f} {:s}'.format(*x, el))
                 if sub:
                     f.write(','+sub)
