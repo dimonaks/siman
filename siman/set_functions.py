@@ -314,7 +314,7 @@ class InputSet():
         """
         Update parameters of set from dict param
         """
-        print(param)
+        # print(param)
 
         if inplace:
             s = self

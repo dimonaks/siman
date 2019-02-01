@@ -1166,7 +1166,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             # sys.exit()
 
             params['update_set_dic']={'add_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
-            'MAGATOM':list2string(input_st.magmom), 'MAGMOM':None,
+            'MAGATOM':list2string(input_st.magmom), 
+            'MAGMOM':None,
             'DOSTATIC':''}
 
 
@@ -1706,9 +1707,16 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 else:
                     subs.append(None)
 
+            # print(st.magmom)
 
-            for x, el, sub in zip(st.xred, st.get_elements(), subs):
-                f.write('{:10.6f} {:10.6f} {:10.6f} {:s}'.format(*x, el))
+            if None in st.magmom:
+                magmom = st.natom*['']
+            else:
+                magmom = st.magmom
+
+            # print(magmom)
+            for x, el, sub, m in zip(st.xred, st.get_elements(), subs, magmom):
+                f.write('{:10.6f} {:10.6f} {:10.6f} {:s}{:+.1f}'.format(*x, el, m))
                 if sub:
                     f.write(','+sub)
                 f.write("\n")

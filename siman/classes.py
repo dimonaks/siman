@@ -3205,8 +3205,8 @@ class CalculationVasp(Calculation):
 
         if vp.get('MAGATOM') is not None: # for ATAT
             # print (vp['MAGATOM'])
-            vp['MAGMOM'] = None
-            self.init.magmom = [None]
+            del vp['MAGMOM']
+            # self.init.magmom = [None]
             # sys.exit()
 
 
