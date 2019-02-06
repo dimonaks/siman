@@ -258,7 +258,7 @@ def prepare_run():
 
 
 def complete_run(close_run = True):
-    
+    header.first_run = False
     if close_run:
 
         with open('run','a', newline = '') as f:

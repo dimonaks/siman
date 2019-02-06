@@ -805,11 +805,12 @@ def ortho_vec(rprim, ortho_sizes = None):
 
 
 
-def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01): 
+def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1)): 
     """ 
     st (Structure) -  
     mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 
 
+    mul - multiply mul matrix - allows to choose fractions of new vectors
 
     bound (float) - shift (A) allows to correctly account atoms on boundaries
     mp    (int)  include additionall atoms before cutting supecell
@@ -818,7 +819,12 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     sc = st.new() 
     # st = st.return_atoms_to_cell()
     sc.name = st.name+'_supercell'
-    sc.rprimd = list(np.dot(mul_matrix, st.rprimd  ))
+    # sc.rprimd = list(np.dot(mul_matrix, st.rprimd))
+    # print(sc.rprimd)
+    sc.rprimd = list( np.dot(mul_matrix, st.rprimd)*np.array(mul)[:, np.newaxis]  )
+    
+    # print(sc.rprimd)
+
     printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
     # printlog('Mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
 
@@ -1700,7 +1706,7 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
 
 
 def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
-    primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1):
+    primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1, lll_reduce  = 0 ):
     """
     INPUT:
         st (Structure) - Initial input structure. Note that to
@@ -1727,6 +1733,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
             symmetrize - try to make both surfaces exact
 
+            lll_reduce - try to find smaller basis vectors
 
         my_paramters:
         shift (float) - shift along z 
@@ -1747,7 +1754,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
     # print(min_vacuum_size)
     # sys.exit()
-    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size,   primitive = primitive )
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size,   primitive = primitive, lll_reduce = lll_reduce )
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 

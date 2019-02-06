@@ -4137,7 +4137,7 @@ class CalculationVasp(Calculation):
                 f.write("cd "+header.PATH2PROJECT+'/'+self.dir+"\n")
                 f.write("qsub "+run_name.split('/')[-1]+"\n") 
                 f.write("cd -\n")
-                f.write('sleep 5\n')                        
+                f.write('sleep 1\n')                        
             
             elif schedule_system == 'SLURM':
                 f.write("squeue\n") 

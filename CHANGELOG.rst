@@ -1,5 +1,6 @@
 0.9.6
     
+    sleep changed from 5 to 1 for PBS
 
     to show neb xyz files use show = 'neb_geo'
 
