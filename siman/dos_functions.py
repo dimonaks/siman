@@ -217,7 +217,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                 printlog('cl2:', determine_symmetry_positions(cl2.end, eld2[iatom2]), imp = 'y')
 
-    iatom-=1
+    if iatom:
+        iatom-=1
+    
     if cl2:
         if not iatom2:
             printlog('Error!, provide *iatom2*!')
@@ -265,6 +267,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         spin_pol = True
     else:
         spin_pol = False
+
+    gc = None
 
     """2. Plot dos for different cases"""
     if dostype == 'total':

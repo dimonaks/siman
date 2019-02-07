@@ -131,6 +131,7 @@ vasp_other_keys = [
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
 siman_keys = [
+'universal', # universal paramater with any content
 'u_ramping_region', #deprecated
 'u_ramping_nstep', #number of u ramping steps
 'magnetic_moments',
@@ -140,6 +141,11 @@ siman_keys = [
 'k_band_structure', # list, first position is number of points, then high-symmetry k-points in the form ['G', 0, 0, 0] in reciprocal space for calculating band structure 
 'path2pot', # path to folder with potentials - used with potdir; if not provided that header.path2potentials is used
 'path_to_potcar', # explicit path to potential - depreacated
+]
+
+aims_keys = [
+'k_grid',
+'default_initial_moment'
 ]
 
 def read_vasp_sets(user_vasp_sets, override_global = False):
@@ -224,6 +230,8 @@ class InputSet():
         self.potdir = {}
         self.units = "vasp"
         self.vasp_params = {}
+
+        self.params = self.vasp_params  # params for any code!
         self.mul_enaug = 1
         self.history = "Here is my uneasy history( :\n"    
         self.tsmear = None 
@@ -249,6 +257,9 @@ class InputSet():
         for key in vasp_other_keys: 
             self.vasp_params[key] = None 
 
+        for key in aims_keys: 
+            self.params[key] = None 
+
 
         #add to varset
         # if ise not in header.varset:
@@ -269,14 +280,14 @@ class InputSet():
     def update(self):
         #deprecated, but still can be usefull
         # print_and_log('Updating set ...\n')
-        c1 = 1; c2 = 1
-        if self.units == "abinit":
-            c1 = to_eV
-            c2 = Ha_Bohr_to_eV_A
-        #Update Vasp parameters
-        if self.units == "vasp":
-            c1 = 1
-            c2 = 1
+        # c1 = 1; c2 = 1
+        # if self.units == "abinit":
+        #     c1 = to_eV
+        #     c2 = Ha_Bohr_to_eV_A
+        # #Update Vasp parameters
+        # if self.units == "vasp":
+        #     c1 = 1
+        #     c2 = 1
         # if self.ecut == None:
         #     self.vasp_params['ENCUT'] = None
         #     self.vasp_params['ENAUG'] = None
@@ -285,19 +296,21 @@ class InputSet():
         #     self.vasp_params['ENAUG'] = self.mul_enaug * self.vasp_params['ENCUT']
         # self.vasp_params['SIGMA'] = self.tsmear * c1
         vp = self.vasp_params
-        if 'SIGMA' in vp and vp['SIGMA']:
-            self.tsmear = vp['SIGMA'] / c1
-        else:
-            self.tsmear = None
-        
-        self.tolmxf = - self.vasp_params['EDIFFG'] / c2
-        self.toldfe = self.vasp_params['EDIFF'] / c1
+
+        self.tsmear = vp.get('SIGMA')
+        self.tolmxf = vp.get('EDIFFG')
+
+        if self.tolmxf and self.tolmxf < 0:
+            self.tolmxf*=-1
+
+        self.toldfe = vp.get('EDIFF')
         # self.vasp_params['EDIFF'] = self.toldfe * c1
         # self.vasp_params['NELM'] = self.nstep
         # self.vasp_params['NSW'] = self.ntime
         # self.vasp_params['EDIFFG'] = -self.tolmxf * c2
-        self.kspacing = self.vasp_params['KSPACING']
-        self.ecut     = self.vasp_params['ENCUT'] / c1
+        self.kspacing = vp.get('KSPACING')
+        self.ecut     = vp.get('ENCUT') 
+
         # print (self.vasp_params)
         if 'LDAUU' in self.vasp_params and self.vasp_params['LDAUU']:
             self.dftu = True
@@ -374,7 +387,11 @@ class InputSet():
 
 
 
-
+    def read_universal(self, filename):
+        #read any file to univeral parameter
+        with open(filename, 'r') as f:
+            fil = f.read()
+            self.params['universal'] = fil        
 
 
 

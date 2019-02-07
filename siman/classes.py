@@ -38,14 +38,15 @@ from siman import header
 
 from siman.header import printlog, print_and_log, runBash, plt
 
+from siman import set_functions
 from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt
 from siman.functions import (read_vectors, read_list, words,
      element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server)
-from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar
+from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims
 from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
-local_surrounding, local_surrounding2, determine_symmetry_positions)
-from siman.set_functions import InputSet
+local_surrounding, local_surrounding2, determine_symmetry_positions, )
+from siman.set_functions import InputSet, aims_keys
 
 
 """
@@ -1208,7 +1209,7 @@ class Structure():
         # print(unique_sorted)
         # sys.exit()
 
-
+        old_numbers = []
         t = 1
         for el in order:
             if el not in els:
@@ -1217,6 +1218,7 @@ class Structure():
             znucl.append( invert(el) )
 
             for i in range(st.natom):
+                # old_numbers
                 el_i = els[i]
                 if el_i not in order:
                     printlog('Error! Check *order* list')
@@ -1226,8 +1228,10 @@ class Structure():
                     typat.append(t)
                     xcart.append(st.xcart[i])
                     magmom.append(st.magmom[i])
+                    old_numbers.append(i)
             t+=1
 
+        st.old_numbers = old_numbers
         st.xcart = xcart
         st.magmom = magmom
         st.typat = typat
@@ -2318,8 +2322,8 @@ class Calculation(object):
             #sys.exit()
             self.useable = 0
             #Read total number of atoms
-#             #Programm nznucl, since We will have more impurity atoms of different types
-#             command="""grep -w -m 1 "natom " """+filename
+           # nznucl, since We will have more impurity atoms of different types
+           #  command="""grep -w -m 1 "natom " """+filename
 #             s1=runBash(command)
             self.natom = read_list("natom", 1, int, gen_words)[0]
             # print command
@@ -2683,81 +2687,6 @@ class Calculation(object):
         header.db[idd] = self
         header.struct_des[idd[0]] = header.struct_des[self.id[0]]
 
-
-    @property
-    def sfolder(self):
-        self._x = header.struct_des[self.id[0]].sfolder
-        return self._x
-
-
-
-
-class CalculationAbinit(Calculation):
-    """docstring for CalculationAbinit"""
-    pass
-
-
-
-
-
-
-
-
-class CalculationVasp(Calculation):
-    """Methods for calculations made using VASP DFT code"""
-    def __init__(self, inset = None, iid = None, output = None):
-        super(CalculationVasp, self).__init__(inset, iid, output)
-        self.len_units = 'Angstrom'
-
-
-
-    def read_poscar(self, filename, version = None):
-        """
-        Read POSCAR file using st.read_poscar 
-        
-
-        """
-
-
-        if self.path["input_geo"] == None:
-            self.path["input_geo"] = filename
-        self.path["poscar"] = filename
-        
-
-        self.hex_a = None
-        self.hex_c = None
-        self.gbpos = None
-
-
-        #Determine version
-        if version:
-            self.version = version
-        else:
-            print_and_log('Trying to find version at the end of filename POSCAR-v ...')
-            try:
-                ver = int(filename.split('-')[-1])
-                print_and_log('OK\n')
-
-            except:
-                print_and_log('\nTrying to find version at the begenning of filename v.POSCAR...')
-
-                try:
-                    ver = int(os.path.basename(filename).split('.')[0] )
-                    print_and_log('OK\n')
-               
-                except:
-                    print_and_log('No version, using 1\n')
-                    ver = 1
-
-            self.version = ver
-
-        self.init = Structure()
-        self.init = read_poscar(self.init, filename)
-        self.des = self.init.des
-
-        return
-    
-
     def check_kpoints(self, ngkpt = None):
         """
         The method updates init.ngkpt and ngkpt_dict_for_kspacings !!! as well provides possible options for it
@@ -2803,6 +2732,7 @@ class CalculationVasp(Calculation):
 
 
         elif kspacing:
+            # print(dir(self.init))
             self.init.recip = self.init.get_recip()
             
             N_from_kspacing = calc_ngkpt(self.init.recip, kspacing)
@@ -2844,152 +2774,40 @@ class CalculationVasp(Calculation):
 
         else:
             print_and_log("check_kpoints(): The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2), imp = 'Y')
-        return N_from_kspacing
+        return N
 
 
-    def write_structure(self, name_of_output_file, type_of_coordinates = 'dir', option = None, prevcalcver = None, path = None, state = 'init'):
-        """Generates POSCAR file
-           type_of_coordinates - 'direct' (xred) or 'cartesian' (xcart)
-           option -inheritance option
-           prevcalcver - ver of first calc in calc list; for first None
-           state - 'init' or 'end' 
-        """
-        #units
+    def calc_kspacings(self, ngkpt = None, sttype = 'init'):
+        """Calculates reciprocal vectors and kspacing from ngkpt"""
+        # to_ang_local = header.to_ang
         # try:
-        #     if "ang" in self.len_units or "Ang" in self.len_units: 
-        #         global to_ang; to_ang = 1.0; print_and_log("Conversion multiplier to_ang is "+str(to_ang) )
+        #     if "Ang" in self.len_units:
+        #         to_ang_local = 1
+        #         #print "units angs"
         # except AttributeError:
-        #     pass
-
-        if option == 'inherit_xred' and 'car' in type_of_coordinates: raise RuntimeError 
-
-        if option == 'inherit_xred' and prevcalcver: type_of_coordinates = 'None' # do not write xred or xcart if they will be transfered on cluster
-        
-        if path == None: 
-            path = self.dir
-        
-        if state == 'init':
-            st  = self.init
-        elif state == 'end':
-            st  = self.end
-        else: 
-            raise RuntimeError 
-        
-        filename = os.path.join(path, name_of_output_file)
-
-        makedir(filename)
-
-        st.write_poscar(filename, coord_type = type_of_coordinates)
-
-
-
-        return
-
-
-
-    def add_potcar(self):
-        """Should be run for the first calculation only"""
-        #Add POTCAR
-
-        path_to_potcar = os.path.join(self.dir, 'POTCAR')
-        potcar_files   = []
-
-        if hasattr(self.set, 'path2pot' ) and self.set.path2pot:
-            path2pot = self.set.path2pot
-        else:
-            path2pot = header.PATH2POTENTIALS
-        printlog('Potentials from ', path2pot, 'are taken')
-
-        if self.set.potdir:
-            # print (self.set.potdir)
-            for z in self.init.znucl:
-                if z == 300:
-                    continue # skip voids
-                potcar_files.append(os.path.join(path2pot, self.set.potdir[ int(z) ], 'POTCAR') )
-
-            printlog("POTCAR files:", potcar_files)        
-            # print(path_to_potcar)            
-            cat_files(potcar_files, path_to_potcar)
-
+        #     print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n")
         
 
-
-        elif self.set.path_to_potcar:
-            printlog('Attention! set.path_to_potcar is used !', self.set.path_to_potcar)
-            shutil.copyfile(self.set.path_to_potcar, path_to_potcar)
-            printlog('POTCAR was copied to', path_to_potcar)
-            path_to_potcar = self.set.path_to_potcar
+        if sttype == 'init':
+            st = self.init
+        if sttype == 'end':
+            st = self.end 
 
 
-        else:
-            printlog('Error! set.potdir and set.path_to_potcar are empty; no POTCAR was not created!')
-            path_to_potcar = None
-        
-        self.path['potcar'] = path_to_potcar
+        self.kspacing = []
+        st.kspacings = []
 
-        return path_to_potcar
+        if not ngkpt:
+            ngkpt = self.set.ngkpt
 
+        k = [0,0,0]
 
-    def calculate_nbands(self, curset, path_to_potcar = None, params = None):
-        """Should be run after add_potcar()
-            updates set, including number of electrons
-        """
-        #1 add additional information to set
-        if not curset:
-            curset = self.set
-        vp = curset.vasp_params
-        st = copy.deepcopy(self.init)
-        st = st.remove_atoms(['void']) # remove voids
+        if ngkpt:
+            k = calc_kspacings(ngkpt, st.rprimd)
+            self.kspacing = copy.deepcopy(k)
+            st.kspacing   = copy.deepcopy(k)
 
-        if path_to_potcar:
-            # path_to_potcar = self.dir+'/POTCAR'
-            self.init.zval = []
-            # print path_to_potcar
-            for line in open(path_to_potcar,'r'):
-                if "ZVAL" in line:
-                    # print line
-                    self.init.zval.append(float(line.split()[5]))
-            
-            try: 
-                curset.add_nbands
-            except AttributeError: 
-                curset.add_nbands = None
-
-            if curset.add_nbands != None:
-                tve =0
-                for i in range(st.ntypat):
-                    # print self.init.zval
-                    tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
-                    # print(self.init.zval[i], self.init.nznucl[i])
-                nbands_min = math.ceil(tve / 2.)
-                self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
-                # print(self.nbands)
-                
-
-                vp['NBANDS'] = self.nbands
-                printlog('I found that at least', nbands_min, ' bands are required. I will use', self.nbands, 'bands; add_nbands = ', curset.add_nbands)
-
-
-
-
-
-            if 'LSORBIT' in vp and vp['LSORBIT']:
-                # print (vp)
-                printlog('SOC calculation detected; increasing number of bands by two', imp = 'Y')
-                vp['NBANDS']*=2
-
-
-
-
-            if params and 'charge' in params:
-                vp['NELECT'] = int(tve - params['charge'])
-
-
-        else:
-            printlog('Attention! No path_to_potcar! skipping NBANDS calculation')
-
-        return
-
+        return  k
 
     def actualize_set(self, curset = None, params = None):
         """
@@ -3209,204 +3027,14 @@ class CalculationVasp(Calculation):
             # self.init.magmom = [None]
             # sys.exit()
 
+        if self.calculator == 'aims':
+            if None not in self.init.magmom:
+                vp['default_initial_moment'] = sum(self.init.magmom)
+
+
 
 
         return
-
-    def make_incar(self):
-        """Makes Incar file for current calculation and copy all
-        TO DO: there is no need to send all POSCAR files; It is enothg to send only one. However for rsync its not that crucial
-        """
-        #print "Begin make---------------------------------------------"
-        
-        
-        #Generate incar
-        varset = header.varset
-        d = self.dir
-        natom = self.init.natom
-        poscar_atom_order = self.init.poscar_atom_order # order of atoms in POSCAR, can be different from init!!!! used for magmom
-        incar_list = []
-
-        setseq = [self.set]
-        
-        if hasattr(self.set, 'set_sequence') and self.set.set_sequence:
-            for s in self.set.set_sequence:
-                setseq.append(s)
-
-
-        nsets = len(setseq)
-        for i, curset in enumerate(setseq):
-
-            if nsets == 1:
-                name_mod = ''
-            else:
-                name_mod = curset.ise+'.'
-
-            incar_filename = d+name_mod+'INCAR'
-            vp = curset.vasp_params
-            
-
-            with open(incar_filename,'w', newline = '') as f:
-
-                f.write( 'SYSTEM = ')
-                if hasattr(self.init, 'perm'):
-                    f.write( 'perm=[{:s}] ; '.format( list2string([i+1 for i in self.init.perm]).replace(' ', ',') )) #write permuations
-                f.write( '{:s}\n'.format(self.des) )
-
-
-                for key in sorted(vp):
-    
-                    if key == 'SYSTEM':
-                        ''
-                    elif key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
-                        mag = self.init.magmom
-                        magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order ]
-                        f.write('MAGMOM = '+list2string(magmom_aligned_with_poscar)+"\n") #magmom from geo file has higher preference
-                   
-                    elif vp[key] == None:
-                        ''
-
-                    elif key == 'KSPACING' and self.set.kpoints_file: #attention! for k-points only the base set is used!!
-                        '' # since VASP has higher priority of KSPACING param, it should not be written 
-
-                    elif is_list_like(vp[key]):
-                        lis = vp[key]
-                        f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
-                   
-                    else:
-                        f.write(key+" = "+str( vp[key] ) +"\n")
-               
-
-                f.write("\n")
-
-
-
-
-            print_and_log(incar_filename, "was generated\n")
-        
-            incar_list.append(incar_filename)
-        
-
-        return incar_list
-
-
-
-
-    
-    def make_kpoints_file(self):
-
-        struct_des = header.struct_des
-        #Generate KPOINTS
-        kspacing = self.set.vasp_params['KSPACING']
-
-        filename = os.path.join(self.dir, "KPOINTS")
-
-        it = self.id[0]
-
-
-
-        if hasattr(self.set, 'k_band_structure') and self.set.k_band_structure:
-            k = self.set.k_band_structure
-            printlog('Writing k-points file for band structure calculation.', imp = 'y')
-            
-            with open(filename, 'w', newline = '') as f:
-                f.write('k-points along high symmetry lines\n')
-                f.write('{:} ! intersections\n'.format(k[0]))
-                f.write('Line-mode\n')
-                f.write('rec\n') # now only reciprocal are supported
-                ps= k[1]
-                for pn in k[2:]:
-                    # pn  = next(k)
-                    f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n'.format(ps[1], ps[2], ps[3], ps[0]) ) 
-                    f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n\n'.format(pn[1], pn[2], pn[3], pn[0]) ) 
-                    ps = pn
-
-
-
-
-
-        elif self.set.kpoints_file:
-            if self.set.kpoints_file == True:
-
-                print_and_log( "You said to generate KPOINTS file.\n")
-                self.calc_kspacings()
-                #Generate kpoints file
-
-                #
-                if hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') and kspacing in struct_des[it].ngkpt_dict_for_kspacings:
-                    N =    struct_des[it].ngkpt_dict_for_kspacings[kspacing]
-                    print_and_log( 'Attention! ngkpt = ',N, 
-                        ' is adopted from struct_des which you provided for it ',it, ' and kspacing = ',kspacing)
-                    nk1 = N[0]; nk2 = N[1]; nk3 = N[2]
-                    self.set.ngkpt = N
-
-                elif self.set.ngkpt:
-                    nk1 = self.set.ngkpt[0]; nk2 = self.set.ngkpt[1]; nk3 = self.set.ngkpt[2];
-                    print_and_log( "Attention! ngkpt was used for kpoints file\n")
-
-                
-                elif kspacing:
-                    print_and_log( "Attention! ngkpt for kpoints file are created from kspacing; ngkpt is empty\n")
-                    N = self.check_kpoints()
-                    self.set.ngkpt = N
-                    nk1 = N[0]; nk2 = N[1]; nk3 = N[2]
-                
-                else:
-                    print_and_log( "Error! could not find information about k-points\n")
-
-
-
-                with open(filename,'w', newline = '') as f:
-
-                    f.write("Automatic Mesh\n") #Comment
-                    f.write("0 \n")#Number of points; 0-Auto
-                    if 'KGAMMA' in self.set.vasp_params and self.set.vasp_params["KGAMMA"] in (1,'.TRUE.', 'True', '1'): 
-                        f.write("Gamma\n")
-                    else: 
-                        f.write("Monkhorst Pack\n")
-                    f.write('%i %i %i \n'%(nk1, nk2, nk3) )
-                    f.write("0 0 0\n") # optional shift
-
-                print_and_log( "KPOINTS was generated\n")
-            
-            else:
-                # print()
-                shutil.copyfile(self.set.kpoints_file, filename)
-                print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
-
-
-
-        else:
-            print_and_log( "This set is without KPOINTS file.\n")
-            filename = ''
-
-
-
-        return [filename]
-
-    def copy_to_cluster(self, list_to_copy, update):
-        d = self.dir
-        list_to_copy.append( os.path.join(d, 'POTCAR')  )
-        list_to_copy.extend( glob.glob(   os.path.join(d, '*POSCAR*')  ) )
-        # list_to_copy.extend( glob.glob(   os.path.join(d, '*.run*'  )  ) )
-
-        if 'OCCEXT' in self.set.vasp_params and self.set.vasp_params['OCCEXT'] == 1:
-            list_to_copy.append(  os.path.join(d, 'OCCMATRIX')   )
-
-        
-        if "up" in update: #Copy to server
-            printlog('Files to copy:', list_to_copy)
-
-            # command = ' mkdir -p {:}'.format( os.path.join(self.project_path_cluster, self.dir)  )
-
-            # run_on_server(command, self.cluster_address)
-
-            push_to_server(list_to_copy,  self.project_path_cluster +'/'+ self.dir, self.cluster_address)
-
-
-        return
-
-
 
     def write_sge_script(self, input_geofile = "header", version = 1, option = None, 
         prevcalcver = None, savefile = None, schedule_system = None,
@@ -4151,39 +3779,518 @@ class CalculationVasp(Calculation):
         printlog("\nRun file created\n")     
         return
 
+    def calculate_nbands(self, curset, path_to_potcar = None, params = None):
+        """Should be run after add_potcar()
+            updates set, including number of electrons
+        """
+        #1 add additional information to set
+        if not curset:
+            curset = self.set
+        vp = curset.vasp_params
+        st = copy.deepcopy(self.init)
+        st = st.remove_atoms(['void']) # remove voids
+
+        if path_to_potcar:
+            # path_to_potcar = self.dir+'/POTCAR'
+            self.init.zval = []
+            # print path_to_potcar
+            for line in open(path_to_potcar,'r'):
+                if "ZVAL" in line:
+                    # print line
+                    self.init.zval.append(float(line.split()[5]))
+            
+            try: 
+                curset.add_nbands
+            except AttributeError: 
+                curset.add_nbands = None
+
+            if curset.add_nbands != None:
+                tve =0
+                for i in range(st.ntypat):
+                    # print self.init.zval
+                    tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
+                    # print(self.init.zval[i], self.init.nznucl[i])
+                nbands_min = math.ceil(tve / 2.)
+                self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
+                # print(self.nbands)
+                
+
+                vp['NBANDS'] = self.nbands
+                printlog('I found that at least', nbands_min, ' bands are required. I will use', self.nbands, 'bands; add_nbands = ', curset.add_nbands)
 
 
-    def calc_kspacings(self, ngkpt = None, sttype = 'init'):
-        """Calculates reciprocal vectors and kspacing from ngkpt"""
-        # to_ang_local = header.to_ang
-        # try:
-        #     if "Ang" in self.len_units:
-        #         to_ang_local = 1
-        #         #print "units angs"
-        # except AttributeError:
-        #     print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n")
+
+
+
+            if 'LSORBIT' in vp and vp['LSORBIT']:
+                # print (vp)
+                printlog('SOC calculation detected; increasing number of bands by two', imp = 'Y')
+                vp['NBANDS']*=2
+
+
+
+
+            if params and 'charge' in params:
+                vp['NELECT'] = int(tve - params['charge'])
+
+
+        else:
+            printlog('Attention! No path_to_potcar! skipping NBANDS calculation')
+
+        return
+
+
+
+
+
+
+    @property
+    def sfolder(self):
+        self._x = header.struct_des[self.id[0]].sfolder
+        return self._x
+
+
+
+
+class CalculationAbinit(Calculation):
+    """docstring for CalculationAbinit"""
+    pass
+
+
+class CalculationAims(Calculation):
+    """object for Aims code """
+    def __init__(self, inset = None, iid = None, output = None):
+        super(CalculationAims, self).__init__(inset, iid, output)
+        self.len_units = 'Angstrom'
+        self.calculator = 'aims'
+
+    def write_structure(self, name_of_output_file, type_of_coordinates = 'dir', option = None, prevcalcver = None, path = None, state = 'init'):
+
+        if path == None: 
+            path = self.dir
+        
+        if state == 'init':
+            st  = self.init
+        elif state == 'end':
+            st  = self.end
+        else: 
+            raise RuntimeError 
+        
+        filename = os.path.join(path, 'geometry.in')
+
+        makedir(filename)
+
+        write_geometry_aims(st, filename, coord_type = type_of_coordinates)
+
+
+    def add_potcar(self):
+
+        d = self.dir
+
+        incar = d+'control.in'
+
+        with open(self.set.path_to_potcar, 'r') as f:
+            fil = f.read()
+
+        with open(incar, 'w') as f:
+            f.write(fil)
+
+        self.path['potcar'] = self.set.path_to_potcar
+
+    def make_incar(self):
+        d = self.dir
+        
+        incar = d+'control.in'
+        with open(incar, 'r') as f:
+            fil = f.read()
+        vp = self.set.params
+        
+        N = self.check_kpoints()
+        print(N)
+        # self.exit()
+        vp['k_grid'] = list2string(N)
+
+        with open(incar, 'w') as f:
+            f.write(vp['universal'])
+            f.write('\n')
+            for key in vp:
+                if key in aims_keys:
+                    f.write(key+' '+str(vp[key])+'\n')
+            f.write(fil)
+        
+        return [incar]
+
+    def make_kpoints_file(self):
+        printlog( "Attention! ngkpt for kpoints file are created from kspacing\n")
+        N = self.check_kpoints()
+        self.set.ngkpt = N
+        return ['']
+
+
+    def copy_to_cluster(self, list_to_copy, update):
+        d = self.dir
+        list_to_copy.extend( glob.glob(   os.path.join(d, '*geometry*')  ) )
+        
+        if "up" in update: #Copy to server
+            printlog('Files to copy:', list_to_copy)
+
+            push_to_server(list_to_copy,  self.project_path_cluster +'/'+ self.dir, self.cluster_address)
+
+
+        return
+
+
+
+class CalculationVasp(Calculation):
+    """Methods for calculations made using VASP DFT code"""
+    def __init__(self, inset = None, iid = None, output = None):
+        super(CalculationVasp, self).__init__(inset, iid, output)
+        self.len_units = 'Angstrom'
+        self.calculator = 'vasp'
+
+
+
+    def read_poscar(self, filename, version = None):
+        """
+        Read POSCAR file using st.read_poscar 
         
 
-        if sttype == 'init':
-            st = self.init
-        if sttype == 'end':
-            st = self.end 
+        """
 
 
-        self.kspacing = []
-        st.kspacings = []
+        if self.path["input_geo"] == None:
+            self.path["input_geo"] = filename
+        self.path["poscar"] = filename
+        
 
-        if not ngkpt:
-            ngkpt = self.set.ngkpt
+        self.hex_a = None
+        self.hex_c = None
+        self.gbpos = None
 
-        k = [0,0,0]
 
-        if ngkpt:
-            k = calc_kspacings(ngkpt, st.rprimd)
-            self.kspacing = copy.deepcopy(k)
-            st.kspacing   = copy.deepcopy(k)
+        #Determine version
+        if version:
+            self.version = version
+        else:
+            print_and_log('Trying to find version at the end of filename POSCAR-v ...')
+            try:
+                ver = int(filename.split('-')[-1])
+                print_and_log('OK\n')
 
-        return  k
+            except:
+                print_and_log('\nTrying to find version at the begenning of filename v.POSCAR...')
+
+                try:
+                    ver = int(os.path.basename(filename).split('.')[0] )
+                    print_and_log('OK\n')
+               
+                except:
+                    print_and_log('No version, using 1\n')
+                    ver = 1
+
+            self.version = ver
+
+        self.init = Structure()
+        self.init = read_poscar(self.init, filename)
+        self.des = self.init.des
+
+        return
+    
+
+
+
+    def write_structure(self, name_of_output_file, type_of_coordinates = 'dir', option = None, prevcalcver = None, path = None, state = 'init'):
+        """Generates POSCAR file
+           type_of_coordinates - 'direct' (xred) or 'cartesian' (xcart)
+           option -inheritance option
+           prevcalcver - ver of first calc in calc list; for first None
+           state - 'init' or 'end' 
+        """
+        #units
+        # try:
+        #     if "ang" in self.len_units or "Ang" in self.len_units: 
+        #         global to_ang; to_ang = 1.0; print_and_log("Conversion multiplier to_ang is "+str(to_ang) )
+        # except AttributeError:
+        #     pass
+
+        if option == 'inherit_xred' and 'car' in type_of_coordinates: 
+            raise RuntimeError 
+
+        if option == 'inherit_xred' and prevcalcver: 
+            type_of_coordinates = 'None' # do not write xred or xcart if they will be transfered on cluster
+        
+        if path == None: 
+            path = self.dir
+        
+        if state == 'init':
+            st  = self.init
+        elif state == 'end':
+            st  = self.end
+        else: 
+            raise RuntimeError 
+        
+        filename = os.path.join(path, name_of_output_file)
+
+        makedir(filename)
+
+        st.write_poscar(filename, coord_type = type_of_coordinates)
+
+
+
+        return
+
+
+
+    def add_potcar(self):
+        """Should be run for the first calculation only"""
+        #Add POTCAR
+
+        path_to_potcar = os.path.join(self.dir, 'POTCAR')
+        potcar_files   = []
+
+        if hasattr(self.set, 'path2pot' ) and self.set.path2pot:
+            path2pot = self.set.path2pot
+        else:
+            path2pot = header.PATH2POTENTIALS
+        printlog('Potentials from ', path2pot, 'are taken')
+
+        if self.set.potdir:
+            # print (self.set.potdir)
+            for z in self.init.znucl:
+                if z == 300:
+                    continue # skip voids
+                potcar_files.append(os.path.join(path2pot, self.set.potdir[ int(z) ], 'POTCAR') )
+
+            printlog("POTCAR files:", potcar_files)        
+            # print(path_to_potcar)            
+            cat_files(potcar_files, path_to_potcar)
+
+        
+
+
+        elif self.set.path_to_potcar:
+            printlog('Attention! set.path_to_potcar is used !', self.set.path_to_potcar)
+            shutil.copyfile(self.set.path_to_potcar, path_to_potcar)
+            printlog('POTCAR was copied to', path_to_potcar)
+            path_to_potcar = self.set.path_to_potcar
+
+
+        else:
+            printlog('Error! set.potdir and set.path_to_potcar are empty; no POTCAR was not created!')
+            path_to_potcar = None
+        
+        self.path['potcar'] = path_to_potcar
+
+        return path_to_potcar
+
+
+
+
+
+
+
+
+
+
+
+
+    def make_incar(self):
+        """Makes Incar file for current calculation and copy all
+        TO DO: there is no need to send all POSCAR files; It is enothg to send only one. However for rsync its not that crucial
+        """
+        #print "Begin make---------------------------------------------"
+        
+        
+        #Generate incar
+        varset = header.varset
+        d = self.dir
+        natom = self.init.natom
+        poscar_atom_order = self.init.poscar_atom_order # order of atoms in POSCAR, can be different from init!!!! used for magmom
+        incar_list = []
+
+        setseq = [self.set]
+        
+        if hasattr(self.set, 'set_sequence') and self.set.set_sequence:
+            for s in self.set.set_sequence:
+                setseq.append(s)
+
+
+        nsets = len(setseq)
+        for i, curset in enumerate(setseq):
+
+            if nsets == 1:
+                name_mod = ''
+            else:
+                name_mod = curset.ise+'.'
+
+            incar_filename = d+name_mod+'INCAR'
+            vp = curset.vasp_params
+            
+
+            with open(incar_filename,'w', newline = '') as f:
+
+                f.write( 'SYSTEM = ')
+                if hasattr(self.init, 'perm'):
+                    f.write( 'perm=[{:s}] ; '.format( list2string([i+1 for i in self.init.perm]).replace(' ', ',') )) #write permuations
+                f.write( '{:s}\n'.format(self.des) )
+
+
+                for key in sorted(vp):
+    
+                    if key == 'SYSTEM':
+                        ''
+                    elif key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
+                        mag = self.init.magmom
+                        magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order ]
+                        f.write('MAGMOM = '+list2string(magmom_aligned_with_poscar)+"\n") #magmom from geo file has higher preference
+                   
+                    elif vp[key] == None:
+                        ''
+
+                    elif key == 'KSPACING' and self.set.kpoints_file: #attention! for k-points only the base set is used!!
+                        '' # since VASP has higher priority of KSPACING param, it should not be written 
+
+                    elif is_list_like(vp[key]):
+                        lis = vp[key]
+                        f.write(key + " = " + ' '.join(['{:}']*len(lis)).format(*lis) + "\n")
+                   
+                    else:
+                        f.write(key+" = "+str( vp[key] ) +"\n")
+               
+
+                f.write("\n")
+
+
+
+
+            print_and_log(incar_filename, "was generated\n")
+        
+            incar_list.append(incar_filename)
+        
+
+        return incar_list
+
+
+
+
+    
+    def make_kpoints_file(self):
+
+        struct_des = header.struct_des
+        #Generate KPOINTS
+        kspacing = self.set.vasp_params['KSPACING']
+
+        filename = os.path.join(self.dir, "KPOINTS")
+
+        it = self.id[0]
+
+
+
+        if hasattr(self.set, 'k_band_structure') and self.set.k_band_structure:
+            k = self.set.k_band_structure
+            printlog('Writing k-points file for band structure calculation.', imp = 'y')
+            
+            with open(filename, 'w', newline = '') as f:
+                f.write('k-points along high symmetry lines\n')
+                f.write('{:} ! intersections\n'.format(k[0]))
+                f.write('Line-mode\n')
+                f.write('rec\n') # now only reciprocal are supported
+                ps= k[1]
+                for pn in k[2:]:
+                    # pn  = next(k)
+                    f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n'.format(ps[1], ps[2], ps[3], ps[0]) ) 
+                    f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n\n'.format(pn[1], pn[2], pn[3], pn[0]) ) 
+                    ps = pn
+
+
+
+
+
+        elif self.set.kpoints_file:
+            if self.set.kpoints_file == True:
+
+                print_and_log( "You said to generate KPOINTS file.\n")
+                self.calc_kspacings()
+                #Generate kpoints file
+
+                #
+                if hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') and kspacing in struct_des[it].ngkpt_dict_for_kspacings:
+                    N =    struct_des[it].ngkpt_dict_for_kspacings[kspacing]
+                    print_and_log( 'Attention! ngkpt = ',N, 
+                        ' is adopted from struct_des which you provided for it ',it, ' and kspacing = ',kspacing)
+                    nk1 = N[0]; nk2 = N[1]; nk3 = N[2]
+                    self.set.ngkpt = N
+
+                elif self.set.ngkpt:
+                    nk1 = self.set.ngkpt[0]; nk2 = self.set.ngkpt[1]; nk3 = self.set.ngkpt[2];
+                    print_and_log( "Attention! ngkpt was used for kpoints file\n")
+
+                
+                elif kspacing:
+                    print_and_log( "Attention! ngkpt for kpoints file are created from kspacing; ngkpt is empty\n")
+                    N = self.check_kpoints()
+                    self.set.ngkpt = N
+                    nk1 = N[0]; nk2 = N[1]; nk3 = N[2]
+                
+                else:
+                    print_and_log( "Error! could not find information about k-points\n")
+
+
+
+                with open(filename,'w', newline = '') as f:
+
+                    f.write("Automatic Mesh\n") #Comment
+                    f.write("0 \n")#Number of points; 0-Auto
+                    if 'KGAMMA' in self.set.vasp_params and self.set.vasp_params["KGAMMA"] in (1,'.TRUE.', 'True', '1'): 
+                        f.write("Gamma\n")
+                    else: 
+                        f.write("Monkhorst Pack\n")
+                    f.write('%i %i %i \n'%(nk1, nk2, nk3) )
+                    f.write("0 0 0\n") # optional shift
+
+                print_and_log( "KPOINTS was generated\n")
+            
+            else:
+                # print()
+                shutil.copyfile(self.set.kpoints_file, filename)
+                print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
+
+
+
+        else:
+            print_and_log( "This set is without KPOINTS file.\n")
+            filename = ''
+
+
+
+        return [filename]
+
+    def copy_to_cluster(self, list_to_copy, update):
+        d = self.dir
+        list_to_copy.append( os.path.join(d, 'POTCAR')  )
+        list_to_copy.extend( glob.glob(   os.path.join(d, '*POSCAR*')  ) )
+        # list_to_copy.extend( glob.glob(   os.path.join(d, '*.run*'  )  ) )
+
+        if 'OCCEXT' in self.set.vasp_params and self.set.vasp_params['OCCEXT'] == 1:
+            list_to_copy.append(  os.path.join(d, 'OCCMATRIX')   )
+
+        
+        if "up" in update: #Copy to server
+            printlog('Files to copy:', list_to_copy)
+
+            # command = ' mkdir -p {:}'.format( os.path.join(self.project_path_cluster, self.dir)  )
+
+            # run_on_server(command, self.cluster_address)
+
+            push_to_server(list_to_copy,  self.project_path_cluster +'/'+ self.dir, self.cluster_address)
+
+
+        return
+
+
+
+
+
 
 
 

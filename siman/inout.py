@@ -1,6 +1,6 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
-import os
+import os, io
 import numpy  as np
 
 from siman import header
@@ -905,3 +905,16 @@ def write_occmatrix(occs, folder):
                     f.write(list2string(row)+'\n')
             f.write('\n')
     return filename
+
+
+def write_geometry_aims(st, filename, coord_type = 'cart', periodic = True):
+
+    rprimd = st.rprimd
+    with io.open(filename,'w', newline = '') as f:
+        if periodic:
+            for i in 0, 1, 2:
+                f.write('lattice_vector   {:10.6f} {:10.6f} {:10.6f}\n'.format(rprimd[i][0],rprimd[i][1],rprimd[i][2]) )
+            f.write("\n")
+
+        for x, el in zip(st.xcart, st.get_elements() ):
+            f.write("atom  {:12.10f}  {:12.10f}  {:12.10f}  {:2s} \n".format(x[0], x[1], x[2], el) )

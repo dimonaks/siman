@@ -21,7 +21,7 @@ import siman
 from siman import header
 from siman.header import print_and_log, runBash, mpl, plt
 from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt
-from siman.classes import Calculation, CalculationVasp, Description
+from siman.classes import Calculation, CalculationVasp, Description, CalculationAims, Structure
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.picture_functions import plot_mep, fit_and_plot, plot_conv
@@ -1164,6 +1164,16 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             printlog('Atat mode, KPPRA is', KPPRA, imp = 'Y')
             # sys.exit()
+            exclude_new = []
+            exclude = params['atat'].get('exclude_atoms_n')
+
+            # print(exclude)
+            # sys.exit()
+            if exclude:
+                for i in exclude:
+                    exclude_new.append(input_st.old_numbers.index(i))
+                # exclude = exclude_new
+                params['atat']['exclude_atoms_n'] = exclude_new
 
             params['update_set_dic']={'add_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
             'MAGATOM':list2string(input_st.magmom), 
@@ -1697,12 +1707,21 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             f.write(' 1 0 0\n 0 1 0\n 0 0 1\n')
 
             active_atoms = params['atat']['active_atoms']
+            exclude = params['atat']['exclude_atoms_n'] or []
             subs = []
 
             # print(active_atoms)
             # sys.exit()
-            for el in st.get_elements():
-                if el in active_atoms:
+            # for el in set(st.get_elements()):
+                # st.determine_symmetry_positions(el)
+
+            # st.printme()
+            # sys.exit()
+
+
+            for i, el in enumerate(st.get_elements()):
+                if el in active_atoms and i not in exclude:
+                    # print(el, i, st.xred[i])
                     subs.append(active_atoms[el])
                 else:
                     subs.append(None)
@@ -1716,7 +1735,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             # print(magmom)
             for x, el, sub, m in zip(st.xred, st.get_elements(), subs, magmom):
-                f.write('{:10.6f} {:10.6f} {:10.6f} {:s}{:+.1f}'.format(*x, el, m))
+                if el == 'O':
+                    m = 0
+                f.write('{:10.6f} {:10.6f} {:10.6f} {:s}{:+.0f}'.format(*x, el, m))
                 if sub:
                     f.write(','+sub)
                 f.write("\n")
@@ -1795,9 +1816,18 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             cl_prev = copy.deepcopy(calc[id])
 
-        calc[id] = CalculationVasp( varset[id[1]] )
+        if params.get('calculator') == 'aims':
+            cl = CalculationAims( varset[id[1]] )
+
+        else:
+            #by default Vasp
+            cl = CalculationVasp( varset[id[1]] )
         
-        cl = calc[id]
+
+
+
+
+        calc[id] = cl
 
         cl.id = id 
         cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
@@ -1867,12 +1897,17 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         if input_st:
+            
+            if type(input_st) is not type(Structure()):
+                printlog('Error! input_st should be of type Structure()')
             cl.init  = input_st
-            # sys.exit()
         else:
             cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
                 input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
+
+        # print(cl.init.printme())
+        # sys.exit()
 
         if cl.path["input_geo"]:
 
@@ -1889,6 +1924,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 dir_1 = os.path.dirname(cl.path["input_geo"] )
                 dir_2 = cl.dir
                 # sys.exit()
+
         if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1: #copy occfile
             if 'occmatrix' in params:
                 shutil.copyfile(params['occmatrix'], cl.dir+'/OCCMATRIX' ) # file is provided explicitly
