@@ -3029,7 +3029,8 @@ class Calculation(object):
 
         if self.calculator == 'aims':
             if None not in self.init.magmom:
-                vp['default_initial_moment'] = sum(self.init.magmom)
+                ''
+                # vp['default_initial_moment'] = 0.6 # per atom - not good, since for different elements you need different moments
 
 
 
@@ -3906,7 +3907,7 @@ class CalculationAims(Calculation):
         vp = self.set.params
         
         N = self.check_kpoints()
-        print(N)
+        # print(N)
         # self.exit()
         vp['k_grid'] = list2string(N)
 
@@ -3915,7 +3916,9 @@ class CalculationAims(Calculation):
             f.write('\n')
             for key in vp:
                 if key in aims_keys:
-                    f.write(key+' '+str(vp[key])+'\n')
+                    # print(key, self.set.params[key])
+                    if vp[key] is not None:
+                        f.write(key+' '+str(vp[key])+'\n')
             f.write(fil)
         
         return [incar]
@@ -3936,6 +3939,24 @@ class CalculationAims(Calculation):
 
             push_to_server(list_to_copy,  self.project_path_cluster +'/'+ self.dir, self.cluster_address)
 
+    def download(self, load):
+
+        path_to_outcar  = self.path["output"]
+
+        self.get_file(os.path.basename(file), up = load)
+
+
+
+    def read_results(self, load = '', out_type = '', show = ''):
+
+        """
+        Aims
+        """
+        filename = self.download_aims(load) # wrapper for downloading output files
+
+        out = read_aims_out(out_type, show)
+
+        printlog(out)
 
         return
 
@@ -4355,6 +4376,7 @@ class CalculationVasp(Calculation):
         ###INPUT:
             - load (str) - 'x' - download xml, o - download outcar and contcar, un - read unfinished
             - show (str) - print additional information
+                alkali_ion_number - show mag around this ion
             - choose_outcar - see description in res_loop(), from 1
             - out_type - controls the return string
                 see in code, add here

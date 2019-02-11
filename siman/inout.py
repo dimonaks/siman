@@ -916,5 +916,12 @@ def write_geometry_aims(st, filename, coord_type = 'cart', periodic = True):
                 f.write('lattice_vector   {:10.6f} {:10.6f} {:10.6f}\n'.format(rprimd[i][0],rprimd[i][1],rprimd[i][2]) )
             f.write("\n")
 
-        for x, el in zip(st.xcart, st.get_elements() ):
+        if None in st.magmom:
+            magmom = [None]*st.natom
+        else:
+            magmom = st.magmom
+
+        for x, el, mag in zip(st.xcart, st.get_elements(), magmom ):
             f.write("atom  {:12.10f}  {:12.10f}  {:12.10f}  {:2s} \n".format(x[0], x[1], x[2], el) )
+            if mag is not None:
+                f.write('initial_moment '+str(mag)+'\n') 

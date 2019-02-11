@@ -145,7 +145,8 @@ siman_keys = [
 
 aims_keys = [
 'k_grid',
-'default_initial_moment'
+'default_initial_moment',
+'spin',
 ]
 
 def read_vasp_sets(user_vasp_sets, override_global = False):
@@ -183,7 +184,7 @@ def read_vasp_sets(user_vasp_sets, override_global = False):
 
 
             s = inherit_iset(l[0], l[1], varset, override = override, newblockfolder = bfolder) 
-            # print param
+            # print ('param', param,)
             s.load(param, inplace = True)
             
         header.varset = varset
@@ -358,6 +359,9 @@ class InputSet():
 
             elif key in siman_keys:
                 s.set_attrp(key, param[key] )
+
+            elif key in aims_keys:
+                s.set_vaspp(key, param[key] )
             
             else:
                 print_and_log('Error! Uknown key: '+key)
