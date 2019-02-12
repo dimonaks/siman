@@ -182,7 +182,7 @@ def calc_ngkpt(recip, kspacing):
 
     return N_from_kspacing
 
-
+# def format_str():
 
 @contextmanager
 def cwd(path):

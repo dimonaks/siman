@@ -117,8 +117,14 @@ class CalcDict(dict):
                     dict.__setitem__(self, key, val)
                     # print('reading ',str(key), 'from db')
                 except:
-                    print('Problem with key, return None')
+                    print('Problem with key',key,', return None')
                     val = None
+                    val = d[str(key)]
+
+                    # for k in d:
+                    #     # print(k[0])
+                    #     if str(key) in k:
+                    #         print(k)
         
 
         return val
@@ -165,6 +171,9 @@ verbose_log = 0 # in addition to normal log write verbose log in any case by ope
 
 override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
 
+pymatgen_flag = None
+
+
 db = CalcDict()
 # global db
 calc = db
@@ -173,7 +182,6 @@ varset = {};
 struct_des = {};
 
 sets = varset
-
 
 
 

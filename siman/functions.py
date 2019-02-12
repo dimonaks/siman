@@ -13,7 +13,7 @@ except:
 
 from siman import header
 from siman.header import print_and_log, printlog, runBash, eV_A_to_J_m
-from siman.small_functions import is_list_like, is_string_like, gunzip_file, makedir
+from siman.small_functions import is_list_like, is_string_like, gunzip_file, makedir, grep_file
 
 
 def unique_elements(seq, idfun=None): 
@@ -932,3 +932,25 @@ def update_incar(parameter = None, value = None, u_ramp_step = None, write = Tru
         runBash(command)
 
     return  u_step #for last element
+
+
+def check_output(filename, check_string, load):
+    """
+    Check if file exist and it is finished by search for check_string
+    """
+
+    if filename and os.path.exists(filename):
+
+        out = grep_file(check_string, filename, reverse = True)
+
+        printlog('The grep result of',filename, 'is:', out)
+        # sys.exit()
+        if check_string in out or 'un' in load:
+            state = '4. Finished'
+        else:
+            state = '5. Broken outcar'
+
+    else:
+        state = '5. no OUTCAR'
+
+    return state

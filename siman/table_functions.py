@@ -26,12 +26,13 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 from siman import header
-from siman.header import print_and_log, printlog, calc
+from siman.header import print_and_log, printlog, calc, runBash
 from siman.inout import write_xyz
-from siman.small_functions import makedir, is_list_like
+from siman.small_functions import makedir, is_list_like, latex_spg, latex_chem, get_common_chemical_base
 from siman.geo import replic
-
-
+from siman.analysis import calc_redox
+if header.pymatgen_flag:
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 
 
@@ -169,33 +170,31 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         f.close()
     return table_string
 
-def geo_table_row(cl = None, st = None, name = '', show_alpha = 0, mnpo4_hack = False):
+def geo_table_row(cl = None, st = None, name = '', show_angle = 0, mnpo4_hack = False):
     #return list of geo data for cl, which can be used for table
     """
     mnpo4_hack (bool) - if true exchange a and c for mnpo4 phase
     """
-    from small_functions import latex_spg, latex_chem
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
 
     if cl:
         st = cl.end
     # if not name:
-    spg = st.get_space_group_info()
-    spg = latex_spg(spg[0])
-    
+    if header.pymatgen_flag:
+        spg = st.get_space_group_info()
+        spg = latex_spg(spg[0])
+       
+        #transform to standard
+        st_mp = st.convert2pymatgen()
+        symprec = 0.1
+        sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
+
+        st_mp_prim = sf.find_primitive()
+        st_mp_conv = sf.get_conventional_standard_structure()
+    else:
+        spg = '-'
 
 
-
-
-
-    #transform to standard
-    st_mp = st.convert2pymatgen()
-    symprec = 0.1
-    sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
-
-    st_mp_prim = sf.find_primitive()
-    st_mp_conv = sf.get_conventional_standard_structure()
-    
     # st_mp_prim.
     # print('primitive,', st_mp_prim.lattice)
     # print('conventio,', st_mp_conv.lattice)
@@ -220,9 +219,14 @@ def geo_table_row(cl = None, st = None, name = '', show_alpha = 0, mnpo4_hack = 
     alpha, beta, gamma = st.get_angles()
     elem = np.array(st.get_elements())
 
-    alpha = '& {:5.1f}'.format(alpha)
-    if not show_alpha:
-        alpha = ''
+    if 'a' in show_angle:
+        angle = '& {:5.2f}'.format(alpha)
+    elif 'b' in show_angle:
+        angle = '& {:5.2f}'.format(beta)
+    elif 'g' in show_angle:
+        angle = '& {:5.2f}'.format(gamma)
+    else:
+        angle = ''
 
     v = st.vlength
     a, b, c = v
@@ -230,28 +234,41 @@ def geo_table_row(cl = None, st = None, name = '', show_alpha = 0, mnpo4_hack = 
         c, b, a = v
 
 
-    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT',  a, 
-        b, c)+alpha+'& {:5.1f} & {:s}'.format(st.vol, spg)
+    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT+U',  a, 
+        b, c)+angle+'& {:5.1f} & {:s}'.format(st.vol, spg)
 
 
 
 
-def table_geometry(st_list):
-    #Produce standart table with lattice constants
+def table_geometry(st_list, show_angle = None, exp = None):
+    """
+    Produce standart table with lattice constants
     # print(row)
+    exp (list) - list of strings with exp data with '& & &' format
+    """
     rows = []
     for st in st_list:
         # st.printme()
-        row = geo_table_row(st = st)
+        row = geo_table_row(st = st, show_angle = show_angle)
         rows.append(row)
+    if exp:
+        rows.extend(exp)
+
+    if 'a' in show_angle:
+        angle = "$\\alpha$"
+    elif 'b' in show_angle:
+        angle = "$\\beta$"
+    elif 'g' in show_angle:
+        angle = "$\\gamma$"
+    else:
+        angle = ''
 
 
     caption = "Lattice parameters (\AA), volume (\AA$^3$), and space group (spg)."
-    return latex_table(rows, caption, 'tab:const', 'Structure & src & $a$ & $b$ & $c$ & Vol. & spg' )
+    return latex_table(rows, caption, 'tab:const', 'Structure & src & $a$ & $b$ & $c$ &'+angle+'& Vol. & spg' )
 
 def table_potentials(cl_list):
-    from analysis import calc_redox
-    from small_functions import  get_common_chemical_base
+
     cl_b = cl_list[0]
     rows = []
     for cl in cl_list[1:]:
@@ -263,14 +280,13 @@ def table_potentials(cl_list):
 
         rows.append([n_b.replace(base, 'X')+'/'+n.replace(base, 'X'), a['redox_pot'], a['vol_red']])
 
-    caption = "Redox potential (V) and volume change (\\%). X="+base
+    caption = "Redox potential ($U$) and volume change (\\%). X="+base
     return latex_table(rows, caption, 'tab:const', 'Pair & $U$ & $dV$ ', float_format = [1,1] )
 
 
 def generate_latex_report(text, filename):
     # 
 
-    from header import runBash
     fn = filename+'.tex'
     makedir(fn)
     head = r"""

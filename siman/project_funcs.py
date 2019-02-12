@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from siman import header
 from siman.header import printlog, calc, db
 from siman.picture_functions import fit_and_plot
+from siman.table_functions import table_geometry, table_potentials, generate_latex_report
+
 from siman.small_functions import merge_dics as md, makedir
 from siman.calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
 from siman.neb import add_neb
@@ -3847,6 +3849,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         atom_to_move
         del_pos
 
+        exp_geometry - list of rows with exp geometry for table
 
     """
     from siman.geo import determine_symmetry_positions, primitive, remove_x
@@ -3876,6 +3879,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
     if update or 'res' not in db[pn]:
         db[pn]['res'] = []
+        db[pn]['latex'] = {}
+        print('service_list was cleared')
 
     if 'latex' not in db[pn]:
         db[pn]['latex'] = {}
@@ -3944,6 +3949,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             if target_x == 0:
                 a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                 fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                
+                # print(a[0])
+
                 if a[0] not in service_list:
                 
                     service_list.append(a[0])
@@ -3981,15 +3989,15 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         #Lattice constants, and intercalation potentials 
         #the first calculation now is considered as intercalated 
         # IS = 
-        from table_functions import table_geometry, table_potentials
 
         # print('service list is ', service_list)
         """Lattice constants"""
 
         sts = []
         cll = []
+        print('service list:', service_list)
         for a in service_list:
-            # print(a)
+            print('current a is ', a)
             cl = db[a['id']]
             try:
                 cl.end
@@ -4002,10 +4010,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             cll.append(cl)
             if 1:
                 """Plot figures"""
-                if 'id_sc' in a:
+                if 'id_sc' in a and '4' in db[a['id_sc']].state:
                     db[a['id_sc']].end.write_xyz(jmol = 1)
 
-        table = table_geometry(sts)
+        table = table_geometry(sts, show_angle = p.get('show_angle'), exp = p.get('exp_geometry'))
         db[pn]['latex']['t1'] = table
 
 
@@ -4019,7 +4027,6 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
     if step == 4:
         #create report
-        from table_functions import generate_latex_report
 
         latex_text = ''
 
@@ -4027,3 +4034,4 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             latex_text+=db[pn]['latex'][key] +'\n'
 
         generate_latex_report(latex_text, filename = 'tex/'+pn+'/'+pn)
+

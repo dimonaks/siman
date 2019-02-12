@@ -1968,15 +1968,22 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 schedule_system = cl.schedule_system, mode = 'body',
                 batch_script_filename = batch_script_filename)
             
-                        
-            if out_name:
-                cl.path["output"] = cl.dir+out_name
+        
+
+            """Filenames section"""
+
+            if params.get('calculator') == 'aims':
+                cl.path["output"] = cl.dir+cl.name+'.log'
+
             else:
-                name_mod = ''
-                cl.path["output"] = cl.dir+str(version)+name_mod+".OUTCAR" #set path to output
-            
-            #paths to other files
-            cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
+                if out_name:
+                    cl.path["output"] = cl.dir+out_name
+                else:
+                    name_mod = ''
+                    cl.path["output"] = cl.dir+str(version)+name_mod+".OUTCAR" #set path to output
+                
+                #paths to other files
+                cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
 
 
 
@@ -2895,7 +2902,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             
             if readfiles:
                 printlog('Starting self.read_results() ...')
-                outst = cl.read_results(loadflag, analys_type, voronoi, show, 
+                outst = cl.read_results(loadflag, analys_type, voronoi = voronoi, show = show, 
                     choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
                 
                 if '5' in cl.state:

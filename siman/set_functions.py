@@ -141,6 +141,7 @@ siman_keys = [
 'k_band_structure', # list, first position is number of points, then high-symmetry k-points in the form ['G', 0, 0, 0] in reciprocal space for calculating band structure 
 'path2pot', # path to folder with potentials - used with potdir; if not provided that header.path2potentials is used
 'path_to_potcar', # explicit path to potential - depreacated
+'periodic', # 1 or 0, periodic boundary conditions or not; by default considered periodic
 ]
 
 aims_keys = [
@@ -242,6 +243,7 @@ class InputSet():
         self.set_sequence = None
         self.kpoints_file = None # can be path to external file
         self.save_last_wave = None #if True than do no remove last wavefunction
+        self.periodic = 1 # PBC
         # self.use_ngkpt = False
         
         if path_to_potcar:
@@ -573,10 +575,11 @@ class InputSet():
 
         # print(token, arg)
         if token in ("ISMEAR",):
-            if type(arg) not in [int, None, ]:
+            if type(arg) not in [int, type(None), ]:
                 raise TypeError
         if token in ("KSPACING",):
-            if type(arg) not in [float, None, ]:
+            # print(type(arg))
+            if type(arg) not in [float, type(None), ]:
                 raise TypeError
 
 
