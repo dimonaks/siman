@@ -874,6 +874,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'charge' - charge of the system, +1, -1
 
 
+            - 'polaron'
+                - 'polaron_status' (str) 'new' (default) or 'existing'
 
     Comments:
         
@@ -1073,15 +1075,37 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             pm = params['polaron']
             am = abs(pm['amp']) # amplitude of polaron, the sign is not important here
 
+            existing = pm.get('polaron_status') and 'ex' in pm.get('polaron_status') 
+
             if pm['polaron_type'] == 'electron':
-                params['charge'] = -1
+                if existing:
+                    ''
+                    #nothing is done
+                else:
+                    #create new polaron
+                    params['charge'] = -1
+
             elif pm['polaron_type'] == 'hole':
                 ''
                 am = am * -1 
-                params['charge'] = +1
+                if existing:
+                    ''
+                else:
+                    #create new polaron
 
-            st1 = input_st.localize_polaron(pm['istart'],  am)
-            st2 = input_st.localize_polaron(pm['iend'], am)
+                    params['charge'] = +1
+
+            if existing:
+                st1 = copy.deepcopy(input_st)
+                st2 = input_st.localize_polaron(pm['iend'], am)
+                st2 = st2.localize_polaron(pm['istart'], -am) # return back existing polaron to normal
+
+
+            else:
+                st1 = input_st.localize_polaron(pm['istart'],  am)
+                st2 = input_st.localize_polaron(pm['iend'], am)
+
+
 
             st1_vis = st1.replace_atoms([pm['istart']], 'U')
             st2_vis = st2.replace_atoms([pm['iend']], 'U')

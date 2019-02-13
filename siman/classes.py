@@ -1754,9 +1754,9 @@ class Structure():
 
         if from_one:
             i -= 1
-            mod = 0
+            mod = 1
         else:
-            mod = 1 # for table 
+            mod = 0 # for table 
 
         zn = self.znucl
         x = self.xcart[i]
@@ -1766,9 +1766,9 @@ class Structure():
         out = list(out_or)
         # out[0] = list(itertools.chain.from_iterable(out[0]))
         out[1] = [invert(zn[o-1]) for o in out[1]]
-        out[2] = [o+1 for o in out[2]]
+        out[2] = [o+mod for o in out[2]]
 
-        out_tab = [range(0, len(out[2])), np.array(out[2])-mod, out[1], out[3]]
+        out_tab = [range(0, len(out[2])), out[2], out[1], out[3]]
 
         tab = np.asarray(out_tab).T.tolist()
 
@@ -1779,7 +1779,7 @@ class Structure():
             imp = ''
         else:
             imp = 'Y'
-        printlog('Neighbors around atom', i+1, self.get_elements()[i],':', imp = imp)
+        printlog('Neighbors around atom', i+mod, self.get_elements()[i],':', imp = imp)
         # if not silent:
         if tabulate:
             printlog( tabulate(tab[1:], headers = ['nn', 'No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f"), imp = imp )
