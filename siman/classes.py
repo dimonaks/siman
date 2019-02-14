@@ -975,11 +975,13 @@ class Structure():
 
 
 
-    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None):
+    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None):
         """
         appends at the end if element is new. Other case insertered according to VASP conventions
         Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
         atoms_xcart (list of ndarray)
+        atoms_xred (list of coordinate lists) - if provided both, this has higher priority (not implemented yet, use xcart!!!)
+
         selective (list of lists) - selective dynamics
 
         magmom is appended with 0.6, please improve me! by using other values for magnetic elements 
@@ -1100,8 +1102,10 @@ class Structure():
 
     def add_atom(self, xr = None, element = 'Pu', xc = None, selective = None):
         """
-        wrapper 
+        
         allows to add one atom using reduced coordinates or cartesian
+        xr - reduced
+        xc - cartesian
         """
 
         if xr is not None:
@@ -1303,7 +1307,7 @@ class Structure():
 
 
 
-    def mov_atoms(self, iat = None, to_x = None, relative = False):
+    def mov_atoms(self, iat = None, to_x = None, to_xr = None, relative = False):
         """
         Move one atom to xcart position *to_x*
         relative (bool) - if shift is relative
@@ -1311,13 +1315,23 @@ class Structure():
         """
         st = copy.deepcopy(self)
         
-        if relative:
-            st.xcart[iat] += to_x
-        else:
-            st.xcart[iat] = to_x
-        
+        if to_xr is not None:
+            if relative:
+                st.xred[iat] += to_xr
+            else:
+                st.xred[iat] = to_xr
+            
+            st.xred2xcart()
 
-        st.xcart2xred()
+
+
+        else:
+            if relative:
+                st.xcart[iat] += to_x
+            else:
+                st.xcart[iat] = to_x
+            
+            st.xcart2xred()
 
         return st
 
