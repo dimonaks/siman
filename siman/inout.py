@@ -998,7 +998,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         #     self.end = copy.deepcopy(self.init) # below needed end values will be updated
         # except:
         if not contcar_read:
-            self.end = Structure()
+            self.end = self.init.new()
 
         # if not hasattr(self.end, "natom"): 
         #     self.end.natom = self.natom

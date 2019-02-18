@@ -1757,7 +1757,7 @@ class Structure():
             'numbers'
             'dist'
             'xcart'
-        
+            'st' - surrounding
 
 
         Important:
