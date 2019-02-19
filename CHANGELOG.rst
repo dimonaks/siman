@@ -1,5 +1,8 @@
 0.9.6
 
+    new regime for add() 
+        calc_method = 'polaron'
+
     new module small_classes to where some of simple classes would be transferred
 
     new control parameter added to set
