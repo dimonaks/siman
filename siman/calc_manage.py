@@ -1099,6 +1099,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             if pm.get('st1'):
                 st1 = pm['st1']
                 st2 = pm['st2']
+                st1.magmom = [None]
 
             elif existing:
                 st1 = copy.deepcopy(input_st)

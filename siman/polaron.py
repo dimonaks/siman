@@ -7,12 +7,12 @@ AR - atomic relaxation
 SP - single point
 1 - polaron and deformation at start position (AR)
 2 - polaron and deformation at final position (AR)
-21 - polaron and deform at start position (SP)
+21 - polaron and deformation at start position (SP)
 21+images - polaron at start position, deformation at final position (SP)
-22:22+images - intermediate between 21 and 
+22:22+images - intermediate between start and end (SP) 
 42 - polaron and deformation at final position (SP)
 42+images - polaron at final position, deformation at start position (SP)
-43:43+images -  intermediate deformation between 42 and  (sP)
+43:43+images -  intermediate deformation between end and start  (SP)
 
 
 """
@@ -84,6 +84,8 @@ if __name__ == "__main__":
     vasprun_command = params.get('vasp_run') or 'vasp'
     images = params.get('images') or 3 # number of images
     mode   = params.get('mode') or 'inherit' # number of images
+    magmom = params.get('magmom') or None
+
     printlog('Choosing mode', mode, imp = 'y')
 
 
