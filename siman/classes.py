@@ -4552,7 +4552,7 @@ class CalculationVasp(Calculation):
         else:
             path_to_outcar  = self.path["output"]
         
-
+        # print(path_to_outcar)
         if 'OUTCAR' in path_to_outcar:
             path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
             path_to_poscar = path_to_outcar.replace('OUTCAR', "POSCAR")
@@ -4610,7 +4610,7 @@ class CalculationVasp(Calculation):
                 cont_name = os.path.basename(path_to_contcar)
                 path_to_outcar = path_to_outcar.replace(out_name, 'OUTCAR')
                 path_to_contcar = path_to_contcar.replace(cont_name, 'CONTCAR')
-
+                # self.path['output'] = path_to_outcar
 
             files = [ self.project_path_cluster+'/'+path_to_outcar, self.project_path_cluster+'/'+path_to_contcar ]
             # print(load)

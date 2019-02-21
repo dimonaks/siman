@@ -1442,21 +1442,21 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 spin2 = []
                 nm = 2*l_at+1
                 for i in range(nm):
-                    line = outcarlines[i_line+4+i]
                     try:
+                        line = outcarlines[i_line+4+i]
                         spin1.append( np.array(line.split()).astype(float) )
                     except:
-                        print_and_log('Warning! Somthing wrong with occ matrix:', line)
+                        printlog('Warning! Somthing wrong with occ matrix:', line)
                 if spin_polarized:
                     for i in range(nm):
-                        # try:
-                        line = outcarlines[i_line+7+nm+i]
-                        # print(line)
-                        line = line.replace('-', ' -')
-                        spin2.append( np.array(line.split()).astype(float) )
-                        # except:
-                        #     printlog('Attention! Could not read spin2, probably no spaces')
-                        #     spin2.append(0)        
+                        try:
+                            line = outcarlines[i_line+7+nm+i]
+                            # print(line)
+                            line = line.replace('-', ' -')
+                            spin2.append( np.array(line.split()).astype(float) )
+                        except:
+                            printlog('Attention! Could not read spin2, probably not finishied')
+                            spin2.append(0)        
 
                 occ_matrices[i_at-1] = spin1+spin2
                 # print (np.array(spin1) )

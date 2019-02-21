@@ -1815,13 +1815,34 @@ def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = '', omit_edg
         xl = xl[1:-1]
 
     # print(xl)
+    # st1.printme()
+    # st2.printme()
+    R = st1.rprimd
     nl = range(st1.natom)
     sts = []
     for j, x in enumerate(xl):
         st_inter = copy.deepcopy(st1)
-        for i, xc1, xc2 in zip(nl, st1.xcart, st2.xcart):
-            st_inter.xcart[i] = (1-x) * xc1 + x * xc2
-        st_inter.update_xred()
+        for i, x1, x2, xc1,xc2 in zip(nl, st1.xred, st2.xred, st1.xcart, st2.xcart):
+            # d1,d2 = image_distance(xc1, xc2, st1.rprimd)
+            d = np.linalg.norm(xc1-xc2)
+            # if d> 10:
+                # print('d =',d)
+                # print(x1, x2)
+                # print(xc1, xc2)
+                # print((1-x) * x1 + x * x2)
+            for k in 0,1,2: #periodic boundary conditions
+                # print('j = ',k, x1[k] - x2[k])
+
+                if x1[k] - x2[k] > 0.5:
+                    x1[k] -= 1
+                    # print(x1)
+                if x1[k] - x2[k] <= -0.5:
+                    x1[k] += 1
+                    # print(x1)
+
+
+            st_inter.xred[i] = (1-x) * x1 + x * x2
+        st_inter.update_xcart()
         sts.append(st_inter)
         if write_poscar:
             st_inter.name+='.'+str(j)
