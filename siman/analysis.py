@@ -1063,11 +1063,18 @@ def polaron_analysis(cl, ):
     for i, v in enumerate(verlist1):
         cl = db[cl.id[0], cl.id[1], v]
         cl.res()
-        mep_energies1.append( cl.e0 )
+        if '4' in cl.state:
+            mep_energies1.append( cl.list_e_sigma0[0] )
+        else:
+            mep_energies1.append(0)
     for i, v in enumerate(verlist2):
         cl = db[cl.id[0], cl.id[1], v]
         cl.res()
-        mep_energies2.append( cl.e0 )
+        if '4' in cl.state:
+
+            mep_energies2.append( cl.list_e_sigma0[0] )
+        else:
+            mep_energies2.append(0)
 
     # print(len(atom_pos), len(mep_energies))
     n = 6
