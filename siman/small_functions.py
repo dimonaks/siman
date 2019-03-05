@@ -16,7 +16,7 @@ except:
     except NameError:
         string_types = str # for python 3
 
-
+from siman import header
 from siman.header import printlog
 
 
@@ -181,6 +181,20 @@ def calc_ngkpt(recip, kspacing):
         N_from_kspacing.append( math.ceil( (np.linalg.norm(recip[i]) / to_ang_local) / kspacing) )
 
     return N_from_kspacing
+
+
+def setting_sshpass(cl):
+    if hasattr(cl , 'cluster'):
+        # print(cl.cluster)
+        # clust = header.CLUSTERS[cl.cluster]
+        if 'sshpass' in cl.cluster and cl.cluster['sshpass']:
+            printlog('setting sshpass to True', imp = '')
+            # sys.exit()
+            header.sshpass = cl.cluster['sshpass']
+        else:
+            header.sshpass = None
+
+
 
 # def format_str():
 

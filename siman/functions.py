@@ -13,7 +13,7 @@ except:
 
 from siman import header
 from siman.header import print_and_log, printlog, runBash, eV_A_to_J_m
-from siman.small_functions import is_list_like, is_string_like, gunzip_file, makedir, grep_file
+from siman.small_functions import is_list_like, is_string_like, gunzip_file, makedir, grep_file, setting_sshpass
 
 
 def unique_elements(seq, idfun=None): 
@@ -249,6 +249,7 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
 
     def download(file, to_file):
 
+        # print(header.sshpass)
         if header.ssh_object:
 
             exist = file_exists_on_server(file, addr)
@@ -264,7 +265,7 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
         elif header.sshpass and header.sshpass == 'proxy':
             # com = 'ssh sdv "sshpass -f ~/.ssh/p ssh ' + addr + ' \\"tar zcf - '+ file +'\\"" | tar zxf - '+to_file # does not work?
             com = 'ssh sdv "sshpass -f ~/.ssh/p ssh ' + addr + ' \\"tar cf - '+ file +'\\"" > '+to_file
-            # print(com)
+            # print('sshpass',com)
             # sys.exit()
             out = runBash(com)
 

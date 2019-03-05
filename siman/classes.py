@@ -39,7 +39,7 @@ except:
 from siman.header import printlog, print_and_log, runBash, plt
 
 from siman import set_functions
-from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt
+from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
 from siman.functions import (read_vectors, read_list, words,
      element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
@@ -3917,6 +3917,8 @@ class Calculation(object):
             initially used for chg files - rename!
         """
 
+        setting_sshpass(self)
+
         if nametype == 'asoutcar':
             path_to_file = self.path['output'].replace('OUTCAR',filetype)
         else:
@@ -4689,7 +4691,9 @@ class CalculationVasp(Calculation):
         """just wrapper to get chgcar files """
         if 'CHGCAR' in kwargs:
             del kwargs['CHGCAR']
-        return self.get_file(self, filetype = 'CHGCAR', **kwargs)
+        # print(self.path['charge'])
+        # return self.get_file(filetype = str(self.id[2])+'.CHGCAR', **kwargs)
+        return self.get_file(filetype = 'CHGCAR', **kwargs)
 
 
 

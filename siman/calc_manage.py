@@ -2763,16 +2763,6 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     if not calc:
         calc = header.calc
 
-    def setting_sshpass(cl):
-        if hasattr(cl , 'cluster'):
-            # print(cl.cluster)
-            # clust = header.CLUSTERS[cl.cluster]
-            if 'sshpass' in cl.cluster and cl.cluster['sshpass']:
-                printlog('setting sshpass to True', imp = '')
-                # sys.exit()
-                header.sshpass = cl.cluster['sshpass']
-            else:
-                header.sshpass = None
 
 
     def override_cluster_address(cl):
@@ -2874,7 +2864,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 continue #pass non existing calculations
             cl = calc[id]
             
-            setting_sshpass(cl) # checking if special download commands are needed
+            # setting_sshpass(cl) # checking if special download commands are needed - moved to get_file()
             
 
             override_cluster_address(cl)

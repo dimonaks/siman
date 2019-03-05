@@ -3860,6 +3860,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     
     p = params
     show_fit  = p.get('show_fit')
+    up    = p.get('up') or 'up1'
     up_scale  = p.get('up_scale')
     up_SC  = p.get('up_SC')
     up_res    = p.get('up_res') or 'up1'
@@ -3887,6 +3888,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
 
     service_list = db[pn]['res']
+    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum}
 
     if step == 1:
         ''
@@ -3895,10 +3897,13 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             print('geo file is ', startgeofile)
             st = smart_structure_read(startgeofile)
             st = primitive(st)
-            add_loop(pn, m_set, 1, input_st = st, it_folder = pn)
+            add_loop(pn, m_set, 1, input_st = st, it_folder = pn, up = up, **add_loop_dic)
             startgeofile = db[pn]['steps'].append(1) 
         else:
-            res_loop(pn, m_set, 1)
+            out = res_loop(pn, m_set, 1)
+            # print(out)
+            if len(out[1]) == 0:
+                db[pn]['steps'] = []
 
     if step in [2, 3]:
 
@@ -3924,7 +3929,6 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         pd['start_pos'] = path[0] 
         pd['end_pos']   = path[1] 
 
-        add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum}
         fitplot_args = {'ylim':(-0.02, 1.8)}
 
         if step == 2:
@@ -3941,7 +3945,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             # cl.res()
             style_dic  = {'p':'bo', 'l':'-b', 'label':'DS'}
 
-            st = cl.end
+            # st = cl.end
+            st = cl.init # 
 
             pos = determine_symmetry_positions(st, el)
             # cl.me()
