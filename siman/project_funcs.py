@@ -3774,23 +3774,28 @@ def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 )
     return
 
 
-def create_project_from_geofile(filename):
+def create_project_from_geofile(filename, projectname = None, up = 0):
     """
     empty project is added to database
     get name from geofile and create required folder and put file into it  
     Various rules to create project name
-
+    up - update
     """
     db = header.db
     if 1:
         #simple - just name of file
         basename = os.path.basename(filename)
-        projectname = basename.split('.')[0]
-        makedir(projectname+'/temp')
-        startgeofile = projectname+'/'+ basename
+        if projectname is None:
+            projectname = basename.split('.')[0]
+        projectfolder = projectname.split('_')[0]
+        makedir(projectfolder+'/temp')
+        if projectname is None:
 
+            startgeofile = projectfolder+'/'+ basename
+        else:
+            startgeofile = filename
 
-    if projectname not in db:
+    if up or projectname not in db:
         if not os.path.exists(startgeofile):
             shutil.copyfile(filename, startgeofile)
         db[projectname]  = {}
@@ -3799,7 +3804,7 @@ def create_project_from_geofile(filename):
         printlog('Project ', projectname, 'was created', imp = 'y')
     
     else:
-        printlog('Error! project already exist')
+        printlog('Error! project', projectname, 'already exist')
 
     return projectname
 
@@ -3826,7 +3831,9 @@ def get_alkali_ion(st, active_cation = None):
 def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, params = None ):
     """
     AI module to process cif file and automatic calculation of standard properties of cathode material 
-    
+    project folder is everything before _ in projectname
+
+
     step 1 - read geo and run simple relaxation
 
     step 2 - calc barriers, IS
@@ -3854,7 +3861,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     """
     from siman.geo import determine_symmetry_positions, primitive, remove_x
     pn = projectname
-    
+    pf = pn.split('_')[0] # project_folder
+    # print(pf)
+
     m_set = '1u';
     # clust = 'cee' # 
     
@@ -3897,7 +3906,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             print('geo file is ', startgeofile)
             st = smart_structure_read(startgeofile)
             st = primitive(st)
-            add_loop(pn, m_set, 1, input_st = st, it_folder = pn, up = up, **add_loop_dic)
+            add_loop(pn, m_set, 1, input_st = st, it_folder = pf, up = up, **add_loop_dic)
             startgeofile = db[pn]['steps'].append(1) 
         else:
             out = res_loop(pn, m_set, 1)
@@ -3976,10 +3985,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                     st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
 
                     id_new = (name+'sg'+str(sg), m_set, 1)
-                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = 'up1')
+                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
-                    a = calc_barriers('normal', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
+                    a = calc_barriers('normal', el, el, up_res = 'up1', show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                     fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
                     info = a[0]
                     info['x'] = target_x

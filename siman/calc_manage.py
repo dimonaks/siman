@@ -391,6 +391,7 @@ def cif2poscar(cif_file, poscar_file):
 
 
     if pymatgen_flag:
+        # print(cif_file)
         parser = CifParser(cif_file)
         # s = parser.get_structures(primitive = True)[0]
         s = parser.get_structures(primitive = 0)[0]

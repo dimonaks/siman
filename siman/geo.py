@@ -9,6 +9,11 @@ except:
     print('geo.py:tabulate is not avail')
 
 from siman import header
+
+if header.pymatgen_flag:
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    from pymatgen.io.vasp.inputs import Poscar
+
 from siman.header import printlog
 from siman.small_functions import red_prec
 # from impurity import find_pores
@@ -1409,9 +1414,6 @@ def remove_half(st, el, sg = None, info_mode = 0):
 
     prim = 0
 
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    from pymatgen.io.vasp.inputs import Poscar
-    from calc_manage import smart_structure_read
     st_ohne_el = st.remove_atoms([el])
 
 
@@ -1429,7 +1431,11 @@ def remove_half(st, el, sg = None, info_mode = 0):
     #convert back to my format! please improve!!!
     p = Poscar(st_mp_prim)
     p.write_file('xyz/POSCAR')
-    st_prim = smart_structure_read('xyz/POSCAR')
+
+    from siman.inout import read_poscar
+
+    st_new = st.copy()
+    st_prim = read_poscar(st_new, 'xyz/POSCAR')
 
     if info_mode:
         return remove_half_based_on_symmetry(st_prim, info_mode = 1)
@@ -1558,9 +1564,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
     prim = 0
 
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    from pymatgen.io.vasp.inputs import Poscar
-    from calc_manage import smart_structure_read
+
     st_ohne_el = st.remove_atoms([el])
 
 
@@ -1578,7 +1582,10 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
     #convert back to my format! please improve!!!
     p = Poscar(st_mp_prim)
     p.write_file('xyz/POSCAR')
-    st_prim = smart_structure_read('xyz/POSCAR')
+
+    from siman.inout import read_poscar
+    st_new = st.copy()
+    st_prim = read_poscar(st_new, 'xyz/POSCAR')
 
     if info_mode:
         return remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
