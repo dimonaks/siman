@@ -3744,7 +3744,7 @@ def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = No
     return
 
 
-def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 ):
+def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, add_loop_dic = None ):
 
     """
 
@@ -3755,9 +3755,12 @@ def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 )
     if not it_folder:
         it_folder = 'optimization/'+name.split('.')[0]+'/'
 
+    if add_loop_dic is None:
+        add_loop_dic = {}
+
     it_new = name
-    if run: 
-        add_loop(it_new, ise, 1, calc_method = 'uniform_scale', inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder)
+    if add: 
+        add_loop(it_new, ise, 1, up = 'up2', calc_method = 'uniform_scale', inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder, **add_loop_dic)
 
     else:
         idd = (it_new+'.su', ise, 100)
@@ -3765,7 +3768,7 @@ def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 )
             res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
 
         else:
-            res_loop(*idd, show = 'maga', up = 'up1')#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
+            res_loop(*idd, show = 'fo', up = 'up1')#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
         # st = calc[idd].end
         # print(st.get_space_group_info())
         # alpha, beta, gamma = st.get_angles()
