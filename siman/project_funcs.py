@@ -3865,10 +3865,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     from siman.geo import determine_symmetry_positions, primitive, remove_x
     pn = projectname
     pf = pn.split('_')[0] # project_folder
-    # print(pf)
 
-    m_set = '1u';
-    # clust = 'cee' # 
     
     p = params
     show_fit  = p.get('show_fit')
@@ -3876,7 +3873,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     up_scale  = p.get('up_scale')
     up_SC  = p.get('up_SC')
     up_res    = p.get('up_res') or 'up1'
+    m_set    = p.get('m_set') or '1u'
     sc_set    = p.get('sc_set') or '4uis'
+    sc_set_ds    = p.get('sc_set_ds') or '4uis'
     n_set     = p.get('neb_set') or '1u'
     run_neb   = p.get('run_neb')
     end_z   = p.get('end_z')
@@ -3904,7 +3903,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
     if step == 1:
         ''
-        if 1 not in db[pn]['steps']:
+        if 1 not in db[pn]['steps'] or 'up2' in up:
             startgeofile = db[pn]['startgeofile'] 
             print('geo file is ', startgeofile)
             st = smart_structure_read(startgeofile)
@@ -3921,8 +3920,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         # if 2 not in db[pn]['steps']:
         it = pn
+        # print(it, m_set, 1)
+        # sys.exit()
         cl = db[it, m_set, 1]
-
         el  = get_alkali_ion(cl.end, active_cation)
 
         it_ds = it.replace(el, '')
@@ -3956,7 +3956,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         if step == 3:
             # cl.res()
             style_dic  = {'p':'bo', 'l':'-b', 'label':'DS'}
-
+            pd['scaling_set']=sc_set_ds
             # st = cl.end
             st = cl.init # 
 

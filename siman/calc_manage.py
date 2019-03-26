@@ -173,7 +173,7 @@ def write_batch_header(batch_script_filename = None,
                 # f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
                 # f.write("#SBATCH --mail-type=END\n")
             f.write("cd "+path_to_job+"\n")
-            f.write("export OMP_NUM_THREADS=1\n")
+            # f.write("export OMP_NUM_THREADS=1\n")
 
             if 'modules' in header.cluster:
                 f.write(header.cluster['modules']+'\n')
@@ -184,8 +184,8 @@ def write_batch_header(batch_script_filename = None,
             # if header.siman_run: #only for me
             lib64 = header.cluster['homepath'] + '/tools/lib64'
             atlas = header.cluster['homepath'] + '/tools/atlas'
-            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
-            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
+            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
+            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
             
             f.write("export PATH=$PATH:"+header.cluster['homepath'] +"/tools/\n")
             
