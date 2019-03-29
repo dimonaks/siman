@@ -1118,7 +1118,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
             if "TOO FEW BANDS" in line:
-                print_and_log("Warning! TOO FEW BANDS!!!\n\n\nWarning! TOO FEW BANDS!!!\n")
+                printlog("Warning! TOO FEW BANDS!!!\n\n\nWarning! TOO FEW BANDS!!!\n")
 
 
 
