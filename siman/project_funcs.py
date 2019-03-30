@@ -3877,6 +3877,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     sc_set    = p.get('sc_set') or '4uis'
     sc_set_ds    = p.get('sc_set_ds') or '4uis'
     n_set     = p.get('neb_set') or '1u'
+    run_sc   = p.get('run_sc')
     run_neb   = p.get('run_neb')
     end_z   = p.get('end_z')
     ortho   = p.get('ortho') or [10,10,10]
@@ -3886,7 +3887,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     clust = p.get('cluster') or 'cee'
     corenum = p.get('corenum')
 
-
+    if run_sc is None:
+        run_sc = 1
 
 
     if update or 'res' not in db[pn]:
@@ -3988,10 +3990,13 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                     st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
 
                     id_new = (name+'sg'+str(sg), m_set, 1)
+
                     add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
-                    a = calc_barriers('normal', el, el, up_res = 'up1', show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+                    # print(run_sc)
+                    # sys.exit()
+                    a = calc_barriers('normal', el, el, up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                     fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
                     info = a[0]
                     info['x'] = target_x

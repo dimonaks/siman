@@ -123,6 +123,8 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
     
     temp(float) - potential at temperature, self.F is expected from phonopy calculations
+    
+    return dic {'redox_pot', 'vol_red', ...}
     """
     if cl1 is None or cl2 is None:
         printlog('Warning! cl1 or cl2 is none; return')
