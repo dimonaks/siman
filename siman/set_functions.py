@@ -127,6 +127,7 @@ vasp_other_keys = [
 'DOSTATIC',
 'USEPOT',
 'KPPRA',
+'SUBATOM',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 

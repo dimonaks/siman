@@ -3135,7 +3135,7 @@ class Calculation(object):
                     f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
 
                 elif 'atat' in  self.calc_method:
-                    f.write('maps -d&\npollmach runstruct_vasp prun\n')
+                    f.write('maps -d&\npollmach runstruct_vasp mpirun\n')
 
 
                 else:

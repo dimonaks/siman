@@ -1197,6 +1197,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             exclude_new = []
             exclude = params['atat'].get('exclude_atoms_n')
 
+            subatom = params['atat'].get('subatom') or None
             # print(exclude)
             # sys.exit()
             if exclude:
@@ -1208,6 +1209,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             params['update_set_dic']={'add_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
             'MAGATOM':list2string(input_st.magmom), 
             'MAGMOM':None,
+            'SUBATOM':subatom,
             'DOSTATIC':''}
 
 
@@ -1737,7 +1739,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             f.write(' 1 0 0\n 0 1 0\n 0 0 1\n')
 
             active_atoms = params['atat']['active_atoms']
-            exclude = params['atat']['exclude_atoms_n'] or []
+            
+            exclude = params['atat'].get('exclude_atoms_n') or []
+            
             subs = []
 
             # print(active_atoms)
@@ -1767,7 +1771,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             for x, el, sub, m in zip(st.xred, st.get_elements(), subs, magmom):
                 if el == 'O':
                     m = 0
+                if abs(m) < 0.1:
+                    m = 0
+                # print(m, '{:+.0f}'.format(m))
                 f.write('{:10.6f} {:10.6f} {:10.6f} {:s}{:+.0f}'.format(*x, el, m))
+                
                 if sub:
                     f.write(','+sub)
                 f.write("\n")
