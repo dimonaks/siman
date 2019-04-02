@@ -95,6 +95,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
     TODO: rename to ?_point_defects()
     """
 
+    from siman.project_funcs import e_bind
 
 
 
