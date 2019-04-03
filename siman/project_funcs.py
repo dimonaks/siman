@@ -3875,7 +3875,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     up_res    = p.get('up_res') or 'up1'
     m_set    = p.get('m_set') or '1u'
     sc_set    = p.get('sc_set') or '4uis'
-    sc_set_ds    = p.get('sc_set_ds') or '4uis'
+    sc_set_ds    = p.get('sc_set_ds') or sc_set
     n_set     = p.get('neb_set') or '1u'
     run_sc   = p.get('run_sc')
     run_neb   = p.get('run_neb')
@@ -3948,7 +3948,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
             a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
-            fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+            fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, run_sc = run_sc) 
             
             # print(a[0])
             if a[0] not in service_list:
