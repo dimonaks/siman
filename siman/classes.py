@@ -1913,7 +1913,7 @@ class Structure():
 
 
 
-    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None, selective_dynamics = False):
+    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None, selective_dynamics = False, shift = None):
         """
         write 
 
@@ -1924,6 +1924,8 @@ class Structure():
             if at least one F is found than automatically switched on
             !works only for coord_type = 'dir' and charges = False
 
+
+        shift - shift atoms
         NOTE
         #void element type is not written to POSCAR
 
@@ -1936,7 +1938,10 @@ class Structure():
 
         st = copy.deepcopy(self)
         st = st.remove_atoms(['void']) # remove voids
- 
+        if shift:
+            st = st.shift_atoms(shift)
+
+
         to_ang = 1
         rprimd = st.rprimd
         xred   = st.xred
