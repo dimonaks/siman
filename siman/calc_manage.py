@@ -1769,8 +1769,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             # print(magmom)
             for x, el, sub, m in zip(st.xred, st.get_elements(), subs, magmom):
-                if el == 'O':
-                    m = 0
+                # if el == 'O':
+                #     m = 0
+                # print(m)
                 if abs(m) < 0.1:
                     m = 0
                 # print(m, '{:+.0f}'.format(m))

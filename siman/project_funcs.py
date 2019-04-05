@@ -3967,7 +3967,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
             if target_x == 0:
                 a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
-                fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, run_sc = run_sc) 
                 
                 # print(a[0])
 

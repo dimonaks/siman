@@ -1231,9 +1231,13 @@ class Structure():
                     # print(el)
                     typat.append(t)
                     xcart.append(st.xcart[i])
-                    magmom.append(st.magmom[i])
                     old_numbers.append(i)
+                    if None not in st.magmom:
+                        magmom.append(st.magmom[i])
             t+=1
+
+        if len(magmom) == 0:
+            magmom = [None]
 
         st.old_numbers = old_numbers
         st.xcart = xcart
