@@ -1485,6 +1485,37 @@ class Structure():
         return st
 
 
+    def replace_atoms2(self, el_old, el_new, concentration):
+        """
+        el_old - element to replace
+
+        el_new - new element
+
+        concentration - part of atoms el_old to replace by el_new. Number from 0 to 1.
+        """
+        import random
+
+        st = copy.deepcopy(self)
+
+        numbers = list(range(st.natom))
+
+        nums = []
+
+
+        for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
+            if el == el_old: nums.append(n)
+            # print(nums)
+        n_replace = int(len(nums)*concentration)
+        c = float(n_replace/len(nums))
+        if c != concentration: print('\n\nAttention! This concentraiton is impossible. Real concentration is - ', c) 
+        print('\nI have found {} from {} random atoms of {} to replace by {} \n'.format(n_replace, len(nums), el_old, el_new ))
+        random.shuffle(nums)
+
+        atoms2replace = nums[0:n_replace]
+        # print(num2replace)
+        st = st.replace_atoms(atoms2replace, el_new)
+
+        return st
 
 
 
@@ -3678,7 +3709,7 @@ class CalculationVasp(Calculation):
                 u_last = 100
                 for i_u in usteps:
 
-                    u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write, f = f )
+                    u = update_incar(self, parameter = 'LDAUU', u_ramp_step = i_u, write = write, f = f )
                     if u == u_last:
                         continue
                     name_mod   = '.U'+str(u).replace('.', '')+set_mod
@@ -4207,7 +4238,7 @@ class CalculationVasp(Calculation):
 
     def show_force(self,):
         force_prefix = ' tot '
-        
+
         print_and_log("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in self.maxforce_list ])[:]  ), imp = 'Y'  )
 
 
