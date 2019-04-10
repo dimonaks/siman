@@ -14,7 +14,7 @@ def H2O(T, c2ev = 0, ref0K = 0):
     #c2ev - convert to eV
     #T in K
 
-    # ref0K - if one, then from OK, if 0 than from 298.15
+    # ref0K - if one, then from OK, if 0 than from 298.15K
 
     #return in kJ/mol entalpy and Gibss and J/mol/K for entropy or in eV and eV/K
     #return G, H, S
@@ -91,3 +91,6 @@ def O2(T, c2ev = 0):
         G = header.kJ_mol2eV * G
         # print(G, dH - T*S )
     return G, dH, S
+
+
+
