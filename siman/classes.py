@@ -1873,7 +1873,7 @@ class Structure():
         """
         Localize small polaron at transition metal by adjusting TM-O distances
         i - number of transition atom, from 0
-        d - shift in angstrom; positive increade TM-O, negative reduce TM-O
+        d - shift in angstrom; positive increase TM-O, negative reduce TM-O
         """
         st = copy.deepcopy(self)
         TM = st.get_elements_z()[i]
