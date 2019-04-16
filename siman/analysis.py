@@ -948,6 +948,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     for x in atom_pos:
 
         x2 = atom_pos[jj+1]
+        # x = np.array(x)
+        # x2 = np.array(x2)
         r = cl.end.rprimd
         d1, _ = image_distance(x, x2, r, order = 1) #minimal distance
         x2_gen = (x2 + (r[0] * i  +  r[1] * j  +  r[2] * k) for i in nbc for j in nbc for k in nbc) #generator over PBC images
@@ -979,7 +981,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     cl2.barrier = diff_barrier
 
 
-    results_dic['atom_pos'] = atom_pos
+    results_dic['atom_pos'] = [list(pos) for pos in atom_pos]
     results_dic['mep_energies'] = mep_energies
 
 

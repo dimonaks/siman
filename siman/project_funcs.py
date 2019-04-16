@@ -3886,7 +3886,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     del_pos = p.get('del_pos')
     clust = p.get('cluster') or 'cee'
     corenum = p.get('corenum')
+    readfiles = p.get('readfiles')
 
+    if readfiles is None:
+        readfiles = 1
     if run_sc is None:
         run_sc = 1
 
@@ -3932,7 +3935,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
         'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
-        'scale_region':(-3, 5), 'readfiles':1, 'ortho':ortho,
+        'scale_region':(-3, 5), 'readfiles':readfiles, 'ortho':ortho,
         'end_pos_types_z':end_z}
 
 
@@ -3950,7 +3953,15 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, run_sc = run_sc) 
             
+            # print(a[0] not in service_list)
+            # service_list = []
             # print(a[0])
+            # print(service_list)
+            # for ele in service_list:
+            #     print(ele == a[0])
+            #     if ele == a[0]:
+            #         break
+            # else:
             if a[0] not in service_list:
                 service_list.append(a[0])
             # db[pn]['B'] = [ a[0]['B'] ]
@@ -3991,7 +4002,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
                     id_new = (name+'sg'+str(sg), m_set, 1)
 
-                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
+                    # add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
                     # print(run_sc)
