@@ -3861,6 +3861,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         exp_geometry - list of rows with exp geometry for table
 
+        show - a number of control for neb, see analysis
+
     """
     from siman.geo import determine_symmetry_positions, primitive, remove_x
     pn = projectname
@@ -3936,7 +3938,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
         'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
         'scale_region':(-3, 5), 'readfiles':readfiles, 'ortho':ortho,
-        'end_pos_types_z':end_z}
+        'end_pos_types_z':end_z,
+        'show':(p.get('show') or 'fo')}
 
 
         pd['atom_to_move'] = p.get('atom_to_move')
