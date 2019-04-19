@@ -3959,7 +3959,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             
             # print(a[0] not in service_list)
             # service_list = []
-            # print(a[0])
+            print(a[0])
             # print(service_list)
             # for ele in service_list:
             #     print(ele == a[0])
