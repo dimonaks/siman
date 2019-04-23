@@ -2685,8 +2685,13 @@ class Calculation(object):
 
 
 
-    def copy(self):
-        return copy.deepcopy(self)
+    def copy(self, id = None):
+        # make entry with new id
+        clcopy = copy.deepcopy(self)
+        if id is not None:
+            header.db[id] = clcopy
+            header.db[id].id = id
+        return clcopy
 
     def jmol(self, *args, **kwargs):
         self.end.jmol(*args, **kwargs)
@@ -3931,7 +3936,8 @@ class Calculation(object):
         if nametype == 'asoutcar':
             path_to_file = self.path['output'].replace('OUTCAR',filetype)
         else:
-            path_to_file = os.path.dirname(self.path['output']) +'/'+ filetype
+            # path_to_file = os.path.dirname(self.path['output']) +'/'+ filetype
+            path_to_file = self.dir +'/'+ filetype
 
         if 'CHGCAR' in filetype:
             self.path['chgcar'] = path_to_file
@@ -3971,6 +3977,9 @@ class Calculation(object):
         
         return path_to_file
 
+    def update_name(self): 
+        self.name = str(self.id[0])+'.'+str(self.id[1])+'.'+str(self.id[2])
+        return self.name
 
     @property
     def sfolder(self):
@@ -4552,8 +4561,9 @@ class CalculationVasp(Calculation):
         if not hasattr(self, 'dir'):
             self.dir = os.path.dirname(self.path['output'])
 
+        # print(self.associated_outcars)
 
-        if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar:
+        if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar and len(self.associated_outcars) > 1:
             # print ('associated outcars = ',self.associated_outcars)
             printlog('read_results(): choose_outcar', choose_outcar)
 

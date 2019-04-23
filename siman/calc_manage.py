@@ -1869,7 +1869,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         calc[id] = cl
 
         cl.id = id 
-        cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
+        cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2]) # 
         cl.dir = blockdir+'/'+ str(id[0]) +'.'+ str(id[1])+'/'
         
 
@@ -2772,6 +2772,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
     if not calc:
         calc = header.calc
+        db = header.db
 
 
 
@@ -2861,6 +2862,33 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         # print e1_r
 
 
+    """Amendmend required before main loop """
+    if analys_type == 'atat' and choose_outcar is not None:
+        
+
+        i = choose_outcar
+        v = verlist[0]
+        ise = setlist[0]
+        idd = (it, ise, v)
+        idd_new = (it, ise, i)
+        cl = db[idd]
+        fit = cl.get_file('fit.out')
+        
+        # print(fit)
+        with open(fit, 'r') as f:
+            lines = f.readlines()
+        print(lines)
+        
+
+        if i != v:
+            db[idd_new] = cl.copy(idd_new)
+            db[idd_new].update_name()
+
+        # print(idd_new)
+        db[idd_new].path['output'] = db[idd_new].dir+'/'+str(i)+'/OUTCAR.static'
+        verlist = [i]
+
+        # print(db[idd_new].path['output'])
 
 
     """Main loop"""
@@ -2873,7 +2901,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
                 continue #pass non existing calculations
             cl = calc[id]
-            
+            # print(cl.id)
             # setting_sshpass(cl) # checking if special download commands are needed - moved to get_file()
             
 
@@ -3284,7 +3312,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             results_dic = polaron_analysis(cl)
 
 
-
+        if analys_type == 'atat':
+            ''
+            # atat_analysis(cl) / placeholder
 
 
 
