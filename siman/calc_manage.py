@@ -2870,25 +2870,44 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         v = verlist[0]
         ise = setlist[0]
         idd = (it, ise, v)
-        idd_new = (it, ise, i)
         cl = db[idd]
-        fit = cl.get_file('fit.out')
+        fit = cl.get_file('fit.out', root = 1)
         
         # print(fit)
+        fit_i_e = {} # dic, where concentration is a key
         with open(fit, 'r') as f:
-            lines = f.readlines()
-        print(lines)
-        
-
-        if i != v:
-            db[idd_new] = cl.copy(idd_new)
-            db[idd_new].update_name()
-
-        # print(idd_new)
-        db[idd_new].path['output'] = db[idd_new].dir+'/'+str(i)+'/OUTCAR.static'
-        verlist = [i]
-
-        # print(db[idd_new].path['output'])
+            # lines = f.readlines()
+            for line in f:
+                # print(line)
+                x = float(line.split()[0])
+                k = int(line.split()[-1])
+                e = float(line.split()[1]) # dft energy
+                # print(x)
+                if x not in fit_i_e:
+                    fit_i_e[x] = []
+                fit_i_e[x].append( (k, e) )
+        # print(fit_i_e)
+        fit_i_min = {}
+        for key in fit_i_e:
+            i_e = sorted(fit_i_e[key], key=lambda tup: tup[1]) 
+            # print(i_e)
+            fit_i_min[key] = i_e[0][0]
+            
+        # print(fit_i_min)
+        xs = sorted(fit_i_min.keys())
+        print("I read lowest energy configurations for the following concentration of vacancies", xs)
+        verlist = []
+        choose_outcar = None
+        for x in xs:
+            i = fit_i_min[x]
+            idd_new = (it, ise, i)
+            if i != v:
+                db[idd_new] = cl.copy(idd_new)
+                db[idd_new].update_name()
+            db[idd_new].path['output'] = db[idd_new].dir+'/'+str(i)+'/OUTCAR.static'
+            # print(db[idd_new].path['output'])
+            verlist.append(i)
+            # print(db[idd_new].id)
 
 
     """Main loop"""
@@ -2901,7 +2920,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
                 continue #pass non existing calculations
             cl = calc[id]
-            # print(cl.id)
+            # print(cl.id, cl.path['output'])
             # setting_sshpass(cl) # checking if special download commands are needed - moved to get_file()
             
 

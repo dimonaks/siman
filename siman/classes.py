@@ -3917,7 +3917,7 @@ class Calculation(object):
 
 
 
-    def get_file(self, filetype = '', nametype = '', up = 'up1'):
+    def get_file(self, filetype = '', nametype = '', up = 'up1', root = 0):
         """
         allow to get any file of type filetype 
         cl - (Calculation) 
@@ -3927,18 +3927,22 @@ class Calculation(object):
             'up1' - do not update
             'up2' - update
 
+        root - root calculation folder location of file
+
         Comment
             initially used for chg files - rename!
         """
 
         setting_sshpass(self)
+        # print(filetype)
 
         if nametype == 'asoutcar':
             path_to_file = self.path['output'].replace('OUTCAR',filetype)
         else:
-            # path_to_file = os.path.dirname(self.path['output']) +'/'+ filetype
-            path_to_file = self.dir +'/'+ filetype
-
+            if root:
+                path_to_file = self.dir +'/'+ filetype
+            else:
+                path_to_file = os.path.dirname(self.path['output']) +'/'+ filetype
         if 'CHGCAR' in filetype:
             self.path['chgcar'] = path_to_file
             self.path['charge'] = path_to_file
@@ -3946,7 +3950,6 @@ class Calculation(object):
             self.path['xml'] = path_to_file
 
 
-        # print(path_to_file)
         # print(self.cluster_address)
         # print(self.project_path_cluster+'/')
         # sys.exit()
