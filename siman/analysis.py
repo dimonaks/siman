@@ -190,8 +190,8 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     # print(energy_ref)
     # print(cl1.energy_sigma0, cl2.energy_sigma0, mul)
     
-    e1 = cl1.energy_sigma0 
-    e2 = cl2.energy_sigma0
+    e1 = cl1.e0 
+    e2 = cl2.e0
     if temp != None:
         #temperature corrections
         e1 += cl1.F(temp)

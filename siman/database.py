@@ -162,7 +162,7 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
     else: #python3 
         import dbm
 
-        d = shelve.Shelf(dbm.open(databasefile3, 'n'), protocol = 3) #Write dbm database for python3
+        d = shelve.Shelf(dbm.open(databasefile3, 'c'), protocol = 3) #Write dbm database for python3 / it was n key, now c, working on new python
         d[conv_key]       = header.conv
         d[varset_key]     = header.varset
         d[history_key]    = header.history

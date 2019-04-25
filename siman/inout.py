@@ -2031,3 +2031,49 @@ def read_aims_out(cl, load = '', out_type = '', show = ''):
     outstr = '|'.join([etot, time, itrt])
 
     return outstr
+
+
+def read_atat_fit_out(filename, filter_names = None, i_energy = 1):
+    """
+    read fit.out of atat
+    filter_names - do not read name numbers greater than filter_name
+    i_energy - 1 for fit.out, 2 for predstr.out
+    return - concentration list, energy list
+    """
+    X, E, nam = [] ,[], []
+    count = 0
+    with open(filename, 'r') as f:
+        for line in f:
+
+
+                # continue
+
+            vals = line.split()
+            
+                # name = int(vals[-1])
+
+            try:
+                name = int(vals[-1])
+            except:
+                name = 0
+            if filter_names and name > filter_names:
+                continue
+
+            e = round(float(vals[i_energy]),4)
+            x = float(vals[0])
+            # print(e)
+            # if e in E:
+            #     if X[E.index(e)] == x:
+            #         continue
+            
+            # if E and abs(min(np.array(E)-e)) < 0.01:
+            #     print('skipping point, too often')
+            #     continue
+            # if count > 10:
+            #     count = 0
+            X.append(x) # concentrations
+            E.append(e) # formation energies
+            nam.append(name) # names of structures
+            count+=1
+        # print(a)
+    return X, E

@@ -2872,6 +2872,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         idd = (it, ise, v)
         cl = db[idd]
         fit = cl.get_file('fit.out', root = 1)
+        fit = cl.get_file('predstr.out', root = 1)
+        fit = cl.get_file('gs.out', root = 1)
         
         # print(fit)
         fit_i_e = {} # dic, where concentration is a key
@@ -2892,7 +2894,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             i_e = sorted(fit_i_e[key], key=lambda tup: tup[1]) 
             # print(i_e)
             fit_i_min[key] = i_e[0][0]
-            
+
         # print(fit_i_min)
         xs = sorted(fit_i_min.keys())
         print("I read lowest energy configurations for the following concentration of vacancies", xs)
