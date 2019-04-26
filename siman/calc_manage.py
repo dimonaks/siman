@@ -2751,6 +2751,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         results_dic - should be used in current version! actually once was used as list, now should be used as dict
 
     TODO:
+    
         
         Make possible update of b_id and r_id with up = 'up2' flag; now only id works correctly
 
