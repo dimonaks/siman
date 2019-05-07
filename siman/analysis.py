@@ -5,6 +5,15 @@ import os, copy, shutil, sys
 import numpy as np
 
 try:
+    import scipy
+    from scipy import interpolate
+    from scipy.interpolate import spline 
+    # print (scipy.__version__)
+    # print (dir(interpolate))
+except:
+    print('scipy is not avail')
+
+try:
     # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library
     from ase.eos import EquationOfState
     ase_flag = True
@@ -1028,7 +1037,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
 
-def polaron_analysis(cl, ):
+def polaron_analysis(cl, readfiles):
     """
     Plot MEP for polaron migration
     """
@@ -1037,7 +1046,7 @@ def polaron_analysis(cl, ):
     itise = cl.id[0]+'.'+cl.id[1]
     # print(cl.ldauu)
     # sys.exit()
-    name_without_ext = 'mep.'+itise+'.U'+str(max(cl.ldauu))
+    name_without_ext = 'polmep.'+itise+'.U'+str(max(cl.ldauu))
 
     cl = db[cl.id[0], cl.id[1], 1]
     cl2 = db[cl.id[0], cl.id[1], 2]
@@ -1045,7 +1054,7 @@ def polaron_analysis(cl, ):
     iat1 = cl.params['polaron']['istart']
     iat2 = cl.params['polaron']['iend']
     mode = cl.params['polaron'].get('mode') or 'inherit'
-    cl2.res()
+    cl2.res(readfiles = readfiles)
     d = cl.end.distance(iat1, iat2)
 
     if mode == 'inherit':
@@ -1066,14 +1075,14 @@ def polaron_analysis(cl, ):
     # print(verlist)
     for i, v in enumerate(verlist1):
         cl = db[cl.id[0], cl.id[1], v]
-        cl.res()
+        cl.res(readfiles = readfiles)
         if '4' in cl.state:
             mep_energies1.append( cl.list_e_sigma0[0] )
         else:
             mep_energies1.append(0)
     for i, v in enumerate(verlist2):
         cl = db[cl.id[0], cl.id[1], v]
-        cl.res()
+        cl.res(readfiles = readfiles)
         if '4' in cl.state:
 
             mep_energies2.append( cl.list_e_sigma0[0] )
@@ -1081,9 +1090,64 @@ def polaron_analysis(cl, ):
             mep_energies2.append(0)
 
     # print(len(atom_pos), len(mep_energies))
-    n = 6
-    fit_and_plot(a1 = (atom_pos1[0:n], mep_energies1[0:n], '-or'), b1 = (atom_pos2[0:n], mep_energies2[0:n], '-og'), 
-        power = 2, params = {'xlim_power':(0, 4), 'y0':1}, ylim = (-0.02, 0.2))
+
+    if 1: 
+        #plot simple
+        n = 6
+        pos1 = atom_pos1[0:n]
+        e1   = mep_energies1[0:n]
+        pos2 = atom_pos2[0:n]
+        e2 = mep_energies2[0:n]
+
+        # fit_and_plot(a1 = (pos1, e1, '-or'), b1 = (pos2, e2, '-og'), 
+        #     # power = 2, 
+        #     params = {'xlim_power':(0, 4), 'y0':1}, 
+        #     ylim = (-0.02, 0.2)
+        #     )
+
+        pos1_fine = list(np.linspace(min(pos1), max(pos1), 1000))
+        spl1 = scipy.interpolate.PchipInterpolator(pos1, e1)
+        e1_fine = list(spl1(pos1_fine))
+
+        pos2_fine = list(np.linspace(max(pos2), min(pos2) , 1000))
+        pos2_fine_rev = list(reversed(pos2_fine))
+        spl2_rev = scipy.interpolate.PchipInterpolator(list(reversed(pos2)), list(reversed(e2)) )
+        e2_fine_rev = list(spl2_rev(pos2_fine_rev))
+        e2_fine = list(reversed(e2_fine_rev))
+
+        #combine 
+
+        pos_fine = []
+        e_fine = []
+        for i, p2 in enumerate(pos2_fine_rev):
+            j = int(1000*p2/max(pos1_fine))
+            e2 = e2_fine_rev[i]
+            if j < 1000:
+                # print(j, e1_fine[j])
+                e1 = e1_fine[j]
+                if e2 < e1:
+                    # e_fine.append()
+                    e1_fine[j] = e2
+            else:
+                e1_fine.append(e2)
+                pos1_fine.append(p2)
+
+            # e = e1_fine
+
+        fit_and_plot(
+        # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
+            a1 = (pos1_fine, e1_fine, '-or'),
+            # power = 2, 
+            params = {'xlim_power':(0, 4), 'y0':1}, 
+            ylim = (-0.02, 0.2), ver = False,
+            xlim = (-0.02, 0.02+max(pos1_fine)),
+            filename = 'figs/'+name_without_ext,
+            xlabel = 'Position, (${\AA}$)',
+            ylabel = 'Energy, eV'
+            )
+
+
+
 
 
     # _, diff_barrier = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = 0, 

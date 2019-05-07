@@ -121,8 +121,6 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
 
     spl = scipy.interpolate.PchipInterpolator(mep_pos, eners)
-
-
     ynew = spl(xnew)
 
     diff_barrier = determine_barrier(mep_pos, eners)

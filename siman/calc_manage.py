@@ -3331,7 +3331,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         if analys_type == 'polaron':
             # print(cl.id)
-            results_dic = polaron_analysis(cl)
+            results_dic = polaron_analysis(cl, readfiles = readfiles)
 
 
         if analys_type == 'atat':
