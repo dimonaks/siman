@@ -1564,8 +1564,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 scale_region = dic['scale_region.'+mode_id]
 
-
+            # print(id_base[0])
             curfol = struct_des[id_base[0]].sfolder
+
 
             id_res = (id_base[0]+'.su', ise_new, 100)
 
@@ -3934,6 +3935,12 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         el  = get_alkali_ion(cl.end, active_cation)
 
         it_ds = it.replace(el, '')
+        if it_ds[0] == '2':
+            it_ds = it_ds[1:]
+            coeff = 2
+        else:
+            coeff = 1
+
         printlog('Name for DS is', it_ds)
 
         pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
@@ -3993,8 +4000,18 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             else:
                 x_str = str(target_x).replace('.', '')
                 x_vac = 1 - target_x # concentration of vacancies
-                name = el+x_str+it_ds
+                
+                # print(it_ds)
+                # if '2' in el:
+                #     el = el.replace('2', '')
+                #     coeff = 2
+                # else:
+                #     coeff = 1
 
+                # name = el+str(float(x_str)*coeff)+it_ds
+                name = el+x_str+it_ds
+                # print(name)
+                # sys.exit()
                 syms =  remove_x(st, el, info_mode = 1, x = x_vac)
 
                 printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
@@ -4006,7 +4023,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
                     id_new = (name+'sg'+str(sg), m_set, 1)
 
-                    # add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
+                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
                     # print(run_sc)
