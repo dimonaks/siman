@@ -1008,7 +1008,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         self.end.name = self.name+'.end'
         self.end.list_xcart = []
         self.energy = empty_struct()
-
+        self.end.zval = []
         de_each_md = 0 # to control convergence each md step
         de_each_md_list = []
 
@@ -1081,6 +1081,12 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if 'NELECT' in line:
                 self.nelect = int(float(line.split()[2]))
+
+            if '   ZVAL' in line:
+                # zval  = line.split('')
+                # print(line)
+                self.end.zval = [int(float(n)) for n in line.split()[2:]]
+                # print(self.end.zval)
 
 
             if 'ions per type =' in line:
@@ -1568,6 +1574,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     """update xred"""
     self.end.update_xred()
 
+    # print(self.init.zval)
+    # self.end.zval = self.init.zval
 
 
 
@@ -1596,6 +1604,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         if any( np.cross( yznormal, np.array([1,0,0]) ) ) != 0: 
             print_and_log("Warning! The normal to yz is not parallel to x. Take care of gb area\n")
     self.end.yzarea = np.linalg.norm( yznormal )  #It is assumed, that boundary is perpendicular to x
+
+
+
 
 
     """Calculate voronoi volume"""

@@ -23,6 +23,7 @@ except:
 
 try:
     from pymatgen.analysis.wulff import WulffShape
+    from pymatgen.analysis.ewald import EwaldSummation
 
 except:
     print('pymatgen is not avail; run   pip install pymatgen')
@@ -38,6 +39,38 @@ from siman.small_functions import is_list_like, makedir
 from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.calcul import site_repulsive_e
 
+
+def set_oxidation_states(st):
+    pm = st.convert2pymatgen()
+    pm.add_oxidation_state_by_guess()
+    st = st.update_from_pymatgen(pm)
+    # print(pm)
+    return st
+
+
+def calc_oxidation_states(cl = None, st = None, silent = 1):
+
+    #only use if charges are full charges from bader 
+    if cl:
+        st = cl.end
+        ch = cl.charges
+    if st:
+        ch  = st.charges
+    
+    # print(st.get_elements() )
+    # print(ch)
+
+    z_vals = []
+    for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
+        ox = z_val - ch[j]
+
+        z_vals.append(ox)
+        if not silent:
+            ''
+            print(el, '{:3.1f}'.format(ox))
+    # print(list(zip(z_vals, self.end.get_elements())))
+    # print(z_vals)
+    return z_vals
 
 
 
@@ -124,7 +157,7 @@ def determine_barrier(positions = None, energies = None):
 
 
 
-def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
+def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, mode = None, scale = 1):
     """
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
@@ -133,6 +166,13 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     
     temp(float) - potential at temperature, self.F is expected from phonopy calculations
     
+    mode (str) - special 
+        electrostatic_only - use Ewald summation to obtain electrostatic energy
+        ewald_vasp
+
+    scale - experimental 
+
+
     return dic {'redox_pot', 'vol_red', ...}
     """
     if cl1 is None or cl2 is None:
@@ -198,9 +238,44 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
     # print(energy_ref)
     # print(cl1.energy_sigma0, cl2.energy_sigma0, mul)
-    
-    e1 = cl1.e0 
-    e2 = cl2.e0
+
+
+    if mode == 'electrostatic_only':
+        # st1 = cl1.end.copy()
+        # st2 = cl2.end.copy()
+
+        st1 = set_oxidation_states(cl1.end)
+        st2 = set_oxidation_states(cl2.end)
+
+        # st1 = st1.remove_atoms(['Ti'])
+
+        stpm1 = st1.convert2pymatgen(chg_type = 'pm')
+        stpm2 = st2.convert2pymatgen(chg_type = 'pm')
+        ew1 = EwaldSummation(stpm1)
+        ew2 = EwaldSummation(stpm2)
+
+        e1 = ew1.total_energy
+        e2 = ew2.total_energy
+        # print(ew1.get_site_energy(0), ew1.get_site_energy(4), ew2.get_site_energy(9) )
+        
+
+
+
+    elif mode == 'ewald_vasp':
+        e1 = cl1.energy.ewald
+        e2 = cl2.energy.ewald
+
+
+    else:    
+        e1 = cl1.e0 
+        e2 = cl2.e0
+
+    print(e1,e2)
+
+
+
+
+
     if temp != None:
         #temperature corrections
         e1 += cl1.F(temp)
@@ -211,7 +286,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
 
     if abs(mul) > 0:
-        redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  )
+        redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  ) / scale
     else:
         redox = 0
 
@@ -597,27 +672,6 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
     return pol, magmom_tm
 
 
-
-def calc_oxidation_states(cl = None, st = None, silent = 1):
-
-    if cl:
-        st = cl.end
-        ch = cl.charges
-    if st:
-        ch  = st.charges
-    
-
-    z_vals = []
-    for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
-        ox = z_val - ch[j]
-
-        z_vals.append(ox)
-        if not silent:
-            ''
-            print(el, '{:3.1f}'.format(ox))
-    # print(list(zip(z_vals, self.end.get_elements())))
-    # print(z_vals)
-    return z_vals
 
 
 
@@ -1156,12 +1210,7 @@ def polaron_analysis(cl, readfiles):
 
     return
 
-def set_oxidation_states(st):
-    pm = st.convert2pymatgen()
-    pm.add_oxidation_state_by_guess()
-    st = st.update_from_pymatgen(pm)
-    # print(pm)
-    return st
+
 
 
 

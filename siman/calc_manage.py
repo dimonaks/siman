@@ -2739,8 +2739,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         
         - params - dictionary of additional parameters to control internal, many arguments could me moved here 
             
-            mep_shift_vector - visualization of mep in xyz format
-
+            'mep_shift_vector' - visualization of mep in xyz format
+            'charge' (int) - charge of cell, +1 removes one electron
     RETURN:
         
         (results_dic,    result_list)

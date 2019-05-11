@@ -474,7 +474,7 @@ class Structure():
                    'norm' - normalized self.charges
                     'tot' - just self.charges
                     'pot' - charges from potentials zval, number of valence electrons
-
+                    'pm' - guess oxidation states using pymatge
 
         slab - if True return slab object is returned - limited functional is implemented
         """
@@ -518,7 +518,7 @@ class Structure():
         else:
             if hasattr(self, 'charges') and any(self.charges):
 
-                chg_type = 'ox' # 'norm', 'tot'
+                # chg_type = 'ox' # 'norm', 'tot'
 
                 # print(chg_type)
                 if chg_type == 'norm': #normalize charges
@@ -528,9 +528,17 @@ class Structure():
                 
                 elif chg_type == 'ox':
                     chg = calc_oxidation_states(st = self)
+                    print(chg)
+
                 elif chg_type == 'tot':
                     chg = self.charges
-                
+            if hasattr(self, 'oxi_state') and any(self.oxi_state):
+
+                if chg_type ==  'pm':
+                    # print(self.oxi_state)
+                    chg = self.oxi_state
+
+
                 if 0: #check total charge
                     # st = st.copy()
                     chg = copy.copy(chg)
@@ -669,8 +677,8 @@ class Structure():
         elements = [s.specie.name for s in stpm._sites]
         # print(s.specie.oxi_state)
         if hasattr(s.specie, 'oxi_state'):
-            charges = [s.specie.oxi_state for s in stpm._sites]
-            st.charges = charges
+            oxi_state = [s.specie.oxi_state for s in stpm._sites]
+            st.oxi_state = oxi_state
         
         # if hasattr(s.specie, 'oxi_state'):
         #     charges = [s.specie.oxi_state for s in stpm._sites]
