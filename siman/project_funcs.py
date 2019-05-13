@@ -3925,7 +3925,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             if len(out[1]) == 0:
                 db[pn]['steps'] = []
 
-    if step in [2, 3]:
+    if step in [2, 3, 5]:
 
         # if 2 not in db[pn]['steps']:
         it = pn
@@ -3976,6 +3976,15 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             if a[0] not in service_list:
                 service_list.append(a[0])
             # db[pn]['B'] = [ a[0]['B'] ]
+        if step == 5:
+            #replace K -> Li
+            st = cl.init # 
+            # print('sdf')
+            a = calc_barriers('replace', 'K', 'Li', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+            # fitplot_args = fitplot_args, style_dic = style_dic, 
+            run_neb = run_neb, run_sc = run_sc)             
+
+
 
         if step == 3:
             # cl.res()

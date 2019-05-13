@@ -1922,6 +1922,19 @@ class Structure():
 
         return st
 
+    def ewald(self):
+        from pymatgen.analysis.ewald import EwaldSummation
+        from siman.analysis import set_oxidation_states
+        st = self
+        # st = set_oxidation_states(st)
+        # st.printme()
+        # print(st.oxi_state)
+        stpm = st.convert2pymatgen(chg_type = 'pm')
+        ew = EwaldSummation(stpm)
+
+
+        return ew.total_energy
+
 
 
 
