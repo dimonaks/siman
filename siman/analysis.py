@@ -243,14 +243,17 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
     if mode == 'electrostatic_only':
         # st1 = cl1.end.copy()
         # st2 = cl2.end.copy()
-
-        st1 = set_oxidation_states(cl1.end)
-        st2 = set_oxidation_states(cl2.end)
+        st1 = cl1.end
+        st2 = cl2.end      
+        # st1 = set_oxidation_states(st1)
+        # st2 = set_oxidation_states(st2)
 
         # st1 = st1.remove_atoms(['Ti'])
-
-        stpm1 = st1.convert2pymatgen(chg_type = 'pm')
-        stpm2 = st2.convert2pymatgen(chg_type = 'pm')
+        st1.charges = cl1.charges
+        st2.charges = cl2.charges
+        # sys.exit()
+        stpm1 = st1.convert2pymatgen(chg_type = 'ox')
+        stpm2 = st2.convert2pymatgen(chg_type = 'ox')
         ew1 = EwaldSummation(stpm1)
         ew2 = EwaldSummation(stpm2)
 

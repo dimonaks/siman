@@ -508,7 +508,7 @@ class Structure():
 
             pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
-
+        chg = None
         if chg_type == 'pot':
             
             printlog('Using zval as charges', imp = '')
@@ -527,8 +527,10 @@ class Structure():
                     # print(t)
                 
                 elif chg_type == 'ox':
+                    # print(self.charges)
                     chg = calc_oxidation_states(st = self)
-                    print(chg)
+                    # print(chg)
+                    # sys.exit()
 
                 elif chg_type == 'tot':
                     chg = self.charges
@@ -550,8 +552,8 @@ class Structure():
 
 
 
-
-                pm.add_oxidation_state_by_site(chg)
+        if chg:
+            pm.add_oxidation_state_by_site(chg)
 
 
 
@@ -4961,21 +4963,23 @@ class CalculationVasp(Calculation):
             if not add and len(self.children)>0:
                 print('Children were found:', self.children, 'by defauld reading last, choose with *i_child* ')
                 
+                idd = None
                 for i in self.children:
-                    # print(i, ise, i[1], i[1] == ise)
+                    print(i, ise, i[1], i[1] == ise)
                     if i[1] == ise:
+                        # print(i)
                         idd = i
                         # add = True
                         # break
-                    else:
-                        idd = None
 
                 if idd is None:
                     add = True
                     # idd  = self.children[i_child]
                 # print(idd)
+                # sys.exit()
 
                 if idd:
+                    # print('setaset')
                     cl_son = header.calc[idd]
                     
                     cl_son.res(up = up, **kwargs)

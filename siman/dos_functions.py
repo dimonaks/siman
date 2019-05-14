@@ -134,7 +134,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12,
-    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None,):
+    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, efermi_origin = True):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -179,6 +179,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             'p6' - for p orbitals of neighbors
             'p'
 
+
+    efermi_origin 
+        True - e-fermi is zero energy
+        False - e-fermi is left, its value is shown
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
@@ -251,8 +255,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
      
         DOSCAR = cl.get_file('DOSCAR', nametype = 'asoutcar'); 
         printlog('DOSCAR file is ', DOSCAR)
+        if efermi_origin:
+            dos.append( VaspDos(DOSCAR, cl.efermi) )
+        else:
+            dos.append( VaspDos(DOSCAR, 0) )
 
-        dos.append( VaspDos(DOSCAR, cl.efermi) )
     
 
     #determine number of zero energy    
@@ -705,6 +712,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         """Additional dos analysis; to be refined"""
         gc = None
+        plot_param['ver_lines'] = []
         if show_gravity:
             if show_gravity[0] == 1:
                 d = d1
@@ -738,8 +746,13 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
             
-            plot_param['ver_lines'] = [{'x':gc, 'c':'k', 'ls':'--'}]
+            plot_param['ver_lines'].append({'x':gc, 'c':'k', 'ls':'--'})
 
+        if not efermi_origin:
+            #fermi levels
+            plot_param['ver_lines'].append({'x':cl1.efermi, 'c':'k', 'ls':'-'})
+            plot_param['ver_lines'].append({'x':cl2.efermi, 'c':'k', 'ls':'-'})
+            plot_param['ver'] = False
         """Plot everything"""
 
         image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))
