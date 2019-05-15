@@ -2872,9 +2872,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         ise = setlist[0]
         idd = (it, ise, v)
         cl = db[idd]
-        fit = cl.get_file('fit.out', root = 1)
-        fit = cl.get_file('predstr.out', root = 1)
-        fit = cl.get_file('gs.out', root = 1)
+        fit = cl.get_file('fit.out', root = 1, up = up)
+        fit = cl.get_file('predstr.out', root = 1, up = up)
+        fit = cl.get_file('gs.out', root = 1, up = up)
         
         # print(fit)
         fit_i_e = {} # dic, where concentration is a key

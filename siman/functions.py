@@ -39,6 +39,7 @@ def smoother(x, n, mul = 1, align = 1):
     #align - find first non-zero point and return it to zero
 
     algo = 'gaus'
+    # algo = 'my'
 
     if algo == 'my':
         x_smooth = []
@@ -60,7 +61,7 @@ def smoother(x, n, mul = 1, align = 1):
     elif algo == 'gaus':
         x_smooth =x
         # x_smooth = scipy.ndimage.filters.median_filter(x,size =4)
-        x_smooth = scipy.ndimage.filters.gaussian_filter1d(x_smooth, 4, order =0)
+        x_smooth = scipy.ndimage.filters.gaussian_filter1d(x_smooth, 3, order =0)
         # x_smooth = scipy.ndimage.interpolation.spline_filter1d(x, 4)
 
     else:
