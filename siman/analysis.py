@@ -825,6 +825,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
     cl1 = calc[cl.id[0], cl.id[1], 1]
+
     cl2 = calc[cl.id[0], cl.id[1], 2]
     
 
@@ -855,6 +856,9 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
     for v in vlist:
         cli = calc[cl.id[0], cl.id[1], v]
+        # if v == 1:
+        #     cli = db['NaVP2O7_a.su.s101015v100.n5Na1v1ms.ifn.1mls.1']
+
         # print(cl.id[0], cl.id[1], v, cli.state)
         if '4' not in cli.state and 'un' not in up:
             printlog('Attention! res_loop(): analys_type == neb, Calc',cli.id,'is not finished; return')
