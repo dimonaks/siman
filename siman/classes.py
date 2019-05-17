@@ -1665,16 +1665,25 @@ class Structure():
 
 
 
-    def shift_atoms(self, vector_red):
+    def shift_atoms(self, vector_red = None, vector_cart = None):
         """
         Shift all atoms according to *vector_red*
         """
         st = copy.deepcopy(self)
-        vec = np.array(vector_red)
-        for xr in st.xred:
-            xr+=vec
+        if vector_cart is not None:
+            vec_cart = np.array(vector_cart)
+            for xc in st.xcart:
+                xc+=vec_cart
+            st.update_xred()
+            
+        else:
+            vec = np.array(vector_red)
+            for xr in st.xred:
+                xr+=vec
+            st.xred2xcart()
 
-        st.xred2xcart()
+        
+
         st = st.return_atoms_to_cell()
         return st
 
@@ -1750,6 +1759,17 @@ class Structure():
         st._removed = removed
 
         return st, x1_del, x2_del
+
+
+    def find_closest_atom(self,x):
+        #find closest atom in structure to x cartesian coordinate
+        #return i and dist
+        # for ixs in self.xcart:
+        x = np.asarray(x)
+        abs_shifts = [np.linalg.norm(x-x1) for x1 in self.xcart]
+        # print(sorted(abs_shifts))
+        i = np.argmin(abs_shifts)
+        return i, abs_shifts[i], x - self.xcart[i]
 
     def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True, more_info = 0):
         """
