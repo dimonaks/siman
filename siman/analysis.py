@@ -11,7 +11,7 @@ try:
     # print (scipy.__version__)
     # print (dir(interpolate))
 except:
-    print('scipy is not avail')
+    print('analysis.py: scipy is not avail')
 
 try:
     # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library

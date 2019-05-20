@@ -11,15 +11,17 @@ import sys, os, re
 # from dos.functions import plot_dos
 
 # from ase.utils.eos import EquationOfState
-import scipy
-from scipy import interpolate
-from scipy.interpolate import spline 
+
 # print (scipy.__version__)
 # print (dir(interpolate))
 try:
+    import scipy
+    from scipy import interpolate
+    from scipy.interpolate import spline 
+
     from scipy.interpolate import  CubicSpline
 except:
-    print('scipy.interpolate.CubicSpline is not avail')
+    print('table_functions.py: scipy.interpolate.CubicSpline is not avail')
 
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D

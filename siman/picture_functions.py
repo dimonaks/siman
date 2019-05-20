@@ -12,7 +12,7 @@ try:
     # print (scipy.__version__)
     # print (dir(interpolate))
 except:
-    print('scipy is not avail')
+    print('picture_functions.py: scipy is not avail')
 try:
     from scipy.interpolate import  CubicSpline
 except:
