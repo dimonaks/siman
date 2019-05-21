@@ -235,7 +235,26 @@ def xred2xcart(xred, rprimd):
     #print xred
     return xcart
 
+def rms_between_structures(st1, st2):
+    #should be already imposed on each other
+    els1 = st1.get_elements()
+    els2 = st2.get_elements()
+    sumv = 0
+    sumd = 0
+    sumdsqr = 0
+    for j, x1 in enumerate(st2.xcart):
+        i, d, v = st1.find_closest_atom(x1)
+        if len(els1) == len(els2):
+            print(i, '{:.2f}'.format(d), v, els1[i], els2[j] )
+        else:
+            print(i, '{:.2f}'.format(d), v, els1[i] )
+        sumv= sumv + v
+        sumd+=d
+        sumdsqr+=d**2
 
+    print('Average deviation {:.2f} A'.format(sumd/st2.natom) )
+    print('Average squared deviation {:.2f} A'.format(np.sqrt(sumdsqr/st2.natom)) )
+    print('Shift of first cell relative to second cell', sumv/st2.natom, np.linalg.norm(sumv/st2.natom))
 
 
 

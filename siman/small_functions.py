@@ -30,8 +30,12 @@ class TracePrints(object):
 
 
 def angle(v1, v2):
-  return math.acos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))) / math.pi * 180
+    #in degrees
+    return math.acos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))) / math.pi * 180
 
+def normal(v1, v2):
+    #normal to two vectors
+    return np.cross(v1, v2)
 
 
 def red_prec(value, precision = 100.):

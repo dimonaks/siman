@@ -657,7 +657,9 @@ class Structure():
         """
         st = copy.deepcopy(self)
         st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
-        st.xred   = [np.array(site._fcoords) for site in stpm._sites]
+        # for site in stpm._sites:
+            # print(dir(site))
+        st.xred   = [np.array(site._frac_coords) for site in stpm._sites]
         
 
         # print(elements)
@@ -5083,7 +5085,7 @@ class CalculationVasp(Calculation):
             # print('phonopy -c '+os.path.basename(self.path['poscar'])+p+'  mesh.conf --readfc ')
             # runBash('phonopy -c '+os.path.basename(self.path['poscar'])+p+' mesh.conf --readfc ')
             print(phonopy_command+' -c '+poscar+p+'  mesh.conf --readfc ')
-            runBash(phonopy_command+' -c '+poscar+p+' mesh.conf --readfc ')
+            print(runBash(phonopy_command+' -c '+poscar+p+' mesh.conf --readfc '))
 
         from siman.calc_manage import read_phonopy_dat_file
 

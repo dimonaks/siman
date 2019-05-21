@@ -3371,7 +3371,7 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10],dim = [1, 1, 1], f
         filename = path+'/mesh.conf'
 
     with open(filename, 'w', newline = '') as f:
-        f.write("DIM = \n")
+        f.write("DIM = ")
         f.write(" ".join(map(str, dim)))
         f.write("\n")
         f.write("ATOM_NAME = ")
@@ -3387,7 +3387,7 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10],dim = [1, 1, 1], f
         # f.write("SIGMA = 0.1\n")
         if filetype == 'mesh':
 
-            f.write("MP = {:}\n".format( mpstr ))
+            f.write("MP = {:}".format( mpstr ))
         
         if filetype == 'band':
             f.write("BAND = {:}\n".format( '0.5 0.5 0.5  0.0 0.0 0.0  0.5 0.5 0.0  0.0 0.5 0.0' ))
