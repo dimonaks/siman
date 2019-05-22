@@ -1405,8 +1405,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
     return
 
-
     """
+    # print(choose_outcar_global)
+    # sys.exit()
     if not param_dic:
         param_dic = {}
 
@@ -1543,7 +1544,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
         dic = cat[7]
         # print(id_base)
         # sys.exit()
-
+        if choose_outcar_global:
+            choose_outcar = choose_outcar_global
+        else:
+            choose_outcar = dic['scale_outcar.'+mode_id]
         if id_base and id_base[0]:
             
             if 'scaling_set' in dic:
@@ -1580,9 +1584,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(dic['scale_outcar.'+mode_id], up_res)
                 # print(up_res)
                 # sys.exit()
-                res_loop(*id_res, up = up_res, readfiles= readfiles, choose_outcar = dic['scale_outcar.'+mode_id], show = 'e', check_job = 0)
+                res_loop(*id_res, up = up_res, readfiles= readfiles, choose_outcar = choose_outcar, show = 'e', check_job = 0)
                 if show_fit:
-                    res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, choose_outcar = dic['scale_outcar.'+mode_id], analys_type = 'fit_a', show = 'fitfo', check_job = 0)
+                    res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0)
                 # sys.exit()
                 if '2'  in calc[id_res].state or '5' in calc[id_res].state:
                     ''
@@ -3908,7 +3912,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
 
     service_list = db[pn]['res']
-    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum}
+    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum, }
 
     if step == 1:
         ''
@@ -3963,7 +3967,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
             a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic, 
-            run_neb = run_neb, run_sc = run_sc) 
+            run_neb = run_neb, run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global') ) 
             
             # print(a[0] not in service_list)
             # service_list = []
@@ -3999,7 +4003,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
             if target_x == 0:
                 a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
-                fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, run_sc = run_sc) 
+                fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
+                run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global')) 
                 
                 # print(a[0])
 
@@ -4039,7 +4044,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                     # print(run_sc)
                     # sys.exit()
                     a = calc_barriers('normal', el, el, up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
-                    fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                    fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
+                    choose_outcar_global = p.get('choose_outcar_global')) 
                     info = a[0]
                     info['x'] = target_x
                     if info not in service_list:

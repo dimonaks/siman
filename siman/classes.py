@@ -1946,13 +1946,17 @@ class Structure():
 
         return st
 
-    def ewald(self):
+    def ewald(self, ox_st = None):
+        # ox_st 
+        #   # 1 - oxidation states from guess
+        #
         from pymatgen.analysis.ewald import EwaldSummation
         from siman.analysis import set_oxidation_states
         st = self
-        # st = set_oxidation_states(st)
-        # st.printme()
-        # print(st.oxi_state)
+        if ox_st:
+            st = set_oxidation_states(st)
+            # st.printme()
+            # print(st.oxi_state)
         stpm = st.convert2pymatgen(chg_type = 'pm')
         ew = EwaldSummation(stpm)
 
@@ -4611,6 +4615,8 @@ class CalculationVasp(Calculation):
 
         # print(self.associated_outcars)
 
+        # print(choose_outcar)
+        # sys.exit()
         if choose_outcar and hasattr(self, 'associated_outcars') and self.associated_outcars and len(self.associated_outcars) >= choose_outcar and len(self.associated_outcars) > 1:
             # print ('associated outcars = ',self.associated_outcars)
             printlog('read_results(): choose_outcar', choose_outcar)
