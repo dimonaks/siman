@@ -172,12 +172,16 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         f.close()
     return table_string
 
-def geo_table_row(cl = None, st = None, name = '', show_angle = 0, mnpo4_hack = False):
+def geo_table_row(cl = None, st = None, name = '', show_angle = 0, mnpo4_hack = False, param_order = None):
     #return list of geo data for cl, which can be used for table
     """
     mnpo4_hack (bool) - if true exchange a and c for mnpo4 phase
-    """
 
+    param_order - default [0,1,2]
+    """
+    po = param_order
+    if po is None:
+        po = [0,1,2]
 
     if cl:
         st = cl.end
@@ -235,23 +239,35 @@ def geo_table_row(cl = None, st = None, name = '', show_angle = 0, mnpo4_hack = 
     if mnpo4_hack and 'MnPO' in name:
         c, b, a = v
 
+    ps = [a,b,c]
 
-    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT+U',  a, 
-        b, c)+angle+'& {:5.1f} & {:s}'.format(st.vol, spg)
+    p = []
+    # print(ps)
+    # print(po)
+    for o in po:
+        p.append(ps[o])
+    # print(p)
+    # sys.exit()
+
+    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT+U',  p[0], 
+        p[1], p[2])+angle+'& {:5.1f} & {:s}'.format(st.vol, spg)
 
 
 
 
-def table_geometry(st_list, show_angle = None, exp = None):
+def table_geometry(st_list = None, cl_list = None, show_angle = None, exp = None, param_order = None):
     """
     Produce standart table with lattice constants
     # print(row)
     exp (list) - list of strings with exp data with '& & &' format
     """
+    if st_list is None:
+        st_list = [cl.end for cl in cl_list]
+
     rows = []
     for st in st_list:
         # st.printme()
-        row = geo_table_row(st = st, show_angle = show_angle)
+        row = geo_table_row(st = st, show_angle = show_angle, param_order = param_order)
         rows.append(row)
     if exp:
         rows.extend(exp)

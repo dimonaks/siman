@@ -498,7 +498,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         ax.axhline(color = 'k') #horizontal line
 
     if ver:
-        ax.axvline(color='k') # vertical line at 0 always 
+        if not linewidth:
+            linewidth = 1
+        ax.axvline(color='k', lw = linewidth, alpha = 0.6, ls = '-') # vertical line at 0 always 
 
     if ver_lines:
         for line in ver_lines:
