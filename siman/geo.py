@@ -1226,6 +1226,10 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
 
     Todo
     #check that distances through  PBC are two small
+
+
+    RETURN: 
+    structures
     """
     # tol = 0.1 #tolerance for distinguishing antisites within one group
     # max_sep = 4 # maximum separation of antisite

@@ -21,6 +21,10 @@ from siman.analysis import calc_redox,  matrix_diff
 from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions
 from siman.inout import write_occmatrix
 from siman.database import add_to_archive_database
+from siman.impurity import insert_atom
+from siman.analysis import find_polaron
+from siman.geo import image_distance
+
 
 mpl.rcParams.update({'font.size': 22})
 
@@ -2499,21 +2503,19 @@ def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_lo
     if provided
     only - only these configurations are considered
     """
-    from impurity import insert_atom
-    from analysis import find_polaron
-    from geo import image_distance
 
-    from current_structures import Na2X
+
 
     struct_des = header.struct_des
     calc = header.calc
 
     if not cathodes:
+        # from current_structures import Na2X
         cathodes = [
         # {'cl':calc[('Li2FePO4F.pnma','1u', 1)], 'el1':'Li', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
         # {'cl':calc['Li2FePO4F.pnma.su.s10','1u', 100], 'el1':'Li', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
 
-        {'cl':Na2X, 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
+        # {'cl':Na2X, 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
         # {'cl':calc['Na2FePO4F.s10.su','4uis', 100], 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
         # {'cl':Na_X, 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
         # {'cl':Na_X, 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee', 'add':'Na' ,'i_void':3  }, #i_void: 0, 1
