@@ -3125,7 +3125,8 @@ class Calculation(object):
             option - the same as inherit_option, 'inherit_xred' - control inheritance, or 'master' - run serial on master 
             prevcalcver - ver of previous calc; for first none
             savefile - 'cdawx', where c-charge, d-dos, a- AECCAR, w-wavefile, x-xml
-            schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
+            schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 
+                'none' - just run without any system
             mode - 
                 body
                 footer
@@ -3316,7 +3317,7 @@ class Calculation(object):
         if schedule_system == 'SGE':
             # parrallel_run_command = "mpirun -x PATH vasp" # MPIE
             parrallel_run_command = header.vasp_command
-        elif schedule_system in ['PBS', 'PBS_bsu']:
+        elif schedule_system in ['PBS', 'PBS_bsu', 'none']:
             # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
             # parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
             parrallel_run_command = header.vasp_command #skoltech cluster
@@ -3846,6 +3847,15 @@ class Calculation(object):
                 f.write("qsub "+run_name.split('/')[-1]+"\n") 
                 f.write("cd -\n")
                 f.write('sleep 1\n')                        
+            elif schedule_system in ['none']:
+                if header.PATH2PROJECT == '':
+                    header.PATH2PROJECT = '.'
+
+                f.write("cd "+header.PATH2PROJECT+'/'+self.dir+"\n")
+                f.write('./'+run_name.split('/')[-1]+"\n") 
+                f.write("cd -\n")
+                # f.write('sleep 1\n')     
+
             
             elif schedule_system == 'SLURM':
                 f.write("squeue\n") 
@@ -3938,6 +3948,10 @@ class Calculation(object):
 
                 elif 'SGE' in cl.schedule_system:
                     job_in_queue = check_string in run_on_server("qstat -xml ", cl.cluster['address'])
+                
+                elif 'none' in cl.schedule_system:
+                    job_in_queue = ''
+                    
                 else:
                     print_and_log('Attention! unknown SCHEDULE_SYSTEM='+cl.schedule_system+'; Please teach me here! ', imp = 'y')
                     job_in_queue = ''

@@ -736,7 +736,7 @@ def init_default_sets(init = 0):
     """
     varset = header.varset
 
-    setname = 'static'
+    setname = 'aks'
     if init or setname not in varset: #init only once
         s = InputSet(setname) #default starting set without relaxation
         s.kpoints_file = True
@@ -770,6 +770,37 @@ def init_default_sets(init = 0):
         s.update()
         header.varset[setname] = copy.deepcopy(s)
     
+    setname = 'static'
+    if init or setname not in varset: #init only once
+        s = InputSet(setname) #default starting set without relaxation
+        s.kpoints_file = True
+        s.add_nbands = 1.25
+        s.vasp_params = {
+            'ISTART'    : 0,
+            'NELM'      : 50,
+            'EDIFF'     : 1e-05,
+            'NSW'       : 0,
+            'EDIFFG'    : 0,
+            'IBRION'    : 1,
+            'ISIF'      : 2,
+            'PREC'      : "Normal",
+            'ALGO'      : "Normal",
+            'ENCUT'     : 400,
+            'ENAUG'     : 400*1.75,
+            'KSPACING'  : 0.2,
+            'KGAMMA'    : ".TRUE.",
+            'LREAL'     : "Auto",
+            'ISMEAR'    : 1,
+            'SIGMA'     : 0.1,
+            'LPLANE'    : ".TRUE.",
+            'NPAR'      : 1,
+            }
+        s.potdir = copy.deepcopy(header.nu_dict)
+
+        s.update()
+        header.varset[setname] = copy.deepcopy(s)
+    
+
 
 
     setname = 'opt'

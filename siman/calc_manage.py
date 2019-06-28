@@ -148,7 +148,10 @@ def write_batch_header(batch_script_filename = None,
 
 
 
-
+        if schedule_system == 'none':
+            f.write("#!/bin/bash   \n")
+            if 'modules' in header.cluster:
+                f.write(header.cluster['modules']+'\n')
 
 
 
@@ -246,7 +249,7 @@ def prepare_run():
                 # f.write(header.cluster['modules']+'\n')
             # f.write("module load sge\n")
             # f.write("module load vasp/parallel/5.2.12\n")
-        elif schedule_system in ('PBS', 'PBS_bsu' 'SLURM'):
+        elif schedule_system in ('PBS', 'PBS_bsu', 'SLURM', 'none'):
             f.write("#!/bin/bash\n")
         else:
             ''
@@ -269,7 +272,8 @@ def complete_run(close_run = True):
                 f.write("squeue\n")
             elif header.schedule_system == "SGE":
                 f.write("qstat\n")
-
+            elif header.schedule_system == "none":
+                f.write("\n")
             f.write("mv run last_run\n")
 
 
@@ -1683,7 +1687,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None):
     """
 
-    schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
+    schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 'none'
 
     prevcalcver - version of previous calculation in verlist
 
