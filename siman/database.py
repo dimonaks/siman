@@ -30,13 +30,13 @@ history_key    = 'history'
 struct_des_key = 'struct_des'
 
 
-def read_database(scratch = False):
+def read_database(scratch = False, init_sets = 0):
     """
     Read database of calculations
 
     INPUT:
         scratch - not used
-    
+        init_sets - required to reinit defaults sets in init_default_sets function
     RETURN:
         calc   - dict, contains all calculations of the project
         conv   - dict, convergence sequences
@@ -92,7 +92,7 @@ def read_database(scratch = False):
             printlog( "There is no struct_des in database. The dict is in header module "); 
 
     #print history
-    init_default_sets()
+    init_default_sets(init_sets)
 
 
     return header.conv, header.varset, sys.getsizeof(d)

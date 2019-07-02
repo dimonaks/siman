@@ -2748,6 +2748,9 @@ class Calculation(object):
         self.end.write_poscar()
     def me(self):
         self.end.printme()
+    def gmt(self, *args, **kwargs):
+        self.end.get_mag_tran(*args, **kwargs)
+
 
     def add_new_name(self, idd):
         """
@@ -3936,6 +3939,7 @@ class Calculation(object):
         if header.check_job == 1:
             job_in_queue = ''
             if hasattr(cl,'schedule_system'):
+
 
                 check_string =  cl.id[0]+'.'+cl.id[1]
                 if 'SLURM' in cl.schedule_system:

@@ -742,7 +742,7 @@ def init_default_sets(init = 0):
         s.kpoints_file = True
         s.add_nbands = 1.25
         s.vasp_params = {
-            'NELM'      : 100,
+            'NELM'      : 50,
             'IBRION'    : 1,
             'KGAMMA'    : ".TRUE.",
             'ENCUT'     : 441.0,
