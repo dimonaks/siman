@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from siman import header
 from siman.header import printlog, calc, db
 from siman.picture_functions import fit_and_plot
+from siman.table_functions import table_geometry, table_potentials, generate_latex_report
+
 from siman.small_functions import merge_dics as md, makedir
 from siman.calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
 from siman.neb import add_neb
@@ -19,6 +21,10 @@ from siman.analysis import calc_redox,  matrix_diff
 from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions
 from siman.inout import write_occmatrix
 from siman.database import add_to_archive_database
+from siman.impurity import insert_atom
+from siman.analysis import find_polaron
+from siman.geo import image_distance
+
 
 mpl.rcParams.update({'font.size': 22})
 
@@ -1380,6 +1386,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
         - old_behaviour (bool) - if True then first optimization of cell is not done for 'normal', second optimization for all modes;
             if False - only first optimization for all cells
         'old.'+mode_id
+        - rep_moving_atom - replace moving atom
         ! war
 
     run_sc - run supercell construction part
@@ -1402,8 +1409,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
     return
 
-
     """
+    # print(choose_outcar_global)
+    # sys.exit()
     if not param_dic:
         param_dic = {}
 
@@ -1540,7 +1548,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
         dic = cat[7]
         # print(id_base)
         # sys.exit()
-
+        if choose_outcar_global:
+            choose_outcar = choose_outcar_global
+        else:
+            choose_outcar = dic['scale_outcar.'+mode_id]
         if id_base and id_base[0]:
             
             if 'scaling_set' in dic:
@@ -1561,8 +1572,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 scale_region = dic['scale_region.'+mode_id]
 
-
+            # print(id_base[0])
             curfol = struct_des[id_base[0]].sfolder
+
 
             id_res = (id_base[0]+'.su', ise_new, 100)
 
@@ -1576,9 +1588,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(dic['scale_outcar.'+mode_id], up_res)
                 # print(up_res)
                 # sys.exit()
-                res_loop(*id_res, up = up_res, readfiles= readfiles, choose_outcar = dic['scale_outcar.'+mode_id], show = 'e', check_job = 0)
+                res_loop(*id_res, up = up_res, readfiles= readfiles, choose_outcar = choose_outcar, show = 'e', check_job = 0)
                 if show_fit:
-                    res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, choose_outcar = dic['scale_outcar.'+mode_id], analys_type = 'fit_a', show = 'fitfo', check_job = 0)
+                    res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0)
                 # sys.exit()
                 if '2'  in calc[id_res].state or '5' in calc[id_res].state:
                     ''
@@ -2491,21 +2503,19 @@ def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_lo
     if provided
     only - only these configurations are considered
     """
-    from impurity import insert_atom
-    from analysis import find_polaron
-    from geo import image_distance
 
-    from current_structures import Na2X
+
 
     struct_des = header.struct_des
     calc = header.calc
 
     if not cathodes:
+        # from current_structures import Na2X
         cathodes = [
         # {'cl':calc[('Li2FePO4F.pnma','1u', 1)], 'el1':'Li', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
         # {'cl':calc['Li2FePO4F.pnma.su.s10','1u', 100], 'el1':'Li', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
 
-        {'cl':Na2X, 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
+        # {'cl':Na2X, 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
         # {'cl':calc['Na2FePO4F.s10.su','4uis', 100], 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
         # {'cl':Na_X, 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee'    }, 
         # {'cl':Na_X, 'el1':'Na', 'el2':'Fe', 'max_sep':4, 'set':'1uAlf', 'cluster':'cee', 'add':'Na' ,'i_void':3  }, #i_void: 0, 1
@@ -3742,7 +3752,7 @@ def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = No
     return
 
 
-def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 ):
+def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, add_loop_dic = None ):
 
     """
 
@@ -3753,9 +3763,12 @@ def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 )
     if not it_folder:
         it_folder = 'optimization/'+name.split('.')[0]+'/'
 
+    if add_loop_dic is None:
+        add_loop_dic = {}
+
     it_new = name
-    if run: 
-        add_loop(it_new, ise, 1, calc_method = 'uniform_scale', inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder)
+    if add: 
+        add_loop(it_new, ise, 1, up = 'up2', calc_method = 'uniform_scale', inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder, **add_loop_dic)
 
     else:
         idd = (it_new+'.su', ise, 100)
@@ -3763,7 +3776,7 @@ def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 )
             res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
 
         else:
-            res_loop(*idd, show = 'maga', up = 'up1')#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
+            res_loop(*idd, show = 'fo', up = 'up1')#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
         # st = calc[idd].end
         # print(st.get_space_group_info())
         # alpha, beta, gamma = st.get_angles()
@@ -3772,23 +3785,28 @@ def optimize(st, name = None, run = 0, ise = '4uis', it_folder = None, fit = 0 )
     return
 
 
-def create_project_from_geofile(filename):
+def create_project_from_geofile(filename, projectname = None, up = 0):
     """
     empty project is added to database
     get name from geofile and create required folder and put file into it  
     Various rules to create project name
-
+    up - update
     """
     db = header.db
     if 1:
         #simple - just name of file
         basename = os.path.basename(filename)
-        projectname = basename.split('.')[0]
-        makedir(projectname+'/temp')
-        startgeofile = projectname+'/'+ basename
+        if projectname is None:
+            projectname = basename.split('.')[0]
+        projectfolder = projectname.split('_')[0]
+        makedir(projectfolder+'/temp')
+        if projectname is None:
 
+            startgeofile = projectfolder+'/'+ basename
+        else:
+            startgeofile = filename
 
-    if projectname not in db:
+    if up or projectname not in db:
         if not os.path.exists(startgeofile):
             shutil.copyfile(filename, startgeofile)
         db[projectname]  = {}
@@ -3797,7 +3815,7 @@ def create_project_from_geofile(filename):
         printlog('Project ', projectname, 'was created', imp = 'y')
     
     else:
-        printlog('Error! project already exist')
+        printlog('Error! project', projectname, 'already exist')
 
     return projectname
 
@@ -3824,7 +3842,9 @@ def get_alkali_ion(st, active_cation = None):
 def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, params = None ):
     """
     AI module to process cif file and automatic calculation of standard properties of cathode material 
-    
+    project folder is everything before _ in projectname
+
+
     step 1 - read geo and run simple relaxation
 
     step 2 - calc barriers, IS
@@ -3847,67 +3867,93 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         atom_to_move
         del_pos
 
+        exp_geometry - list of rows with exp geometry for table
+
+        show - a number of control for neb, see analysis
 
     """
     from siman.geo import determine_symmetry_positions, primitive, remove_x
     pn = projectname
-    
-    m_set = '1u';
-    clust = 'cee' # 
+    pf = pn.split('_')[0] # project_folder
+
     
     p = params
     show_fit  = p.get('show_fit')
+    up    = p.get('up') or 'up1'
     up_scale  = p.get('up_scale')
     up_SC  = p.get('up_SC')
     up_res    = p.get('up_res') or 'up1'
+    m_set    = p.get('m_set') or '1u'
     sc_set    = p.get('sc_set') or '4uis'
+    sc_set_ds    = p.get('sc_set_ds') or sc_set
     n_set     = p.get('neb_set') or '1u'
+    run_sc   = p.get('run_sc')
     run_neb   = p.get('run_neb')
     end_z   = p.get('end_z')
     ortho   = p.get('ortho') or [10,10,10]
     active_cation = p.get('active_cation')
     # atom_to_move 
     del_pos = p.get('del_pos')
+    clust = p.get('cluster') or 'cee'
+    corenum = p.get('corenum')
+    readfiles = p.get('readfiles')
 
-
+    if readfiles is None:
+        readfiles = 1
+    if run_sc is None:
+        run_sc = 1
 
 
     if update or 'res' not in db[pn]:
         db[pn]['res'] = []
+        db[pn]['latex'] = {}
+        print('service_list was cleared')
 
     if 'latex' not in db[pn]:
         db[pn]['latex'] = {}
 
 
     service_list = db[pn]['res']
+    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum, }
 
     if step == 1:
         ''
-        if 1 not in db[pn]['steps']:
+        if 1 not in db[pn]['steps'] or 'up2' in up:
             startgeofile = db[pn]['startgeofile'] 
             print('geo file is ', startgeofile)
             st = smart_structure_read(startgeofile)
             st = primitive(st)
-            add_loop(pn, m_set, 1, input_st = st, it_folder = pn)
+            add_loop(pn, m_set, 1, input_st = st, it_folder = pf, up = up, **add_loop_dic)
             startgeofile = db[pn]['steps'].append(1) 
         else:
-            res_loop(pn, m_set, 1)
+            out = res_loop(pn, m_set, 1)
+            # print(out)
+            if len(out[1]) == 0:
+                db[pn]['steps'] = []
 
-    if step in [2, 3]:
+    if step in [2, 3, 5]:
 
         # if 2 not in db[pn]['steps']:
         it = pn
+        # print(it, m_set, 1)
+        # sys.exit()
         cl = db[it, m_set, 1]
-
         el  = get_alkali_ion(cl.end, active_cation)
 
         it_ds = it.replace(el, '')
+        if it_ds[0] == '2':
+            it_ds = it_ds[1:]
+            coeff = 2
+        else:
+            coeff = 1
+
         printlog('Name for DS is', it_ds)
 
         pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
         'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
-        'scale_region':(-3, 5), 'readfiles':1, 'ortho':ortho,
-        'end_pos_types_z':end_z}
+        'scale_region':(-3, 5), 'readfiles':readfiles, 'ortho':ortho,
+        'end_pos_types_z':end_z,
+        'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom')}
 
 
         pd['atom_to_move'] = p.get('atom_to_move')
@@ -3917,31 +3963,53 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         pd['start_pos'] = path[0] 
         pd['end_pos']   = path[1] 
 
-        add_loop_dic = { 'check_job':1, 'cluster':clust}
         fitplot_args = {'ylim':(-0.02, 1.8)}
 
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
             a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
-            fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+            fitplot_args = fitplot_args, style_dic = style_dic, 
+            run_neb = run_neb, run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global') ) 
             
+            # print(a[0] not in service_list)
+            # service_list = []
             # print(a[0])
+            # print(service_list)
+            # for ele in service_list:
+            #     print(ele == a[0])
+            #     if ele == a[0]:
+            #         break
+            # else:
             if a[0] not in service_list:
                 service_list.append(a[0])
             # db[pn]['B'] = [ a[0]['B'] ]
+        if step == 5:
+            #replace K -> Li
+            st = cl.init # 
+            # print('sdf')
+            a = calc_barriers('replace', 'K', 'Li', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+            # fitplot_args = fitplot_args, style_dic = style_dic, 
+            run_neb = run_neb, run_sc = run_sc)             
+
+
 
         if step == 3:
             # cl.res()
             style_dic  = {'p':'bo', 'l':'-b', 'label':'DS'}
-
-            st = cl.end
+            pd['scaling_set']=sc_set_ds
+            # st = cl.end
+            st = cl.init # 
 
             pos = determine_symmetry_positions(st, el)
             # cl.me()
 
             if target_x == 0:
                 a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
-                fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
+                run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global')) 
+                
+                # print(a[0])
+
                 if a[0] not in service_list:
                 
                     service_list.append(a[0])
@@ -3949,8 +4017,18 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             else:
                 x_str = str(target_x).replace('.', '')
                 x_vac = 1 - target_x # concentration of vacancies
-                name = el+x_str+it_ds
+                
+                # print(it_ds)
+                # if '2' in el:
+                #     el = el.replace('2', '')
+                #     coeff = 2
+                # else:
+                #     coeff = 1
 
+                # name = el+str(float(x_str)*coeff)+it_ds
+                name = el+x_str+it_ds
+                # print(name)
+                # sys.exit()
                 syms =  remove_x(st, el, info_mode = 1, x = x_vac)
 
                 printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
@@ -3961,11 +4039,15 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                     st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
 
                     id_new = (name+'sg'+str(sg), m_set, 1)
-                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = 'up1')
+
+                    add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
-                    a = calc_barriers('normal', el, el, up_res = 'up1', show_fit = show_fit, up = 0, upA = 0, upC = 0, param_dic = pd, add_loop_dic = add_loop_dic,
-                    fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb) 
+                    # print(run_sc)
+                    # sys.exit()
+                    a = calc_barriers('normal', el, el, up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+                    fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
+                    choose_outcar_global = p.get('choose_outcar_global')) 
                     info = a[0]
                     info['x'] = target_x
                     if info not in service_list:
@@ -3979,15 +4061,15 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         #Lattice constants, and intercalation potentials 
         #the first calculation now is considered as intercalated 
         # IS = 
-        from table_functions import table_geometry, table_potentials
 
         # print('service list is ', service_list)
         """Lattice constants"""
 
         sts = []
         cll = []
+        print('service list:', service_list)
         for a in service_list:
-            # print(a)
+            print('current a is ', a)
             cl = db[a['id']]
             try:
                 cl.end
@@ -4000,10 +4082,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             cll.append(cl)
             if 1:
                 """Plot figures"""
-                if 'id_sc' in a:
+                if 'id_sc' in a and '4' in db[a['id_sc']].state:
                     db[a['id_sc']].end.write_xyz(jmol = 1)
 
-        table = table_geometry(sts)
+        table = table_geometry(sts, show_angle = p.get('show_angle'), exp = p.get('exp_geometry'))
         db[pn]['latex']['t1'] = table
 
 
@@ -4017,7 +4099,6 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
     if step == 4:
         #create report
-        from table_functions import generate_latex_report
 
         latex_text = ''
 
@@ -4025,3 +4106,4 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             latex_text+=db[pn]['latex'][key] +'\n'
 
         generate_latex_report(latex_text, filename = 'tex/'+pn+'/'+pn)
+

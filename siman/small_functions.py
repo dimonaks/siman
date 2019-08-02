@@ -16,9 +16,8 @@ except:
     except NameError:
         string_types = str # for python 3
 
-
+from siman import header
 from siman.header import printlog
-
 
 
 
@@ -31,8 +30,12 @@ class TracePrints(object):
 
 
 def angle(v1, v2):
-  return math.acos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))) / math.pi * 180
+    #in degrees
+    return math.acos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))) / math.pi * 180
 
+def normal(v1, v2):
+    #normal to two vectors
+    return np.cross(v1, v2)
 
 
 def red_prec(value, precision = 100.):
@@ -157,6 +160,47 @@ def b2s(b):
     return s
 
 
+def is_unique(d, dist, prec = 0.001):
+    """
+    check if d is unique within the provided precision in the given list dist
+    return 1 if unique, else 0 
+    """
+
+    if len(dist)>0: 
+        if min([abs(d-d1) for d1 in dist])>prec:
+            out = 1
+        else:
+            out = 0
+    else:
+        out = 1
+
+    return out 
+
+
+def calc_ngkpt(recip, kspacing):
+    to_ang_local = 1
+    
+    N_from_kspacing = []
+    for i in 0, 1, 2:
+        N_from_kspacing.append( math.ceil( (np.linalg.norm(recip[i]) / to_ang_local) / kspacing) )
+
+    return N_from_kspacing
+
+
+def setting_sshpass(cl):
+    if hasattr(cl , 'cluster'):
+        # print(cl.cluster)
+        # clust = header.CLUSTERS[cl.cluster]
+        if 'sshpass' in cl.cluster and cl.cluster['sshpass']:
+            printlog('setting sshpass to True', imp = '')
+            # sys.exit()
+            header.sshpass = cl.cluster['sshpass']
+        else:
+            header.sshpass = None
+
+
+
+# def format_str():
 
 @contextmanager
 def cwd(path):

@@ -12,7 +12,7 @@ try:
     # print (scipy.__version__)
     # print (dir(interpolate))
 except:
-    print('scipy is not avail')
+    print('picture_functions.py: scipy is not avail')
 try:
     from scipy.interpolate import  CubicSpline
 except:
@@ -121,8 +121,6 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
 
     spl = scipy.interpolate.PchipInterpolator(mep_pos, eners)
-
-
     ynew = spl(xnew)
 
     diff_barrier = determine_barrier(mep_pos, eners)
@@ -206,6 +204,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     first = True, last = True, 
     convex = None, dashes = None,
     corner_letter = None, hide_ylabels = None, hide_xlabels= None, annotate = None,
+    params = None,
     **data):
     """
     Plot multiple plots on one axes using *data*
@@ -258,9 +257,14 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     x_nbins - number of ticks
 
+
+    params - dictionary with parameters 
+        - 'xlim_power' - xlim for power
+        - 'y0' - move plot to have y = 0
+
     TODO:
     remove some arguments that can be provided in data dict
-
+    move all rare arguments to params
 
     """
 
@@ -306,17 +310,18 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     # plt.ylabel(ylabel, axes = ax)
     # print(ylabel)
-    if ylabel != None:
+    if ylabel is not None:
 
         ax.set_ylabel(ylabel)
     
 
-    if xlabel != None:
+    if xlabel is not None:
         ''
         # plt.xlabel(xlabel, axes = ax)
         ax.set_xlabel(xlabel)
 
-
+    if params is None:
+        params = {}
 
 
     if corner_letter:
@@ -331,9 +336,10 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         from scipy.spatial import ConvexHull
 
 
-
+    keys = []
+    shift = 0
     for key in sorted(data):
-
+        keys.append(key)
         if scatter:
             
             ax.scatter(data[key][0], data[key][1],  s = data[key][2], c = data[key][-1], alpha = alpha, label = key)
@@ -402,13 +408,28 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                     del con_other_args['color']
             # print(con_other_args)
             # sys.exit()
+            
+            if params.get('y0'):
+                if key == keys[0]:
+                    shift = min(xyf[1])
+
+            if shift:
+                xyf[1] = list(np.array(xyf[1])-shift)
+
+
             ax.plot(*xyf, alpha = alpha, **con_other_args)
 
             if power:
                 coeffs1 = np.polyfit(xyf[0], xyf[1], power)        
                 
                 fit_func1 = np.poly1d(coeffs1)
-                x_range = np.linspace(min(xyf[0]), max(xyf[0]))
+
+                if params.get('xlim_power'):
+                    x_range = np.linspace(params['xlim_power'][0], params['xlim_power'][1])
+
+                else:
+                    x_range = np.linspace(min(xyf[0]), max(xyf[0]))
+                
                 fit_y1 = fit_func1(x_range); 
          
 
@@ -477,7 +498,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         ax.axhline(color = 'k') #horizontal line
 
     if ver:
-        ax.axvline(color='k') # vertical line at 0 always 
+        if not linewidth:
+            linewidth = 1
+        ax.axvline(color='k', lw = linewidth, alpha = 0.6, ls = '-') # vertical line at 0 always 
 
     if ver_lines:
         for line in ver_lines:

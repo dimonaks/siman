@@ -95,6 +95,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
     TODO: rename to ?_point_defects()
     """
 
+    from siman.project_funcs import e_bind
 
 
 
@@ -519,23 +520,34 @@ def optimize_wrapper(cl, ise, add = 0, show_fit = 1, params = None):
 
 
 
-def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = None, ngkpt = None, acc = None, ise1= None, acc2 = None, ise2 = None):
+def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = None, cls = None, ngkpt = None, acc = None, ise1= None, acc2 = None, ise2 = None, params = None):
     """
     Add Several  structures
+
+    params - pass to add_loop
+
     """
+    
+    if params is None:
+        params = {}
+
     folder = suf.replace('.', '')
     # print(folder)
     # sys.exit()
     if ise1 is None:
         ise1 = ise
 
-    for i, st in enumerate(sts): 
+    if cls is None:
+        cls = [cl]*len(sts)
+
+    for i, st, cl in zip(range(len(sts)),sts,cls) : 
 
         itn = cl.id[0]+suf+ str(i)
         # del header.struct_des[itn]
         # continue
         if add:
-            add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', ) #
+            add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', **params ) #
+        
         else:
             ''
             

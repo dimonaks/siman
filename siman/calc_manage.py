@@ -20,8 +20,8 @@ except:
 import siman
 from siman import header
 from siman.header import print_and_log, runBash, mpl, plt
-from siman.small_functions import is_list_like, makedir, list2string
-from siman.classes import Calculation, CalculationVasp, Description
+from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt
+from siman.classes import Calculation, CalculationVasp, Description, CalculationAims, Structure
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.picture_functions import plot_mep, fit_and_plot, plot_conv
@@ -148,7 +148,10 @@ def write_batch_header(batch_script_filename = None,
 
 
 
-
+        if schedule_system == 'none':
+            f.write("#!/bin/bash   \n")
+            if 'modules' in header.cluster:
+                f.write(header.cluster['modules']+'\n')
 
 
 
@@ -173,7 +176,7 @@ def write_batch_header(batch_script_filename = None,
                 # f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
                 # f.write("#SBATCH --mail-type=END\n")
             f.write("cd "+path_to_job+"\n")
-            f.write("export OMP_NUM_THREADS=1\n")
+            # f.write("export OMP_NUM_THREADS=1\n")
 
             if 'modules' in header.cluster:
                 f.write(header.cluster['modules']+'\n')
@@ -184,8 +187,8 @@ def write_batch_header(batch_script_filename = None,
             # if header.siman_run: #only for me
             lib64 = header.cluster['homepath'] + '/tools/lib64'
             atlas = header.cluster['homepath'] + '/tools/atlas'
-            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
-            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
+            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
+            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
             
             f.write("export PATH=$PATH:"+header.cluster['homepath'] +"/tools/\n")
             
@@ -247,7 +250,7 @@ def prepare_run():
                 # f.write(header.cluster['modules']+'\n')
             # f.write("module load sge\n")
             # f.write("module load vasp/parallel/5.2.12\n")
-        elif schedule_system in ('PBS', 'PBS_bsu' 'SLURM'):
+        elif schedule_system in ('PBS', 'PBS_bsu', 'SLURM', 'none'):
             f.write("#!/bin/bash\n")
         else:
             ''
@@ -259,7 +262,7 @@ def prepare_run():
 
 
 def complete_run(close_run = True):
-    
+    header.first_run = False
     if close_run:
 
         with open('run','a', newline = '') as f:
@@ -270,7 +273,8 @@ def complete_run(close_run = True):
                 f.write("squeue\n")
             elif header.schedule_system == "SGE":
                 f.write("qstat\n")
-
+            elif header.schedule_system == "none":
+                f.write("\n")
             f.write("mv run last_run\n")
 
 
@@ -392,8 +396,10 @@ def cif2poscar(cif_file, poscar_file):
 
 
     if pymatgen_flag:
+        # print(cif_file)
         parser = CifParser(cif_file)
-        s = parser.get_structures(primitive = True)[0]
+        # s = parser.get_structures(primitive = True)[0]
+        s = parser.get_structures(primitive = 0)[0]
         
 
         si = s._sites[0]
@@ -844,6 +850,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             - 'polaron' - polaron hopping, only input_st is supported
 
+            - 'atat' - create all input for ATAT
+                params['atat']
+                    'active_atoms' - now dictionary of elements, which can be substituted by what e.g. {'Li':'Vac'}
 
 
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
@@ -872,6 +881,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'charge' - charge of the system, +1, -1
 
 
+            - 'polaron'
+                - 'polaron_status' (str) 'new' (default) or 'existing'
 
     Comments:
         
@@ -1071,29 +1082,65 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             pm = params['polaron']
             am = abs(pm['amp']) # amplitude of polaron, the sign is not important here
 
+            existing = pm.get('polaron_status') and 'ex' in pm.get('polaron_status') 
+
             if pm['polaron_type'] == 'electron':
-                params['charge'] = -1
+                if existing:
+                    ''
+                    #nothing is done
+                else:
+                    #create new polaron
+                    params['charge'] = -1
+
             elif pm['polaron_type'] == 'hole':
                 ''
                 am = am * -1 
-                params['charge'] = +1
+                if existing:
+                    ''
+                else:
+                    #create new polaron
 
-            st1 = input_st.localize_polaron(pm['istart'],  am)
-            st2 = input_st.localize_polaron(pm['iend'], am)
+                    params['charge'] = +1
+
+            if pm.get('st1'):
+                st1 = pm['st1']
+                st2 = pm['st2']
+                st1.magmom = [None]
+
+            elif existing:
+                st1 = copy.deepcopy(input_st)
+                st2 = input_st.localize_polaron(pm['iend'], am)
+                st2 = st2.localize_polaron(pm['istart'], -am) # return back existing polaron to normal
+
+            else:
+                st1 = input_st.localize_polaron(pm['istart'],  am)
+                st2 = input_st.localize_polaron(pm['iend'], am)
+
+
 
             st1_vis = st1.replace_atoms([pm['istart']], 'U')
             st2_vis = st2.replace_atoms([pm['iend']], 'U')
             st1_vis.write_poscar('xyz/'+it+'/1.POSCAR')
             st2_vis.write_poscar('xyz/'+it+'/100.POSCAR')
             sts = interpolate(st1, st2, images= pm['images'], write_poscar = 3, poscar_folder = 'xyz/'+it+'/' )
-
+            del pm['st1'], pm['st2'] #not needed to serialize
 
             inputset =setlist[0]
+            mode = 'inherit'
+            if mode == 'independent':
+                verst_list = [(i+1, s) for i, s in enumerate([st1, st2]+sts)]
+            elif mode == 'inherit':
 
+                # print(sts, sts.reverse())
+                ver0 = [(1, st1), (2, st2)]
+                ver1 = [(i+20, s) for i, s in enumerate([st1]+sts+[st2])]
+                ver2 = [(i+42, s) for i, s in enumerate([st2]+list(reversed(sts))+[st1])]
 
-            for i, s in enumerate([st1, st2]+sts):
+                verst_list = ver0+ver1+ver2
+
+            for ver_new, s in verst_list:
                 
-                ver_new = i+ 1 # start from 1; before it was v+i
+                # ver_new = i+ 1 # start from 1; before it was v+i
                 id_s = (it,inputset,ver_new)
                 cl_temp = CalculationVasp(varset[inputset], id_s)
                 s.name = it_new+'.'+str(ver_new)
@@ -1135,13 +1182,40 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             input_st = st1
 
 
+        if 'atat' in calc_method:
 
+            ks = varset[setlist[0]].vasp_params['KSPACING']
+            input_st = input_st.reorder_element_groups(order = 'alphabet') # required for correct work of ATAT
 
+            N = calc_ngkpt(input_st.get_recip(), ks)
+            # print(N)
+            KPPRA = N[0]*N[1]*N[2]*input_st.natom # here probably symmetry should taken into account? not really good working
 
+            if ks == 0.3:
+                KPPRA = 1200
+            else:
+                KPPRA = 1200
+                printlog('Warning! KPPRA = 1200 for all kspacings! please contact developer to improve or modify this code in calc_manage.py')
 
+            printlog('Atat mode, KPPRA is', KPPRA, imp = 'Y')
+            # sys.exit()
+            exclude_new = []
+            exclude = params['atat'].get('exclude_atoms_n')
 
+            subatom = params['atat'].get('subatom') or None
+            # print(exclude)
+            # sys.exit()
+            if exclude:
+                for i in exclude:
+                    exclude_new.append(input_st.old_numbers.index(i))
+                # exclude = exclude_new
+                params['atat']['exclude_atoms_n'] = exclude_new
 
-
+            params['update_set_dic']={'add_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
+            'MAGATOM':list2string(input_st.magmom), 
+            'MAGMOM':None,
+            'SUBATOM':subatom,
+            'DOSTATIC':''}
 
 
 
@@ -1614,7 +1688,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None):
     """
 
-    schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
+    schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 'none'
 
     prevcalcver - version of previous calculation in verlist
 
@@ -1659,8 +1733,60 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         return file
 
 
+    def write_lat_in(st, params):
+        file = cl.dir +  'lat.in'
+        to_ang = 1
+        rprimd = st.rprimd
+        with open(file, 'w') as f:
+            for i in 0, 1, 2:
+                f.write('{:10.6f} {:10.6f} {:10.6f}\n'.format(rprimd[i][0]*to_ang,rprimd[i][1]*to_ang,rprimd[i][2]*to_ang) )
+                # f.write("\n")
+            f.write(' 1 0 0\n 0 1 0\n 0 0 1\n')
+
+            active_atoms = params['atat']['active_atoms']
+            
+            exclude = params['atat'].get('exclude_atoms_n') or []
+            
+            subs = []
+
+            # print(active_atoms)
+            # sys.exit()
+            # for el in set(st.get_elements()):
+                # st.determine_symmetry_positions(el)
+
+            # st.printme()
+            # sys.exit()
 
 
+            for i, el in enumerate(st.get_elements()):
+                if el in active_atoms and i not in exclude:
+                    # print(el, i, st.xred[i])
+                    subs.append(active_atoms[el])
+                else:
+                    subs.append(None)
+
+            # print(st.magmom)
+
+            if None in st.magmom:
+                magmom = st.natom*['']
+            else:
+                magmom = st.magmom
+
+            # print(magmom)
+            for x, el, sub, m in zip(st.xred, st.get_elements(), subs, magmom):
+                # if el == 'O':
+                #     m = 0
+                # print(m)
+                if abs(m) < 0.1:
+                    m = 0
+                # print(m, '{:+.0f}'.format(m))
+                f.write('{:10.6f} {:10.6f} {:10.6f} {:s}{:+.0f}'.format(*x, el, m))
+                
+                if sub:
+                    f.write(','+sub)
+                f.write("\n")
+
+        return file
 
     struct_des = header.struct_des
 
@@ -1734,12 +1860,21 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             cl_prev = copy.deepcopy(calc[id])
 
-        calc[id] = CalculationVasp( varset[id[1]] )
+        if params.get('calculator') == 'aims':
+            cl = CalculationAims( varset[id[1]] )
+
+        else:
+            #by default Vasp
+            cl = CalculationVasp( varset[id[1]] )
         
-        cl = calc[id]
+
+
+
+
+        calc[id] = cl
 
         cl.id = id 
-        cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
+        cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2]) # 
         cl.dir = blockdir+'/'+ str(id[0]) +'.'+ str(id[1])+'/'
         
 
@@ -1806,12 +1941,17 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         if input_st:
+            
+            if type(input_st) is not type(Structure()):
+                printlog('Error! input_st should be of type Structure()')
             cl.init  = input_st
-            # sys.exit()
         else:
             cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
                 input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
+
+        # print(cl.init.printme())
+        # sys.exit()
 
         if cl.path["input_geo"]:
 
@@ -1828,6 +1968,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 dir_1 = os.path.dirname(cl.path["input_geo"] )
                 dir_2 = cl.dir
                 # sys.exit()
+
         if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1: #copy occfile
             if 'occmatrix' in params:
                 shutil.copyfile(params['occmatrix'], cl.dir+'/OCCMATRIX' ) # file is provided explicitly
@@ -1856,7 +1997,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             if len(setseq) > 1:
                 printlog('sequence set mode: set', curset.ise,':', end = '\n')
             curset.load(params['update_set_dic'], inplace = True)
-            cl.actualize_set(curset)
+            cl.actualize_set(curset, params = params)
 
 
 
@@ -1871,15 +2012,22 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 schedule_system = cl.schedule_system, mode = 'body',
                 batch_script_filename = batch_script_filename)
             
-                        
-            if out_name:
-                cl.path["output"] = cl.dir+out_name
+        
+
+            """Filenames section"""
+
+            if params.get('calculator') == 'aims':
+                cl.path["output"] = cl.dir+cl.name+'.log'
+
             else:
-                name_mod = ''
-                cl.path["output"] = cl.dir+str(version)+name_mod+".OUTCAR" #set path to output
-            
-            #paths to other files
-            cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
+                if out_name:
+                    cl.path["output"] = cl.dir+out_name
+                else:
+                    name_mod = ''
+                    cl.path["output"] = cl.dir+str(version)+name_mod+".OUTCAR" #set path to output
+                
+                #paths to other files
+                cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
 
 
 
@@ -1914,6 +2062,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
+
                 
                 cl.write_sge_script(mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )
@@ -1924,6 +2073,24 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                 list_to_copy.append(batch_script_filename)
                 
+
+
+                if 'atat' in cl.calc_method:
+                    lat_in = write_lat_in(cl.init, params)
+                    list_to_copy.append(lat_in)
+                    wrap = cl.dir+'/vasp.wrap'
+                    shutil.copyfile(cl.dir+'/INCAR', wrap)
+
+                    with open(wrap, "r") as fwr:
+                        wrap_cont = fwr.readlines()
+
+                    with open(wrap, "w") as fwr:
+                        fwr.write("[INCAR]\n"+"".join(wrap_cont[1:])) # remove first line with SYSTEM tag - not working in ATAT for some reason
+
+                    list_to_copy.append(wrap)
+
+
+
                 if header.copy_to_cluster_flag: 
                     cl.copy_to_cluster(list_to_copy, up)
 
@@ -2577,8 +2744,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         
         - params - dictionary of additional parameters to control internal, many arguments could me moved here 
             
-            mep_shift_vector - visualization of mep in xyz format
-
+            'mep_shift_vector' - visualization of mep in xyz format
+            'charge' (int) - charge of cell, +1 removes one electron
     RETURN:
         
         (results_dic,    result_list)
@@ -2589,6 +2756,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         results_dic - should be used in current version! actually once was used as list, now should be used as dict
 
     TODO:
+    
         
         Make possible update of b_id and r_id with up = 'up2' flag; now only id works correctly
 
@@ -2610,17 +2778,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
     if not calc:
         calc = header.calc
+        db = header.db
 
-    def setting_sshpass(cl):
-        if hasattr(cl , 'cluster'):
-            # print(cl.cluster)
-            # clust = header.CLUSTERS[cl.cluster]
-            if 'sshpass' in cl.cluster and cl.cluster['sshpass']:
-                printlog('setting sshpass to True', imp = '')
-                # sys.exit()
-                header.sshpass = cl.cluster['sshpass']
-            else:
-                header.sshpass = None
 
 
     def override_cluster_address(cl):
@@ -2709,6 +2868,54 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         # print e1_r
 
 
+    """Amendmend required before main loop """
+    if analys_type == 'atat' and choose_outcar is not None:
+        
+
+        i = choose_outcar
+        v = verlist[0]
+        ise = setlist[0]
+        idd = (it, ise, v)
+        cl = db[idd]
+        fit = cl.get_file('fit.out', root = 1, up = up)
+        fit = cl.get_file('predstr.out', root = 1, up = up)
+        fit = cl.get_file('gs.out', root = 1, up = up)
+        
+        # print(fit)
+        fit_i_e = {} # dic, where concentration is a key
+        with open(fit, 'r') as f:
+            # lines = f.readlines()
+            for line in f:
+                # print(line)
+                x = float(line.split()[0])
+                k = int(line.split()[-1])
+                e = float(line.split()[1]) # dft energy
+                # print(x)
+                if x not in fit_i_e:
+                    fit_i_e[x] = []
+                fit_i_e[x].append( (k, e) )
+        # print(fit_i_e)
+        fit_i_min = {}
+        for key in fit_i_e:
+            i_e = sorted(fit_i_e[key], key=lambda tup: tup[1]) 
+            # print(i_e)
+            fit_i_min[key] = i_e[0][0]
+
+        # print(fit_i_min)
+        xs = sorted(fit_i_min.keys())
+        print("I read lowest energy configurations for the following concentration of vacancies", xs)
+        verlist = []
+        choose_outcar = None
+        for x in xs:
+            i = fit_i_min[x]
+            idd_new = (it, ise, i)
+            if i != v:
+                db[idd_new] = cl.copy(idd_new)
+                db[idd_new].update_name()
+            db[idd_new].path['output'] = db[idd_new].dir+'/'+str(i)+'/OUTCAR.static'
+            # print(db[idd_new].path['output'])
+            verlist.append(i)
+            # print(db[idd_new].id)
 
 
     """Main loop"""
@@ -2721,8 +2928,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
                 continue #pass non existing calculations
             cl = calc[id]
-            
-            setting_sshpass(cl) # checking if special download commands are needed
+            # print(cl.id, cl.path['output'])
+            # setting_sshpass(cl) # checking if special download commands are needed - moved to get_file()
             
 
             override_cluster_address(cl)
@@ -2779,7 +2986,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             
             if readfiles:
                 printlog('Starting self.read_results() ...')
-                outst = cl.read_results(loadflag, analys_type, voronoi, show, 
+                outst = cl.read_results(loadflag, analys_type, voronoi = voronoi, show = show, 
                     choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
                 
                 if '5' in cl.state:
@@ -3129,10 +3336,12 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         if analys_type == 'polaron':
             # print(cl.id)
-            results_dic = polaron_analysis(cl)
+            results_dic = polaron_analysis(cl, readfiles = readfiles)
 
 
-
+        if analys_type == 'atat':
+            ''
+            # atat_analysis(cl) / placeholder
 
 
 
@@ -3167,7 +3376,7 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10],dim = [1, 1, 1], f
         filename = path+'/mesh.conf'
 
     with open(filename, 'w', newline = '') as f:
-        f.write("DIM = \n")
+        f.write("DIM = ")
         f.write(" ".join(map(str, dim)))
         f.write("\n")
         f.write("ATOM_NAME = ")
@@ -3183,7 +3392,7 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10],dim = [1, 1, 1], f
         # f.write("SIGMA = 0.1\n")
         if filetype == 'mesh':
 
-            f.write("MP = {:}\n".format( mpstr ))
+            f.write("MP = {:}".format( mpstr ))
         
         if filetype == 'band':
             f.write("BAND = {:}\n".format( '0.5 0.5 0.5  0.0 0.0 0.0  0.5 0.5 0.0  0.0 0.5 0.0' ))

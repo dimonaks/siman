@@ -5,6 +5,15 @@ import os, copy, shutil, sys
 import numpy as np
 
 try:
+    import scipy
+    from scipy import interpolate
+    from scipy.interpolate import spline 
+    # print (scipy.__version__)
+    # print (dir(interpolate))
+except:
+    print('analysis.py: scipy is not avail')
+
+try:
     # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library
     from ase.eos import EquationOfState
     ase_flag = True
@@ -14,6 +23,7 @@ except:
 
 try:
     from pymatgen.analysis.wulff import WulffShape
+    from pymatgen.analysis.ewald import EwaldSummation
 
 except:
     print('pymatgen is not avail; run   pip install pymatgen')
@@ -29,6 +39,38 @@ from siman.small_functions import is_list_like, makedir
 from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.calcul import site_repulsive_e
 
+
+def set_oxidation_states(st):
+    pm = st.convert2pymatgen()
+    pm.add_oxidation_state_by_guess()
+    st = st.update_from_pymatgen(pm)
+    # print(pm)
+    return st
+
+
+def calc_oxidation_states(cl = None, st = None, silent = 1):
+
+    #only use if charges are full charges from bader 
+    if cl:
+        st = cl.end
+        ch = cl.charges
+    if st:
+        ch  = st.charges
+    
+    # print(st.get_elements() )
+    # print(ch)
+
+    z_vals = []
+    for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
+        ox = z_val - ch[j]
+
+        z_vals.append(ox)
+        if not silent:
+            ''
+            print(el, '{:3.1f}'.format(ox))
+    # print(list(zip(z_vals, self.end.get_elements())))
+    # print(z_vals)
+    return z_vals
 
 
 
@@ -115,7 +157,7 @@ def determine_barrier(positions = None, energies = None):
 
 
 
-def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
+def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, mode = None, scale = 1):
     """
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
@@ -123,6 +165,15 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
     
     temp(float) - potential at temperature, self.F is expected from phonopy calculations
+    
+    mode (str) - special 
+        electrostatic_only - use Ewald summation to obtain electrostatic energy
+        ewald_vasp
+
+    scale - experimental 
+
+
+    return dic {'redox_pot', 'vol_red', ...}
     """
     if cl1 is None or cl2 is None:
         printlog('Warning! cl1 or cl2 is none; return')
@@ -187,9 +238,47 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
     # print(energy_ref)
     # print(cl1.energy_sigma0, cl2.energy_sigma0, mul)
-    
-    e1 = cl1.energy_sigma0 
-    e2 = cl2.energy_sigma0
+
+
+    if mode == 'electrostatic_only':
+        # st1 = cl1.end.copy()
+        # st2 = cl2.end.copy()
+        st1 = cl1.end
+        st2 = cl2.end      
+        # st1 = set_oxidation_states(st1)
+        # st2 = set_oxidation_states(st2)
+
+        # st1 = st1.remove_atoms(['Ti'])
+        st1.charges = cl1.charges
+        st2.charges = cl2.charges
+        # sys.exit()
+        stpm1 = st1.convert2pymatgen(chg_type = 'ox')
+        stpm2 = st2.convert2pymatgen(chg_type = 'ox')
+        ew1 = EwaldSummation(stpm1)
+        ew2 = EwaldSummation(stpm2)
+
+        e1 = ew1.total_energy
+        e2 = ew2.total_energy
+        # print(ew1.get_site_energy(0), ew1.get_site_energy(4), ew2.get_site_energy(9) )
+        
+
+
+
+    elif mode == 'ewald_vasp':
+        e1 = cl1.energy.ewald
+        e2 = cl2.energy.ewald
+
+
+    else:    
+        e1 = cl1.e0 
+        e2 = cl2.e0
+
+    print(e1,e2)
+
+
+
+
+
     if temp != None:
         #temperature corrections
         e1 += cl1.F(temp)
@@ -200,7 +289,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
 
     if abs(mul) > 0:
-        redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  )
+        redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  ) / scale
     else:
         redox = 0
 
@@ -590,27 +679,6 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
 
 
-def calc_oxidation_states(cl = None, st = None, silent = 1):
-
-    if cl:
-        st = cl.end
-        ch = cl.charges
-    if st:
-        ch  = st.charges
-    
-
-    z_vals = []
-    for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
-        ox = z_val - ch[j]
-
-        z_vals.append(ox)
-        if not silent:
-            ''
-            print(el, '{:3.1f}'.format(ox))
-    # print(list(zip(z_vals, self.end.get_elements())))
-    # print(z_vals)
-    return z_vals
-
 
 
 
@@ -663,6 +731,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
 
+    if params is None:
+        params = {}
 
     if results_dic is None:
 
@@ -758,6 +828,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
     cl1 = calc[cl.id[0], cl.id[1], 1]
+
     cl2 = calc[cl.id[0], cl.id[1], 2]
     
 
@@ -787,8 +858,10 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     dAO6dev = [] 
 
     for v in vlist:
-        printlog('\n\nVersion {:}:'.format(v), imp = 'y')
         cli = calc[cl.id[0], cl.id[1], v]
+        # if v == 1:
+        #     cli = db['NaVP2O7_a.su.s101015v100.n5Na1v1ms.ifn.1mls.1']
+
         # print(cl.id[0], cl.id[1], v, cli.state)
         if '4' not in cli.state and 'un' not in up:
             printlog('Attention! res_loop(): analys_type == neb, Calc',cli.id,'is not finished; return')
@@ -796,7 +869,12 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         # print cli.id
         # cli.end = return_to_cell(cli.end)
         # mep_energies.append(  min(cli.list_e_sigma0)   ) #use minimum energy - not very good, sometimes unconverged energy could be lower! 
-        mep_energies.append(  cli.energy_sigma0   ) #use last energy 
+        
+        e0 = cli.energy_sigma0
+        if params and params.get('neb_penult_e'): # allows to take  e from the previous relaxation step in case the calculation was aborted
+            e0 = cli.list_e_sigma0[-2]
+
+        mep_energies.append(  e0   ) #use last energy 
         atom_pos.append( cli.end.xcart[atom_num] )
 
         # Find polaron positions
@@ -860,6 +938,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
             if 0 or 'neb_geo2' in show:
+                printlog('\n\nVersion {:}:'.format(v), imp = 'y')
                 info1 = st.nn(atom_num, 2, from_one = False, silent = 1, more_info = 1)
                 print('Av.         dist  A-2(O,F) {:.3f} A'.format(info1['av(A-O,F)']))
                 # print('Av. squared dist  A-2(O,F) {:.3f} A'.format(info1['avsq(A-O,F)']))
@@ -942,6 +1021,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     for x in atom_pos:
 
         x2 = atom_pos[jj+1]
+        # x = np.array(x)
+        # x2 = np.array(x2)
         r = cl.end.rprimd
         d1, _ = image_distance(x, x2, r, order = 1) #minimal distance
         x2_gen = (x2 + (r[0] * i  +  r[1] * j  +  r[2] * k) for i in nbc for j in nbc for k in nbc) #generator over PBC images
@@ -973,7 +1054,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     cl2.barrier = diff_barrier
 
 
-    results_dic['atom_pos'] = atom_pos
+    results_dic['atom_pos'] = [list(pos) for pos in atom_pos]
     results_dic['mep_energies'] = mep_energies
 
 
@@ -1020,7 +1101,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
 
-def polaron_analysis(cl, ):
+def polaron_analysis(cl, readfiles):
     """
     Plot MEP for polaron migration
     """
@@ -1029,36 +1110,117 @@ def polaron_analysis(cl, ):
     itise = cl.id[0]+'.'+cl.id[1]
     # print(cl.ldauu)
     # sys.exit()
-    name_without_ext = 'mep.'+itise+'.U'+str(max(cl.ldauu))
+    name_without_ext = 'polmep.'+itise+'.U'+str(max(cl.ldauu))
 
     cl = db[cl.id[0], cl.id[1], 1]
+    cl2 = db[cl.id[0], cl.id[1], 2]
     images = cl.params['polaron']['images']
     iat1 = cl.params['polaron']['istart']
     iat2 = cl.params['polaron']['iend']
-
+    mode = cl.params['polaron'].get('mode') or 'inherit'
+    cl2.res(readfiles = readfiles)
     d = cl.end.distance(iat1, iat2)
-    verlist = [1]+list(range(3, 3+images))+[2]
 
-    atom_pos = np.linspace(0,d, images+2)
+    if mode == 'inherit':
+        verlist1 = list(range(21, 21+images))  
+        verlist2 = list(range(42, 42+images)) 
+        atom_pos1 = np.linspace(0,d, len(verlist1))
+        atom_pos2 = list(reversed(np.linspace(0,d, len(verlist2))))
 
-    mep_energies = []
-    for i, v in enumerate(verlist):
-        mep_energies.append( db[cl.id[0], cl.id[1], v].e0 )
+        verlist = verlist1 + verlist2
+        atom_pos = atom_pos1 + atom_pos2
+    else:
+        verlist = [1]+list(range(3, 3+images))+[2]
+
+        atom_pos = np.linspace(0,d, images+2)
+
+    mep_energies1 = []
+    mep_energies2 = []
+    # print(verlist)
+    for i, v in enumerate(verlist1):
+        cl = db[cl.id[0], cl.id[1], v]
+        cl.res(readfiles = readfiles)
+        if '4' in cl.state:
+            mep_energies1.append( cl.list_e_sigma0[0] )
+        else:
+            mep_energies1.append(0)
+    for i, v in enumerate(verlist2):
+        cl = db[cl.id[0], cl.id[1], v]
+        cl.res(readfiles = readfiles)
+        if '4' in cl.state:
+
+            mep_energies2.append( cl.list_e_sigma0[0] )
+        else:
+            mep_energies2.append(0)
 
     # print(len(atom_pos), len(mep_energies))
 
-    _, diff_barrier = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = 0, 
-        # fitplot_args = fitplot_args, style_dic = style_dic
-        )
+    if 1: 
+        #plot simple
+        n = 6
+        pos1 = atom_pos1[0:n]
+        e1   = mep_energies1[0:n]
+        pos2 = atom_pos2[0:n]
+        e2 = mep_energies2[0:n]
+
+        # fit_and_plot(a1 = (pos1, e1, '-or'), b1 = (pos2, e2, '-og'), 
+        #     # power = 2, 
+        #     params = {'xlim_power':(0, 4), 'y0':1}, 
+        #     ylim = (-0.02, 0.2)
+        #     )
+
+        pos1_fine = list(np.linspace(min(pos1), max(pos1), 1000))
+        spl1 = scipy.interpolate.PchipInterpolator(pos1, e1)
+        e1_fine = list(spl1(pos1_fine))
+
+        pos2_fine = list(np.linspace(max(pos2), min(pos2) , 1000))
+        pos2_fine_rev = list(reversed(pos2_fine))
+        spl2_rev = scipy.interpolate.PchipInterpolator(list(reversed(pos2)), list(reversed(e2)) )
+        e2_fine_rev = list(spl2_rev(pos2_fine_rev))
+        e2_fine = list(reversed(e2_fine_rev))
+
+        #combine 
+
+        pos_fine = []
+        e_fine = []
+        for i, p2 in enumerate(pos2_fine_rev):
+            j = int(1000*p2/max(pos1_fine))
+            e2 = e2_fine_rev[i]
+            if j < 1000:
+                # print(j, e1_fine[j])
+                e1 = e1_fine[j]
+                if e2 < e1:
+                    # e_fine.append()
+                    e1_fine[j] = e2
+            else:
+                e1_fine.append(e2)
+                pos1_fine.append(p2)
+
+            # e = e1_fine
+
+        fit_and_plot(
+        # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
+            a1 = (pos1_fine, e1_fine, '-or'),
+            # power = 2, 
+            params = {'xlim_power':(0, 4), 'y0':1}, 
+            ylim = (-0.02, 0.2), ver = False,
+            xlim = (-0.02, 0.02+max(pos1_fine)),
+            filename = 'figs/'+name_without_ext,
+            xlabel = 'Position, (${\AA}$)',
+            ylabel = 'Energy, eV'
+            )
+
+
+
+
+
+    # _, diff_barrier = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = 0, 
+    #     # fitplot_args = fitplot_args, style_dic = style_dic
+    #             )
 
     return
 
-def set_oxidation_states(st):
-    pm = st.convert2pymatgen()
-    pm.add_oxidation_state_by_guess()
-    st = st.update_from_pymatgen(pm)
-    # print(pm)
-    return st
+
 
 
 

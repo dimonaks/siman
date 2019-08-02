@@ -40,15 +40,28 @@ def check(cl, exit = 0):
     return out
 
 
+def check_poscar(filename):
+    # return 0 if ok, return 1 if failed
+    try:
+        cl = CalculationVasp()
+        cl.read_poscar(filename)
+        print(cl.init.natom)
+        status = 0 # good
+    except:
+        status = 1
+    return status
+
+
+
 def vasp_run(n, des, vasprun_command = None):
     #allows to run vasp several times, here fireworks can be used
     #n - number of attempts
     #des - description of run
     for i in range(n): # max three attempts
-        
+        printlog(des, 'attempt', i)
         if not debug2:
             out = runBash(vasprun_command)
-            printlog(des, 'attempt', i,'out is', out)
+            printlog('out is', out)
         
         cl = CalculationVasp(output = 'OUTCAR')
         out = cl.read_results(show = 'fo')
@@ -60,7 +73,12 @@ def vasp_run(n, des, vasprun_command = None):
             break
         else:
             if os.path.exists('CONTCAR'):
-                copyfile('CONTCAR', 'POSCAR')
+                if check_poscar('CONTCAR') == 0:
+                    copyfile('CONTCAR', 'POSCAR')
+                else:
+                    printlog('CONTCAR is broken. No further attempts to run VASP', imp = 'y')
+                    break
+
             else:
                 printlog('No CONTCAR was found. No further attempts to run VASP', imp = 'y')
                 break
@@ -111,15 +129,20 @@ def initial_run(xcart_voids, ):
                 cl.end = cl.end.add_atoms(xcart_voids, 'void')
                 printlog('I found', len(xcart_voids), 'voids in config file. Added to structure.')
 
-            cl.serialize('0-yes')
-            copyfile('OUTCAR', 'OUTCAR-0')
-            copyfile('OSZICAR', 'OSZICAR-0')
-            copyfile('CONTCAR', 'CONTCAR-0')
-            copyfile('OUTCAR', 'OUTCAR_last')
-            copyfile('CONTCAR', 'CONTCAR_last')
+            if check(cl) == 0:
+                cl.serialize('0-yes')
+                copyfile('OUTCAR', 'OUTCAR-0')
+                copyfile('OSZICAR', 'OSZICAR-0')
+                copyfile('CONTCAR', 'CONTCAR-0')
+                copyfile('OUTCAR', 'OUTCAR_last')
+                copyfile('CONTCAR', 'CONTCAR_last')
+                with open('ENERGIES', 'w') as f:
+                    f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))
+            else:
+                printlog('Calculation is broken, no data was saved, exiting ...', imp = 'y')
+                sys.exit()
 
-            with open('ENERGIES', 'w') as f:
-                f.write('{:5d}  {:.5f}\n'.format(0, cl.e0))
+
 
     if debug2:
         sys.exit()

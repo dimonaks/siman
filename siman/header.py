@@ -57,11 +57,15 @@ from siman.default_project_conf import *
 #2. Read user-related settings for siman
 simanrc = os.path.expanduser("~/simanrc.py")
 if os.path.exists(simanrc):
+    # if 'n' in war
+    print(simanrc, 'was read')
     sys.path.insert(0, os.path.dirname(simanrc))
     from simanrc import *
 
 #3. Read project specific
 if os.path.exists('./project_conf.py'):
+    print('Reading ./project_conf.py')
+
     from project_conf import *
     siman_run = True
     log = open('log','a')
@@ -113,8 +117,14 @@ class CalcDict(dict):
                     dict.__setitem__(self, key, val)
                     # print('reading ',str(key), 'from db')
                 except:
-                    print('Problem with key, return None')
+                    print('Problem with key',key,', return None')
                     val = None
+                    val = d[str(key)]
+
+                    # for k in d:
+                    #     # print(k[0])
+                    #     if str(key) in k:
+                    #         print(k)
         
 
         return val
@@ -161,6 +171,9 @@ verbose_log = 0 # in addition to normal log write verbose log in any case by ope
 
 override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
 
+pymatgen_flag = None
+
+
 db = CalcDict()
 # global db
 calc = db
@@ -169,7 +182,6 @@ varset = {};
 struct_des = {};
 
 sets = varset
-
 
 
 
@@ -184,6 +196,7 @@ eV_A_to_J_m = 16.021765
 eV_nm_to_J_m = 1.6021765
 THz2eV = 0.00413566553853599
 kJ_mol2eV = 1.0364e-2
+J_mol_T2eV_T = 1.0364e-5
 J2eV = 6.242e+18
 
 kB = 8.617e-5 # eV/K

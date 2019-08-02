@@ -13,7 +13,7 @@ except:
 
 from siman import header
 from siman.header import print_and_log, printlog, runBash, eV_A_to_J_m
-from siman.small_functions import is_list_like, is_string_like, gunzip_file, makedir
+from siman.small_functions import is_list_like, is_string_like, gunzip_file, makedir, grep_file, setting_sshpass
 
 
 def unique_elements(seq, idfun=None): 
@@ -39,6 +39,7 @@ def smoother(x, n, mul = 1, align = 1):
     #align - find first non-zero point and return it to zero
 
     algo = 'gaus'
+    # algo = 'my'
 
     if algo == 'my':
         x_smooth = []
@@ -60,7 +61,7 @@ def smoother(x, n, mul = 1, align = 1):
     elif algo == 'gaus':
         x_smooth =x
         # x_smooth = scipy.ndimage.filters.median_filter(x,size =4)
-        x_smooth = scipy.ndimage.filters.gaussian_filter1d(x_smooth, 4, order =0)
+        x_smooth = scipy.ndimage.filters.gaussian_filter1d(x_smooth, n, order =0)
         # x_smooth = scipy.ndimage.interpolation.spline_filter1d(x, 4)
 
     else:
@@ -249,6 +250,7 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
 
     def download(file, to_file):
 
+        # print(header.sshpass)
         if header.ssh_object:
 
             exist = file_exists_on_server(file, addr)
@@ -264,7 +266,7 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
         elif header.sshpass and header.sshpass == 'proxy':
             # com = 'ssh sdv "sshpass -f ~/.ssh/p ssh ' + addr + ' \\"tar zcf - '+ file +'\\"" | tar zxf - '+to_file # does not work?
             com = 'ssh sdv "sshpass -f ~/.ssh/p ssh ' + addr + ' \\"tar cf - '+ file +'\\"" > '+to_file
-            # print(com)
+            # print('sshpass',com)
             # sys.exit()
             out = runBash(com)
 
@@ -878,15 +880,24 @@ def wrapper_cp_on_server(file, to, new_filename = None):
 
 
 
+<<<<<<< HEAD
 def update_incar(self, parameter = None, value = None, u_ramp_step = None, write = True, f = None, run = False):    
+=======
+def update_incar(parameter = None, value = None, u_ramp_step = None, write = True, f = None, run = False, st = None):    
+>>>>>>> upstream/master
     """Modifications of INCAR. Take attention that *parameter* will be changed to new *value*
     if it only already exist in INCAR.  *u_ramp_step*-current step to determine u,
     *write*-sometimes just the return value is needed. 
     Returns U value corresponding to *u_ramp_step*.
     """
 
+<<<<<<< HEAD
     # print(self.name, '122222')
 
+=======
+
+    self = st 
+>>>>>>> upstream/master
     u_step = None
     if parameter == 'LDAUU':
         #Update only non-zero elements of LDAUU with value
@@ -932,3 +943,25 @@ def update_incar(self, parameter = None, value = None, u_ramp_step = None, write
         runBash(command)
 
     return  u_step #for last element
+
+
+def check_output(filename, check_string, load):
+    """
+    Check if file exist and it is finished by search for check_string
+    """
+
+    if filename and os.path.exists(filename):
+
+        out = grep_file(check_string, filename, reverse = True)
+
+        printlog('The grep result of',filename, 'is:', out)
+        # sys.exit()
+        if check_string in out or 'un' in load:
+            state = '4. Finished'
+        else:
+            state = '5. Broken outcar'
+
+    else:
+        state = '5. no OUTCAR'
+
+    return state

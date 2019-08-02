@@ -9,6 +9,11 @@ except:
     print('geo.py:tabulate is not avail')
 
 from siman import header
+
+if header.pymatgen_flag:
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    from pymatgen.io.vasp.inputs import Poscar
+
 from siman.header import printlog
 from siman.small_functions import red_prec
 # from impurity import find_pores
@@ -230,7 +235,26 @@ def xred2xcart(xred, rprimd):
     #print xred
     return xcart
 
+def rms_between_structures(st1, st2):
+    #should be already imposed on each other
+    els1 = st1.get_elements()
+    els2 = st2.get_elements()
+    sumv = 0
+    sumd = 0
+    sumdsqr = 0
+    for j, x1 in enumerate(st2.xcart):
+        i, d, v = st1.find_closest_atom(x1)
+        if len(els1) == len(els2):
+            print(i, '{:.2f}'.format(d), v, els1[i], els2[j] )
+        else:
+            print(i, '{:.2f}'.format(d), v, els1[i] )
+        sumv= sumv + v
+        sumd+=d
+        sumdsqr+=d**2
 
+    print('Average deviation {:.2f} A'.format(sumd/st2.natom) )
+    print('Average squared deviation {:.2f} A'.format(np.sqrt(sumdsqr/st2.natom)) )
+    print('Shift of first cell relative to second cell', sumv/st2.natom, np.linalg.norm(sumv/st2.natom))
 
 
 
@@ -805,11 +829,12 @@ def ortho_vec(rprim, ortho_sizes = None):
 
 
 
-def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01): 
+def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1)): 
     """ 
     st (Structure) -  
     mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 
 
+    mul - multiply mul matrix - allows to choose fractions of new vectors
 
     bound (float) - shift (A) allows to correctly account atoms on boundaries
     mp    (int)  include additionall atoms before cutting supecell
@@ -818,7 +843,12 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01)
     sc = st.new() 
     # st = st.return_atoms_to_cell()
     sc.name = st.name+'_supercell'
-    sc.rprimd = list(np.dot(mul_matrix, st.rprimd  ))
+    # sc.rprimd = list(np.dot(mul_matrix, st.rprimd))
+    # print(sc.rprimd)
+    sc.rprimd = list( np.dot(mul_matrix, st.rprimd)*np.array(mul)[:, np.newaxis]  )
+    
+    # print(sc.rprimd)
+
     printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
     # printlog('Mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
 
@@ -1196,6 +1226,10 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
 
     Todo
     #check that distances through  PBC are two small
+
+
+    RETURN: 
+    structures
     """
     # tol = 0.1 #tolerance for distinguishing antisites within one group
     # max_sep = 4 # maximum separation of antisite
@@ -1403,9 +1437,6 @@ def remove_half(st, el, sg = None, info_mode = 0):
 
     prim = 0
 
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    from pymatgen.io.vasp.inputs import Poscar
-    from calc_manage import smart_structure_read
     st_ohne_el = st.remove_atoms([el])
 
 
@@ -1423,7 +1454,11 @@ def remove_half(st, el, sg = None, info_mode = 0):
     #convert back to my format! please improve!!!
     p = Poscar(st_mp_prim)
     p.write_file('xyz/POSCAR')
-    st_prim = smart_structure_read('xyz/POSCAR')
+
+    from siman.inout import read_poscar
+
+    st_new = st.copy()
+    st_prim = read_poscar(st_new, 'xyz/POSCAR')
 
     if info_mode:
         return remove_half_based_on_symmetry(st_prim, info_mode = 1)
@@ -1552,9 +1587,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
     prim = 0
 
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    from pymatgen.io.vasp.inputs import Poscar
-    from calc_manage import smart_structure_read
+
     st_ohne_el = st.remove_atoms([el])
 
 
@@ -1572,7 +1605,10 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
     #convert back to my format! please improve!!!
     p = Poscar(st_mp_prim)
     p.write_file('xyz/POSCAR')
-    st_prim = smart_structure_read('xyz/POSCAR')
+
+    from siman.inout import read_poscar
+    st_new = st.copy()
+    st_prim = read_poscar(st_new, 'xyz/POSCAR')
 
     if info_mode:
         return remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
@@ -1725,7 +1761,7 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
 
 
 def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
-    primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1):
+    primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1, lll_reduce  = 0 ):
     """
     INPUT:
         st (Structure) - Initial input structure. Note that to
@@ -1752,6 +1788,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
             symmetrize - try to make both surfaces exact
 
+            lll_reduce - try to find smaller basis vectors
 
         my_paramters:
         shift (float) - shift along z 
@@ -1772,7 +1809,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
     # print(min_vacuum_size)
     # sys.exit()
-    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size,   primitive = primitive )
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size,   primitive = primitive, lll_reduce = lll_reduce )
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
@@ -1814,7 +1851,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         return slabs
 
 
-def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = ''):
+def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = '', omit_edges = 1):
     """
     Linear interpolation between two structures.
     The number of atoms and order should be the same
@@ -1822,18 +1859,45 @@ def interpolate(st1, st2, images, write_poscar = 0, poscar_folder = ''):
     INPUT:
     images (int) - number of intermediate images
     write_poscar (int) - starting from given number
+
+    omit_edges (bool) - first and last corresponding to st1 and st2 are omitted, 
+
     """
 
 
-    xl = np.linspace(0, 1, images+2)[1:-1]
+    xl = np.linspace(0, 1, images+2)
+    if omit_edges:
+        xl = xl[1:-1]
+
     # print(xl)
+    # st1.printme()
+    # st2.printme()
+    R = st1.rprimd
     nl = range(st1.natom)
     sts = []
     for j, x in enumerate(xl):
         st_inter = copy.deepcopy(st1)
-        for i, xc1, xc2 in zip(nl, st1.xcart, st2.xcart):
-            st_inter.xcart[i] = (1-x) * xc1 + x * xc2
-        st_inter.update_xred()
+        for i, x1, x2, xc1,xc2 in zip(nl, st1.xred, st2.xred, st1.xcart, st2.xcart):
+            # d1,d2 = image_distance(xc1, xc2, st1.rprimd)
+            d = np.linalg.norm(xc1-xc2)
+            # if d> 10:
+                # print('d =',d)
+                # print(x1, x2)
+                # print(xc1, xc2)
+                # print((1-x) * x1 + x * x2)
+            for k in 0,1,2: #periodic boundary conditions
+                # print('j = ',k, x1[k] - x2[k])
+
+                if x1[k] - x2[k] > 0.5:
+                    x1[k] -= 1
+                    # print(x1)
+                if x1[k] - x2[k] <= -0.5:
+                    x1[k] += 1
+                    # print(x1)
+
+
+            st_inter.xred[i] = (1-x) * x1 + x * x2
+        st_inter.update_xcart()
         sts.append(st_inter)
         if write_poscar:
             st_inter.name+='.'+str(j)

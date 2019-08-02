@@ -122,11 +122,17 @@ vasp_other_keys = [
 'LSOL',
 'EB_K',
 'LAMBDA_D_K',
-'CORE_C'
+'CORE_C',
+'MAGATOM', #atat keys
+'DOSTATIC',
+'USEPOT',
+'KPPRA',
+'SUBATOM',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
 siman_keys = [
+'universal', # universal paramater with any content
 'u_ramping_region', #deprecated
 'u_ramping_nstep', #number of u ramping steps
 'magnetic_moments',
@@ -136,6 +142,13 @@ siman_keys = [
 'k_band_structure', # list, first position is number of points, then high-symmetry k-points in the form ['G', 0, 0, 0] in reciprocal space for calculating band structure 
 'path2pot', # path to folder with potentials - used with potdir; if not provided that header.path2potentials is used
 'path_to_potcar', # explicit path to potential - depreacated
+'periodic', # 1 or 0, periodic boundary conditions or not; by default considered periodic
+]
+
+aims_keys = [
+'k_grid',
+'default_initial_moment',
+'spin',
 ]
 
 def read_vasp_sets(user_vasp_sets, override_global = False):
@@ -173,7 +186,7 @@ def read_vasp_sets(user_vasp_sets, override_global = False):
 
 
             s = inherit_iset(l[0], l[1], varset, override = override, newblockfolder = bfolder) 
-            # print param
+            # print ('param', param,)
             s.load(param, inplace = True)
             
         header.varset = varset
@@ -220,6 +233,8 @@ class InputSet():
         self.potdir = {}
         self.units = "vasp"
         self.vasp_params = {}
+
+        self.params = self.vasp_params  # params for any code!
         self.mul_enaug = 1
         self.history = "Here is my uneasy history( :\n"    
         self.tsmear = None 
@@ -229,6 +244,7 @@ class InputSet():
         self.set_sequence = None
         self.kpoints_file = None # can be path to external file
         self.save_last_wave = None #if True than do no remove last wavefunction
+        self.periodic = 1 # PBC
         # self.use_ngkpt = False
         
         if path_to_potcar:
@@ -244,6 +260,9 @@ class InputSet():
             self.vasp_params[key] = None 
         for key in vasp_other_keys: 
             self.vasp_params[key] = None 
+
+        for key in aims_keys: 
+            self.params[key] = None 
 
 
         #add to varset
@@ -265,14 +284,14 @@ class InputSet():
     def update(self):
         #deprecated, but still can be usefull
         # print_and_log('Updating set ...\n')
-        c1 = 1; c2 = 1
-        if self.units == "abinit":
-            c1 = to_eV
-            c2 = Ha_Bohr_to_eV_A
-        #Update Vasp parameters
-        if self.units == "vasp":
-            c1 = 1
-            c2 = 1
+        # c1 = 1; c2 = 1
+        # if self.units == "abinit":
+        #     c1 = to_eV
+        #     c2 = Ha_Bohr_to_eV_A
+        # #Update Vasp parameters
+        # if self.units == "vasp":
+        #     c1 = 1
+        #     c2 = 1
         # if self.ecut == None:
         #     self.vasp_params['ENCUT'] = None
         #     self.vasp_params['ENAUG'] = None
@@ -281,19 +300,21 @@ class InputSet():
         #     self.vasp_params['ENAUG'] = self.mul_enaug * self.vasp_params['ENCUT']
         # self.vasp_params['SIGMA'] = self.tsmear * c1
         vp = self.vasp_params
-        if 'SIGMA' in vp and vp['SIGMA']:
-            self.tsmear = vp['SIGMA'] / c1
-        else:
-            self.tsmear = None
-        
-        self.tolmxf = - self.vasp_params['EDIFFG'] / c2
-        self.toldfe = self.vasp_params['EDIFF'] / c1
+
+        self.tsmear = vp.get('SIGMA')
+        self.tolmxf = vp.get('EDIFFG')
+
+        if self.tolmxf and self.tolmxf < 0:
+            self.tolmxf*=-1
+
+        self.toldfe = vp.get('EDIFF')
         # self.vasp_params['EDIFF'] = self.toldfe * c1
         # self.vasp_params['NELM'] = self.nstep
         # self.vasp_params['NSW'] = self.ntime
         # self.vasp_params['EDIFFG'] = -self.tolmxf * c2
-        self.kspacing = self.vasp_params['KSPACING']
-        self.ecut     = self.vasp_params['ENCUT'] / c1
+        self.kspacing = vp.get('KSPACING')
+        self.ecut     = vp.get('ENCUT') 
+
         # print (self.vasp_params)
         if 'LDAUU' in self.vasp_params and self.vasp_params['LDAUU']:
             self.dftu = True
@@ -310,6 +331,8 @@ class InputSet():
         """
         Update parameters of set from dict param
         """
+        # print(param)
+
         if inplace:
             s = self
         else:
@@ -339,6 +362,9 @@ class InputSet():
 
             elif key in siman_keys:
                 s.set_attrp(key, param[key] )
+
+            elif key in aims_keys:
+                s.set_vaspp(key, param[key] )
             
             else:
                 print_and_log('Error! Uknown key: '+key)
@@ -368,7 +394,11 @@ class InputSet():
 
 
 
-
+    def read_universal(self, filename):
+        #read any file to univeral parameter
+        with open(filename, 'r') as f:
+            fil = f.read()
+            self.params['universal'] = fil        
 
 
 
@@ -544,16 +574,17 @@ class InputSet():
 
         """
 
-
+        # print(token, arg)
         if token in ("ISMEAR",):
-            if type(arg) not in [int, None, ]:
+            if type(arg) not in [int, type(None), ]:
                 raise TypeError
         if token in ("KSPACING",):
-            if type(arg) not in [float, None, ]:
+            # print(type(arg))
+            if type(arg) not in [float, type(None), ]:
                 raise TypeError
 
 
-        old = self.vasp_params[token]
+        old = self.vasp_params.get(token)
         self.vasp_params[token] = arg
         
         if old == arg:
@@ -571,7 +602,7 @@ class InputSet():
         set any attribute.
 
         """
-        # print token
+        # print (token)
         if hasattr(self, token):
             old = getattr(self, token)
             if old == arg:
@@ -705,13 +736,13 @@ def init_default_sets(init = 0):
     """
     varset = header.varset
 
-    setname = 'static'
+    setname = 'aks'
     if init or setname not in varset: #init only once
         s = InputSet(setname) #default starting set without relaxation
         s.kpoints_file = True
         s.add_nbands = 1.25
         s.vasp_params = {
-            'NELM'      : 100,
+            'NELM'      : 50,
             'IBRION'    : 1,
             'KGAMMA'    : ".TRUE.",
             'ENCUT'     : 441.0,
@@ -739,6 +770,37 @@ def init_default_sets(init = 0):
         s.update()
         header.varset[setname] = copy.deepcopy(s)
     
+    setname = 'static'
+    if init or setname not in varset: #init only once
+        s = InputSet(setname) #default starting set without relaxation
+        s.kpoints_file = True
+        s.add_nbands = 1.25
+        s.vasp_params = {
+            'ISTART'    : 0,
+            'NELM'      : 50,
+            'EDIFF'     : 1e-05,
+            'NSW'       : 0,
+            'EDIFFG'    : 0,
+            'IBRION'    : 1,
+            'ISIF'      : 2,
+            'PREC'      : "Normal",
+            'ALGO'      : "Normal",
+            'ENCUT'     : 400,
+            'ENAUG'     : 400*1.75,
+            'KSPACING'  : 0.2,
+            'KGAMMA'    : ".TRUE.",
+            'LREAL'     : "Auto",
+            'ISMEAR'    : 1,
+            'SIGMA'     : 0.1,
+            'LPLANE'    : ".TRUE.",
+            'NPAR'      : 1,
+            }
+        s.potdir = copy.deepcopy(header.nu_dict)
+
+        s.update()
+        header.varset[setname] = copy.deepcopy(s)
+    
+
 
 
     setname = 'opt'
