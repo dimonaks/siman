@@ -711,7 +711,15 @@ class Structure():
         return st
 
 
+    def add_z(self, z):
+        st = copy.deepcopy(self)
 
+        st.rprimd[2][2] += z
+        for i in st.xcart:
+            i[2] += z
+        st.update_xred()
+        st = st.return_atoms_to_cell()
+        return st
 
 
 
@@ -1835,6 +1843,54 @@ class Structure():
         # print(info)
 
         return info
+
+    def tm_o_distance(self, criteria = 0.1):
+        #return average TM-O distance in the cell and list of outstanding bonds 
+        #criteria - value in % of average bond length when bond is outstanding
+
+        tra = self.get_transition_elements()
+        
+        if len(tra): 
+            print('Starting...\n\n I ve obtained  %i TM atoms \n\n\n'%len(tra))
+        else:
+            print('Starting...\n\n I ve obtained  no TM atoms \n\n\n')
+            return 
+        
+
+
+        el = self.get_elements()
+        # print(tra, el[0], self.nn(1))
+
+        dist_list = []
+        aver_list = []
+        # num_list = []
+
+
+        # print(self.nn(1, silent = 1)['dist'][1:],self.nn(1, silent = 1)['numbers'][1:])
+
+        for i in range(0, len(el)):
+            if el[i] in tra:
+                dist = self.nn(i+1, silent = 1)['dist'][1:]
+                numbers = self.nn(i+1, silent = 1)['numbers'][1:]
+                n = self.nn(i+1, silent = 1)['numbers'][0]
+                for k in range(0,len(dist)):
+                    dist_list.append([dist[k],n,numbers[k]])
+
+                aver_list.append(round(np.mean(dist),2))
+        
+        aver_distance = round(np.mean(aver_list),2)
+        print('Average TM-O bond length is %s A \n'%aver_distance)
+       
+        k = 0
+        for i in dist_list:
+            if i[0] > aver_distance*(1+criteria) or i[0] < aver_distance*(1-criteria):
+                # print(i)
+                print('Outstanding bond length %.4s between %s and %s \n'%(i[0],i[1],i[2]))
+                k = 1
+        if not k: print('Ok! None outstanding bonds found\n')
+
+        return
+
 
 
     def center(self):

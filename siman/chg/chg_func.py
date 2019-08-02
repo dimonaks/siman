@@ -106,7 +106,7 @@ def chg_at_z_direct(st, k_p = 20):
     List of z-coordinates and respective average value of electrostatic pot in the z slice.
     """
 
-    chgfile = st.get_chg_file(filetype = 'LOCPOT')
+    chgfile = st.get_file(filetype = 'LOCPOT')
 
 
     vasp_charge = VaspChargeDensity(chgfile)
@@ -133,7 +133,7 @@ def chg_at_z_direct(st, k_p = 20):
                 xred1[1] = n2/k_p
                 xred1[2] = n3/z
                 i,j,k =  [ int(round(x * (n-1) ) ) for x, n in zip(xred1, ngridpts)]# corresponding to xred1 point
-                dens += density[i][j][k]
+                dens += density[i][j][k]*st.vol
 
         elst.append(dens/k_p**2)
         z_coord.append(n3/10)
