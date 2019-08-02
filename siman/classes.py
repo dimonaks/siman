@@ -3510,11 +3510,8 @@ class Calculation(object):
                 u_last = 100
                 for i_u in usteps:
 
-<<<<<<< HEAD
-                    u = update_incar(self, parameter = 'LDAUU', u_ramp_step = i_u, write = write, f = f )
-=======
                     u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write, f = f , st = self)
->>>>>>> upstream/master
+
                     if u == u_last:
                         continue
                     name_mod   = '.U'+str(u).replace('.', '')+set_mod
@@ -4023,6 +4020,11 @@ class Calculation(object):
 
         return
 
+    def show_force(self,):
+        force_prefix = ' tot '
+
+        printlog("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in self.maxforce_list ])[:]  ), imp = 'Y'  )
+
     def check_job_state(self):
         #check if job in queue or Running
 
@@ -4035,15 +4037,9 @@ class Calculation(object):
                 check_string =  cl.id[0]+'.'+cl.id[1]
                 if 'SLURM' in cl.schedule_system:
 
-<<<<<<< HEAD
-    def show_force(self,):
-        force_prefix = ' tot '
 
-        print_and_log("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in self.maxforce_list ])[:]  ), imp = 'Y'  )
-=======
                     job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster['address'])
                     printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
->>>>>>> upstream/master
 
                 elif 'PBS' in cl.schedule_system:
                     job_in_queue = check_string in run_on_server("qstat -x ", cl.cluster['address'])

@@ -880,24 +880,16 @@ def wrapper_cp_on_server(file, to, new_filename = None):
 
 
 
-<<<<<<< HEAD
-def update_incar(self, parameter = None, value = None, u_ramp_step = None, write = True, f = None, run = False):    
-=======
+
 def update_incar(parameter = None, value = None, u_ramp_step = None, write = True, f = None, run = False, st = None):    
->>>>>>> upstream/master
     """Modifications of INCAR. Take attention that *parameter* will be changed to new *value*
     if it only already exist in INCAR.  *u_ramp_step*-current step to determine u,
     *write*-sometimes just the return value is needed. 
     Returns U value corresponding to *u_ramp_step*.
     """
 
-<<<<<<< HEAD
-    # print(self.name, '122222')
-
-=======
 
     self = st 
->>>>>>> upstream/master
     u_step = None
     if parameter == 'LDAUU':
         #Update only non-zero elements of LDAUU with value
