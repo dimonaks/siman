@@ -1,5 +1,15 @@
 0.9.6
+
+    new regime for add() 
+        calc_method = 'polaron'
+
+    new module small_classes to where some of simple classes would be transferred
+
+    new control parameter added to set
+        periodic - defines if calculation is using periodic or open boundary conditions
+
     
+    sleep changed from 5 to 1 for PBS
 
     to show neb xyz files use show = 'neb_geo'
 
