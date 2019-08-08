@@ -1652,6 +1652,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 def two_cell_to_one(st1, st2):
+    # let to join two supercells
 
     # xcart = []
     # sorts = []

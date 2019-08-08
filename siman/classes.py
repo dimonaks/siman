@@ -733,6 +733,8 @@ class Structure():
 
 
     def add_z(self, z):
+        # method appends additional height to the cell
+        # negative value of z appends to remove vacuum layer
         st = copy.deepcopy(self)
 
         st.rprimd[2][2] += z

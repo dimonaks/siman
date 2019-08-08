@@ -504,11 +504,8 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
     magn1 = []
     magn2 = []
     alphas= []
-    # for id in conv[n]:
-    print(conv[0])
-    for x in conv:
-        # cl = db[id]
-        cl = x
+    for id in conv[n]:
+        cl = db[id]
         st = cl.end
         alist.append(cl.end.rprimd[0][0])
         etotlist.append(cl.energy_sigma0)
@@ -1253,9 +1250,11 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
     tra1 = st1.get_transition_elements()
     tra2 = st2.get_transition_elements()
     ntra1 = len(tra1)
-    if ntra1 == 0: ntra1 = natom1
+    if ntra1 == 0: 
+        ntra1 = natom1
     ntra2 = len(tra2)
-    if ntra2 == 0: ntra2 = natom2
+    if ntra2 == 0: 
+        ntra2 = natom2
     rat1 = natom1/ntra1
     rat2 = natom2/ntra2
     mul = ntra1/ntra2
