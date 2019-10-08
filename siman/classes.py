@@ -2031,7 +2031,7 @@ class Structure():
         st = copy.deepcopy(self)
         TM = st.get_elements_z()[i]
         if TM not in header.TRANSITION_ELEMENTS:
-            printlog('Warning! provided ', TM, 'is not <on metal, I hope you know what you are doing. ')
+            printlog('Warning! provided ', TM, 'is not transition metal, I hope you know what you are doing. ')
 
         silent = 1
         if 'n' in header.warnings or 'e' in header.warnings:
@@ -3545,7 +3545,6 @@ class Calculation(object):
                 for i_u in usteps:
 
                     u = update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = write, f = f , st = self)
-
                     if u == u_last:
                         continue
                     name_mod   = '.U'+str(u).replace('.', '')+set_mod
