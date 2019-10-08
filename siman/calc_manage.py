@@ -194,7 +194,6 @@ def write_batch_header(batch_script_filename = None,
             
 
             f.write("touch RUNNING\n")
-            f.write("ulimit -s unlimited\n")
 
 
     return
