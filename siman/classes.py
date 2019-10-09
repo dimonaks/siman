@@ -493,7 +493,7 @@ class Structure():
 
         return st
 
-    def add_oxi_states(self, ):
+
         
 
     def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
@@ -602,9 +602,6 @@ class Structure():
 
 
 
-
-
-
     def get_pm_composition(self):
         ''
         pm = self.convert2pymatgen()
@@ -688,7 +685,7 @@ class Structure():
         """
         stpm - pymatgen structure
         update the current structure from pymatgen structure
-        only rprimd, xred and xcart are updated now!!!!!
+        stil experimental!!!!!
 
         TODO:
 
@@ -788,9 +785,14 @@ class Structure():
         """
         Create and return list of oxidation states from charges and valences
         self.charges should exist as full charges (e.g. from Bader analysis)
-        typ (str) 
-            'charges' - from charges and zval
-            'guess'   - from guess
+        
+        INPUT:
+            typ (str) 
+                'charges' - from charges and zval
+                'guess'   - from guess
+        
+        RETURN
+            oxi (list) - list of oxidation states for each atom
         """
         st = self
         if typ == 'charges':
@@ -811,9 +813,68 @@ class Structure():
         return oxi
 
 
+    def generate_charge_orders(self, el, states = None, x = 0.5):
+        """
+        Method generates charge order for provided ion, oxidation states, and ratio (not realized yet)
+        
+        INPUT:
+            el (str) - element with charge order
+            states (tuple) - two possible charge states  (e.g. +2 and +4)
+            x (float) - concentration of ions with state[0] charge state 
+        RETURN:
+            oxi_states (list of lists) - list of oxi_state lists
+        """
 
 
+        def order(ls, i):
+            """
+            Find recursivly all possible orderings for the given x
+            ls - initial list of atoms 
+            i - index in ls  
 
+            """
+            # print(i)
+            for s in 1,-1:
+                
+                ls[i] = s
+                
+                if i < len(ls)-1:
+                
+                    order(ls, i+1)
+                
+                else:
+                    # print (ls.count(-1)/tot - x)
+                    if abs(ls.count(-1)/tot - x ) < 0.001:
+                        orderings.append(copy.deepcopy(ls) )  
+            return
+
+        st = self
+
+        iels = st.get_specific_elements([invert(el)])
+        oxi_state = st.oxi_state
+
+        oxi_states = []
+        orderings = []
+        tot = len(iels)
+        ls = [0]*tot
+        # print(ls)
+        order(ls, 0)
+        
+        print('Total number of charge orderings for x=',x,'is',len(orderings))
+
+        for order in orderings:
+            atoms_with_minor = [i for i, s in enumerate(order) if s < 0]
+            # atoms_with_major = [i for i, s in enumerate(order) if s > 0]
+            # print(atoms_with_minor)
+            for iloc in range(tot):
+                i = iels[iloc]
+                if iloc in atoms_with_minor:
+                    oxi_state[i] = states[0]
+                else:
+                    oxi_state[i] = states[1]
+            oxi_states.append(copy.copy(oxi_state))
+            # print(oxi_state[0:8])
+        return oxi_states
 
     def get_conventional_cell(self):
         """
@@ -1441,6 +1502,7 @@ class Structure():
 
     def leave_only(self, atom_type = None):
         #Remove all atoms except *atom_type*(str, mendeleev element name)
+        
         print_and_log('Starting leave_only()', imp = 'n')
 
         st = copy.deepcopy(self)

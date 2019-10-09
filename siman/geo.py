@@ -1671,6 +1671,9 @@ def remove_half(st, el, sg = None, info_mode = 0):
 def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
     """
     Generate all possible configurations by removing x of atoms
+    
+    st (Structure) - structure with only one element!
+
     sg (int) - give back structure with specific space group
 
     info_mode (bool) if 1 then return list of possible space groups
@@ -1681,9 +1684,9 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
     """
     from collections import Counter
 
-    def spin(ls, i):
+    def order(ls, i):
         """
-        Find recursivly all possible orderings
+        Find recursivly all possible orderings for the given x
         ls - initial list of atoms 
         i - index in ls  
 
@@ -1694,7 +1697,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
             
             if i < len(ls)-1:
             
-                spin(ls, i+1)
+                order(ls, i+1)
             
             else:
                 if abs(ls.count(-1)/st.natom - x ) < 0.001:
@@ -1705,7 +1708,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
     structures = []
     orderings = []
     ls = [0]*st.natom
-    spin(ls, 0)
+    order(ls, 0)
     symmetries = []
 
 
@@ -1717,7 +1720,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
         # if nm > 50:
             # print(nm)
         symmetries.append(nm)
-        
+        # print(nm)
         if nm == sg:
             # st_rem.jmol()
             # sc = supercell(st_rem, [14,14,14])
@@ -1738,10 +1741,19 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
 
 def remove_x(st, el, sg = None, info_mode = 0, x = None):
     """
-    # works only for 
-    x - remove x of atoms, for example 0.25 of atoms
 
-    sg - required space group
+    Allows to remove x of element el from the structure.
+    You should know which space group you want to get.
+    If you don't know the space group, first use info_mode = 1
+
+    st (Structure) - input structure
+    el (str) - element name, e.g. Li
+
+    x - remove x of atoms, for example 0.25 of atoms
+    
+    info_mode (bool) - more information
+
+    sg - number of required space group obtained with info_mode = 1
 
     TODO
     1. Take care about matching the initial cell and supercell from primitive
@@ -1768,23 +1780,31 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
     else:
         st_mp_prim = st_mp
 
-    #convert back to my format! please improve!!!
-    p = Poscar(st_mp_prim)
-    p.write_file('xyz/POSCAR')
+    if 0:
+        #convert back to my format! please improve!!!
+        p = Poscar(st_mp_prim)
+        p.write_file('xyz/POSCAR')
 
-    from siman.inout import read_poscar
-    st_new = st.copy()
-    st_prim = read_poscar(st_new, 'xyz/POSCAR')
+        from siman.inout import read_poscar
+        st_new = st.copy()
+        st_prim = read_poscar(st_new, 'xyz/POSCAR')
+    else:
+        #new way of converting
+        st_prim = st_only_el.update_from_pymatgen(st_mp_prim)
+
 
     if info_mode:
         return remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
 
     sts = remove_x_based_on_symmetry(st_prim, sg, x = x )
+    # st_prim.jmol()
+    # print(sts)
+    if len(sts) == 0:
+        printlog('Error! number of structures is zero')
 
 
 
-
-    st_only_el_half = sts[0]   # now only first configuration is taken, they could be different
+    st_only_el_x = sts[0]   # now only first configuration is taken, they could be different
 
 
     if prim:
@@ -1795,25 +1815,24 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
-        sc_only_el_half = create_supercell(st_only_el_half, mul_matrix = mul_matrix)
+        sc_only_el_half = create_supercell(st_only_el_x, mul_matrix = mul_matrix)
 
         sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
         sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
 
     else:
-        sc_only_el_half = st_only_el_half
-        # sc_only_el_half
+        sc_only_el_x = st_only_el_x
 
 
     # st_only_el.write_poscar('xyz/POSCAR1')
     # sc_only_el_half.write_poscar('xyz/POSCAR2')
 
 
-    st_half = st_ohne_el.add_atoms(sc_only_el_half.xcart, el)
+    st_half = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
 
     st_half.name+='_half'+str(sg)
     
-    return st_half
+    return st_x
 
 
 
