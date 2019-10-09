@@ -2,6 +2,17 @@
 from __future__ import division, unicode_literals, absolute_import 
 import os, io, re, math
 import numpy  as np
+try:
+    import pandas as pd 
+except:
+    print('inout.py: Cant import pandas')
+
+try:
+    from tabulate import tabulate 
+except:
+    print('inout.py: Cant import tabulate')
+
+
 
 from siman import header
 from siman.header import printlog, runBash
@@ -460,7 +471,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     include_vectors (bool) - write primitive vectors to xyz
 
     jmol - 1,0 -  use jmol to produce png picture
-    jmol_args - see write_jmol()
+    jmol_args (dict) - arguments to write_jmol see write_jmol()
     mcif - write magnetic cif for jmol
 
 
@@ -945,10 +956,13 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     # self.end.update_xred()
 
     if contcar_exist:
-        # try:
-        self.end = read_poscar(self.end, path_to_contcar, new = False) # read from CONTCAR
-        # except:
-        contcar_read = True
+        try:
+            self.end = read_poscar(self.end, path_to_contcar, new = False) # read from CONTCAR
+            contcar_read = True
+        except:
+            contcar_read = False
+            printlog('Attention!, error in CONTCAR:', path_to_contcar, '. I use data from outcar')
+
     else:
         printlog('Attention!, No CONTCAR:', path_to_contcar, '. I use data from outcar')
         contcar_read = False
@@ -968,10 +982,12 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 runBash("sed '"+str(nw-11)+","+str(nw+8)+"d' "+path_to_outcar+">"+tmp+";mv "+tmp+" "+path_to_outcar)
 
 
-        with open(path_to_outcar, 'r') as outcar:
+        with open(path_to_outcar, 'rb') as outcar:
             
             printlog("Start reading from "+ path_to_outcar, imp = 'n')
-            outcarlines = outcar.readlines()
+            # outcarlines = outcar.readlines()
+            text = outcar.read().decode(errors='replace')
+            outcarlines = str(text).split('\n')
 
 
 
@@ -1055,6 +1071,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
         self.potcar_lines = []
         self.stress = None
+        self.extpress = 0
+
         self.intstress = None
         spin_polarized = None
         for line in outcarlines:
@@ -1152,9 +1170,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
                 if any(v > 1e-3 for v in low+high):
-                    print_and_log("W(q)/X(q) are too high, check output!\n", 'Y')
-                    print_and_log('Low + high = ', low+high, imp = 'Y' )
-                    print_and_log([v > 1e-3 for v in low+high], imp = 'Y' )
+                    printlog("W(q)/X(q) are too high, check output!\n", 'Y')
+                    printlog('Low + high = ', low+high, imp = 'Y' )
+                    printlog([v > 1e-3 for v in low+high], imp = 'Y' )
             
             if "direct lattice vectors" in line:
                 if not contcar_read:
@@ -1254,7 +1272,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 #print line
                 tdrift = [float(d) for d in line.split()[2:5]]
                 #if any(d > 0.001 and d > max(magnitudes) for d in tdrift):
-                    #print_and_log("Total drift is too high = "+str(tdrift)+", check output!\n")
+                    #printlog("Total drift is too high = "+str(tdrift)+", check output!\n")
                     #pass
 
 
@@ -1267,7 +1285,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 try:                     
                     self.end.vol = float(line.split()[4])
                 except ValueError: 
-                    print_and_log("Warning! Cant read volume in calc "+self.name+"\n")
+                    printlog("Warning! Cant read volume in calc "+self.name+"\n")
                 #print self.vol      
 
             if "generate k-points for:" in line: 
@@ -1296,7 +1314,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 self.energy.pawdc1 = float(line.split()[-2]) #
                 self.energy.pawdc2 = float(line.split()[-1]) #
             if  "eigenvalues    EBANDS" in line:
-                self.energy.bands = float(line.split()[-1]) # - Kohn Sham eigenvalues - include kinetic energy , but not exactly
+                try:
+                    self.energy.bands = float(line.split()[-1]) # - Kohn Sham eigenvalues - include kinetic energy , but not exactly
+                except:
+                    self.energy.bands = 0
             if  "atomic energy  EATOM" in line:
                 self.energy.atomic = float(line.split()[-1]) #energy of atoms in the box
 
@@ -1335,13 +1356,20 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 #print self.vlength
             if "in kB" in line:
                 # print(line)
+                # try:
                 line = line.replace('-', ' -')
                 # print(line)
-                if '*' in line:
-                    self.stress = [0,0,0] # problem with stresses
-                    printlog('Warning! Some problem with *in kB* line of OUTCAR')
-                else:
-                    self.stress = [float(i)*100 for i in line.split()[2:]]  # in MPa 
+                lines_str = line.split()[2:]
+                try:
+                    self.stress = [float(i)*100 for i in lines_str]  # in MPa 
+                except:
+                    printlog('Warning! Some problem with *in kB* line of OUTCAR', imp = 'y')
+                    printlog(line, imp = 'y')
+                    self.stress = [0,0,0]
+                # if '*' in line:
+                    # self.stress = [0,0,0] # problem with stresses
+                # else:
+                # except:
             if "Total  " in line:
                 # print(line)
                 line = line.replace('-', ' -')
@@ -1544,12 +1572,23 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
 
+    if len(magnitudes) > 0:
+        max_magnitude = max(magnitudes)
+    else:
+        max_magnitude = 0
+    
+    try:
+        max_tdrift    = max(tdrift)
+    except:
+        max_tdrift = 0
 
-    max_magnitude = max(magnitudes)
-    max_tdrift    = max(tdrift)
     self.maxforce_list = maxforce
     self.average_list = average
-    self.maxforce = maxforce[-1][1]
+
+    try:
+        self.maxforce = maxforce[-1][1]
+    except:
+        self.maxforce = 0
     # if max_magnitude < self.set.toldff/10: max_magnitude = self.set.toldff
     # print 'magn', magnitudes
     # print 'totdr', tdrift
@@ -1602,7 +1641,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     self.gbpos = self.init.gbpos #for compatability
     if self.gbpos:
         if any( np.cross( yznormal, np.array([1,0,0]) ) ) != 0: 
-            print_and_log("Warning! The normal to yz is not parallel to x. Take care of gb area\n")
+            printlog("Warning! The normal to yz is not parallel to x. Take care of gb area\n")
     self.end.yzarea = np.linalg.norm( yznormal )  #It is assumed, that boundary is perpendicular to x
 
 
@@ -1835,7 +1874,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
     if 'mag' in show or 'occ' in show:
         from siman.analysis import around_alkali
-        numb, dist, chosen_ion = around_alkali(self.end, 4, alkali_ion_number)
+        i_alk = self.end.get_specific_elements([3,11,19])
+        numb, dist, chosen_ion = around_alkali(self.end, 4, i_alk[0])
         
         #probably not used anymore
         # dist_dic = {}
@@ -1847,7 +1887,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
     if 'mag' in show and tot_mag_by_atoms:
         print ('\n\n\n')
-        # print_and_log
+        # printlog
         # print 'Final mag moments for atoms:'
         # print np.arange(self.end.natom)[ifmaglist]+1
         # print np.array(tot_mag_by_atoms)
@@ -1900,34 +1940,35 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # print (matrices)
         # print (df)
         if chosen_ion:
-            print_and_log('Distances (A) from alkali ion #',chosen_ion[0]+1,' to transition atoms:', 
+            printlog('Distances (A) from alkali ion #',chosen_ion[0]+1,' to transition atoms:', 
                 ',  '.join([ '({:}<->{:}): {:.2f}'.format(chosen_ion[0]+1, iat, d) for d, iat in zip(  dist, numb+1  )  ]), imp = 'Y'  )
         
         show_occ_for_atoms = [int(n) for n in re.findall(r'\d+', show)]
         # print (show_occ_for_atom)
         # sys.exit()
         if show_occ_for_atoms:
-            iat = show_occ_for_atoms[0]-1
+            iat = show_occ_for_atoms[0]
             # dist_toi = dist_dic[iat]
             i_mag_at = iat
         else:
             i = 0
             # dist_toi = dist[i]
-            i_mag_at = numb[i]
+            i_mag_at = numb[1:][i]
         # print (st.znucl[st.typat[i_mag_at]-1] )
+        # print(numb, i_mag_at)
         l05 = len(occ_matrices[i_mag_at])//2
 
         df = pd.DataFrame(occ_matrices[i_mag_at]).round(5)
-
-        print_and_log( 'Occ. matrix for atom ', i_mag_at+1, end = '\n', imp = 'Y'  )
+        els  = self.end.get_elements()
+        printlog( 'Occ. matrix for atom ', i_mag_at, els[i_mag_at], end = '\n', imp = 'Y'  )
             # ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )
-        print_and_log('Spin 1:',end = '\n', imp = 'Y'  )
-        print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".1f", tablefmt='psql'),end = '\n', imp = 'Y'  )
+        printlog('Spin 1:',end = '\n', imp = 'Y'  )
+        printlog(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".1f", tablefmt='psql'),end = '\n', imp = 'Y'  )
         # print(' & '.join(['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}']))
-        # print_and_log(tabulate(occ_matrices[i_mag_at][l05:], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".1f", tablefmt='latex'),end = '\n' )
+        # printlog(tabulate(occ_matrices[i_mag_at][l05:], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".1f", tablefmt='latex'),end = '\n' )
         # print(tabulate(a, tablefmt="latex", floatfmt=".2f"))
-        print_and_log('Spin 2:',end = '\n', imp = 'Y'  )
-        print_and_log(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql'), imp = 'Y'  )
+        printlog('Spin 2:',end = '\n', imp = 'Y'  )
+        printlog(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql'), imp = 'Y'  )
     self.occ_matrices = occ_matrices
     
 
@@ -2008,7 +2049,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     else: 
         printlog('Output type: outst_cathode')
         outst = outst_cathode
-    #else: print_and_log("Uknown type of outstring\n")
+    #else: printlog("Uknown type of outstring\n")
 
 
     #save cif file

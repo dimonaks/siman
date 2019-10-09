@@ -7,6 +7,11 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+try:
+    from tabulate import tabulate
+except:
+    print('project_funcs.py:tabulate is not avail')
+
 
 from siman import header
 from siman.header import printlog, calc, db
@@ -14,6 +19,7 @@ from siman.picture_functions import fit_and_plot
 from siman.table_functions import table_geometry, table_potentials, generate_latex_report
 
 from siman.small_functions import merge_dics as md, makedir
+from siman.functions import invert
 from siman.calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
 from siman.neb import add_neb
 from siman.classes import Calculation
@@ -2496,13 +2502,41 @@ def calc_antisite_defects(dpi = 300, image_format = 'eps', update = 0):
 
 
 
-def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_loop_dic = None, only = None):
+def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = None, add_loop_dic = None, 
+    confs = None, jmol = 0,
+    up_res = 'up1'):
+    """
+    High-level wrapper for creating anti-sites and running them
+    Interstetials defects are also can be created, please add documentation
+
+
+    suf - addition suffix  to name
+    confs (list) - list of configuration numbers to created and calculated, use numbers from suggested list
+    jmol (bool) - show each created structure with jmol
+
+        param_dic:
+            spinst_AP (str) - one state from header.TM_MAG dict
+            mag_AP (float) - 
+
     """
 
-    'add' - element to be inserted in void!
-    if provided
-    only - only these configurations are considered
-    """
+    def pol_disp(typ):
+        """type (str) - 
+            'elec' - electron
+            'hole' - hole
+        """
+        if typ == 'elec':
+            disp = 0.2
+        elif typ == 'hole':
+            disp = -0.2
+        elif typ == 'Co_Li':
+            disp = -0.1  # obtained from dft in LiCoO2
+        elif typ == 'Li_Co':
+            disp = 0.15  # obtained from dft in LiCoO2
+
+        else:
+            printlog('Error! unknown type of polaron', typ)
+        return disp
 
 
 
@@ -2535,10 +2569,10 @@ def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_lo
 
     # print(cathodes)
     for c in cathodes:
-
+        # if 'cl' in 
         st = c['cl'].end
-        it = c['cl'].id[0]
-        it_base = it
+        it_base = c['cl'].id[0]
+        it = it_base + suf
 
         if 'add' in c:
             el_add = c['add']
@@ -2551,35 +2585,107 @@ def calc_antisite_defects3(update = 0, cathodes = None, param_dic = None, add_lo
             else:
                 i_add = None
 
-        sts = create_antisite_defect3(st, c['el1'], c['el2'], max_sep = c['max_sep'], iatom = i_add  )
+
+            "Section for determining parameters for AS1 and AP polarons"
+            pol_suf = '' # polaron suffix name
+            if c.get('spinst_AS1'):
+                spinst_AS1 = c.get('spinst_AS1')
+                if c['el2'] not in spinst_AS1:
+                    printlog('Warning! AS1: Youve chosen spin state ', spinst_AS1, 'for element ', c['el2'])
+                c['mag_AS1'] = header.TM_MAG[spinst_AS1]
+
+                c['disp_AS1'] = pol_disp(c['pol_AS1'])
+                c['disp_AS2'] = pol_disp(c['pol_AS2'])
+                pol_suf = 'AS1'
+
+            if c.get('AP_on'):
+                i_AP = c.get('i_AP')
+                pol_suf+='AP'+str(i_AP)
+
+                spinst_AP = c.get('spinst_AP')
+                el_AP = st.get_el_name(i_AP)
+                if el_AP not in spinst_AP:
+                    printlog('Warning! AP: Youve chosen spin state ', spinst_AP, 'for element ', el)
+
+                c['mag_AP'] = header.TM_MAG[spinst_AP]
+                c['disp_AP'] = pol_disp(c['pol_AP'])
+
+                # if c['pol_AP'] == c['pol_AS1']: # in reality TM in alkali layer is contracted despite being a polaron electron
+                #     printlog('Warning! You have both AS1 and AP having same small polaron types', c['pol_AP'],c['pol_AS1'],
+                #         'usually it is expected that one should be hole type, while another - electron type')
+
+            "end of section"
+
+
+
+
+
+
+        sts, table, numbers = create_antisite_defect3(st, c['el1'], c['el2'], 
+            max_sep = c['max_sep'], iatom = i_add, return_with_table = 1,
+            
+            mag_AS1 = c.get('mag_AS1'), disp_AS1 = c.get('disp_AS1'), disp_AS2 = c.get('disp_AS2'),
+            AP_on = c.get('AP_on'), i_AP = c.get('i_AP'), 
+            mag_AP = c.get('mag_AP'), disp_AP = c.get('disp_AP'),
+            confs = confs  )
         
 
-
+        "Calculate bulk"
         cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update, **add_loop_dic)
 
         header.show = 'fo'
-
-        for i, st_as in enumerate(sts):
-            if only is not None:
-                if i not in only:
-                    continue
-            suf = 'as'+str(i)
+        # print(confs)
+        # sys.exit()
+        j = 0
+        for i, st_as in zip(numbers, sts):
+            # if confs is not None:
+            #     if i not in confs:
+            #         continue
+            suf = 'as'+str(i)+pol_suf
             st_as.name+=suf
             st_as.write_poscar()
-            add_loop(it+'.'+suf, c['set'], 1, input_st = st_as, it_folder = struct_des[it_base].sfolder+'/as', up = up, **add_loop_dic)
+            if jmol:
+                st_as.jmol(r=2, shift = (0.5,0.5,0.2))
+            add_loop(it+'.'+suf, c['set'], 1, 
+                input_st = st_as, it_folder = struct_des[it_base].sfolder+'/as', up = up, 
+                params = {'res_params':{'up':up_res}},
+                **add_loop_dic)
             cl_as = calc[it+'.'+suf, c['set'], 1]
             # print(cl_as.path['output'])
-            try:
-                print('dE(as) = {:.0f} meV'.format( (cl_as.energy_sigma0-cl_base.energy_sigma0)*1000))
+            # try:
+            if 1:
+                Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
+                print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
                 st = cl_as.end
-                find_polaron(st, st_as.i_el1, out_prec = 2)
-                print('Separation after relax = {:.2f} A'.format(   image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0] )  )
+                pol, _ = find_polaron(st, st_as.i_el1, out_prec = 2)
+                sep = image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0]
+                print('Separation after relax = {:.2f} A'.format(   sep )  )
+                
+                polarons = []
+                for z in pol:
+                    # if pol[z] > 2:
+                        # printlog
+                    for k in pol[z]:
+                        d1 = image_distance(st.xcart[st_as.i_el1], st.xcart[k], st.rprimd )[0]
+                        d2 = image_distance(st.xcart[st_as.i_el2], st.xcart[k], st.rprimd )[0]
+                        dist = ' {:.2f} {:.2f}'.format(d2, d1) # Co_Li - Co_AP, Li_Co - Co_AP 
+                        
+                        string = '{:2s}{:3d} m={:4.1f} {:s}'.format(invert(z), k, st.magmom[k], dist)
+                        polarons.append(string)
 
-            except:
-                pass
+                table[j][2] = cl_as.id[0]
+                table[j].append('{:.2f}'.format(sep) )
+                table[j].append('{:.2f}'.format(Eas) )
+                table[j].append('\n'.join(polarons) )
+
+                j+=1
+            # except:
+            #     pass
 
             # if 'as0' in suf:
             #     break
+        if table:
+            printlog( tabulate(table, headers = ['No.', 'AS type', 'it', 'at1', 'at2', 'Sep, A', 'Sep opt, A', 'Eas, eV', 'polaron mag   d1  d2'], tablefmt='psql'), imp = 'Y' )
 
     # sys.exit()
     return

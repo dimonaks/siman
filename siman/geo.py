@@ -1218,21 +1218,180 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
 
 
 
-def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
+def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None, 
+    return_with_table = False, 
+    disp_AS1 = None, mag_AS1 = None, disp_AS2 = None,
+    AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None ):
+    
     """
     Looks for all unique antisites for el1 and el2
-    
-    iatom (int) - create antistes only using this atom number
+    takes into account formation of polaron and change of oxidation state
+
+
+    Antisite consisits of three parts:
+        AS1 - el2_el1 (e.g. Ni_Li)
+        AS2 - el1_el2 (Li_Ni)
+        AP - additional polaron. if AS1 changes its oxidation state (e.g. from +3 to +2 in oxide then
+        additional polaron should compensate this by oxidizing from +3 to +4)
+
+    INPUT:
+        el1 - first element name from periodic table for exchange
+        el2 - second element name from periodic table for exchange
+        tol - tolerance for determining unique antisite configurations (A)
+        max_sep - maximum separation between antisite components (A)
+        iatom (int) - create antistes using this atom number, from 0
+        return_with_table (bool) - in addition to structures return table with basic information
+
+        disp_AS1 - polaronic displacement around first component (-0.2 for hole, +0.2 for electron)
+            transition metal is assumed here
+        mag_AS1 - magnetic moment of TM in AS1
+        
+        AP_on (bool) - turn on Additional polaron suggestion and creation
+        i_AP - number of AP TM atom. Positions are suggested by code depending on their position relative
+        to AS1 and AS2
+        mag_AP - magnetic moment of AP_nn atom
+        disp_AP - polaronic displacement around AP
+
+        confs (list) - create only this configurations, others are skipped
+
+    RETURN:
+        sts (list) - list of structures
+        if return_with_table:
+            table (list) - see code
+
+
 
     Todo
-    #check that distances through  PBC are two small
-
-
-    RETURN: 
-    structures
+    #check that distances through  PBC could be two small
     """
-    # tol = 0.1 #tolerance for distinguishing antisites within one group
-    # max_sep = 4 # maximum separation of antisite
+
+
+    def make_antisite(st, i, j, disp_AS1, mag_AS1, disp_AS2, AP_on, i_AP, disp_AP, mag_AP):
+        """
+        Sub-function for making antisite, 
+        taking into account change of transition metal oxidation state i.e.
+        sets magnetic moments and create small polarons by displacements
+        
+
+        i, j - numbers of atoms to swap; i is AS2, j is AS1
+
+        
+        AP_on - turn on AP search and creation
+        i_AP - number of atom that change oxidation state
+        disp_AS1, disp_AP - displacement of surrounding oxygen for creating polaron (relevant only for TM)
+        mag_AS1, mag_AP - new magnetic moments; i - should be a TM to create small polaron
+
+        """
+
+
+
+        st_as = st.swap_atoms(i, j)
+
+        smag_j = ''
+        if mag_AS1 is not None:
+            smag_j = 'm'+str(mag_AS1)
+            if st.get_el_z(j) not in header.TRANSITION_ELEMENTS:
+                printlog('Warning! Your first element in antisite is ', st.get_el_name(j), ' which is not a TM'  )
+
+
+            if disp_AS1 is None:
+                printlog('Error! Provide disp_i')
+        
+        suf = 'as'+str(i)+'-'+str(j)+smag_j
+
+        if AP_on:
+           
+            'Determine possible atom candidates near AS1 and AS2 for changing oxidation state'
+            z1 = st_as.get_el_z(i) # e.g. Li
+            el1 = st_as.get_el_name(i) # e.g. Li
+            z2 = st_as.get_el_z(j) # e.g. Ni
+            el2 = st_as.get_el_name(j) # e.g. Ni
+            out = st_as.nn(j, n= 40,only  = [z2], from_one = 0, silent = 1)
+            
+            d1 = 'd({0}_{1}-{0}_AP), A'.format(el2, el1)
+            d2 = 'd({1}_{0}-{0}_AP), A'.format(el2, el1)
+            tabheader = ['No of AP '+el2, d1, d2 , 'd Sum, A ' ]
+            tab_ap = []
+            for d, kt in zip(out['dist'], out['numbers']):
+                tab_ap.append([kt, d, st_as.distance(kt, i), ])
+                # print('AP ',d, st_as.distance(kt, i) , 'has k=', kt)
+            printlog('Possible positions for additional polaron:', imp = 'Y')
+            printlog( tabulate(tab_ap[1:], headers = tabheader, tablefmt='psql', floatfmt=".2f"), imp = 'Y')
+
+
+
+
+            if i_AP is None:
+                printlog('Error! Youve chosen AP_on, Provide i_AP based on suggestions above')
+
+
+            # print(header.TRANSITION_ELEMENTS)
+            # sys.exit()
+            if st_as.get_el_z(i_AP) not in header.TRANSITION_ELEMENTS:
+                printlog('Warning! You want to change oxidation state on ', st_as.get_el_name(i), ' which is not a TM'  )
+
+
+            "section for determining parameters for AP"
+            # z = st_as.get_el_z(i_AP)
+
+
+
+            "end of section"
+
+
+
+            if mag_AP is None:
+                printlog('Error! Provide mag_AP')
+            if disp_AP is None:
+                printlog('Error! Provide disp_AP')                
+
+
+
+            suf+='-'+str(i_AP)+'m'+str(mag_AP)
+
+
+
+
+
+
+
+
+        st_as.i_el1 = i
+        st_as.i_el2 = j            
+
+
+        if mag_AS1  is None and mag_AP is None:
+            st_as.magmom = [None]
+
+        if mag_AS1:
+            st_as.magmom[j] = mag_AS1
+
+        if disp_AS1:
+            st_as = st_as.localize_polaron(j, disp_AS1)
+
+        # print(disp_AS2)
+        if disp_AS2:
+            st_as = st_as.localize_polaron(i, disp_AS2)        
+        # sys.exit()
+
+        if mag_AP is not None:
+            st_as.magmom[i_AP] = mag_AP
+
+
+        if disp_AP is not None:
+            # st_as.magmom[i_AP] = mag_AP
+            st_as = st_as.localize_polaron(i_AP, disp_AP)
+
+
+        st_as.name+='_'+suf
+
+        return st_as
+
+
+
+    # if confs == None:
+        # confs = []
+
 
     r = st.rprimd
     pos1 = determine_symmetry_positions(st, el1)
@@ -1240,14 +1399,19 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
 
     anti = {}
 
+
+    'Create dictionary with all possible antisite exchanges below max_sep'
+
+    #Loop over unique positions
     for eqv_atoms1 in pos1:
         for eqv_atoms2 in pos2:
             uniq1 = eqv_atoms1[0]
             uniq2 = eqv_atoms2[0]
-            lab = (uniq1, uniq2)
+            lab = (uniq1, uniq2) #label
             if lab not in anti:
                 anti[lab] = []
 
+            #Loop over equivalent atoms to scan all possible distances
             for at1 in eqv_atoms1:
                 for at2 in eqv_atoms2:
 
@@ -1269,37 +1433,39 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None):
                         anti[lab].append([at1, at2, round(d,3)])
                         # print(lab, at1, at2, d)
     
+
+
+
     structures = []
+    numbers = []
     table = []
     i = 0
     for k in anti:
         anti[k].sort(key=itemgetter(2))
         # print([k]+anti[k])
         for a in anti[k]:
-            table.append([i, k]+[a[0]+1,a[1]+1,a[2]])
-            # st_as = copy.deepcopy(st)
-            st_as = st.swap_atoms(a[0], a[1])
-            suf = 'as'+str(a[0])+'-'+str(a[1])
-            # st_as.name+='_as_'+str(k)+'_with_atoms_'+str(a[0]+1)+'_and_'+str(a[1]+1)+'_swapped'
-            st_as.name+='_'+suf
-            st_as.magmom = None
             
-            st_as.i_el1 = a[0]
-            st_as.i_el2 = a[1]             
-
+            if confs is None or i in confs:
+                st_as = make_antisite(st, i = a[0], j = a[1], disp_AS1 = disp_AS1, mag_AS1 = mag_AS1, disp_AS2 = disp_AS2,
+                    AP_on = AP_on, i_AP = i_AP, disp_AP = disp_AP, mag_AP = mag_AP )
+                st_as.write_poscar()
+                structures.append(st_as)
+                table.append([i, k]+['', a[0]+1,  a[1]+1, a[2]])
+                numbers.append(i)
             i+=1
 
-            structures.append(st_as)
-            st_as.write_poscar()
     st.write_xyz()
+
 
     printlog('List of antisites:', imp  = 'y')
 
-    printlog( tabulate(table, headers = ['No.', 'Antisite type', 'at1', 'at2', 'Separation, A'], tablefmt='psql'), imp = 'Y' )
+    printlog( tabulate(table, headers = ['No.', 'Antisite type', 'it', 'at1', 'at2', 'Separation, A'], tablefmt='psql'), imp = 'Y' )
 
 
-
-    return structures
+    if return_with_table:
+        return structures, table, numbers
+    else:
+        return structures
 
 
 
@@ -1504,7 +1670,7 @@ def remove_half(st, el, sg = None, info_mode = 0):
 
 def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
     """
-    Generate all possible configurations by removing half of atoms
+    Generate all possible configurations by removing x of atoms
     sg (int) - give back structure with specific space group
 
     info_mode (bool) if 1 then return list of possible space groups

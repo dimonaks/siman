@@ -39,6 +39,7 @@ def normal(v1, v2):
 
 
 def red_prec(value, precision = 100.):
+    #
     a = value * precision
     return round(a)/1./precision
 
@@ -79,12 +80,19 @@ def cat_files(files, output_file):
 def grep_file(string, file, reverse = False):
     #reverse(bool) - read file in reversed order - require upload to memory
     out = ''
-    with open(file, 'r') as f:
-        
+    lines = []
+    with open(file, 'rb') as f:
+        text = f.read().decode(errors='replace')
+        # lines = f.readlines()
+        lines = str(text).split('\n')
+        # for line in text:
+        # print(text)
+        # print(lines)
         if reverse:
-            f = reversed(f.readlines())
+            f = reversed(lines)
 
         for line in f:
+            # print(line)
             if string in line:
                 out = line
                 
@@ -93,7 +101,7 @@ def grep_file(string, file, reverse = False):
 
 def gunzip_file(filename):
     printlog('unzipping file', filename)
-    with open(filename.replace('.gz', ''), 'wb') as f_out:
+    with open(filename[:-3], 'wb') as f_out:
         with gzip.open(filename, 'rb') as f_in:
             shutil.copyfileobj(f_in, f_out)
 

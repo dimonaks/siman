@@ -3,6 +3,7 @@
 from __future__ import division, unicode_literals, absolute_import, print_function
 import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil
 import re, io, json
+from textwrap import wrap
 
 import numpy as np
 
@@ -355,12 +356,19 @@ class Structure():
 
     def get_elements(self):
         #return list of elements names
+        # print(self.typat)
         return [element_name_inv(self.znucl[t-1]) for t in self.typat]
+    
+    def get_el_name(self, i):
+        #return name of element
+        return self.get_elements()[i]
 
     def get_elements_z(self):
         #return list of elements names
         return [self.znucl[t-1] for t in self.typat]
-
+    def get_el_z(self, i):
+        #return name of element
+        return self.get_elements_z()[i]
     def get_natom(self):
         #get number of real atoms, excluding voids
         # print([z for z in self.get_elements_z() if z != 300])
@@ -375,6 +383,8 @@ class Structure():
             zvals.append(zv)
         return zvals
 
+
+
     def get_total_number_electrons(self):
         zvals = self.get_elements_zval()
         return int(sum(zvals))
@@ -387,8 +397,15 @@ class Structure():
 
 
     def get_maglist(self):
-        #return bool list of which  elements are magnetic (here all transition metals are searched!)
-        #and dictionary with numbers of each transition metal
+        """
+        return bool list of which  elements are magnetic (here all transition metals are searched!)
+        and dictionary with numbers in lists for each transition metal
+        
+        RETURN:
+            ifmaglist (list of bool) - magnetic or not
+            mag_numbers (dict of int) - for each element using z, their numbers
+        """
+
         ifmaglist = []
         zlist = self.get_elements_z()
         mag_numbers = {}
@@ -466,6 +483,9 @@ class Structure():
 
         return st
 
+    def add_oxi_states(self, ):
+        
+
     def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
         """
         oxidation (dict) - {'Ti':'Ti3+'}
@@ -474,11 +494,14 @@ class Structure():
                    'norm' - normalized self.charges
                     'tot' - just self.charges
                     'pot' - charges from potentials zval, number of valence electrons
-                    'pm' - guess oxidation states using pymatge
+                    'pm' - guess oxidation states using pymatgen, s
 
         slab - if True return slab object is returned - limited functional is implemented
         """
         from siman.analysis import calc_oxidation_states
+        from siman.analysis import set_oxidation_states_guess
+
+        st = self
 
         site_properties = {}
 
@@ -508,13 +531,20 @@ class Structure():
 
             pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
-        chg = None
+        oxi = None
+        
+
         if chg_type == 'pot':
             
             printlog('Using zval as charges', imp = '')
-            chg = [z*-1 for z in self.get_elements_zval()           ]
-            # print(chg)
-            pm.add_oxidation_state_by_site(chg)
+            oxi = [z*-1 for z in self.get_elements_zval()           ]
+            print(oxi)
+            pm.add_oxidation_state_by_site(oxi)
+        elif chg_type == 'pm':
+            # oxi = set_oxidation_states(st)
+            pm.add_oxidation_state_by_guess()
+            oxi = None
+        
         else:
             if hasattr(self, 'charges') and any(self.charges):
 
@@ -523,22 +553,21 @@ class Structure():
                 # print(chg_type)
                 if chg_type == 'norm': #normalize charges
                     t = sum(self.charges)/len(self.charges)
-                    chg = [c-t for c in self.charges ]
+                    oxi = [c-t for c in self.charges ]
                     # print(t)
                 
                 elif chg_type == 'ox':
                     # print(self.charges)
-                    chg = calc_oxidation_states(st = self)
+                    oxi = calc_oxidation_states(st = self)
                     # print(chg)
                     # sys.exit()
 
                 elif chg_type == 'tot':
-                    chg = self.charges
+                    oxi = self.charges
             if hasattr(self, 'oxi_state') and any(self.oxi_state):
-
-                if chg_type ==  'pm':
-                    # print(self.oxi_state)
-                    chg = self.oxi_state
+                #simply use predefined oxi_state
+                
+                oxi = self.oxi_state
 
 
                 if 0: #check total charge
@@ -552,8 +581,8 @@ class Structure():
 
 
 
-        if chg:
-            pm.add_oxidation_state_by_site(chg)
+        if oxi:
+            pm.add_oxidation_state_by_site(oxi)
 
 
 
@@ -735,6 +764,31 @@ class Structure():
 
 
 
+    def get_oxi_states(self, typ = 'charges'):
+        """
+        Create and return list of oxidation states from charges and valences
+        self.charges should exist as full charges (e.g. from Bader analysis)
+        typ (str) 
+            'charges' - from charges and zval
+            'guess'   - from guess
+        """
+        st = self
+        if typ == 'charges':
+            printlog('Using zval as reference', imp = '')
+            st = self
+            oxi = []
+            for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
+                oxi.append( z_val - st.charges[j] )
+            # st.oxi_state = oxi
+        
+        elif typ == 'guess':
+            pm = st.convert2pymatgen()
+            pm.add_oxidation_state_by_guess()
+            st = st.update_from_pymatgen(pm)
+            oxi = st.oxi_state
+
+
+        return oxi
 
 
 
@@ -1419,12 +1473,13 @@ class Structure():
         return [i for i, el in enumerate(self.get_elements()) if el == element]
 
 
-    def remove_atoms(self, atoms_to_remove, from_one = 0):
+    def remove_atoms(self, atoms_to_remove, from_one = 0, clear_magmom  = 1 ):
         """
         remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*, starting from 0
         st (Structure)
         atoms_to_remove (list) - list of element names or numbers
         from_one (int)- if 1 the numbers of atoms in provided list are starting from one
+        clear_magmom - by default magmom is cleared
         """
         st = copy.deepcopy(self)
         # print(st.nznucl)
@@ -1449,7 +1504,8 @@ class Structure():
             else:
                 atom_exsist = False
         printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
-        st.magmom = [None]
+        if clear_magmom:
+            st.magmom = [None]
 
         # print(st.nznucl)
 
@@ -1666,6 +1722,9 @@ class Structure():
         # print type(atoms_xcart)
 
 
+    # def 
+
+
 
     def shift_atoms(self, vector_red = None, vector_cart = None):
         """
@@ -1773,7 +1832,7 @@ class Structure():
         i = np.argmin(abs_shifts)
         return i, abs_shifts[i], x - self.xcart[i]
 
-    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True, more_info = 0):
+    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True, more_info = 0, oxi_state = 0):
         """
         show neigbours
 
@@ -1786,6 +1845,9 @@ class Structure():
         more_info - return more output - takes time
 
         from_one - if True, strart first atom from 1, otherwise from 0
+
+        oxi_state (bool) - if 1 then showing oxidation state as well
+
 
         RETURN
             dict with the following keys:
@@ -1807,15 +1869,16 @@ class Structure():
             mod = 1
         else:
             mod = 0 # for table 
-
-        zn = self.znucl
-        x = self.xcart[i]
-        out_or = local_surrounding(x, self, n, 'atoms', True, only_elements = only)
+        st = self
+        zn = st.znucl
+        x = st.xcart[i]
+        out_or = local_surrounding(x, st, n, 'atoms', True, only_elements = only)
         # out =  (xcart_local, typat_local, numbers, dlist )
 
         out = list(out_or)
         # out[0] = list(itertools.chain.from_iterable(out[0]))
         out[1] = [invert(zn[o-1]) for o in out[1]]
+        numbers = copy.copy(out[2]) 
         out[2] = [o+mod for o in out[2]]
 
         out_tab = [range(0, len(out[2])), out[2], out[1], out[3]]
@@ -1829,10 +1892,22 @@ class Structure():
             imp = ''
         else:
             imp = 'Y'
-        printlog('Neighbors around atom', i+mod, self.get_elements()[i],':', imp = imp)
+        printlog('Neighbors around atom', i+mod, st.get_elements()[i],':', imp = imp)
         # if not silent:
+        
+        headers = ['nn', 'No.', 'El', 'Dist, A']
+        if oxi_state:
+            headers.append('Oxi state')
+            i = 0 
+            oxi = st.get_oxi_states()
+            for t in tab:
+                i_at = numbers[i]
+                t.append(oxi[i_at])
+                i+=1
+
+
         if tabulate:
-            printlog( tabulate(tab[1:], headers = ['nn', 'No.', 'El', 'Dist, A'], tablefmt='psql', floatfmt=".2f"), imp = imp )
+            printlog( tabulate(tab[1:], headers = headers, tablefmt='psql', floatfmt=".2f"), imp = imp )
         else:
             printlog(tab[1:], imp = imp )
 
@@ -1842,24 +1917,24 @@ class Structure():
         info['xcart'] = out_or[0]
 
 
-        el = self.get_elements()
+        el = st.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
-        info['av(A-O,F)'] = local_surrounding2(x, self, n, 'av', True, only_elements = [8,9], round_flag = 0)
+        info['av(A-O,F)'] = local_surrounding2(x, st, n, 'av', True, only_elements = [8,9], round_flag = 0)
         
         if more_info:
-            info['avsq(A-O,F)'] = local_surrounding2(x, self, n, 'avsq', True, only_elements = [8,9])
-            info['avharm(A-O,F)'] = local_surrounding2(x, self, n, 'avharm', True, only_elements = [8,9])
-            info['avdev(A-O,F)'], _   = local_surrounding2(x, self, n, 'av_dev', True, only_elements = [8, 9])
-            info['sum(A-O,F)'] = local_surrounding2(x, self, n, 'sum', True, only_elements = [8,9])
+            info['avsq(A-O,F)'] = local_surrounding2(x, st, n, 'avsq', True, only_elements = [8,9])
+            info['avharm(A-O,F)'] = local_surrounding2(x, st, n, 'avharm', True, only_elements = [8,9])
+            info['avdev(A-O,F)'], _   = local_surrounding2(x, st, n, 'av_dev', True, only_elements = [8, 9])
+            info['sum(A-O,F)'] = local_surrounding2(x, st, n, 'sum', True, only_elements = [8,9])
 
         t = set(out_or[2])
-        s = set(range(self.natom)) 
+        s = set(range(st.natom)) 
         d = s.difference(t) 
         # d = d.remove(i)
         # print(t)
         # print(i)
         # print(d)
-        st_left = self.remove_atoms(d)
+        st_left = st.remove_atoms(d)
         st_left.name+='_loc'
         # sys.exit()
         st_left.dlist = out_or[3] # distances to neighbours
@@ -1867,10 +1942,10 @@ class Structure():
         info['st'] = st_left
 
         if ndict:
-            info['av(A-O)']   = local_surrounding(x, self, ndict[8], 'av', True, only_elements = [8])
-            info['avdev(A-O)'], _   = local_surrounding(x, self, ndict[8], 'av_dev', True, only_elements = [8])
-            info['min(A-O)'], _ ,info['max(A-O)']    = local_surrounding(x, self, ndict[8], 'mavm', True, only_elements = [8])
-            atoms = local_surrounding(x, self, ndict[8], 'atoms', True, only_elements = [8])
+            info['av(A-O)']   = local_surrounding(x, st, ndict[8], 'av', True, only_elements = [8])
+            info['avdev(A-O)'], _   = local_surrounding(x, st, ndict[8], 'av_dev', True, only_elements = [8])
+            info['min(A-O)'], _ ,info['max(A-O)']    = local_surrounding(x, st, ndict[8], 'mavm', True, only_elements = [8])
+            atoms = local_surrounding(x, st, ndict[8], 'atoms', True, only_elements = [8])
             info['Onumbers'] = atoms[2][1:] # exclude first, because itself!
             # print(info['Onumbers'])
 
@@ -1908,9 +1983,10 @@ class Structure():
         d - shift in angstrom; positive increase TM-O, negative reduce TM-O
         """
         st = copy.deepcopy(self)
-        TM = st.get_elements_z()[i]
+        TM = st.get_el_z(i)
+        TM_name = st.get_el_name(i)
         if TM not in header.TRANSITION_ELEMENTS:
-            printlog('Warning! provided ', TM, 'is not transition metal, I hope you know what you are doing. ')
+            printlog('Warning! provided element ', TM_name, 'is not a transition metal, I hope you know what you are doing. ')
 
         silent = 1
         if 'n' in header.warnings or 'e' in header.warnings:
@@ -1946,22 +2022,34 @@ class Structure():
 
         return st
 
-    def ewald(self, ox_st = None):
+    def ewald(self, ox_st = None, site = None):
         # ox_st 
         #   # 1 - oxidation states from guess
-        #
+            # 2 - from potential
+            # None - from charge
+        # site if provided (from 0), than site energy is printed
         from pymatgen.analysis.ewald import EwaldSummation
-        from siman.analysis import set_oxidation_states
+        # from siman.analysis import set_oxidation_states
         st = self
-        if ox_st:
-            st = set_oxidation_states(st)
+        if ox_st == 1:
+            # st = set_oxidation_states(st)
             # st.printme()
-            # print(st.oxi_state)
-        stpm = st.convert2pymatgen(chg_type = 'pm')
+            stpm = st.convert2pymatgen(chg_type = 'pm')
+            # print('The following oxi states were set', st.oxi_state)
+        if ox_st == 2:
+            stpm = st.convert2pymatgen(chg_type = 'pot')
+
+        else:
+            stpm = st.convert2pymatgen()
+        
         ew = EwaldSummation(stpm)
+        if site is not None:
+            site_e = 2*ew.get_site_energy(site)
+            print('Energy for site ', st.get_elements()[site], site_e)
 
-
-        return ew.total_energy
+            return ew.total_energy,  site_e
+        else:
+            return ew.total_energy
 
 
 
@@ -1976,7 +2064,7 @@ class Structure():
         selective dynamics - 
             if at least one F is found than automatically switched on
             !works only for coord_type = 'dir' and charges = False
-
+            None - not written
 
         shift - shift atoms
         NOTE
@@ -2508,12 +2596,22 @@ class Calculation(object):
 
 
 
-    def write_geometry(self, geotype = "init", description = "", override = False):
+    def write_geometry(self, geotype = "init", description = "", override = False, atomic_units = 0):
         """Writes geometrical data in custom siman format bases on abinit format to self.path["input_geo"]"""
         geo_dic = {}
         geofile = self.path["input_geo"]
         geo_exists = os.path.exists(geofile)
         # print (os.path.exists(geofile))
+        
+        if atomic_units:
+            en = 1/header.to_eV
+            le = 1/header.to_ang
+        else:
+            en = 1
+            le = 1            
+
+
+
         if geo_exists:
             if override:
                 print_and_log("Warning! File "+geofile+" was replaced"); 
@@ -2572,7 +2670,8 @@ class Calculation(object):
 
 
             if len(st.magmom) > 0 and not None in st.magmom:
-                f.write("magmom "+' '.join(np.array(st.magmom).astype(str)) +"\n")
+                mag_str = ' '.join(np.array(st.magmom).astype(str))
+                f.write("magmom "+'\n'.join( wrap(mag_str) ) +"\n")
                 if len(st.typat) != len(st.magmom):
                     printlog('Error! Check size of your magmom list')
 
@@ -2595,7 +2694,7 @@ class Calculation(object):
 
             f.write("\nrprim  ")
             for v in st.rprimd:
-                f.write("%.12f %.12f %.12f \n"%(v[0], v[1], v[2])  )
+                f.write("%.12f %.12f %.12f \n"%(v[0]*le, v[1]*le, v[2]*le)  )
 
             f.write("xred  ")
             #print st.xred
@@ -2608,7 +2707,7 @@ class Calculation(object):
                 print_and_log("Warning! write_geometry(): xcart is empty or overfull, I make it from xred\n");#raise RuntimeError
                 st.xcart = xred2xcart(st.xred, st.rprimd) 
             for v in st.xcart:
-                f.write("%.12f %.12f %.12f \n"%(v[0], v[1], v[2])  )
+                f.write("%.12f %.12f %.12f \n"%(v[0]*le, v[1]*le, v[2]*le)  )
 
             if hasattr(st, 'select') and len(st.select) > 0 and not None in st.select:
                 f.write("\nselect  ")
@@ -4020,11 +4119,22 @@ class Calculation(object):
         # print(self.cluster_address)
         # print(self.project_path_cluster+'/')
         # sys.exit()
+        address = self.cluster['address']
+        if header.override_cluster_address:
+            clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
+            self.project_path_cluster = clust['homepath']
+            address = clust['address']
+
+
         path2file_cluster = self.project_path_cluster+'/'+path_to_file
+
+        # print(self.project_path_cluster)
+        # sys.exit()
+
         if os.path.exists(path_to_file) and 'up2' not in up: 
             out = None
         else:
-            out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = self.cluster['address'])
+            out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = address)
 
 
         if out:
@@ -4046,6 +4156,13 @@ class Calculation(object):
         printlog('File', path_to_file, ' was download', imp = 'e')
         
         return path_to_file
+
+    def run_on_server(self, command, addr = None):
+        setting_sshpass(self)
+        if addr is None:
+            addr = self.cluster['address']
+        out = run_on_server(command, addr)
+        return out
 
     def update_name(self): 
         self.name = str(self.id[0])+'.'+str(self.id[1])+'.'+str(self.id[2])
@@ -4972,6 +5089,8 @@ class CalculationVasp(Calculation):
 
     def res(self, **argv):
         from siman.calc_manage import res_loop
+        # print(argv)
+        # sys.exit()
         res_loop(*self.id, **argv)
 
     def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, *args, **kwargs):
@@ -5027,8 +5146,12 @@ class CalculationVasp(Calculation):
                 if idd:
                     # print('setaset')
                     cl_son = header.calc[idd]
-                    
-                    cl_son.res(up = up, **kwargs)
+                    try:
+                        res_params = kwargs['params'].get('res_params') or {}
+                    except:
+                        res_params = {}
+
+                    cl_son.res(up = up, **res_params, **kwargs)
                     child = idd
                 else:
                     child = None

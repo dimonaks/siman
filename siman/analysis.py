@@ -7,7 +7,7 @@ import numpy as np
 try:
     import scipy
     from scipy import interpolate
-    from scipy.interpolate import spline 
+    # from scipy.interpolate import spline 
     # print (scipy.__version__)
     # print (dir(interpolate))
 except:
@@ -40,7 +40,8 @@ from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.calcul import site_repulsive_e
 
 
-def set_oxidation_states(st):
+def set_oxidation_states_guess(st):
+    # set from guess
     pm = st.convert2pymatgen()
     pm.add_oxidation_state_by_guess()
     st = st.update_from_pymatgen(pm)
@@ -565,6 +566,8 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
 
 def around_alkali(st, nn, alkali_ion_number):
     #return numbers and distances to 
+    #alkali_ion_number - number of interesting cation from 0
+    #nn - number of neighbours
 
     n_neighbours = nn
     alkali_ions = []
@@ -578,7 +581,7 @@ def around_alkali(st, nn, alkali_ion_number):
 
     if len(alkali_ions) > 0:
         if alkali_ion_number:
-            kk = alkali_ion_number-1
+            kk = alkali_ion_number
 
             chosen_ion = (kk, st.znucl[st.typat[kk]-1], st.xcart[kk])
         else:
@@ -602,22 +605,26 @@ def around_alkali(st, nn, alkali_ion_number):
 
 def find_polaron(st, i_alk_ion, out_prec = 1):
     """
-    #using magmom, find the transition atoms that have different magnetic moments
-    #i_alk_ion - number of ion from 0 to calculate distances to transition metals
-    out_prec (int) - precision of magmom output
+    Find TM atoms with outlying magnetic moments, which 
+    is a good indication of being a small polaron
+
+    Can be problems with charged-ordered materials
+
+    INPUT:
+        i_alk_ion - number of ion from 0 to calculate distances to transition metals
+        out_prec (int) - precision of magmom output
+
+    RETURN:
+        pol (dict of int) - numbers of atoms, where polarons are detected for each TM element 
+        magmom_tm (list of float) - just magmom for TM
 
 
-    # maglist = cli.end.get_maglist()
-    # magm = np.array(cli.end.magmom)
+    TODO:
+        1. Add analysis of bond lengths to distinguish small polarons
+            Janh-Teller
+        2. Add treatment of charged-ordered
 
-    # n_tm = len(magm[maglist])
-    # # print(len(maglist))
-    # numb, dist, chosen_ion = around_alkali(cli.end, n_tm, atom_num)
-    # # print(magm[numb][1:]) 
-    # mtm = magm[numb][1:] # the first is alkali
 
-    # m_av = sum(mtm)/len(mtm)
-    # print(mtm-m_av)
     """
 
 
@@ -640,9 +647,9 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
     # sys.exit()
     magmom_tm = None
-    for key in mag_numbers:
-        printlog('Looking at polarons on transition atoms: ',invert(key) )
-        numbs = np.array(mag_numbers[key])
+    for z in mag_numbers:
+        printlog('Looking at polarons on transition atoms: ',invert(z) )
+        numbs = np.array(mag_numbers[z])
         # print(numbs)
         # print(magmom)
         magmom_tm = magmom[numbs]
@@ -663,15 +670,15 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
                 x2 = st.xcart[j]
                 d, _ = st.image_distance(x1, x2, st.rprimd)
                 d_to_pols.append(d)
-            print('polarons are detected on atoms', [i+1 for i in i_pols], 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
+            print('polarons are detected on atoms', [i for i in i_pols], 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
             print('mag moments on trans. atoms:', magmom_tm.round(out_prec))
             
-            pol[key] = i_pols
+            pol[z] = i_pols
         else:
             print('no polarons is detected with nstd', nstd)
             print('mag moments on trans. atoms:', magmom_tm.round(out_prec))
             # print(' deviations                :', dev.round(1))
-            pol[key] = None
+            pol[z] = None
     return pol, magmom_tm
 
 

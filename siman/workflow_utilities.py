@@ -387,12 +387,14 @@ def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = 
         st = cl.end
 
 
-
+    # print(st.xcart)
+    if len(st.xcart) == 0:
+        print('Warning!, xcart is empty', cl.id, )
     for i, x in enumerate(st.xcart):
         z_cur = st.znucl[st.typat[i]-1]
         print ('z_cur', z_cur)
         if z_cur == znucl_sub:
-            print_and_log('Skipping znucl_sub atom\n')
+            printlog('Skipping znucl_sub atom\n')
             continue
         if abs(x[0] - gbpos)< dist_gb:
             print('adding possible seg position')
@@ -402,7 +404,7 @@ def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = 
     """2. Substitue"""
     el_sub    = invert(znucl_sub)
     base_name = it
-    main_path = struct_des[it].sfolder
+    main_path = header.struct_des[it].sfolder
     based_on = it+'.'+ise
     des_list = []
     add_list = []
@@ -411,6 +413,7 @@ def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = 
     sumr_list = []
 
     i = 0
+    # print(seg_pos_list)
     for j, replace_atom in enumerate(seg_pos_list): #
 
         v = verlist[0] # the first version from list is used

@@ -96,6 +96,7 @@ def run_on_server(command, addr = None):
     if header.ssh_object:
         # printlog('Using paramiko ...', imp = 'y')
         # if 'ne' in header.warnings:
+        # sys.exit()
 
         out = header.ssh_object.run(command, noerror = True, printout = 'ne' in header.warnings)
 
@@ -121,6 +122,7 @@ def run_on_server(command, addr = None):
     else:
         bash_comm = 'ssh '+addr+' "'+command+'"'
         # print(bash_comm)
+        # sys.exit()
         out = runBash(bash_comm)    
     
     out = out.split('#')[-1].strip()
@@ -338,14 +340,30 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
         if out and trygz:
 
             printlog('File', file, 'does not exist, trying gz', imp = 'n')
-            file+='.gz'
-            to_file_l+='.gz'
-            out = download(file, to_file_l)
+            # run_on_server
+            files = run_on_server(' ls '+file+'*', addr)
+            file = files.split()[-1]
+            # print(file)
+            nz = file.count('gz')
+            ext = '.gz'*nz
 
-            if out:
-                printlog('    No gz either!', imp = 'n')
+            # file+='.gz'
+            to_file_l+=ext
+
+            if file:
+                out = download(file, to_file_l)
+                printlog('    gz found with multiplicity', ext, imp = 'n')
+
+                for i in range(nz):
+                    printlog('unzipping', to_file_l)
+                    gunzip_file(to_file_l)
+                    to_file_l = to_file_l[:-3]
             else:
-                gunzip_file(to_file_l)
+                printlog('    No gz either!', imp = 'n')
+
+            # if '5247' in file:
+            #     sys.exit()
+
 
 
     return out

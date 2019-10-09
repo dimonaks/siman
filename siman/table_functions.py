@@ -17,7 +17,12 @@ import sys, os, re
 try:
     import scipy
     from scipy import interpolate
-    from scipy.interpolate import spline 
+    # print (scipy.__version__)
+    # print (dir(interpolate))
+except:
+    print('table_functions.py: scipy is not avail')
+try:
+    # from scipy.interpolate import spline 
 
     from scipy.interpolate import  CubicSpline
 except:

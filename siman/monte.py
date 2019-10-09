@@ -468,6 +468,8 @@ if __name__ == "__main__":
                 cl.serialize(str(i_mcstep)+'-yes')
                 copyfile('CONTCAR', 'CONTCAR_last')
                 copyfile('OUTCAR', 'OUTCAR_last')
+                if os.path.exists('LOCPOT'):
+                    copyfile('LOCPOT', 'LOCPOT_last')
 
             st = cl_new.end
 
@@ -483,8 +485,15 @@ if __name__ == "__main__":
             copyfile('OSZICAR', 'OSZICAR-'+str(i_mcstep))
             copyfile('CONTCAR', 'CONTCAR-'+str(i_mcstep))
             copyfile('OUTCAR', 'OUTCAR-'+str(i_mcstep))
+            if os.path.exists('LOCPOT'):
+
+                copyfile('LOCPOT', 'LOCPOT-'+str(i_mcstep))
 
     if not debug:
         copyfile('OUTCAR_last', 'OUTCAR')
+        copyfile('CONTCAR_last', 'CONTCAR')
+        if os.path.exists('LOCPOT_last'):
+        
+            copyfile('LOCPOT_last', 'LOCPOT')
     
     printlog('MC simulation finished!', imp = 'y')
