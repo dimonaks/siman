@@ -97,13 +97,36 @@ def write_batch_header(batch_script_filename = None,
             
 
             # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
-            if header.PBS_PROCS:
+            nodes = 1
+            if 'nodes' in header.cluster:
+                nodes = header.cluster['nodes']
+
+
+
+            if header.PBS_PROCS or nodes == 0: # parameter in header
                 f.write("#PBS -l procs="+str(number_cores)+"\n")
-            else: # 1 node option 
-                f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            else: #  node option 
+                # print(type(nodes))
+                # print(nodes)
+                # sys.exit()
+                if type(nodes) is str:
+                    f.write("#PBS -l nodes="+nodes+"\n")
+                else:
+                    f.write("#PBS -l nodes="+str(nodes)+":ppn="+str(number_cores)+"\n")
+            
+
+
+            if 'queue' in header.cluster:
+                f.write("#PBS -q "+str(header.cluster['queue'])+'\n')
+
+
             
             if 'procmemgb' in header.cluster:
                 f.write("#PBS -l pmem="+str(header.cluster['procmemgb'])+'gb\n')
+
+            if 'feature' in header.cluster:
+                f.write("#PBS -l feature="+header.cluster['feature']+"\n")
+
 
             # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
             
@@ -661,9 +684,10 @@ def inherit_ngkpt(it_to, it_from, inputset):
     return
 
 
-def choose_cluster(cluster_name, cluster_home, corenum):
+def choose_cluster(cluster_name, cluster_home, corenum, nodes):
     """
     *cluster_name* should be in header.project_conf.CLUSTERS dict
+    nodes - number of nodes
     """
 
     if cluster_name in header.CLUSTERS:
@@ -683,7 +707,7 @@ def choose_cluster(cluster_name, cluster_home, corenum):
     
 
 
-
+    # print(clust)
     if 'sshpass' in clust and clust['sshpass']:
         printlog('setting sshpass to True', imp = '')
         # sys.exit()
@@ -727,6 +751,10 @@ def choose_cluster(cluster_name, cluster_home, corenum):
 
     else:
         header.corenum    = clust['corenum']
+
+    if nodes is not None:
+        clust['nodes'] = nodes
+
 
     header.project_path_cluster = header.cluster_home +'/'+ header.PATH2PROJECT
 
@@ -883,6 +911,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'polaron'
                 - 'polaron_status' (str) 'new' (default) or 'existing'
 
+            - 'res_params' - dictionary with parameters transfered to res_loop()
+
+            - 'nodes' - number of nodes for sqedule system, currently works only for PBS
+
     Comments:
         
         !Check To create folders and add calculations add_flag should have value 'add' 
@@ -916,7 +948,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         params['show'] = show
         # if header.copy_to_cluster_flag:
-        choose_cluster(cluster, cluster_home, corenum)
+        # print(params["nodes"])
+        choose_cluster(cluster, cluster_home, corenum, params.get("nodes"))
         
         if run:
             prepare_run()
@@ -1742,28 +1775,58 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 # f.write("\n")
             f.write(' 1 0 0\n 0 1 0\n 0 0 1\n')
 
-            active_atoms = params['atat']['active_atoms']
+            active_atoms = params['atat']['active_atoms'] #dict
             
             exclude = params['atat'].get('exclude_atoms_n') or []
             
             subs = []
 
-            # print(active_atoms)
+            active_numbers = []
+            subs_dict    = {}
+            active_elements = []
+            for el in set(st.get_elements()):
+                for elan in active_atoms:
+                    
+                    if el not in elan:
+                        continue
+
+
+                    # print(elan)
+                    active_elements.append(el)
+                    elann = re.split('(\d+)',elan)
+                    print('Exctracting symmetry position of Na ', elann)
+                    if len(elann) > 2:
+                        ela = elann[0]
+                        isym   = int(elann[1])
+                    else:
+                        ela = elann[0]
+                        isym = None
+                    if isym:
+                        natoms = st.determine_symmetry_positions(el)
+                        a_numbers = natoms[isym-1]
+                    else:
+                        a_numbers = st.get_numbers(el)
+            
+                    for i in a_numbers:
+                        subs_dict[i] = active_atoms[elan]
+                    
+                    active_numbers.extend(a_numbers)
+            # print(active_numbers)
             # sys.exit()
-            # for el in set(st.get_elements()):
-                # st.determine_symmetry_positions(el)
+
 
             # st.printme()
             # sys.exit()
 
 
             for i, el in enumerate(st.get_elements()):
-                if el in active_atoms and i not in exclude:
+                if i not in exclude and i in active_numbers:
                     # print(el, i, st.xred[i])
-                    subs.append(active_atoms[el])
+                    subs.append(subs_dict[i])
                 else:
                     subs.append(None)
 
+            print(subs)
             # print(st.magmom)
 
             if None in st.magmom:
@@ -1784,6 +1847,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 if sub:
                     f.write(','+sub)
                 f.write("\n")
+
+        #highlight active atoms
+        st_h = st.replace_atoms(active_numbers, 'Pu')
+        st_h.write_poscar()
+        printlog('Check active atoms', imp = 'y')
+
+
 
         return file
 
@@ -1813,16 +1883,20 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         # print(cl.state)
 
+
         if check_job:
+            res_params = params.get('res_params') or {}
+            # print(res_params)
+            # sys.exit()
             if '2' in cl.state or '5' in cl.state:
                 status = "ready"
                 if up != 'up2':
-                    cl.res(check_job = check_job, show = params['show']) 
+                    cl.res(check_job = check_job, show = params['show'], **res_params) 
                     return
 
             if "3" in cl.state: #attention, should be protected from running the same calculation once again
                 status = "running"
-                cl.res(check_job = check_job, show = params['show'])
+                cl.res(check_job = check_job, show = params['show'], **res_params)
                 # print(check_job)
                 # sys.exit()
                 if '3' in cl.state and check_job: 
@@ -1832,7 +1906,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 status = "compl"
                 if up == 'up2':
                     cl.init.select = None
-                cl.res(check_job = check_job, show = params['show']) 
+                cl.res(check_job = check_job, show = params['show'], **res_params) 
                 # sys.exit()
 
                 if up != 'up2':
@@ -2678,6 +2752,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             'redox_pot' - calculate redox potential relative to b_id() (deintercalated cathode) and energy_ref ( energy per one ion atom Li, Na in metallic state or in graphite)
             'neb' - make neb path. The start and final configurations 
             should be versions 1 and 2, the intermidiate images are starting from 3 to 3+nimages
+
+            'xcarts'
             )
         
         voronoi - True of False - allows to calculate voronoi volume of impurities and provide them in output. only if lammps is installed
@@ -2711,7 +2787,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             - polaron - determine polaron positon, write local surroundin
             - mig_path - write migration path xyz
             - pickle - download all pickle and convert to CONTCAR (for Monte-Carlo regime)
-
+            - out - open OUTCAR, sublime text should be installed, not tested on windows
+            - op  - open containing folder
 
         energy_ref - energy in eV; substracted from energy diffs
         
@@ -2831,7 +2908,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     result_list = []
     energies = []
 
-
+    # print(choose_outcar)
+    # sys.exit()
 
     emin = 0
     if b_id:
@@ -2840,6 +2918,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 # print "Start to read ", b_id
                 # if '4' not in calc[b_id].state:
                 if readfiles:
+                    # print(choose_outcar)
+                    # sys.exit()
                     calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
                 
                 e_b = 1e10; v_b = 1e10
@@ -2943,6 +3023,25 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 printlog(os.getcwd()+'/'+cl.path['output'], imp = 'Y')
                 # sys.exit()
                 return
+            
+            if 'log' == show:
+
+                path = cl.project_path_cluster +'/'+ cl.dir
+                out = cl.run_on_server('ls '+path+'/*log', cl.cluster_address)
+                # print(out)
+                # sys.exit()
+                files = out.splitlines()
+                file = files[-1] #use last 
+                name = os.path.basename(file)
+                cl.get_file(name, )
+                runBash('subl '+cl.dir+'/'+name)
+                return
+
+            if 'term' == show:
+                #only fo linux
+                header.open_terminal = True 
+                cl.run_on_server('cd '+cl.dir)
+                return
 
             if 'jmol' in show:
                 # printlog(os.getcwd()+'/'+cl.path['output'], imp = 'Y')
@@ -2957,10 +3056,33 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if 'out' in show:
                 runBash('subl '+cl.path['output'])
 
+            if 'op' in show:
+                import webbrowser
+                webbrowser.open('file:///' + os.getcwd()+'/'+cl.dir)
+                # runBash('nautilus '+cl.dir)
 
             if 'pos' in show:
                 cl.end.write_poscar()
                 return
+
+            if 'qlog' in show:
+
+                path = cl.project_path_cluster +'/'+ cl.dir
+                out = cl.run_on_server('ls '+path+'/*.e*', cl.cluster_address)
+                # print(out)
+                # sys.exit()
+                files = out.splitlines()
+                file = files[-1] #use last
+                name = os.path.basename(file)
+                i = name.split('-')[0]
+                if not os.path.exists(cl.dir+'/'+name):
+                    cl.get_file(name, )
+                nodes_conf = None
+                with open(cl.dir+'/'+name, 'r') as f:
+                    for lll in f:
+                        if 'Node(s):' in lll:
+                            nodes_conf = lll
+                print(nodes_conf)
 
             if 'pickle' in show:
                 sys.modules['classes'] = siman.classes # temporary migration solution

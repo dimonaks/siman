@@ -8,12 +8,13 @@ import numpy as np
 try:
     import scipy
     from scipy import interpolate
-    from scipy.interpolate import spline 
     # print (scipy.__version__)
     # print (dir(interpolate))
 except:
     print('picture_functions.py: scipy is not avail')
+# from scipy.interpolate import spline 
 try:
+    ''
     from scipy.interpolate import  CubicSpline
 except:
     print('scipy.interpolate.CubicSpline is not avail')
@@ -33,12 +34,12 @@ except:
 
 
 from siman import header
-from siman.header import calc, print_and_log, printlog
+from siman.header import calc, printlog, printlog
 from siman.inout import write_xyz
 from siman.small_functions import makedir, is_list_like
 from siman.geo import replic
 
-from siman.chg.chg_func import chg_at_point, cal_chg_diff
+# from siman.chg.chg_func import chg_at_point, cal_chg_diff
 # from dos.functions import plot_dos
 # from ase.utils.eos import EquationOfState
 
@@ -126,7 +127,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     diff_barrier = determine_barrier(mep_pos, eners)
 
 
-    print_and_log('plot_mep(): Diffusion barrier =',round(diff_barrier, 2),' eV', imp = 'y')
+    printlog('plot_mep(): Diffusion barrier =',round(diff_barrier, 2),' eV', imp = 'y')
     # sys.exit()
     # print()
 
@@ -268,6 +269,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     """
 
+    # sys.exit()
+
     if image_name == None:
         image_name  = filename
 
@@ -347,7 +350,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         else:
 
             con = data[key]
-            # print(con)
+            # print('keys', keys)
+            # print('con type', type(con))
             # sys.exit()
             if type(con) == list or type(con) == tuple:
                 try:
@@ -363,7 +367,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
                 xyf = [con[0], con[1], fmt]
                 con = {'label':label} #fmt -color style
-
+                # print('con1', con)
             elif type(con) == dict:
                 if 'fmt' not in con:
                     con['fmt'] = ''
@@ -385,7 +389,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             if linewidth:
                 con['lw'] = linewidth
 
-            # print(con)
+            # print('con2', con)
             # sys.exit()
                 
             if markersize:
@@ -400,13 +404,15 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
             con_other_args = copy.deepcopy(con)
+            # print('con_copy', con_other_args)
+            # sys.exit()
             for k in ['x', 'y', 'fmt', 'annotates']:
                 if k in con_other_args:
                     del con_other_args[k]
             if 'color' in con_other_args:
                 if con_other_args['color'] is None:
                     del con_other_args['color']
-            # print(con_other_args)
+            # print('con', con_other_args)
             # sys.exit()
             
             if params.get('y0'):
@@ -493,13 +499,13 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                     ax.plot(points[simplex, 0], points[simplex, 1], 'k-')
 
 
-
+    if not linewidth:
+        linewidth = 1
     if hor: 
-        ax.axhline(color = 'k') #horizontal line
+        ax.axhline(color = 'k', lw = linewidth, alpha = 0.6, ls = '-') #horizontal line
 
     if ver:
-        if not linewidth:
-            linewidth = 1
+
         ax.axvline(color='k', lw = linewidth, alpha = 0.6, ls = '-') # vertical line at 0 always 
 
     if ver_lines:
@@ -507,11 +513,18 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             ax.axvline(**line)
 
     if xy_line:
+        xlim = ax.get_xlim()
         ylim = ax.get_ylim()
         # print(ylim)
-        x = np.linspace(*ylim)
+        x = np.linspace(*xlim)
+        y = np.linspace(*ylim)
+
         # print(x)
-        ax.plot(x,x)
+        if abs(x[0]-x[-1])>abs(y[0]-y[-1]):
+            da = x
+        else:
+            da = y
+        ax.plot(da,da, color = 'k', alpha = 0.6, ls = '-', lw = linewidth)
 
     if x_nbins:
         ax.locator_params(nbins=x_nbins, axis='x')
@@ -574,12 +587,12 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             plt.savefig(path2saved, dpi = dpi, format=fig_format)
             plt.savefig(path2saved_png, dpi = 300)
             
-            print_and_log("Image saved to ", path2saved, imp = 'y')
+            printlog("Image saved to ", path2saved, imp = 'y')
 
 
         elif show is None:
             show = True
-        # print_and_log(show)
+        # printlog(show)
         if show:
             plt.show()
         plt.clf()
@@ -770,7 +783,7 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
     # elif data1: gs.tight_layout(fig)
 
     if image_name:
-        print_and_log( "Saving image ...", str(image_name), imp = 'y')
+        printlog( "Saving image ...", str(image_name), imp = 'y')
         plt.savefig(str(image_name)+'.png', dpi = 200, format='png')
     else:
         plt.show()
@@ -1028,7 +1041,7 @@ def plot_conv(list_of_calculations = None, calc = None,
             #plt.savefig('images/'+image_name)
             file = header.path_to_images+'/'+str(image_name)+'.png'
             makedir(file)
-            print_and_log( 'Saving file ...',file, imp = 'y' )
+            printlog( 'Saving file ...',file, imp = 'y' )
             plt.savefig(file,format='png', dpi = 300)
         return fit_func2  
 
@@ -1203,7 +1216,7 @@ def plot_conv(list_of_calculations = None, calc = None,
             name, "Sigma xx (MPa)", "Grain boundary energy (mJ/m$^2$)", 
             image_name+"_sxe")
         sxe_min = fit_sxe.deriv().r[power-2] #sigma xx at the minimum of energy
-        print_and_log( "sigma xx at the minimum of energy is", sxe_min," MPa")
+        printlog( "sigma xx at the minimum of energy is", sxe_min," MPa")
 
 
         fit1 = fit_and_plot(pressures_init, gb_volumes,  pressures, gb_volumes, 1,
@@ -1213,7 +1226,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         pulay = - calc[id].bulk_extpress
         #print " At external pressure of %.0f MPa; Pulay correction is %.0f MPa." % (ext_p_min+pulay, pulay)       
         #print " Egb = %.1f mJ m-2; Vgb = %.0f mA;"%(fit(ext_p_min), fit1(ext_p_min)  )
-        print_and_log ("%s.fit.pe_pv & %.0f & %.0f & %0.f & %0.f \\\\" %
+        printlog ("%s.fit.pe_pv & %.0f & %.0f & %0.f & %0.f \\\\" %
             (n[0]+'.'+n[1], fit(ext_p_min), fit1(ext_p_min),ext_p_min, ext_p_min+pulay   ))
 
 
@@ -1295,7 +1308,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         #print atP
         #print at_zeroP
 
-        print_and_log( "Compare V at -pulay and V for energy minimum", fit_pv(-pulay), Vmin)
+        printlog( "Compare V at -pulay and V for energy minimum", fit_pv(-pulay), Vmin, imp = 'y')
 
         return fit_pe(-pulay), fit_pv(-pulay), Emin, Vmin
 
@@ -1399,7 +1412,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         eos = EquationOfState(clist,Z[2])
         v0, e0, B = eos.fit()
         #print "a = ", alist[2]
-        print_and_log( '''
+        printlog( '''
         v0 = {0} A^3
         E0 = {1} eV
         B  = {2} eV/A^3'''.format(v0, e0, B) )
@@ -1408,7 +1421,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         eos = EquationOfState(alist,Zinv[2])
         v0, e0, B = eos.fit()
         #print "c = ", clist[2]
-        print_and_log( '''
+        printlog( '''
         v0 = {0} A^3
         E0 = {1} eV
         B  = {2} eV/A^3'''.format(v0, e0, B) )

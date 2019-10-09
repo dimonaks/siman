@@ -21,7 +21,7 @@ ngkpt_dict_for_kspacings - when ngkpt is used could be problems, please test.
 
 from siman import header
 from siman.header import print_and_log, printlog;
-from siman.small_functions import is_list_like
+from siman.small_functions import is_list_like, red_prec
 from siman.functions import invert
 
 #Vasp keys
@@ -128,6 +128,7 @@ vasp_other_keys = [
 'USEPOT',
 'KPPRA',
 'SUBATOM',
+'NWRITE',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -624,6 +625,122 @@ class InputSet():
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, 
                 sort_keys=True, indent=4)
+
+
+
+    def toabinit(self, st):
+        """
+        Convert from VASP (add more codes in the future) to Abinit
+        """
+
+        def special_convert(vasp_param, vasp_dic, abi_dic):
+            ''
+
+            return dic
+
+        special = {'EDIFFG', 'IBRION', 'ISIF', 'KSPACING', 'KGAMMA', 'ISMEAR', 'LDAU', 'LDAUL','LDAUU','LDAUJ',}
+        
+        skip = {'PREC', 'ALGO', 'POTIM'}
+
+        VASP2Abi = {
+        'ENCUT':'ecut',
+        # 'ENAUG':'pawecutdg',
+        'EDIFF':'toldfe', 
+        'EDIFFG':'tolmxf',
+        'NELM':'nstep', 
+        'NSW':'ntime',
+        # 'IBRION':'ionmov',
+        # 'ISIF':'optcell',
+        # 'PREC':['ngfft', 'boxcutmin',
+        # 'ALGO':'iscf',
+        # 'KSPACING':'ngkpt',
+        # 'KGAMMA':'shiftk', #nshiftk
+        'LREAL':None,
+        'ISMEAR':'occopt',
+        'SIGMA':'tsmear',
+        'LPLANE':None,
+        # 'POTIM':'dtion',
+        'LORBIT':None,
+        'ISPIN':'nsppol',
+        'LDAU':'usepawu',
+        'LDAUTYPE':None,
+        'LDAUL':'lpawu',
+        'LDAUU':'upawu',
+        'LDAUJ':'jpawu',
+        'LASPH':None,
+        'LMAXMIX':None,
+        }
+
+
+        abi_dic = {}
+        vp = self.vasp_params
+        en = 1/header.to_eV
+        fo = 1/header.Ha_Bohr_to_eV_A
+        le = 1/header.to_ang
+        for p in vp:
+            ''
+            if p in skip or p not in VASP2Abi:
+                continue
+            if VASP2Abi[p] is None:
+                continue
+
+            v = vp[p]
+            abinam = VASP2Abi[p]
+
+            if p == 'EDIFFG':
+                aval = red_prec(v*-1*fo)
+            elif p in ['ENCUT', 'EDIFF', 'ENAUG', 'SIGMA']:
+                aval = red_prec(v*en )
+            elif p in ['LDAU']:
+                if 'T' in v:
+                    aval = 1
+                else:
+                    aval = 0 
+            elif p == 'LDAUL':
+                aval = 2 # d metals
+
+
+            elif p == 'ISMEAR':
+                if v == 0:
+                    #Gaussian
+                    aval =7
+                elif v == -5:
+                    aval = 7 # still gauss !
+            else:
+                aval = vp[p]
+            
+
+            abi_dic[abinam] = aval
+
+        for p in abi_dic:
+            print(p, abi_dic[p])
+        print('autoparal 1')
+        print('boxcutmin 1.5') # prec normal
+        print('pawecutdg', abi_dic['ecut']*2) # fine mesh
+        print('ngkpt ','put here' )
+        from textwrap import wrap
+        import numpy as np 
+        mag_str = '0 0 '+' 0 0  '.join(np.array(st.magmom).astype(str))
+
+        print('spinat', '\n'.join(wrap(mag_str)) )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
