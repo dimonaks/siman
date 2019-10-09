@@ -94,7 +94,7 @@ def cal_chg_diff(cl1, cl2, wcell, chg = 'CHGCAR'):
     return dendiff_filename
 
 
-def chg_at_z_direct(cl, k_p = 20, plot = None):
+def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
     """
     Return the the value of charge density or electrostatic potential along z direction of slab; 
 
@@ -108,10 +108,12 @@ def chg_at_z_direct(cl, k_p = 20, plot = None):
     from siman.picture_functions import fit_and_plot
     
 
-    st = cl
-    chgfile = st.get_file(filetype = 'LOCPOT')
+    if filetype == 'CHGCAR':
+        chgfile = cl.get_chg_file()       
+    else: 
+        chgfile = cl.get_file(filetype = filetype)
 
-
+    st = cl.end
     vasp_charge = VaspChargeDensity(chgfile)
     density = vasp_charge.chg[-1]
     atoms = vasp_charge.atoms[-1]
@@ -121,7 +123,7 @@ def chg_at_z_direct(cl, k_p = 20, plot = None):
     ngridpts = np.array(density.shape) # size of grid
     # print ('Size of grid', ngridpts)
 
-    z = int(st.vlength[2]*10)
+    z = int(cl.vlength[2]*10)
 
     elst = []
     z_coord = []
@@ -136,9 +138,9 @@ def chg_at_z_direct(cl, k_p = 20, plot = None):
                 xred1[1] = n2/k_p
                 xred1[2] = n3/z
                 i,j,k =  [ int(round(x * (n-1) ) ) for x, n in zip(xred1, ngridpts)]# corresponding to xred1 point
-                dens += density[i][j][k]
+                dens += density[i][j][k]*st.vol
 
-        elst.append(dens/k_p**2 * st.end.vol)
+        elst.append(dens/k_p**2 * st.vol)
         z_coord.append(n3/10)
 
 

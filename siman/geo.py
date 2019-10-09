@@ -1817,6 +1817,32 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
+def two_cell_to_one(st1, st2):
+    # let to join two supercells
+
+    # xcart = []
+    # sorts = []
+
+    n_at = st1.natom + st2.natom
+    print(n_at, dir(st1), st2.typat)
+
+    for i in range(0, st2.natom):
+        if st2.typat[i] == 2:
+            st1 = st1.add_atom( xc = st2.xcart[i], element = 'Cu')
+        if st2.typat[i] == 1:
+            st1 = st1.add_atom( xc = st2.xcart[i], element = 'Al')
+
+    # st1.update_xred()
+
+
+    return st1
+
+
+
+
+
+
+
 
 
 

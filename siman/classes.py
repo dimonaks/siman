@@ -435,29 +435,39 @@ class Structure():
         #to_ox - convert to oxidation state, substract from to_ox
         # if to_ox is negative, then m-to_ox
         l, mag_numbers = self.get_maglist()
-        # print(l)
+
+        keys = list(mag_numbers.keys())#[0]
+        print('In the present cell are next TM types:', keys)
+
         mag = list(np.array(self.magmom)[l])
-        s = ' '.join(['{:5.2f} ']*len(mag))
+
+        for key in keys:
         
-        s0 = ' '.join(['{:5d} ']*len(mag))
+            # print(mag)
+            magnetic = mag[:len(mag_numbers[key])]
+            mag = mag[len(mag_numbers[key]):]
+            # print(magnetic)
 
-        key = list(mag_numbers.keys())[0]
-        # print(key)
-        print(' '+s0.format(*mag_numbers[key]))
+            s = ' '.join(['{:5.2f} ']*len(magnetic))
+            
+            s0 = ' '.join(['{:5d} ']*len(magnetic))
+
+            # print(*mag_numbers[key])
+
+            print('\n Znucl:  ', key)
+            # print(' '+s0.format(*mag_numbers[key]))
+            print(' '+s.format(*magnetic))
+            if to_ox:
+                if to_ox > 0:
+                    ox = [to_ox-abs(m) for m in magnetic]
+                else:
+                    ox = [abs(m)+to_ox for m in magnetic]
+                s2 = ' '.join(['{:5.1f}+']*len(magnetic))
+                print(s2.format(*ox))
+                print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
 
 
-        print(' '+s.format(*mag))
-        if to_ox:
-            if to_ox > 0:
-                ox = [to_ox-abs(m) for m in mag]
-            else:
-                ox = [abs(m)+to_ox for m in mag]
-            s2 = ' '.join(['{:5.1f}+']*len(mag))
-            print(s2.format(*ox))
-            print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
-
-
-        return s.format(*mag) 
+        return s.format(*magnetic) 
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -761,7 +771,17 @@ class Structure():
         return st
 
 
+    def add_z(self, z):
+        # method appends additional height to the cell
+        # negative value of z appends to remove vacuum layer
+        st = copy.deepcopy(self)
 
+        st.rprimd[2][2] += z
+        for i in st.xcart:
+            i[2] += z
+        st.update_xred()
+        st = st.return_atoms_to_cell()
+        return st
 
 
     def get_oxi_states(self, typ = 'charges'):
@@ -1590,6 +1610,37 @@ class Structure():
         return st
 
 
+    def replace_atoms2(self, el_old, el_new, concentration):
+        """
+        el_old - element to replace
+
+        el_new - new element
+
+        concentration - part of atoms el_old to replace by el_new. Number from 0 to 1.
+        """
+        import random
+
+        st = copy.deepcopy(self)
+
+        numbers = list(range(st.natom))
+
+        nums = []
+
+
+        for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
+            if el == el_old: nums.append(n)
+            # print(nums)
+        n_replace = int(len(nums)*concentration)
+        c = float(n_replace/len(nums))
+        if c != concentration: print('\n\nAttention! This concentraiton is impossible. Real concentration is - ', c) 
+        print('\nI have found {} from {} random atoms of {} to replace by {} \n'.format(n_replace, len(nums), el_old, el_new ))
+        random.shuffle(nums)
+
+        atoms2replace = nums[0:n_replace]
+        # print(num2replace)
+        st = st.replace_atoms(atoms2replace, el_new)
+
+        return st
 
 
 
@@ -1952,6 +2003,76 @@ class Structure():
         # print(info)
 
         return info
+
+    def tm_o_distance(self, criteria = 0.03):
+        #return average TM-O distance in the cell and list of outstanding bonds 
+        #criteria - value in % of average bond length when bond is outstanding
+
+        tra = self.get_transition_elements()
+        
+        if len(tra): 
+            print('Starting...\n\n I ve obtained  %i TM atoms \n\n\n'%len(tra))
+        else:
+            print('Starting...\n\n I ve obtained  no TM atoms \n\n\n')
+            return 
+        
+
+
+        el = self.get_elements()
+
+        aver_list = []
+        dist_list = []
+
+
+        # print(self.nn(1, silent = 1)['dist'][1:],self.nn(1, silent = 1)['numbers'][1:])
+
+        for i in range(0, len(el)):
+            d = []
+            if el[i] in tra:
+                dist = self.nn(i+1, silent = 1)['dist'][1:]
+                numbers = self.nn(i+1, silent = 1)['numbers'][1:]
+                # print(numbers)
+                n = self.nn(i+1, silent = 1)['numbers'][0]
+                for k in range(0,len(dist)):
+                    if el[numbers[k]] == 'O':
+                        d.append(dist[k])
+                        dist_list.append([round(dist[k],4),n,numbers[k]])
+                aver_list.append(round(np.mean(d),2))
+        # print(dist_list)
+        # print(aver_list)
+        aver_distance = round(np.mean(aver_list),2)
+        print('Average TM-O bond length is %s A \n'%aver_distance)
+       
+        k = 0
+
+        min_dist = []
+        max_dist = []
+
+
+        for i in dist_list:
+            if (el[i[1]] == 'O' or el[i[2]] == 'O'):
+                if i[0] > aver_distance*(1+criteria): 
+                    max_dist.append(i[0])    
+                    # print('Outstanding bond length %.4s between %s (%s) and %s (%s) \n'%(i[0],i[1], el[i[1]],i[2], el[i[2]]))
+                    k = 1
+
+                if i[0] < aver_distance*(1-criteria):
+                    min_dist.append(i[0])    
+                    # print('Outstanding bond length %.4s between %s (%s) and %s (%s) \n'%(i[0],i[1], el[i[1]],i[2], el[i[2]]))
+                    k = 1
+
+        if k:
+            maxd = round(np.mean(max_dist),2)
+            mind = round(np.mean(min_dist),2)
+
+            if maxd and mind: 
+                print('Yan-Teller effect is found\n Average min TM-O length is %s \n Average max TM-O length is %s \n'%(mind, maxd) )
+
+
+        if not k: print('Ok! None outstanding bonds found\n')
+
+        return
+
 
 
     def center(self):
@@ -4031,6 +4152,11 @@ class Calculation(object):
 
         return
 
+    def show_force(self,):
+        force_prefix = ' tot '
+
+        printlog("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in self.maxforce_list ])[:]  ), imp = 'Y'  )
+
     def check_job_state(self):
         #check if job in queue or Running
 
@@ -4042,6 +4168,7 @@ class Calculation(object):
 
                 check_string =  cl.id[0]+'.'+cl.id[1]
                 if 'SLURM' in cl.schedule_system:
+
 
                     job_in_queue = check_string in run_on_server("squeue -o '%o' ", cl.cluster['address'])
                     printlog(cl.id[0]+'.'+cl.id[1], 'is in queue or running?', job_in_queue)
@@ -5167,6 +5294,7 @@ class CalculationVasp(Calculation):
                         printlog('Warning! Inheritance of CHGCAR and ICHARG == 0; I change locally ICHARG to 1')
                         ICHARG_or = vp['ICHARG']
                         vp['ICHARG'] = 1
+                    
 
 
                 if not vers:
