@@ -94,22 +94,26 @@ def cal_chg_diff(cl1, cl2, wcell, chg = 'CHGCAR'):
     return dendiff_filename
 
 
-def chg_at_z_direct(st, k_p = 20, filetype = 'CHGCAR'):
+def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
     """
     Return the the value of charge density or electrostatic potential along z direction of slab; 
 
     chgfile - full path to the file with charge density
-    st - structure of slab in the format db[it,ise,version]; 
+    cl - Calculation() with slab structure; 
     it is needed for the definition of the correct coordinates of points in a structure  in which  will be calculated of el/stat pot 
 
     RETURN: 
     List of z-coordinates and respective average value of electrostatic pot in the z slice.
     """
+    from siman.picture_functions import fit_and_plot
+    
+
     if filetype == 'CHGCAR':
-        chgfile = st.get_chg_file()       
-    else: chgfile = st.get_file(filetype = filetype)
+        chgfile = cl.get_chg_file()       
+    else: 
+        chgfile = cl.get_file(filetype = filetype)
 
-
+    st = cl.end
     vasp_charge = VaspChargeDensity(chgfile)
     density = vasp_charge.chg[-1]
     atoms = vasp_charge.atoms[-1]
@@ -119,7 +123,7 @@ def chg_at_z_direct(st, k_p = 20, filetype = 'CHGCAR'):
     ngridpts = np.array(density.shape) # size of grid
     # print ('Size of grid', ngridpts)
 
-    z = int(st.end.rprimd[2][2]*10)
+    z = int(cl.vlength[2]*10)
 
     elst = []
     z_coord = []
@@ -134,9 +138,15 @@ def chg_at_z_direct(st, k_p = 20, filetype = 'CHGCAR'):
                 xred1[1] = n2/k_p
                 xred1[2] = n3/z
                 i,j,k =  [ int(round(x * (n-1) ) ) for x, n in zip(xred1, ngridpts)]# corresponding to xred1 point
-                dens += density[i][j][k]*st.end.vol
+                dens += density[i][j][k]*st.vol
 
-        elst.append(dens/k_p**2)
+        elst.append(dens/k_p**2 * st.vol)
         z_coord.append(n3/10)
+
+
+    if plot:
+        # print(z_coord, elst)
+        fit_and_plot(a=(z_coord, elst, '-b'), xlabel = 'Z coordinate, $\AA$', 
+            ylabel = 'Potential, eV', filename = 'figs/'+st.id[0]+'_pot')
 
     return z_coord, elst

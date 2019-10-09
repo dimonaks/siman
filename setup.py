@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="siman",
-    version="0.9.8",
+    version="0.9.9.1",
     author="Dmitry Aksenov",
     author_email="dimonaks@gmail.com",
     description="Manager for DFT calculations",
@@ -18,7 +18,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     # packages=['siman'],
     # data_files=[(os.path.expanduser("~"), ['siman/simanrc.py'])],
-    install_requires=['numpy', 'tabulate', 'pymatgen', 'pandas', 'scipy', 'six', 'matplotlib', 'ase', 'paramiko'],
+    install_requires=['numpy', 'tabulate', 'pymatgen', 'pandas', 'scipy', 'six', 'matplotlib', 'ase', 'paramiko', 'adjustText'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License (GPL)",
