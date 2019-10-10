@@ -855,6 +855,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         
         - ise_new (str) - name of new set for inherited calculation  ('uniform_scale')
 
+        - it_suffix (str) - additional suffix to modify the it part of name
+
         - occ_atom_coressp (dict) see inherit_icalc()
         
         - ortho, mul_matrix - transfered to inherit_icalc

@@ -5284,18 +5284,40 @@ class CalculationVasp(Calculation):
 
     def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, *args, **kwargs):
         """
-        Wrapper for add_loop (in development)
-        By default inherit self.end
-        ise - new ise
+        Wrapper for add_loop (in development).
+        On a first run create new calculation. On a second run will try to read results.
+        All children are saved in self.children list.
+        By default uses self.end structure
+        To overwrite existing calculation 
+        use combination of parameters: add = 1, up = 'up2'.
+        Allows to use all arguments available for add_loop()
 
-        iopt - inherit_option
-            'full_nomag'
-            'full'
-            'full_chg' - including chg file
-        vers - list of version for which the inheritance is done
 
-        i_child - choose number of child to run res_loop()
-        add - if 1 than add new calculation irrelevant to children
+        INPUT:
+            ise (str) - name of new set available in header.varset
+
+            iopt (str) - inherit_option
+                'full_nomag'
+                'full'
+                'full_chg' - including chg file
+            
+            up (str) - update key transferred to add_loop and res_loop;
+                'up1' - create new calculation if not exist
+                'up2' - recreate new calculation overwriting old; for reading results redownload output files
+
+            vers (list of int) - list of version for which the inheritance is done
+
+            i_child (int) - choose number of child in self.children to run res_loop(); can be relevant if more than one
+                calculation exists for the same set
+            
+            add (bool) - 
+                1 - overwrite existing children
+
+
+        RETURN:
+            cl (Calculation) - new created calculation 
+
+
         TODO:
         1. if ise is not provided continue in the same folder under the same name,
         however, it is not always what is needed, therefore use inherit_xred = continue
