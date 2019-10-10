@@ -1752,7 +1752,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         ecut = ''
 
     # lens = ("%.2f;%.2f;%.2f" % (v[0],v[1],v[2] ) ).center(j[19])
-    lens = "{:4.2f};{:4.2f};{:4.2f}".format(v[0],v[1],v[2] ) 
+    lens = "{:4.2f}, {:4.2f}, {:4.2f}".format(v[0],v[1],v[2] ) 
     r1 = ("%.2f" % ( v[0] ) ).center(j[19])            
     vol = ("%.1f" % ( self.end.vol ) ).center(j[20])
     nat = ("%i" % ( self.end.natom ) ).center(j[21])

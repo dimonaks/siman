@@ -600,6 +600,8 @@ class Structure():
         return pm
 
 
+    # pm = convert2pymatgen
+
 
 
     def get_pm_composition(self):
@@ -993,12 +995,13 @@ class Structure():
         default = 0.01
         if not symprec:
             symprec = default
-
+        # print(symprec)
         if hasattr(self, 'spg') and symprec == default:
             spg = self.spg
         else:
+            # print('get')
             p = self.convert2pymatgen()
-            spg = p.get_space_group_info(symprec)
+            spg = p.get_space_group_info(symprec, angle_tolerance=5.0)
         # p = self.convert2pymatgen()
 
         # print(p.get_symmetry_operations(symprec))
