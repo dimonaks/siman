@@ -762,10 +762,20 @@ class Structure():
 
 
     def invert_axis(self, axis):
+        #invert one vector
         st = copy.deepcopy(self)
 
         st.rprimd[axis] *= -1
         st.update_xred()
+        st = st.return_atoms_to_cell()
+        return st
+    def mirror(self, axis):
+        #mirror along vector
+        j = axis
+        st = copy.deepcopy(self)
+        for i, x in enumerate(st.xred):
+            st.xred[i][j] = -x[j]
+        st.update_xcart()
         st = st.return_atoms_to_cell()
         return st
 
