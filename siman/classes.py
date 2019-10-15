@@ -2248,6 +2248,27 @@ class Structure():
             return ew.total_energy
 
 
+    def write_espresso(self, filename = None, shift = None):
+        st = copy.deepcopy(self)
+        st = st.remove_atoms(['void']) # remove voids
+        if shift:
+            st = st.shift_atoms(shift)
+        if not filename:
+            filename = ('xyz/espresso_'+st.name).replace('.', '_')
+
+        makedir(filename)
+
+        printlog('Starting writing Quantum Espresso', filename)
+
+        with io.open(filename,'w', newline = '') as f:
+            f.write('ATOMIC_POSITIONS\n')
+            for el, x in zip(st.get_elements(), st.xred):
+                f.write(" {:2s}   {:12.10f}  {:12.10f}  {:12.10f} \n".format(el, x[0], x[1], x[2]) )
+
+
+
+
+        return
 
 
     def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None, selective_dynamics = False, shift = None):
