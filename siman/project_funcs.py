@@ -2605,7 +2605,7 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
                 spinst_AP = c.get('spinst_AP')
                 el_AP = st.get_el_name(i_AP)
                 if el_AP not in spinst_AP:
-                    printlog('Warning! AP: Youve chosen spin state ', spinst_AP, 'for element ', el)
+                    printlog('Warning! AP: Youve chosen spin state ', spinst_AP, 'for element ', el_AP)
 
                 c['mag_AP'] = header.TM_MAG[spinst_AP]
                 c['disp_AP'] = pol_disp(c['pol_AP'])
@@ -2631,7 +2631,8 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
         
 
         "Calculate bulk"
-        cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update, **add_loop_dic)
+        if 1:
+            cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update, **add_loop_dic)
 
         header.show = 'fo'
         # print(confs)
@@ -2653,7 +2654,7 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
             cl_as = calc[it+'.'+suf, c['set'], 1]
             # print(cl_as.path['output'])
             # try:
-            if 1:
+            if 0:
                 Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
                 print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
                 st = cl_as.end
