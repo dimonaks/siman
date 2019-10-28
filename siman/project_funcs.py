@@ -3973,6 +3973,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         up_res
         atom_to_move
         del_pos
+        m_set
 
         exp_geometry - list of rows with exp geometry for table
 
@@ -4044,7 +4045,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         it = pn
         # print(it, m_set, 1)
         # sys.exit()
+        # try:
         cl = db[it, m_set, 1]
+        # except:
+            # cl = None
         el  = get_alkali_ion(cl.end, active_cation)
 
         it_ds = it.replace(el, '')
