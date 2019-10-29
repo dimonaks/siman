@@ -1958,7 +1958,8 @@ class Structure():
         i = np.argmin(abs_shifts)
         return i, abs_shifts[i], x - self.xcart[i]
 
-    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True, more_info = 0, oxi_state = 0):
+    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, 
+        from_one = True, more_info = 0, oxi_state = 0, print_average = 0):
         """
         show neigbours
 
@@ -1974,6 +1975,7 @@ class Structure():
 
         oxi_state (bool) - if 1 then showing oxidation state as well
 
+        print_average (bool) - print more
 
         RETURN
             dict with the following keys:
@@ -2075,7 +2077,8 @@ class Structure():
             info['Onumbers'] = atoms[2][1:] # exclude first, because itself!
             # print(info['Onumbers'])
 
-        # print(info)
+        if print_average:
+            print('av(A-O,F)', info['av(A-O,F)'])
 
         return info
 

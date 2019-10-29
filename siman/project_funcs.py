@@ -2525,7 +2525,9 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
             'elec' - electron
             'hole' - hole
         """
-        if typ == 'elec':
+        if typ == 'zero':
+            disp = 0.0
+        elif typ == 'elec':
             disp = 0.2
         elif typ == 'hole':
             disp = -0.2
@@ -2533,6 +2535,10 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
             disp = -0.1  # obtained from dft in LiCoO2
         elif typ == 'Li_Co':
             disp = 0.15  # obtained from dft in LiCoO2
+        elif typ == 'Ni_Na':
+            disp = -0.18  # obtained from dft in NaNiO2
+        elif typ == 'Na_Ni':
+            disp = 0.1  # obtained from dft in NaNiO2
 
         else:
             printlog('Error! unknown type of polaron', typ)
@@ -2653,35 +2659,35 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
                 **add_loop_dic)
             cl_as = calc[it+'.'+suf, c['set'], 1]
             # print(cl_as.path['output'])
-            # try:
-            if 0:
-                Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
-                print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
-                st = cl_as.end
-                pol, _ = find_polaron(st, st_as.i_el1, out_prec = 2)
-                sep = image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0]
-                print('Separation after relax = {:.2f} A'.format(   sep )  )
-                
-                polarons = []
-                for z in pol:
-                    # if pol[z] > 2:
-                        # printlog
-                    for k in pol[z]:
-                        d1 = image_distance(st.xcart[st_as.i_el1], st.xcart[k], st.rprimd )[0]
-                        d2 = image_distance(st.xcart[st_as.i_el2], st.xcart[k], st.rprimd )[0]
-                        dist = ' {:.2f} {:.2f}'.format(d2, d1) # Co_Li - Co_AP, Li_Co - Co_AP 
-                        
-                        string = '{:2s}{:3d} m={:4.1f} {:s}'.format(invert(z), k, st.magmom[k], dist)
-                        polarons.append(string)
+            try:
+                if 1:
+                    Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
+                    print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
+                    st = cl_as.end
+                    pol, _ = find_polaron(st, st_as.i_el1, out_prec = 2)
+                    sep = image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0]
+                    print('Separation after relax = {:.2f} A'.format(   sep )  )
+                    
+                    polarons = []
+                    for z in pol:
+                        # if pol[z] > 2:
+                            # printlog
+                        for k in pol[z]:
+                            d1 = image_distance(st.xcart[st_as.i_el1], st.xcart[k], st.rprimd )[0]
+                            d2 = image_distance(st.xcart[st_as.i_el2], st.xcart[k], st.rprimd )[0]
+                            dist = ' {:.2f} {:.2f}'.format(d2, d1) # Co_Li - Co_AP, Li_Co - Co_AP 
+                            
+                            string = '{:2s}{:3d} m={:4.1f} {:s}'.format(invert(z), k, st.magmom[k], dist)
+                            polarons.append(string)
 
-                table[j][2] = cl_as.id[0]
-                table[j].append('{:.2f}'.format(sep) )
-                table[j].append('{:.2f}'.format(Eas) )
-                table[j].append('\n'.join(polarons) )
+                    table[j][2] = cl_as.id[0]
+                    table[j].append('{:.2f}'.format(sep) )
+                    table[j].append('{:.2f}'.format(Eas) )
+                    table[j].append('\n'.join(polarons) )
 
-                j+=1
-            # except:
-            #     pass
+                    j+=1
+            except:
+                pass
 
             # if 'as0' in suf:
             #     break
