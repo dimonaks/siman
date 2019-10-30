@@ -2503,7 +2503,7 @@ def calc_antisite_defects(dpi = 300, image_format = 'eps', update = 0):
 
 
 def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = None, add_loop_dic = None, 
-    confs = None, jmol = 0,
+    confs = None, jmol = 0, update_bulk = 0, 
     up_res = 'up1'):
     """
     High-level wrapper for creating anti-sites and running them
@@ -2513,6 +2513,9 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
     suf - addition suffix  to name
     confs (list) - list of configuration numbers to created and calculated, use numbers from suggested list
     jmol (bool) - show each created structure with jmol
+
+    update_bulk 
+
 
         param_dic:
             spinst_AP (str) - one state from header.TM_MAG dict
@@ -2637,8 +2640,8 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
         
 
         "Calculate bulk"
-        if 1:
-            cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update, **add_loop_dic)
+        if not update or update_bulk:
+            cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
 
         header.show = 'fo'
         # print(confs)
