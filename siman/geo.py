@@ -1968,6 +1968,17 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
     from pymatgen.io.vasp.inputs import Poscar
     from siman.geo import replic
 
+    void_param = 0
+
+    if 'void' in st.get_elements():
+        print('\nAttention! Voids are found in the structure!\nChange it by Po atoms\n')
+        void_n = st.get_numbers('void')
+        st = st.replace_atoms(void_n, 'Po')
+        oxidation = {**oxidation, 'Po':'Po2+'}
+        void_param = 1
+
+
+
     if shift:
         st = st.shift_atoms([0,0,shift])
 
@@ -1980,6 +1991,10 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
+    for slab in slabs:
+        print(slab.is_polar(), slab.is_symmetric())
+
+        
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
     st = st.update_from_pymatgen(slabs[surface_i])
 
@@ -2011,10 +2026,21 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
             st.write_poscar()
 
 
+    
+
     if return_one:
+
+        if void_param:
+            print('Return voids in the structure\n')
+            void_n = st.get_numbers('Po')
+            st = st.replace_atoms(void_n, 'void')
+            void_param = 0
+
         print('Final structure contains ', st.natom, 'atoms')
         return st
     else:
+        if void_param:
+            print('Don\'t forget replace Po atoms by voids in the chosen structure\n')
         return slabs
 
 
@@ -2091,3 +2117,29 @@ def rms_pos_diff(st1, st2):
     rms = (summa/st1.natom)**0.5
 
     return rms 
+
+
+def removed_atoms(st1, st2):
+    # This function finds voids by comparing ideal structure and structure with removed atoms
+    # Input: st1 - ideal, st2 - with removed atoms
+    # Return list with atomic numbers of removed atoms 
+
+    removed_atoms = []
+    for i in range(0, st1.natom):
+        n = 0
+        for j in range(0,st2.natom):
+            if round(st1.xred[i][0],2) == round(st2.xred[j][0],2) and round(st1.xred[i][1],2) == round(st2.xred[j][1],2) and round(st1.xred[i][2],2) == round(st2.xred[j][2],2): 
+                None
+            else: 
+                n+=1
+
+        if n == st2.natom:
+            removed_atoms.append(i)
+    print('Removed atoms: ',removed_atoms)
+    return removed_atoms
+
+def find_voids(st1, st2):
+    # Function returns structure with voids in the position of removed atoms
+    removed_at = removed_atoms(st1, st2)
+    st = st1.replace_atoms(removed_at, 'void')
+    return st

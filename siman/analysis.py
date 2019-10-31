@@ -49,14 +49,14 @@ def set_oxidation_states_guess(st):
     return st
 
 
-def calc_oxidation_states(cl = None, st = None, silent = 1):
+def calc_oxidation_states(cl = None, st = None, silent = 0):
 
     #only use if charges are full charges from bader 
     if cl:
         st = cl.end
         ch = cl.charges
-    if st:
-        ch  = st.charges
+    # if st:
+    #     ch  = st.charges
     
     # print(st.get_elements() )
     # print(ch)

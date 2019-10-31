@@ -494,6 +494,7 @@ class Structure():
         return st
 
     def add_oxi_states(self, ):
+        None
         
 
     def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
@@ -1057,6 +1058,28 @@ class Structure():
 
         slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
         return slab.dipole
+
+
+    def add_ads_molecule(self, st_molecule, surface_element, z_coord = [0,0,1.5]):
+        
+        st = copy.deepcopy(self)
+        st_mol = copy.deepcopy(st_molecule)
+
+
+        mol_xcart = [st_mol.xcart[i] +  z_coord for i in range(0, len(st_mol.xcart))]
+        mol_znucl = st_mol.znucl
+
+        i_surf_atom = st.get_surface_atoms(surface_element)[0]
+        mol_xcart_new = [i + st.xcart[i_surf_atom] for i in mol_xcart]
+
+        # for i in range (0, len(st_mol.get_elements())):
+
+        st1 = st.add_atoms(atoms_xcart = mol_xcart_new, element = 'Pu' )
+        st1.jmol()
+        # print(i, mol_xcart_new[i], st_mol.get_elements()[i])
+
+        # print(mol_xcart, mol_xcart_new, mol_znucl)
+
 
 
 
@@ -5022,7 +5045,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def get_chg_file(self, *args, **kwargs):
+    def get_chg_filefinterc(self, *args, **kwargs):
         """just wrapper to get chgcar files """
         if 'CHGCAR' in kwargs:
             del kwargs['CHGCAR']
