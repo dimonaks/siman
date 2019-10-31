@@ -1042,8 +1042,25 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         e_sig0 = 0 #energy sigma 0 every scf iteration
         occ_matrices = {} # the number of atom is the key
 
+        #detect neb, improve this 
+        if hasattr(self.set, 'vasp_params'):
+            images = self.set.vasp_params.get('IMAGES') or 1
+        else:
+            images = 1
         #which kind of forces to use
-        if ' CHAIN + TOTAL  (eV/Angst)\n' in outcarlines:
+         # CHAIN + TOTAL  (eV/Angst)
+        neb_flag = 0
+        l = 0
+        for line in outcarlines:
+            # l+=1
+            if 'energy of chain is' in line:
+                neb_flag = 1
+            if 'LOOP+' in line:
+                break
+        # print(l)
+
+        if neb_flag:
+
             force_keyword = 'CHAIN + TOTAL  (eV/Angst)'
             ff  = (0, 1, 2)
             force_prefix = ' chain+tot '
@@ -1052,12 +1069,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             force_keyword = 'TOTAL-FORCE'
             ff  = (3, 4, 5)
             force_prefix = ' tot '
+        # print(force_keyword)
 
-        #detect neb, improve this 
-        if hasattr(self.set, 'vasp_params'):
-            images = self.set.vasp_params.get('IMAGES') or 1
-        else:
-            images = 1
 
 
 
