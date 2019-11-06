@@ -1834,6 +1834,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 if 'rep_moving_atom' in pd:
                     other_param['rep_moving_atom'] =  pd['rep_moving_atom']
+                
+                if 'center_on_moving' in pd:
+                    other_param['center_on_moving'] =  pd['center_on_moving']
                        
 
 
@@ -4073,7 +4076,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
         'scale_region':(-3, 5), 'readfiles':readfiles, 'ortho':ortho,
         'end_pos_types_z':end_z,
-        'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom')}
+        'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom'),
+        'center_on_moving':p.get('center_on_moving')
+
+        }
 
 
         pd['atom_to_move'] = p.get('atom_to_move')
