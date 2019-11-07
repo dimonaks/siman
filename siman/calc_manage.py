@@ -190,6 +190,16 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
             f.write("#SBATCH --mem-per-cpu=7675\n")
+            
+            # print(header.cluster)
+            # sys.exit()
+            if 'sbatch' in header.cluster:
+                lines = header.cluster['sbatch']
+                if not is_list_like(lines):
+                    printlog('Error! Please use list for sbatch key in cluster description')
+                for line in lines:
+                    f.write('#SBATCH '+line+'\n')
+
             # f.write("#SBATCH -I other=avx\n") # AVX2 instructions for new node to improve speed by 18% 
 
             # f.write("#SBATCH --nodelist=node-amg03\n")
