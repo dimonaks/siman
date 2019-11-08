@@ -3,7 +3,6 @@
 history
 run
 xyz/
-figs/
 .ipynb_checkpoints
 *.o
 *~
