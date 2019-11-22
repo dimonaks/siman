@@ -4181,7 +4181,8 @@ class Calculation(object):
             
             elif schedule_system == 'SLURM':
                 f.write("squeue\n") 
-                f.write("sbatch -p AMG " + run_name+"\n") 
+                f.write("sbatch " + run_name+"\n") 
+                # f.write("sbatch -p AMG " + run_name+"\n") 
             else:
                 printlog('Error! Unknown schedule_system', schedule_system)
                 

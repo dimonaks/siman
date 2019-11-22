@@ -184,12 +184,19 @@ def write_batch_header(batch_script_filename = None,
 
             f.write("#!/bin/bash   \n")
             f.write("#SBATCH -J "+job_name+"\n")
-            f.write("#SBATCH -t 250:00:00 \n")
+            if 'walltime' in header.cluster:
+                f.write("#SBATCH -t "+str(header.cluster['walltime'])+'\n')
+            # else:
+                # if header.WALLTIME_LIMIT: #deprecated remove
+                    # f.write("#PBS -l walltime=72:00:00 \n")
+                    # f.write("#SBATCH -t 250:00:00 \n")
+
+
             f.write("#SBATCH -N 1\n")
             f.write("#SBATCH -n "+str(number_cores)+"\n")
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
-            f.write("#SBATCH --mem-per-cpu=7675\n")
+            # f.write("#SBATCH --mem-per-cpu=7675\n")
             
             # print(header.cluster)
             # sys.exit()
@@ -2801,6 +2808,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             - pickle - download all pickle and convert to CONTCAR (for Monte-Carlo regime)
             - out - open OUTCAR, sublime text should be installed, not tested on windows
             - op  - open containing folder
+            - qlog - log
+            - term  - terminal at folder
+            - freq - frequencies
+            - conv - convergence
+            - sur  - surround atoms
+            - efav - energy average force 
+            - est - energy per step
 
         energy_ref - energy in eV; substracted from energy diffs
         
