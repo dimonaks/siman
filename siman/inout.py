@@ -15,8 +15,8 @@ except:
 
 
 from siman import header
-from siman.header import printlog, runBash
-from siman.functions import element_name_inv, unique_elements
+from siman.header import printlog, runBash, plt
+from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
 from siman.small_classes import empty_struct
 from siman.geo import local_surrounding, replic
@@ -1527,12 +1527,16 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 eltensor = []
                 for i in range(9):
                     line = outcarlines[i_line+i]
-                    print(line.strip())
+                    # print(line.strip())
                     if i > 2:
-                        eltensor.append([float(c)/10 for c in line.split()[1:]])
+                        eltensor.append([float(c)/10 for c in line.split()[1:]]) #GPa
 
                 eltensor = np.asarray(eltensor)
-                # print(eltensor)
+
+                printlog('Elastic tensor, GPa:', imp = 'y')
+
+                np.set_printoptions(formatter={'float_kind':"{:6.1f}".format})
+                print(eltensor)
                 w, v = np.linalg.eig(eltensor)
                 printlog('Eigenvalues are:', w, imp = 'y')
                         # eltensor
@@ -2003,7 +2007,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         for f in freq:
             # print(f)
             i = int( np.round( (f-fmin)/ fw * 999 ,0) )
-            dos[i] = 1
+            dos[i] += 1
             # print(i, finefreq[i], f)
         
 
@@ -2018,15 +2022,22 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             y = lfilter(b, a, data)
             return y
 
-        order = 6
-        fs = 30.0       # sample rate, Hz
-        cutoff = 3.667  # desired cutoff frequency of the filter, Hz
+        order = 1
+        fs = 500.0       # sample rate, Hz
+        cutoff = 5  # desired cutoff frequency of the filter, Hz
 
-        y = butter_lowpass_filter(finefreq, cutoff, fs, order)
+        y = butter_lowpass_filter(dos, cutoff, fs, order)
 
-        plt.plot(finefreq, smoother(smoother(dos,50), 50), '-') 
-        plt.savefig('figs/'+str(self.id)+'.eps')
-        # plt.show()
+        # plt.plot(finefreq, smoother(smoother(dos,10), 10), '-') 
+        plt.plot(finefreq, y, '-') 
+        # plt.plot(finefreq, dos, '-')
+        plt.xlabel('Frequency, THz')
+        plt.ylabel('DOS' )
+        # plt.plot(finefreq, y, '-') 
+        filename = 'figs/'+str(self.id)+'.pdf'
+        plt.savefig(filename)
+        printlog('Freq file saved to ', filename, imp = 'y')
+        plt.show()
         plt.clf()
 
     # sys.exit()

@@ -891,7 +891,7 @@ def init_default_sets(init = 0):
     if init or setname not in varset: #init only once
         s = InputSet(setname) #default starting set without relaxation
         s.kpoints_file = True
-        s.add_nbands = 1.25
+        s.add_nbands = 1.5
         s.vasp_params = {
             'ISTART'    : 0,
             'NELM'      : 50,
@@ -925,11 +925,11 @@ def init_default_sets(init = 0):
         # sys.exit()
         s = InputSet(setname) 
         s.kpoints_file = True
-        s.add_nbands = 1.25
+        s.add_nbands = 1.5
         s.vasp_params = {
             'IBRION'    : 1,
             'ENCUT'     : 150,
-            'EDIFFG'    : -0.01,
+            'EDIFFG'    : -0.05,
             'SIGMA'     : 0.2,
             'ISIF'      : 2,
             'EDIFF'     : 1e-05,
