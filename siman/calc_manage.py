@@ -179,6 +179,8 @@ def write_batch_header(batch_script_filename = None,
 
 
         if schedule_system == 'SLURM':
+            
+            hc = header.cluster
             if '~' in path_to_job:
                 print_and_log('Error! For slurm std err and out you need full paths')
 
@@ -200,6 +202,9 @@ def write_batch_header(batch_script_filename = None,
             
             # print(header.cluster)
             # sys.exit()
+            if 'partition' in hc:
+                f.write('#SBATCH -p '+hc['partition']+'\n')
+
             if 'sbatch' in header.cluster:
                 lines = header.cluster['sbatch']
                 if not is_list_like(lines):

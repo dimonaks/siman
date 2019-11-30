@@ -2632,9 +2632,9 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
 
 
 
-
-        sts, table, numbers = create_antisite_defect3(st, c['el1'], c['el2'], 
-            max_sep = c['max_sep'], iatom = i_add, return_with_table = 1,
+        tol = c.get('tol') or 0.1
+        sts, table, numbers = create_antisite_defect3(st, c['el1'], c['el2'], i_el2_list = c.get('i_el2_list'),
+            max_sep = c['max_sep'], iatom = i_add, return_with_table = 1, tol = tol,
             
             mag_AS1 = c.get('mag_AS1'), disp_AS1 = c.get('disp_AS1'), disp_AS2 = c.get('disp_AS2'),
             AP_on = c.get('AP_on'), i_AP = c.get('i_AP'), 

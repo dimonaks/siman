@@ -1218,10 +1218,12 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
 
 
 
-def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None, 
+def create_antisite_defect3(st, el1, el2, i_el2_list = None,
+    tol = 0.1, max_sep = 4, iatom = None, 
     return_with_table = False, 
     disp_AS1 = None, mag_AS1 = None, disp_AS2 = None,
     AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None ):
+    
     
     """
     Looks for all unique antisites for el1 and el2
@@ -1237,6 +1239,8 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
     INPUT:
         el1 - first element name from periodic table for exchange
         el2 - second element name from periodic table for exchange
+        i_el2_list - use only this specific atom numbers searching AS (duplicates iatom)
+
         tol - tolerance for determining unique antisite configurations (A)
         max_sep - maximum separation between antisite components (A)
         iatom (int) - create antistes using this atom number, from 0
@@ -1284,14 +1288,14 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
         """
 
 
-
+        # print(st.get_elements()[43])
         st_as = st.swap_atoms(i, j)
 
         smag_j = ''
         if mag_AS1 is not None:
             smag_j = 'm'+str(mag_AS1)
             if st.get_el_z(j) not in header.TRANSITION_ELEMENTS:
-                printlog('Warning! Your first element in antisite is ', st.get_el_name(j), ' which is not a TM'  )
+                printlog('Warning! Your second element in antisite is ',j, st.get_el_name(j), ' which is not a TM'  )
 
 
             if disp_AS1 is None:
@@ -1312,8 +1316,11 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
             d2 = 'd({1}_{0}-{0}_AP), A'.format(el2, el1)
             tabheader = ['No of AP '+el2, d1, d2 , 'd Sum, A ' ]
             tab_ap = []
+            kts = []
             for d, kt in zip(out['dist'], out['numbers']):
-                tab_ap.append([kt, d, st_as.distance(kt, i), ])
+                if kt not in kts:
+                    kts.append(kt)
+                    tab_ap.append([kt, d, st_as.distance(kt, i), ])
                 # print('AP ',d, st_as.distance(kt, i) , 'has k=', kt)
             printlog('Possible positions for additional polaron:', imp = 'Y')
             printlog( tabulate(tab_ap[1:], headers = tabheader, tablefmt='psql', floatfmt=".2f"), imp = 'Y')
@@ -1348,12 +1355,6 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
 
 
             suf+='-'+str(i_AP)+'m'+str(mag_AP)
-
-
-
-
-
-
 
 
         st_as.i_el1 = i
@@ -1395,7 +1396,11 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
 
     r = st.rprimd
     pos1 = determine_symmetry_positions(st, el1)
-    pos2 = determine_symmetry_positions(st, el2)
+
+    if i_el2_list:
+        pos2 = [i_el2_list]
+    else:
+        pos2 = determine_symmetry_positions(st, el2)
 
     anti = {}
 
@@ -1427,6 +1432,7 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
                         continue # skip larger than asked
 
                     for tup in anti[lab]:
+                        # print(d-tup[2], tol)
                         if abs(d-tup[2]) < tol:  #antisite already included 
                             break
                     else:
@@ -2110,3 +2116,21 @@ def rms_pos_diff(st1, st2):
     rms = (summa/st1.natom)**0.5
 
     return rms 
+
+
+def hex2rhombo(h,k,l):
+    #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
+    i = -h - k
+    hr = int(1/3*(-k + i + l))
+    kr = int(1/3*( h - i + l))
+    lr = int(1/3*(-h + k + l))
+    print(hr,kr,lr)
+    return hr,kr,lr
+
+def rhombo2hex(h,k,l):
+    #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
+    hh = k - l 
+    kh = l - h 
+    lh = h + k + l 
+    print(hh,kh,lh)
+    return hh,kh,lh
