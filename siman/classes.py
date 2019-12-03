@@ -574,7 +574,7 @@ class Structure():
 
                 elif chg_type == 'tot':
                     oxi = self.charges
-            if hasattr(self, 'oxi_state') and any(self.oxi_state):
+            if hasattr(self, 'oxi_state') and self.oxi_state and any(self.oxi_state):
                 #simply use predefined oxi_state
                 
                 oxi = self.oxi_state

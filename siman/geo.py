@@ -272,6 +272,8 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
     inv = 0 - cell is replicated in both directions by mul[i];  2 still gives -1 0 1 but 3 gives -2 -1 0 1 2; for 'only_matrix' may work not correctly
 
 
+
+
     only_atoms - allows to replicate only specific atoms; now 
         'only_matrix'
             Warning - st.select is not working here
@@ -280,8 +282,12 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
     include_boundary (A) - the width of region to include additional edge atoms (bottom, up)
 
 
+    TODO:
+        oxi_states are not added yet
     Return:
     replicated structure
+
+
     """
     st = copy.deepcopy(structure)
     # print 'Structure has before replication', st.natom,'atoms' 
@@ -391,6 +397,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
 
     st.get_nznucl()
     st.natom = len(st.xcart)
+    st.oxi_state = None
     # print 'Structure is replicated; now', st.natom,'atoms' 
     return st
 
