@@ -1060,25 +1060,25 @@ class Structure():
         return slab.dipole
 
 
-    def add_ads_molecule(self, st_molecule, surface_element, z_coord = [0,0,1.5]):
+    def add_ads_molecule(self, st_molecule, surface_element, z_coord = [0,0,-1.5], i_mol = 2):
         
         st = copy.deepcopy(self)
         st_mol = copy.deepcopy(st_molecule)
 
 
-        mol_xcart = [st_mol.xcart[i] +  z_coord for i in range(0, len(st_mol.xcart))]
-        mol_znucl = st_mol.znucl
-
         i_surf_atom = st.get_surface_atoms(surface_element)[0]
-        mol_xcart_new = [i + st.xcart[i_surf_atom] for i in mol_xcart]
 
-        # for i in range (0, len(st_mol.get_elements())):
+        mol_pos = [st.xcart[i_surf_atom][i] + z_coord[i] for i in range(0,3)]
+        d_xcart = [-st_mol.xcart[i_mol][j] + mol_pos[j] for j in range(0,3)]
 
-        st1 = st.add_atoms(atoms_xcart = mol_xcart_new, element = 'Pu' )
-        st1.jmol()
-        # print(i, mol_xcart_new[i], st_mol.get_elements()[i])
+        #move mol to mol_pos
+        for i in range (0, len(st_mol.get_elements())):
+            st_mol = st_mol.mov_atoms(i, to_x = d_xcart, relative = 1)
 
-        # print(mol_xcart, mol_xcart_new, mol_znucl)
+
+        st1 = st.add_atoms(atoms_xcart = st_mol.xcart, element = 'Pu' )
+        # st1.jmol()
+        return st1
 
 
 
