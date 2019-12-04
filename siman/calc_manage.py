@@ -179,6 +179,8 @@ def write_batch_header(batch_script_filename = None,
 
 
         if schedule_system == 'SLURM':
+            
+            hc = header.cluster
             if '~' in path_to_job:
                 print_and_log('Error! For slurm std err and out you need full paths')
 
@@ -186,13 +188,35 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH -J "+job_name+"\n")
             if 'walltime' in header.cluster:
                 f.write("#SBATCH -t "+str(header.cluster['walltime'])+'\n')
+<<<<<<< HEAD
             else:
                 f.write("#SBATCH -t 250:00:00 \n")
+=======
+            # else:
+                # if header.WALLTIME_LIMIT: #deprecated remove
+                    # f.write("#PBS -l walltime=72:00:00 \n")
+                    # f.write("#SBATCH -t 250:00:00 \n")
+
+
+>>>>>>> 6eca52a1a3836abba53038fab33e34d9d00ffaa9
             f.write("#SBATCH -N 1\n")
             f.write("#SBATCH -n "+str(number_cores)+"\n")
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
-            f.write("#SBATCH --mem-per-cpu=7675\n")
+            # f.write("#SBATCH --mem-per-cpu=7675\n")
+            
+            # print(header.cluster)
+            # sys.exit()
+            if 'partition' in hc:
+                f.write('#SBATCH -p '+hc['partition']+'\n')
+
+            if 'sbatch' in header.cluster:
+                lines = header.cluster['sbatch']
+                if not is_list_like(lines):
+                    printlog('Error! Please use list for sbatch key in cluster description')
+                for line in lines:
+                    f.write('#SBATCH '+line+'\n')
+
             # f.write("#SBATCH -I other=avx\n") # AVX2 instructions for new node to improve speed by 18% 
 
             # f.write("#SBATCH --nodelist=node-amg03\n")
@@ -857,6 +881,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         - *id_from* - see inherit_icalc()
         
         - ise_new (str) - name of new set for inherited calculation  ('uniform_scale')
+
+        - it_suffix (str) - additional suffix to modify the it part of name
 
         - occ_atom_coressp (dict) see inherit_icalc()
         
@@ -2735,7 +2761,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fo', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
-    ortho = None, mat_proj_cell = None, ngkpt = None,
+    ortho = None, mat_proj_cell = None, ngkpt = None, it_suffix = None,
     it_folder = None, choose_outcar = None, choose_image = None, 
     cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
@@ -2792,6 +2818,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             - pickle - download all pickle and convert to CONTCAR (for Monte-Carlo regime)
             - out - open OUTCAR, sublime text should be installed, not tested on windows
             - op  - open containing folder
+            - qlog - log
+            - term  - terminal at folder
+            - freq - frequencies
+            - conv - convergence
+            - sur  - surround atoms
+            - efav - energy average force 
+            - est - energy per step
 
         energy_ref - energy in eV; substracted from energy diffs
         

@@ -274,7 +274,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
         e1 = cl1.e0 
         e2 = cl2.e0
 
-    print(e1,e2)
+    # print(e1,e2)
 
 
 

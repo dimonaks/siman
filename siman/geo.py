@@ -272,6 +272,8 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
     inv = 0 - cell is replicated in both directions by mul[i];  2 still gives -1 0 1 but 3 gives -2 -1 0 1 2; for 'only_matrix' may work not correctly
 
 
+
+
     only_atoms - allows to replicate only specific atoms; now 
         'only_matrix'
             Warning - st.select is not working here
@@ -280,8 +282,12 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
     include_boundary (A) - the width of region to include additional edge atoms (bottom, up)
 
 
+    TODO:
+        oxi_states are not added yet
     Return:
     replicated structure
+
+
     """
     st = copy.deepcopy(structure)
     # print 'Structure has before replication', st.natom,'atoms' 
@@ -391,6 +397,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
 
     st.get_nznucl()
     st.natom = len(st.xcart)
+    st.oxi_state = None
     # print 'Structure is replicated; now', st.natom,'atoms' 
     return st
 
@@ -1218,10 +1225,12 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
 
 
 
-def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None, 
+def create_antisite_defect3(st, el1, el2, i_el2_list = None,
+    tol = 0.1, max_sep = 4, iatom = None, 
     return_with_table = False, 
     disp_AS1 = None, mag_AS1 = None, disp_AS2 = None,
     AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None ):
+    
     
     """
     Looks for all unique antisites for el1 and el2
@@ -1237,6 +1246,8 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
     INPUT:
         el1 - first element name from periodic table for exchange
         el2 - second element name from periodic table for exchange
+        i_el2_list - use only this specific atom numbers searching AS (duplicates iatom)
+
         tol - tolerance for determining unique antisite configurations (A)
         max_sep - maximum separation between antisite components (A)
         iatom (int) - create antistes using this atom number, from 0
@@ -1284,14 +1295,14 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
         """
 
 
-
+        # print(st.get_elements()[43])
         st_as = st.swap_atoms(i, j)
 
         smag_j = ''
         if mag_AS1 is not None:
             smag_j = 'm'+str(mag_AS1)
             if st.get_el_z(j) not in header.TRANSITION_ELEMENTS:
-                printlog('Warning! Your first element in antisite is ', st.get_el_name(j), ' which is not a TM'  )
+                printlog('Warning! Your second element in antisite is ',j, st.get_el_name(j), ' which is not a TM'  )
 
 
             if disp_AS1 is None:
@@ -1312,8 +1323,11 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
             d2 = 'd({1}_{0}-{0}_AP), A'.format(el2, el1)
             tabheader = ['No of AP '+el2, d1, d2 , 'd Sum, A ' ]
             tab_ap = []
+            kts = []
             for d, kt in zip(out['dist'], out['numbers']):
-                tab_ap.append([kt, d, st_as.distance(kt, i), ])
+                if kt not in kts:
+                    kts.append(kt)
+                    tab_ap.append([kt, d, st_as.distance(kt, i), ])
                 # print('AP ',d, st_as.distance(kt, i) , 'has k=', kt)
             printlog('Possible positions for additional polaron:', imp = 'Y')
             printlog( tabulate(tab_ap[1:], headers = tabheader, tablefmt='psql', floatfmt=".2f"), imp = 'Y')
@@ -1348,12 +1362,6 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
 
 
             suf+='-'+str(i_AP)+'m'+str(mag_AP)
-
-
-
-
-
-
 
 
         st_as.i_el1 = i
@@ -1395,7 +1403,11 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
 
     r = st.rprimd
     pos1 = determine_symmetry_positions(st, el1)
-    pos2 = determine_symmetry_positions(st, el2)
+
+    if i_el2_list:
+        pos2 = [i_el2_list]
+    else:
+        pos2 = determine_symmetry_positions(st, el2)
 
     anti = {}
 
@@ -1427,6 +1439,7 @@ def create_antisite_defect3(st, el1, el2, tol = 0.1, max_sep = 4, iatom = None,
                         continue # skip larger than asked
 
                     for tup in anti[lab]:
+                        # print(d-tup[2], tol)
                         if abs(d-tup[2]) < tol:  #antisite already included 
                             break
                     else:
@@ -1671,6 +1684,9 @@ def remove_half(st, el, sg = None, info_mode = 0):
 def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
     """
     Generate all possible configurations by removing x of atoms
+    
+    st (Structure) - structure with only one element!
+
     sg (int) - give back structure with specific space group
 
     info_mode (bool) if 1 then return list of possible space groups
@@ -1681,9 +1697,9 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
     """
     from collections import Counter
 
-    def spin(ls, i):
+    def order(ls, i):
         """
-        Find recursivly all possible orderings
+        Find recursivly all possible orderings for the given x
         ls - initial list of atoms 
         i - index in ls  
 
@@ -1694,7 +1710,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
             
             if i < len(ls)-1:
             
-                spin(ls, i+1)
+                order(ls, i+1)
             
             else:
                 if abs(ls.count(-1)/st.natom - x ) < 0.001:
@@ -1705,7 +1721,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
     structures = []
     orderings = []
     ls = [0]*st.natom
-    spin(ls, 0)
+    order(ls, 0)
     symmetries = []
 
 
@@ -1717,7 +1733,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
         # if nm > 50:
             # print(nm)
         symmetries.append(nm)
-        
+        # print(nm)
         if nm == sg:
             # st_rem.jmol()
             # sc = supercell(st_rem, [14,14,14])
@@ -1738,10 +1754,19 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
 
 def remove_x(st, el, sg = None, info_mode = 0, x = None):
     """
-    # works only for 
-    x - remove x of atoms, for example 0.25 of atoms
 
-    sg - required space group
+    Allows to remove x of element el from the structure.
+    You should know which space group you want to get.
+    If you don't know the space group, first use info_mode = 1
+
+    st (Structure) - input structure
+    el (str) - element name, e.g. Li
+
+    x - remove x of atoms, for example 0.25 of atoms
+    
+    info_mode (bool) - more information
+
+    sg - number of required space group obtained with info_mode = 1
 
     TODO
     1. Take care about matching the initial cell and supercell from primitive
@@ -1768,23 +1793,31 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
     else:
         st_mp_prim = st_mp
 
-    #convert back to my format! please improve!!!
-    p = Poscar(st_mp_prim)
-    p.write_file('xyz/POSCAR')
+    if 0:
+        #convert back to my format! please improve!!!
+        p = Poscar(st_mp_prim)
+        p.write_file('xyz/POSCAR')
 
-    from siman.inout import read_poscar
-    st_new = st.copy()
-    st_prim = read_poscar(st_new, 'xyz/POSCAR')
+        from siman.inout import read_poscar
+        st_new = st.copy()
+        st_prim = read_poscar(st_new, 'xyz/POSCAR')
+    else:
+        #new way of converting
+        st_prim = st_only_el.update_from_pymatgen(st_mp_prim)
+
 
     if info_mode:
         return remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
 
     sts = remove_x_based_on_symmetry(st_prim, sg, x = x )
+    # st_prim.jmol()
+    # print(sts)
+    if len(sts) == 0:
+        printlog('Error! number of structures is zero')
 
 
 
-
-    st_only_el_half = sts[0]   # now only first configuration is taken, they could be different
+    st_only_el_x = sts[0]   # now only first configuration is taken, they could be different
 
 
     if prim:
@@ -1795,25 +1828,24 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
-        sc_only_el_half = create_supercell(st_only_el_half, mul_matrix = mul_matrix)
+        sc_only_el_half = create_supercell(st_only_el_x, mul_matrix = mul_matrix)
 
         sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
         sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
 
     else:
-        sc_only_el_half = st_only_el_half
-        # sc_only_el_half
+        sc_only_el_x = st_only_el_x
 
 
     # st_only_el.write_poscar('xyz/POSCAR1')
     # sc_only_el_half.write_poscar('xyz/POSCAR2')
 
 
-    st_half = st_ohne_el.add_atoms(sc_only_el_half.xcart, el)
+    st_half = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
 
     st_half.name+='_half'+str(sg)
     
-    return st_half
+    return st_x
 
 
 
@@ -2119,6 +2151,7 @@ def rms_pos_diff(st1, st2):
     return rms 
 
 
+<<<<<<< HEAD
 def removed_atoms(st1, st2):
     # This function finds voids by comparing ideal structure and structure with removed atoms
     # Input: st1 - ideal, st2 - with removed atoms
@@ -2143,3 +2176,21 @@ def find_voids(st1, st2):
     removed_at = removed_atoms(st1, st2)
     st = st1.replace_atoms(removed_at, 'void')
     return st
+=======
+def hex2rhombo(h,k,l):
+    #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
+    i = -h - k
+    hr = int(1/3*(-k + i + l))
+    kr = int(1/3*( h - i + l))
+    lr = int(1/3*(-h + k + l))
+    print(hr,kr,lr)
+    return hr,kr,lr
+
+def rhombo2hex(h,k,l):
+    #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
+    hh = k - l 
+    kh = l - h 
+    lh = h + k + l 
+    print(hh,kh,lh)
+    return hh,kh,lh
+>>>>>>> 6eca52a1a3836abba53038fab33e34d9d00ffaa9

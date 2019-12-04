@@ -1834,6 +1834,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 if 'rep_moving_atom' in pd:
                     other_param['rep_moving_atom'] =  pd['rep_moving_atom']
+                
+                if 'center_on_moving' in pd:
+                    other_param['center_on_moving'] =  pd['center_on_moving']
                        
 
 
@@ -2503,7 +2506,7 @@ def calc_antisite_defects(dpi = 300, image_format = 'eps', update = 0):
 
 
 def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = None, add_loop_dic = None, 
-    confs = None, jmol = 0,
+    confs = None, jmol = 0, update_bulk = 0, 
     up_res = 'up1'):
     """
     High-level wrapper for creating anti-sites and running them
@@ -2513,6 +2516,9 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
     suf - addition suffix  to name
     confs (list) - list of configuration numbers to created and calculated, use numbers from suggested list
     jmol (bool) - show each created structure with jmol
+
+    update_bulk 
+
 
         param_dic:
             spinst_AP (str) - one state from header.TM_MAG dict
@@ -2525,7 +2531,9 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
             'elec' - electron
             'hole' - hole
         """
-        if typ == 'elec':
+        if typ == 'zero':
+            disp = 0.0
+        elif typ == 'elec':
             disp = 0.2
         elif typ == 'hole':
             disp = -0.2
@@ -2533,6 +2541,10 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
             disp = -0.1  # obtained from dft in LiCoO2
         elif typ == 'Li_Co':
             disp = 0.15  # obtained from dft in LiCoO2
+        elif typ == 'Ni_Na':
+            disp = -0.18  # obtained from dft in NaNiO2
+        elif typ == 'Na_Ni':
+            disp = 0.1  # obtained from dft in NaNiO2
 
         else:
             printlog('Error! unknown type of polaron', typ)
@@ -2605,7 +2617,7 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
                 spinst_AP = c.get('spinst_AP')
                 el_AP = st.get_el_name(i_AP)
                 if el_AP not in spinst_AP:
-                    printlog('Warning! AP: Youve chosen spin state ', spinst_AP, 'for element ', el)
+                    printlog('Warning! AP: Youve chosen spin state ', spinst_AP, 'for element ', el_AP)
 
                 c['mag_AP'] = header.TM_MAG[spinst_AP]
                 c['disp_AP'] = pol_disp(c['pol_AP'])
@@ -2620,9 +2632,9 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
 
 
 
-
-        sts, table, numbers = create_antisite_defect3(st, c['el1'], c['el2'], 
-            max_sep = c['max_sep'], iatom = i_add, return_with_table = 1,
+        tol = c.get('tol') or 0.1
+        sts, table, numbers = create_antisite_defect3(st, c['el1'], c['el2'], i_el2_list = c.get('i_el2_list'),
+            max_sep = c['max_sep'], iatom = i_add, return_with_table = 1, tol = tol,
             
             mag_AS1 = c.get('mag_AS1'), disp_AS1 = c.get('disp_AS1'), disp_AS2 = c.get('disp_AS2'),
             AP_on = c.get('AP_on'), i_AP = c.get('i_AP'), 
@@ -2631,7 +2643,10 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
         
 
         "Calculate bulk"
-        cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update, **add_loop_dic)
+        if not update or update_bulk:
+            # cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
+            cl_base = c['cl']
+
 
         header.show = 'fo'
         # print(confs)
@@ -2652,35 +2667,35 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
                 **add_loop_dic)
             cl_as = calc[it+'.'+suf, c['set'], 1]
             # print(cl_as.path['output'])
-            # try:
-            if 1:
-                Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
-                print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
-                st = cl_as.end
-                pol, _ = find_polaron(st, st_as.i_el1, out_prec = 2)
-                sep = image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0]
-                print('Separation after relax = {:.2f} A'.format(   sep )  )
-                
-                polarons = []
-                for z in pol:
-                    # if pol[z] > 2:
-                        # printlog
-                    for k in pol[z]:
-                        d1 = image_distance(st.xcart[st_as.i_el1], st.xcart[k], st.rprimd )[0]
-                        d2 = image_distance(st.xcart[st_as.i_el2], st.xcart[k], st.rprimd )[0]
-                        dist = ' {:.2f} {:.2f}'.format(d2, d1) # Co_Li - Co_AP, Li_Co - Co_AP 
-                        
-                        string = '{:2s}{:3d} m={:4.1f} {:s}'.format(invert(z), k, st.magmom[k], dist)
-                        polarons.append(string)
+            try:
+                if 1:
+                    Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
+                    print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
+                    st = cl_as.end
+                    pol, _ = find_polaron(st, st_as.i_el1, out_prec = 2)
+                    sep = image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0]
+                    print('Separation after relax = {:.2f} A'.format(   sep )  )
+                    
+                    polarons = []
+                    for z in pol:
+                        # if pol[z] > 2:
+                            # printlog
+                        for k in pol[z]:
+                            d1 = image_distance(st.xcart[st_as.i_el1], st.xcart[k], st.rprimd )[0]
+                            d2 = image_distance(st.xcart[st_as.i_el2], st.xcart[k], st.rprimd )[0]
+                            dist = ' {:.2f} {:.2f}'.format(d2, d1) # Co_Li - Co_AP, Li_Co - Co_AP 
+                            
+                            string = '{:2s}{:3d} m={:4.1f} {:s}'.format(invert(z), k, st.magmom[k], dist)
+                            polarons.append(string)
 
-                table[j][2] = cl_as.id[0]
-                table[j].append('{:.2f}'.format(sep) )
-                table[j].append('{:.2f}'.format(Eas) )
-                table[j].append('\n'.join(polarons) )
+                    table[j][2] = cl_as.id[0]
+                    table[j].append('{:.2f}'.format(sep) )
+                    table[j].append('{:.2f}'.format(Eas) )
+                    table[j].append('\n'.join(polarons) )
 
-                j+=1
-            # except:
-            #     pass
+                    j+=1
+            except:
+                pass
 
             # if 'as0' in suf:
             #     break
@@ -3972,6 +3987,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         up_res
         atom_to_move
         del_pos
+        m_set
 
         exp_geometry - list of rows with exp geometry for table
 
@@ -4043,7 +4059,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         it = pn
         # print(it, m_set, 1)
         # sys.exit()
+        # try:
         cl = db[it, m_set, 1]
+        # except:
+            # cl = None
         el  = get_alkali_ion(cl.end, active_cation)
 
         it_ds = it.replace(el, '')
@@ -4059,7 +4078,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
         'scale_region':(-3, 5), 'readfiles':readfiles, 'ortho':ortho,
         'end_pos_types_z':end_z,
-        'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom')}
+        'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom'),
+        'center_on_moving':p.get('center_on_moving')
+
+        }
 
 
         pd['atom_to_move'] = p.get('atom_to_move')

@@ -493,8 +493,12 @@ class Structure():
 
         return st
 
+<<<<<<< HEAD
     def add_oxi_states(self, ):
         None
+=======
+
+>>>>>>> 6eca52a1a3836abba53038fab33e34d9d00ffaa9
         
 
     def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
@@ -575,7 +579,7 @@ class Structure():
 
                 elif chg_type == 'tot':
                     oxi = self.charges
-            if hasattr(self, 'oxi_state') and any(self.oxi_state):
+            if hasattr(self, 'oxi_state') and self.oxi_state and any(self.oxi_state):
                 #simply use predefined oxi_state
                 
                 oxi = self.oxi_state
@@ -601,8 +605,7 @@ class Structure():
         return pm
 
 
-
-
+    # pm = convert2pymatgen
 
 
 
@@ -689,7 +692,7 @@ class Structure():
         """
         stpm - pymatgen structure
         update the current structure from pymatgen structure
-        only rprimd, xred and xcart are updated now!!!!!
+        stil experimental!!!!!
 
         TODO:
 
@@ -764,10 +767,20 @@ class Structure():
 
 
     def invert_axis(self, axis):
+        #invert one vector
         st = copy.deepcopy(self)
 
         st.rprimd[axis] *= -1
         st.update_xred()
+        st = st.return_atoms_to_cell()
+        return st
+    def mirror(self, axis):
+        #mirror along vector
+        j = axis
+        st = copy.deepcopy(self)
+        for i, x in enumerate(st.xred):
+            st.xred[i][j] = -x[j]
+        st.update_xcart()
         st = st.return_atoms_to_cell()
         return st
 
@@ -789,9 +802,14 @@ class Structure():
         """
         Create and return list of oxidation states from charges and valences
         self.charges should exist as full charges (e.g. from Bader analysis)
-        typ (str) 
-            'charges' - from charges and zval
-            'guess'   - from guess
+        
+        INPUT:
+            typ (str) 
+                'charges' - from charges and zval
+                'guess'   - from guess
+        
+        RETURN
+            oxi (list) - list of oxidation states for each atom
         """
         st = self
         if typ == 'charges':
@@ -812,9 +830,68 @@ class Structure():
         return oxi
 
 
+    def generate_charge_orders(self, el, states = None, x = 0.5):
+        """
+        Method generates charge order for provided ion, oxidation states, and ratio (not realized yet)
+        
+        INPUT:
+            el (str) - element with charge order
+            states (tuple) - two possible charge states  (e.g. +2 and +4)
+            x (float) - concentration of ions with state[0] charge state 
+        RETURN:
+            oxi_states (list of lists) - list of oxi_state lists
+        """
 
 
+        def order(ls, i):
+            """
+            Find recursivly all possible orderings for the given x
+            ls - initial list of atoms 
+            i - index in ls  
 
+            """
+            # print(i)
+            for s in 1,-1:
+                
+                ls[i] = s
+                
+                if i < len(ls)-1:
+                
+                    order(ls, i+1)
+                
+                else:
+                    # print (ls.count(-1)/tot - x)
+                    if abs(ls.count(-1)/tot - x ) < 0.001:
+                        orderings.append(copy.deepcopy(ls) )  
+            return
+
+        st = self
+
+        iels = st.get_specific_elements([invert(el)])
+        oxi_state = st.oxi_state
+
+        oxi_states = []
+        orderings = []
+        tot = len(iels)
+        ls = [0]*tot
+        # print(ls)
+        order(ls, 0)
+        
+        print('Total number of charge orderings for x=',x,'is',len(orderings))
+
+        for order in orderings:
+            atoms_with_minor = [i for i, s in enumerate(order) if s < 0]
+            # atoms_with_major = [i for i, s in enumerate(order) if s > 0]
+            # print(atoms_with_minor)
+            for iloc in range(tot):
+                i = iels[iloc]
+                if iloc in atoms_with_minor:
+                    oxi_state[i] = states[0]
+                else:
+                    oxi_state[i] = states[1]
+            oxi_states.append(copy.copy(oxi_state))
+            # print(oxi_state[0:8])
+        return oxi_states
 
     def get_conventional_cell(self):
         """
@@ -933,12 +1010,13 @@ class Structure():
         default = 0.01
         if not symprec:
             symprec = default
-
+        # print(symprec)
         if hasattr(self, 'spg') and symprec == default:
             spg = self.spg
         else:
+            # print('get')
             p = self.convert2pymatgen()
-            spg = p.get_space_group_info(symprec)
+            spg = p.get_space_group_info(symprec, angle_tolerance=5.0)
         # p = self.convert2pymatgen()
 
         # print(p.get_symmetry_operations(symprec))
@@ -1464,6 +1542,7 @@ class Structure():
 
     def leave_only(self, atom_type = None):
         #Remove all atoms except *atom_type*(str, mendeleev element name)
+        
         print_and_log('Starting leave_only()', imp = 'n')
 
         st = copy.deepcopy(self)
@@ -1906,7 +1985,8 @@ class Structure():
         i = np.argmin(abs_shifts)
         return i, abs_shifts[i], x - self.xcart[i]
 
-    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, from_one = True, more_info = 0, oxi_state = 0):
+    def nn(self, i, n = 6, ndict = None, only = None, silent = 0, 
+        from_one = True, more_info = 0, oxi_state = 0, print_average = 0):
         """
         show neigbours
 
@@ -1922,6 +2002,7 @@ class Structure():
 
         oxi_state (bool) - if 1 then showing oxidation state as well
 
+        print_average (bool) - print more
 
         RETURN
             dict with the following keys:
@@ -2023,7 +2104,8 @@ class Structure():
             info['Onumbers'] = atoms[2][1:] # exclude first, because itself!
             # print(info['Onumbers'])
 
-        # print(info)
+        if print_average:
+            print('av(A-O,F)', info['av(A-O,F)'])
 
         return info
 
@@ -2196,6 +2278,27 @@ class Structure():
             return ew.total_energy
 
 
+    def write_espresso(self, filename = None, shift = None):
+        st = copy.deepcopy(self)
+        st = st.remove_atoms(['void']) # remove voids
+        if shift:
+            st = st.shift_atoms(shift)
+        if not filename:
+            filename = ('xyz/espresso_'+st.name).replace('.', '_')
+
+        makedir(filename)
+
+        printlog('Starting writing Quantum Espresso', filename)
+
+        with io.open(filename,'w', newline = '') as f:
+            f.write('ATOMIC_POSITIONS\n')
+            for el, x in zip(st.get_elements(), st.xred):
+                f.write(" {:2s}   {:12.10f}  {:12.10f}  {:12.10f} \n".format(el, x[0], x[1], x[2]) )
+
+
+
+
+        return
 
 
     def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None, selective_dynamics = False, shift = None):
@@ -4105,7 +4208,8 @@ class Calculation(object):
             
             elif schedule_system == 'SLURM':
                 f.write("squeue\n") 
-                f.write("sbatch -p AMG " + run_name+"\n") 
+                f.write("sbatch " + run_name+"\n") 
+                # f.write("sbatch -p AMG " + run_name+"\n") 
             else:
                 printlog('Error! Unknown schedule_system', schedule_system)
                 
@@ -5245,18 +5349,40 @@ class CalculationVasp(Calculation):
 
     def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, *args, **kwargs):
         """
-        Wrapper for add_loop (in development)
-        By default inherit self.end
-        ise - new ise
+        Wrapper for add_loop (in development).
+        On a first run create new calculation. On a second run will try to read results.
+        All children are saved in self.children list.
+        By default uses self.end structure
+        To overwrite existing calculation 
+        use combination of parameters: add = 1, up = 'up2'.
+        Allows to use all arguments available for add_loop()
 
-        iopt - inherit_option
-            'full_nomag'
-            'full'
-            'full_chg' - including chg file
-        vers - list of version for which the inheritance is done
 
-        i_child - choose number of child to run res_loop()
-        add - if 1 than add new calculation irrelevant to children
+        INPUT:
+            ise (str) - name of new set available in header.varset
+
+            iopt (str) - inherit_option
+                'full_nomag'
+                'full'
+                'full_chg' - including chg file
+            
+            up (str) - update key transferred to add_loop and res_loop;
+                'up1' - create new calculation if not exist
+                'up2' - recreate new calculation overwriting old; for reading results redownload output files
+
+            vers (list of int) - list of version for which the inheritance is done
+
+            i_child (int) - choose number of child in self.children to run res_loop(); can be relevant if more than one
+                calculation exists for the same set
+            
+            add (bool) - 
+                1 - overwrite existing children
+
+
+        RETURN:
+            cl (Calculation) - new created calculation 
+
+
         TODO:
         1. if ise is not provided continue in the same folder under the same name,
         however, it is not always what is needed, therefore use inherit_xred = continue
