@@ -828,6 +828,24 @@ def ortho_vec(rprim, ortho_sizes = None):
 
     return mul_matrix
 
+
+def find_mul_mat(rprimd1, rprimd2,silent):
+    #find mul_matrix to convert from rprimd1 to rprimd2
+
+    mul_matrix_float = np.dot( rprimd2,  np.linalg.inv(rprimd1) )
+    if not silent:
+        printlog('mul_matrix_float:\n',mul_matrix_float, imp = 'y', end = '\n')
+
+    mul_matrix = np.array(mul_matrix_float)
+    mul_matrix = mul_matrix.round(0)
+    mul_matrix = mul_matrix.astype(int)
+    if not silent:
+
+        printlog('mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
+
+    return mul_matrix_float, mul_matrix
+
+
 # def mul_matrix(rprimd1, rprimd2):
 #     """
 #     Determines mul matrix needed to obtain rprimd2 from rprimd1
@@ -2013,6 +2031,8 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
+    if len(slabs) == 1:
+        surface_i =0
     st = st.update_from_pymatgen(slabs[surface_i])
 
     if write_poscar:
@@ -2141,3 +2161,73 @@ def rhombo2hex(h,k,l):
     lh = h + k + l 
     print(hh,kh,lh)
     return hh,kh,lh
+
+
+def transform_miller(rprimd1, rprimd2, uvw, silent = 1):
+    """
+    Convert miller indicies defined in rprimd1 to
+    miller indicies in rprimd2, corresponding to similar surfaces
+    Makes sence only for topologically equivalent (Homomorphic) structures
+
+    Since two structures are 
+
+    """
+
+
+
+
+    mul_mat, _ = find_mul_mat(rprimd1, rprimd2, silent = silent)
+
+    # uvw2 = mul_mat.dot(uvw)
+    uvw2 = np.dot(mul_mat, uvw)
+
+    d_m = 100
+    for mul in range(1,10):
+        uvw2_mul = uvw2*mul
+        uvw2_int = uvw2_mul.round(0)
+        uvw2_int = uvw2_int.astype(int)
+        # print(uvw2_mul, uvw2_int)
+        d = np.linalg.norm(uvw2_int-uvw2_mul)
+        # print(mul, d)
+        if d < d_m:
+            d_m = d
+            uvw2_int_opt = uvw2_int
+    if d > 0.1:
+        printlog('Attention! Check my conversion of Miller indicies from float to integer', uvw2, '->' , uvw2_int_opt)
+
+
+
+    if not silent:
+        printlog('new Miller are ', uvw2, 'or rounded', uvw2_int_opt, imp = 'y')
+    # print(transmat1)
+    # vec = np.array(vec)
+    # vec_ver = np.vstack(vec)
+    # print(vec_ver)
+    # print(transmat1 * vec_ver )
+    # print(vec * transmat1 )
+    # print(vec * transmat2 )
+    # print(vec * transmat3 )
+
+    return uvw2_int_opt
+
+
+def calc_volume(v1, v2, v3):
+    return np.dot( v1, np.cross(v2, v3)  )
+
+def triangle_area_points(v1, v2, v3):
+    # if one vector is zero, then return difference of two non zero vectors
+    v1v2  = v1 - v2
+    v1v3  = v1 - v3
+    
+    if np.linalg.norm(v1) == 0:
+        a = np.linalg.norm(v2-v3)
+    elif np.linalg.norm(v2) == 0:
+        a = np.linalg.norm(v1-v3)
+    elif np.linalg.norm(v3) == 0:
+        # print(v1,v2, v1-v2)
+        a = np.linalg.norm(v1-v2)
+    else:
+        a = np.linalg.norm(np.cross(v1v2, v1v3) ) / 2
+
+
+    return a
