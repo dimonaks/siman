@@ -917,9 +917,9 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     # print([range(*z) for z in zip(mi-mp, ma+mp)])
     # print(st.rprimd)
     # print(sc.rprimd)
-    for uvw in itertools.product(*[range(*z) for z in zip(mi-mp, ma+mp)]): #loop over all ness uvw
-        # print(uvw)
-        xcart_mul = st.xcart + np.dot(uvw, st.rprimd) # coordinates of basis for each uvw
+    for hkl in itertools.product(*[range(*z) for z in zip(mi-mp, ma+mp)]): #loop over all ness hkl
+        # print(hkl)
+        xcart_mul = st.xcart + np.dot(hkl, st.rprimd) # coordinates of basis for each hkl
         # print(xcart_mul)
         xred_mul  = xcart2xred(xcart_mul, sc.rprimd)
 
@@ -2163,42 +2163,44 @@ def rhombo2hex(h,k,l):
     return hh,kh,lh
 
 
-def transform_miller(rprimd1, rprimd2, uvw, silent = 1):
+def transform_miller(recip1, recip2, hkl, silent = 1):
     """
-    Convert miller indicies defined in rprimd1 to
-    miller indicies in rprimd2, corresponding to similar surfaces
+    Convert miller indicies (directions!) defined in recip1 to
+    miller indicies in recip2, corresponding to similar surfaces
     Makes sence only for topologically equivalent (Homomorphic) structures
 
-    Since two structures are 
+    recip1 (list of arrays) - reciprocal lattice 1
+    recip2 (list of arrays) - reciprocal lattice 2
+    hkl (list of int) - hkl in recip1 
+
 
     """
 
 
 
 
-    mul_mat, _ = find_mul_mat(rprimd1, rprimd2, silent = silent)
+    mul_mat, _ = find_mul_mat(recip1, recip2, silent = silent)
 
-    # uvw2 = mul_mat.dot(uvw)
-    uvw2 = np.dot(mul_mat, uvw)
+    hkl2 = np.dot(mul_mat, hkl)
 
     d_m = 100
     for mul in range(1,10):
-        uvw2_mul = uvw2*mul
-        uvw2_int = uvw2_mul.round(0)
-        uvw2_int = uvw2_int.astype(int)
-        # print(uvw2_mul, uvw2_int)
-        d = np.linalg.norm(uvw2_int-uvw2_mul)
+        hkl2_mul = hkl2*mul
+        hkl2_int = hkl2_mul.round(0)
+        hkl2_int = hkl2_int.astype(int)
+        # print(hkl2_mul, hkl2_int)
+        d = np.linalg.norm(hkl2_int-hkl2_mul)
         # print(mul, d)
         if d < d_m:
             d_m = d
-            uvw2_int_opt = uvw2_int
+            hkl2_int_opt = hkl2_int
     if d > 0.1:
-        printlog('Attention! Check my conversion of Miller indicies from float to integer', uvw2, '->' , uvw2_int_opt)
+        printlog('Attention! Check my conversion of Miller indicies from float to integer', hkl2, '->' , hkl2_int_opt)
 
 
 
     if not silent:
-        printlog('new Miller are ', uvw2, 'or rounded', uvw2_int_opt, imp = 'y')
+        printlog('new Miller are ', hkl2, 'or rounded', hkl2_int_opt, imp = 'y')
     # print(transmat1)
     # vec = np.array(vec)
     # vec_ver = np.vstack(vec)
@@ -2208,7 +2210,7 @@ def transform_miller(rprimd1, rprimd2, uvw, silent = 1):
     # print(vec * transmat2 )
     # print(vec * transmat3 )
 
-    return uvw2_int_opt
+    return hkl2_int_opt
 
 
 def calc_volume(v1, v2, v3):

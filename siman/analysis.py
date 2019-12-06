@@ -1401,5 +1401,8 @@ def wulff(st, miller_list = None, e_surf_list = None):
     print(dire.get_space_group_info())
     print(recp.get_space_group_info())
     # print(lat)
-    # from 
-    # WS = WulffShape(lat)
+    from pymatgen.analysis.wulff import WulffShape
+    WS = WulffShape(lat, miller_list, e_surf_list)
+    print(dir(WS))
+    WS.show()
+    return
