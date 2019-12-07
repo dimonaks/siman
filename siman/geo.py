@@ -917,9 +917,9 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     # print([range(*z) for z in zip(mi-mp, ma+mp)])
     # print(st.rprimd)
     # print(sc.rprimd)
-    for hkl in itertools.product(*[range(*z) for z in zip(mi-mp, ma+mp)]): #loop over all ness hkl
-        # print(hkl)
-        xcart_mul = st.xcart + np.dot(hkl, st.rprimd) # coordinates of basis for each hkl
+    for uvw in itertools.product(*[range(*z) for z in zip(mi-mp, ma+mp)]): #loop over all ness uvw
+        # print(uvw)
+        xcart_mul = st.xcart + np.dot(uvw, st.rprimd) # coordinates of basis for each uvw
         # print(xcart_mul)
         xred_mul  = xcart2xred(xcart_mul, sc.rprimd)
 
@@ -2162,55 +2162,214 @@ def rhombo2hex(h,k,l):
     print(hh,kh,lh)
     return hh,kh,lh
 
-
-def transform_miller(recip1, recip2, hkl, silent = 1):
-    """
-    Convert miller indicies (directions!) defined in recip1 to
-    miller indicies in recip2, corresponding to similar surfaces
-    Makes sence only for topologically equivalent (Homomorphic) structures
-
-    recip1 (list of arrays) - reciprocal lattice 1
-    recip2 (list of arrays) - reciprocal lattice 2
-    hkl (list of int) - hkl in recip1 
-
-
-    """
-
-
-
-
-    mul_mat, _ = find_mul_mat(recip1, recip2, silent = silent)
-
-    hkl2 = np.dot(mul_mat, hkl)
+def best_miller(hkl):
+    #find best representation of hkl
+    #returns float
+    if min(hkl) == 0: 
+        n = abs(max(hkl))
+    else:
+        n = abs(min(hkl)) 
+    hkl = hkl/n
 
     d_m = 100
     for mul in range(1,10):
-        hkl2_mul = hkl2*mul
-        hkl2_int = hkl2_mul.round(0)
-        hkl2_int = hkl2_int.astype(int)
-        # print(hkl2_mul, hkl2_int)
-        d = np.linalg.norm(hkl2_int-hkl2_mul)
+        hklm = hkl*mul
+        hkli = hklm.round(0).astype(int)
+        d = np.linalg.norm(hkli-hklm)
+        # print(d, d < d_m, hklm, hkli, )
+        if d < d_m:
+            d_m = d
+            hkli_opt = hkli
+            hklm_opt = hklm
+        if d < 0.001: # the obtained multiplier is nice
+            break
+
+    return hklm_opt
+
+
+def hkl2uvw(hkl, rprimd):
+    #convert hkl to uvw
+    # print(rprimd)
+    # print('rprimd', rprimd)
+
+    recip = calc_recip_vectors(rprimd)
+    # print('recip', recip)
+    ghkl = np.dot(hkl, recip) # convert to cartesian
+    # print('hkl', hkl)
+    # print('ghkl', ghkl)
+    grprimd = np.asarray( np.matrix(rprimd).I.T ) #Transpose of the inverse matrix of rprimd
+    uvw = np.dot(grprimd, ghkl )
+    # print('uvw', uvw)
+    m = np.linalg.norm(uvw)
+    uvw = uvw/m # normalize
+    # uvw = uvw.round(0).astype(int)
+    uvwo = best_miller(uvw)
+
+
+    return uvwo
+
+def uvw2hkl(uvw, rprimd):
+    #convert,
+    #tested vice versa
+    recip = calc_recip_vectors(rprimd)
+    ruvw = np.dot(uvw, rprimd) # convert to cartesian
+    grecip = np.asarray( np.matrix(recip).I.T ) #Transpose of the inverse matrix of rprimd
+    hkl = np.dot(grecip, ruvw )
+    # .round(0).astype(int)
+    # print(hkl)
+    m = np.linalg.norm(hkl)
+    hkl = hkl/m # normalaze
+    # print(hkl)
+    hklo = best_miller(hkl)
+
+    return hklo
+
+
+def transform_miller(rprimd1, rprimd2, hkl, silent = 1):
+    """
+    Convert miller indicies between two choices of primitive vectors for the same lattice.
+    defined in rprimd1 to miller indicies defined in rprimd2. 
+    rprimd1 and rprimd2 are two primitive vectors chosen 
+
+    Can be used for different homomorphic lattices, but first be 
+    sure that they are correctly oriented in space.
+
+    rprimd1 (list of arrays) - first set of vectors 
+    rprimd2 (list of arrays) - second set of vectors
+    hkl (list of int) - hkl - miller index for first set of vectors
+
+    RETURN
+    hkl2 - miller index for second set of vectors corresponding to hkl
+
+
+    """
+
+    recip1 = calc_recip_vectors(rprimd1)
+    recip2 = calc_recip_vectors(rprimd2)
+    grecip2 = np.asarray( np.matrix(recip2).I.T ) # transpose of the inverse matrix 
+
+    ghkl1 = np.dot(hkl, recip1) # convert reciprocal vector to cartesian space
+
+    hkl2 = np.dot(grecip2, ghkl1) # get miller indices of this vector for new set of vectors
+
+
+    hkl2o = best_miller(hkl2)
+    hkl2i = hkl2o.round(0).astype(int)
+
+    printlog('Check my conversion of hkl2 from float to integer', hkl2o, '->' , hkl2i)
+
+    if not silent:
+        printlog('new Miller is', hkl2i, imp = 'y')
+
+    return hkl2i
+
+
+
+def test_transform_miller(rprimd1, rprimd2, hkl, silent = 1):
+    """
+    Different attempts to find correct way of index transformstion
+    rprimd1 (list of arrays) - primitive vectors 1
+    rprimd2 (list of arrays) - primitive vectors 2
+    hkl (list of int) - miller index for rprimd1
+
+    """
+
+
+
+
+    mul_mat, _ = find_mul_mat(rprimd1, rprimd2, silent = 1)
+    norm = np.linalg.norm
+    # print('Lengths R1=', norm(rprimd1[0]),norm(rprimd1[1]),norm(rprimd1[2]) )
+    
+    test = 4
+
+    if test == 1:
+        #transform cartesian normals,  wrong
+        uvw = hkl2uvw(hkl, rprimd1)
+        if not silent:
+            print('Converting hkl to uvw', hkl, '->',uvw)
+
+        #transform using cartesian - correct
+        ruvw = np.dot(uvw, rprimd1) # convert to cartesian
+
+        ruvw2 = np.dot(mul_mat, ruvw)
+
+        grprimd2 = np.asarray( np.matrix(rprimd2).I.T ) #Transpose of the inverse matrix of rprimd
+        uvw2 = np.dot(grprimd2, ruvw2 )
+        if not silent:
+            print('Converting uvw to ruvw', uvw, '->',ruvw)
+            print('Transforming ruvw to ruvw2', ruvw, '->',ruvw2)
+            print('Converting ruvw2 to uvw2', ruvw2, '->',uvw2)
+            
+        if 0:
+            #transform using direct - gives wrong result
+            uvw2 = np.dot(mul_mat, uvw)
+            print('Transforming uvw to uvw2', uvw, '->',uvw2)
+
+
+        hkl2 = uvw2hkl(uvw2, rprimd2)
+        print('Converting uvw2 to hkl2', uvw2, '->',hkl2)
+
+    if test == 2:
+        #transform miller indexes
+
+        #transformation matrix between two lattices allow to obtain new millre indexes
+        #! only  works in case, when lattices coincide with each other 
+
+        hkl2 = np.dot(mul_mat, hkl)
+        if not silent:
+            print('Transforming hkl to hkl2', hkl, '->',hkl2)
+
+
+    recip1 = calc_recip_vectors(rprimd1)
+    recip2 = calc_recip_vectors(rprimd2)
+    grecip2 = np.asarray( np.matrix(recip2).I.T ) #Transpose of the inverse matrix of rprimd
+
+
+    if test == 3:
+        #use g, equivalent to test2,
+        #in fact it gives some new plane, as vector is transformed!!!
+        ghkl1 = np.dot(hkl, recip1) # convert to cartesian
+
+        ghkl2 = np.dot(mul_mat, ghkl1 ) # transform
+
+        hkl2 = np.dot(grecip2, ghkl2) # convert to index
+
+    if test == 4:
+        #correct if orientation of two phases in cartesian space coincide!
+        #seems equivalent to test=2
+        #more clear to understand!
+        ghkl1 = np.dot(hkl, recip1) # convert to cartesian
+
+        hkl2 = np.dot(grecip2, ghkl1) # convert to index
+
+
+
+
+
+    d_m = 100
+    for mul in range(1,10):
+        hkl2m = hkl2*mul
+        hkl2i = hkl2m.round(0).astype(int)
+        # print(hkl2m, hkl2i)
+        d = np.linalg.norm(hkl2i-hkl2m)
         # print(mul, d)
         if d < d_m:
             d_m = d
-            hkl2_int_opt = hkl2_int
-    if d > 0.1:
-        printlog('Attention! Check my conversion of Miller indicies from float to integer', hkl2, '->' , hkl2_int_opt)
+            hkl2i_opt = hkl2i
+    if d > 0.1 or not silent:
+        printlog('Attention! Check my conversion of hkl2 from float to integer', hkl2, '->' , hkl2i_opt)
 
 
-
+    # print(uvw2_int_opt)
+    # hkl = uvw2hkl(uvw2_int_opt, rprimd2)
     if not silent:
-        printlog('new Miller are ', hkl2, 'or rounded', hkl2_int_opt, imp = 'y')
-    # print(transmat1)
-    # vec = np.array(vec)
-    # vec_ver = np.vstack(vec)
-    # print(vec_ver)
-    # print(transmat1 * vec_ver )
-    # print(vec * transmat1 )
-    # print(vec * transmat2 )
-    # print(vec * transmat3 )
+        # print('Converting uvw to hkl', uvw2_int_opt, '->',hkl)
+        printlog('new Miller is', hkl2i_opt, imp = 'y')
 
-    return hkl2_int_opt
+
+    return hkl2i_opt
+
 
 
 def calc_volume(v1, v2, v3):
