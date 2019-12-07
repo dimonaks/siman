@@ -1,10 +1,12 @@
 *.pyc
 *.gdbm3
 #history
-run
+*.run
 .ipynb_checkpoints
 *.o
 *~
+*.xyz
+*.ipynb
 .DS_Store
 #POTCAR
 #*OUTCAR*
