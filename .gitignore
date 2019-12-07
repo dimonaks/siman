@@ -13,11 +13,11 @@ POTCAR
 *vasprun*
 dist*
 siman.egg-info/
-/tutorials/*
-/docs/*
-/test/*
-/server_tools/*
-/project_template/*
+tutorials/*
+docs/*
+test/*
+server_tools/*
+project_template/*
 build/
 *.in
 *rst
