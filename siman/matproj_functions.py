@@ -1,3 +1,5 @@
+import os, sys
+
 from siman.header import db
 from siman.geo import  create_surface2
 from siman.calc_manage import  get_structure_from_matproj, smart_structure_read
@@ -13,6 +15,7 @@ except:
     print('pymatgen is not available')
     pymatgen_flag = False 
 
+from siman.classes import CalculationVasp
 
 
 import csv
@@ -122,12 +125,13 @@ def get_mat_st(mat_in_list, folder = 'geo/'):
         os.chdir('..')
     else:
         st = smart_structure_read(folder+name)
+        # print('ok')
     return st
 
 
 
 
-def calc_bulk_list(data_list, ise = '8', ise_mag = '8m', status = None, corenum = 1):
+def calc_bulk_list(data_list, spacegroup = '', ise = '8', ise_mag = '8m', status = None, corenum = 1):
 
     # function can add or res for set of bulk calculations
     
@@ -136,9 +140,9 @@ def calc_bulk_list(data_list, ise = '8', ise_mag = '8m', status = None, corenum 
     # ise  - set of calculation. Usually use '8' for nonmag calc and '8m' for mag calc
     #status = add or res
 
+    spacegroup = '.'+spacegroup
     for i in data_list:
         st = get_mat_st(i)
-
 
 
         if float(i['total_magnetization']) > 1e-3: 
@@ -151,9 +155,9 @@ def calc_bulk_list(data_list, ise = '8', ise_mag = '8m', status = None, corenum 
 
         # if mag_flag:
         if status == 'add': 
-            add_loop(i['pretty_formula'], ise, 1, it_folder = 'bulk', input_st = st, corenum = corenum)
+            add_loop(i['pretty_formula']+spacegroup, ise, 1, it_folder = 'bulk', input_st = st, corenum = corenum)
         if status == 'res': 
-            res_loop(i['pretty_formula'], ise, 1, it_folder = 'bulk')
+            res_loop(i['pretty_formula']+spacegroup, ise, 1, it_folder = 'bulk')
 
 
 

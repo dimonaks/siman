@@ -493,13 +493,7 @@ class Structure():
 
         return st
 
-<<<<<<< HEAD
-    def add_oxi_states(self, ):
-        None
-=======
-
->>>>>>> 6eca52a1a3836abba53038fab33e34d9d00ffaa9
-        
+       
 
     def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
         """
@@ -1153,10 +1147,13 @@ class Structure():
         for i in range (0, len(st_mol.get_elements())):
             st_mol = st_mol.mov_atoms(i, to_x = d_xcart, relative = 1)
 
-
-        st1 = st.add_atoms(atoms_xcart = st_mol.xcart, element = 'Pu' )
+        for i in range(0, st_mol.natom):
+            xc = list([st_mol.xcart[i]])
+            el = st_mol.get_elements()[i]
+            print(xc, el)
+            st = st.add_atoms(atoms_xcart = xc, element = el)
         # st1.jmol()
-        return st1
+        return st
 
 
 
@@ -2109,9 +2106,12 @@ class Structure():
 
         return info
 
-    def tm_o_distance(self, criteria = 0.03):
-        #return average TM-O distance in the cell and list of outstanding bonds 
+    def check_YT(self, criteria = 0.03):
+        #Check Yan-Teller effect
+        #check average TM-O distance in the cell and find the outstanding bonds 
+        #return TM-O dist list
         #criteria - value in % of average bond length when bond is outstanding
+        #
 
         tra = self.get_transition_elements()
         
@@ -2176,7 +2176,7 @@ class Structure():
 
         if not k: print('Ok! None outstanding bonds found\n')
 
-        return
+        return dist_list
 
 
 

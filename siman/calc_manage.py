@@ -188,17 +188,9 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH -J "+job_name+"\n")
             if 'walltime' in header.cluster:
                 f.write("#SBATCH -t "+str(header.cluster['walltime'])+'\n')
-<<<<<<< HEAD
             else:
                 f.write("#SBATCH -t 250:00:00 \n")
-=======
-            # else:
-                # if header.WALLTIME_LIMIT: #deprecated remove
-                    # f.write("#PBS -l walltime=72:00:00 \n")
-                    # f.write("#SBATCH -t 250:00:00 \n")
 
-
->>>>>>> 6eca52a1a3836abba53038fab33e34d9d00ffaa9
             f.write("#SBATCH -N 1\n")
             f.write("#SBATCH -n "+str(number_cores)+"\n")
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")

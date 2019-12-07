@@ -2151,7 +2151,6 @@ def rms_pos_diff(st1, st2):
     return rms 
 
 
-<<<<<<< HEAD
 def removed_atoms(st1, st2):
     # This function finds voids by comparing ideal structure and structure with removed atoms
     # Input: st1 - ideal, st2 - with removed atoms
@@ -2176,7 +2175,7 @@ def find_voids(st1, st2):
     removed_at = removed_atoms(st1, st2)
     st = st1.replace_atoms(removed_at, 'void')
     return st
-=======
+
 def hex2rhombo(h,k,l):
     #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
     i = -h - k
@@ -2193,4 +2192,49 @@ def rhombo2hex(h,k,l):
     lh = h + k + l 
     print(hh,kh,lh)
     return hh,kh,lh
->>>>>>> 6eca52a1a3836abba53038fab33e34d9d00ffaa9
+
+
+
+def create_ads_molecule(st, molecule, mol_xc, conf_i = 0, fix_layers = False, fix_xc_range = None):
+    #The function uses special module AdsorbateSiteFinder  from pymatgen
+
+
+    #https://static-content.springer.com/esm/art%3A10.1038%2Fs41524-017-0017-z/MediaObjects/41524_2017_17_MOESM1_ESM.pdf
+    # @article{montoya2017high,
+    #       title={A high-throughput framework for determining adsorption energies on solid surfaces},
+    #       author={Montoya, Joseph H and Persson, Kristin A},
+    #       journal={npj Computational Materials},
+    #       volume={3},
+    #       number={1},
+    #       pages={14},
+    #       year={2017},
+    #       publisher={Nature Publishing Group}
+    #     }
+
+    # molecule -  'H', 'CO' ...
+    # mol_xc - list with xcart of atoms in molecule: [[0,0,0]], [[0,0,0],[0,0,1.23]]
+    # return structure with adsorbed molecule on the surface
+
+
+
+    from pymatgen import Structure, Lattice, Molecule
+    from pymatgen.analysis.adsorption import AdsorbateSiteFinder
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    from pymatgen.io.vasp.inputs import Poscar
+
+    pm = st.convert2pymatgen()
+    asf_pm = AdsorbateSiteFinder(pm)
+
+    ads_sites = asf_pm.find_adsorption_sites()
+    
+
+    adsorbate = Molecule(molecule, mol_xc)
+    ads_structs = asf_pm.generate_adsorption_structures(adsorbate,repeat=[1, 1, 1])
+    print('\nI found ',len(ads_structs), ' configurations with ', molecule, ' on the surface\n')
+
+    p = st.update_from_pymatgen(ads_structs[conf_i])
+
+    if fix_layers:
+        p = p.fix_layers(xcart_range = fix_xc_range)
+
+    return p

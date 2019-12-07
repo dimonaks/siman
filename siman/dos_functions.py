@@ -209,11 +209,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         if not iatom:
             printlog('Warning! Please choose atom number *iatom* from the following list:\n')
-<<<<<<< HEAD
             printlog(eld1)
-=======
-            print(eld1)
->>>>>>> 6eca52a1a3836abba53038fab33e34d9d00ffaa9
+
             sys.exit()
         else:
             printlog('cl1: Atom', iatom, 'of type', eld1[iatom], 'is choosen', imp = 'y')
