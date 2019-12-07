@@ -5,8 +5,8 @@
 .ipynb_checkpoints
 *.o
 *~
-*.xyz
-*.ipynb
+#*.xyz
+#*.ipynb
 .DS_Store
 #POTCAR
 #*OUTCAR*
@@ -15,11 +15,11 @@
 #*vasprun*
 #dist*
 siman.egg-info/
-tutorials/*
-docs/*
-test/*
-server_tools/*
-project_template/*
+tutorials/
+docs/
+test/
+server_tools/
+project_template/
 build/
 *.in
 *rst
