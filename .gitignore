@@ -15,10 +15,11 @@ POTCAR
 dist/
 siman.egg-info/
 tutorials/
-doc/
+docs
+test*
 server_tools/
 project_template/
-build/
+build
 *.in
 *rst
 *.md
