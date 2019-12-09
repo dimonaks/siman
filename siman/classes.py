@@ -1132,33 +1132,6 @@ class Structure():
         return slab.dipole
 
 
-    def add_ads_molecule(self, st_molecule, surface_element, z_coord = [0,0,-1.5], i_mol = 2):
-        
-        st = copy.deepcopy(self)
-        st_mol = copy.deepcopy(st_molecule)
-
-
-        i_surf_atom = st.get_surface_atoms(surface_element)[0]
-
-        mol_pos = [st.xcart[i_surf_atom][i] + z_coord[i] for i in range(0,3)]
-        d_xcart = [-st_mol.xcart[i_mol][j] + mol_pos[j] for j in range(0,3)]
-
-        #move mol to mol_pos
-        for i in range (0, len(st_mol.get_elements())):
-            st_mol = st_mol.mov_atoms(i, to_x = d_xcart, relative = 1)
-
-        for i in range(0, st_mol.natom):
-            xc = list([st_mol.xcart[i]])
-            el = st_mol.get_elements()[i]
-            print(xc, el)
-            st = st.add_atoms(atoms_xcart = xc, element = el)
-        # st1.jmol()
-        return st
-
-
-
-
-
     def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None):
         """
         appends at the end if element is new. Other case insertered according to VASP conventions
