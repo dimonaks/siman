@@ -4,8 +4,6 @@ import os, tempfile, copy, math, itertools, sys
 import numpy as np
 from operator import itemgetter
 from itertools import product
-import csv
-
 
 try:
     import scipy
@@ -977,6 +975,3 @@ def check_output(filename, check_string, load):
         state = '5. no OUTCAR'
 
     return state
-
-
-
