@@ -6,21 +6,12 @@
 *~
 .DS_Store
 siman.egg-info/
-<<<<<<< HEAD
-#tutorials/*
-#docs/*
-#test/*
-#server_tools/*
-#project_template/*
-#build/*
-=======
 tutorials/
 docs/
 test/
 server_tools/
 project_template/
 build/
->>>>>>> c57cc32f6df766e9381359e90df06562f65477e8
 *.in
 *rst
 *.md
