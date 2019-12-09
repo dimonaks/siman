@@ -1,0 +1,25 @@
+SYSTEM = i2a=[Li] ; Li2.dosb4.1 auto add_des ; 
+
+ALGO = Normal
+EDIFF = 6e-06
+EDIFFG = 0
+ENAUG = 776.16
+ENCUT = 441.0
+IBRION = 1
+ISIF = 2
+ISMEAR = 2
+ISTART = 0
+KGAMMA = .TRUE.
+LPLANE = .TRUE.
+LREAL = Auto
+LSCALU = .FALSE.
+MAXMIX = 40
+NBANDS = 1
+NELM = 50
+NELMIN = 4
+NPAR = 1
+NSIM = 4
+NSW = 0
+PREC = Normal
+SIGMA = 0.2
+

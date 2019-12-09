@@ -1,0 +1,347 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>siman.monte &#8212; Siman 0.9.5 documentation</title>
+    <link rel="stylesheet" href="../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Siman 0.9.5 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for siman.monte</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/bin/python</span>
+<span class="sd">&quot;&quot;&quot;  </span>
+<span class="sd">Program Monte-Carlo by Aksyonov Dmitry, Skoltech, Moscow</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">glob</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Python version is&#39;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">shutil</span> <span class="k">import</span> <span class="n">copyfile</span>
+<span class="kn">import</span> <span class="nn">random</span>
+
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="k">import</span> <span class="n">expanduser</span>
+<span class="n">home</span> <span class="o">=</span> <span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">home</span><span class="o">+</span><span class="s1">&#39;/tools&#39;</span><span class="p">)</span> <span class="c1"># for numpy libraries</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">siman</span> <span class="k">import</span> <span class="n">header</span>
+<span class="kn">from</span> <span class="nn">siman.monte_functions</span> <span class="k">import</span> <span class="n">metropolis</span>
+<span class="kn">from</span> <span class="nn">siman.header</span> <span class="k">import</span> <span class="n">runBash</span><span class="p">,</span> <span class="n">ALKALI_ION_ELEMENTS</span><span class="p">,</span> <span class="n">TRANSITION_ELEMENTS</span><span class="p">,</span> <span class="n">printlog</span>
+<span class="kn">from</span> <span class="nn">siman.classes</span> <span class="k">import</span> <span class="n">CalculationVasp</span><span class="p">,</span> <span class="n">Structure</span>
+<span class="kn">from</span> <span class="nn">siman.inout</span> <span class="k">import</span> <span class="n">read_poscar</span>
+
+
+<div class="viewcode-block" id="check"><a class="viewcode-back" href="../../siman.html#siman.monte.check">[docs]</a><span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span> <span class="n">exit</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+    <span class="c1"># return 0 if ok, return 1 if failed</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cl</span><span class="p">,</span> <span class="s1">&#39;e0&#39;</span><span class="p">):</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;outcar is ok&#39;</span><span class="p">,</span> <span class="n">imp</span>  <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;outcar is broken &#39;</span><span class="p">,</span> <span class="n">imp</span>  <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">exit</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;exiting...&#39;</span><span class="p">,</span> <span class="n">imp</span>  <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+<div class="viewcode-block" id="vasp_run"><a class="viewcode-back" href="../../siman.html#siman.monte.vasp_run">[docs]</a><span class="k">def</span> <span class="nf">vasp_run</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">des</span><span class="p">):</span>
+    <span class="c1">#allows to run vasp several times, here fireworks can be used</span>
+    <span class="c1">#n - number of attempts</span>
+    <span class="c1">#des - description of run</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span> <span class="c1"># max three attempts</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">runBash</span><span class="p">(</span><span class="n">vasprun_command</span><span class="p">)</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="n">des</span><span class="p">,</span> <span class="s1">&#39;attempt&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span><span class="s1">&#39;out is&#39;</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+        <span class="n">cl</span> <span class="o">=</span> <span class="n">CalculationVasp</span><span class="p">(</span><span class="n">output</span> <span class="o">=</span> <span class="s1">&#39;OUTCAR&#39;</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">cl</span><span class="o">.</span><span class="n">read_results</span><span class="p">(</span><span class="n">show</span> <span class="o">=</span> <span class="s1">&#39;fo&#39;</span><span class="p">)</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Results are&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+
+        <span class="n">status</span> <span class="o">=</span> <span class="n">check</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s1">&#39;CONTCAR&#39;</span><span class="p">):</span>
+                <span class="n">copyfile</span><span class="p">(</span><span class="s1">&#39;CONTCAR&#39;</span><span class="p">,</span> <span class="s1">&#39;POSCAR&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;No CONTCAR was found. No further attempts to run VASP&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+    <span class="k">return</span> <span class="n">cl</span>   </div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">debug</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">header</span><span class="o">.</span><span class="n">warnings</span> <span class="o">=</span> <span class="s1">&#39;yY&#39;</span>
+    <span class="c1"># header.warnings = &#39;neyY&#39;</span>
+    <span class="n">header</span><span class="o">.</span><span class="n">verbose_log</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="sd">&quot;&quot;&quot;0. Read configuration file &quot;&quot;&quot;</span>
+    <span class="c1"># params = read_monte_params()</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s1">&#39;monte.json&#39;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;monte.json&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Warning! no configuration file monte.json, exiting&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">vasprun_command</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;vasp_run&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="s1">&#39;vasp&#39;</span>
+    <span class="n">nmcstep</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mcsteps&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">2</span> <span class="c1"># minimum two steps are done</span>
+    <span class="n">thickness</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;thickness&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">6</span> <span class="c1"># minimum layer </span>
+    <span class="n">temperature</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;temp&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">1</span>
+
+
+
+
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n\n</span><span class="s1">Starting Monte-Carlo script!&#39;</span><span class="p">)</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Command to run vasp&#39;</span><span class="p">,</span> <span class="n">vasprun_command</span><span class="p">)</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Total number of steps is&#39;</span><span class="p">,</span> <span class="n">nmcstep</span><span class="p">)</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Thickness is &#39;</span><span class="p">,</span> <span class="n">thickness</span><span class="p">)</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Temperature is &#39;</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="s1">&#39;K&#39;</span><span class="p">)</span>
+
+
+
+
+
+
+    <span class="sd">&quot;&quot;&quot;1. Run initial calculation&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">debug</span><span class="p">:</span>
+        <span class="n">cl</span> <span class="o">=</span> <span class="n">CalculationVasp</span><span class="p">()</span>
+        <span class="n">cl</span><span class="o">.</span><span class="n">read_poscar</span><span class="p">(</span><span class="s1">&#39;1.POSCAR&#39;</span><span class="p">)</span>
+        <span class="n">cl</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">cl</span><span class="o">.</span><span class="n">init</span>
+        <span class="n">last_number</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        
+        <span class="n">files_yes</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;*yes.pickle&#39;</span><span class="p">)</span> <span class="c1">#get list of calculated yes files</span>
+        <span class="n">files_all</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;*.pickle&#39;</span><span class="p">)</span> <span class="c1">#get list of all calculated files</span>
+        
+
+        <span class="sd">&quot;&quot;&quot;Find last yes pickle file&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">files_yes</span><span class="p">:</span>
+            <span class="n">yes_numbers</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files_yes</span><span class="p">]</span>
+            <span class="n">all_numbers</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">files_all</span><span class="p">]</span>
+            <span class="n">last_yes_n</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">yes_numbers</span><span class="p">)</span>
+            <span class="n">last_number</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">all_numbers</span><span class="p">)</span>
+            <span class="n">last_yes_file</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">last_yes_n</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;-yes.pickle&#39;</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Last calculation file is &#39;</span><span class="p">,</span> <span class="n">last_yes_file</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">last_number</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">last_yes_file</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="sd">&quot;&quot;&quot;Read last pickle file or run vasp &quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="n">last_yes_file</span><span class="p">:</span>
+            <span class="n">cl</span> <span class="o">=</span> <span class="n">CalculationVasp</span><span class="p">()</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">last_yes_file</span><span class="p">)</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Successfully deserialized&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1">#to correct mistake on first step and add void to pickle</span>
+                <span class="k">if</span> <span class="s1">&#39;xvoid&#39;</span> <span class="ow">in</span> <span class="n">params</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;xvoid&#39;</span><span class="p">])</span> <span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span> <span class="c1"># read void coordinates</span>
+                    <span class="n">cl</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">cl</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">add_atoms</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;xvoid&#39;</span><span class="p">],</span> <span class="s1">&#39;void&#39;</span><span class="p">)</span>
+                    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;I found&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;xvoid&#39;</span><span class="p">]),</span> <span class="s1">&#39;voids in config file. Added to structure.&#39;</span><span class="p">)</span>
+
+                <span class="n">cl</span><span class="o">.</span><span class="n">serialize</span><span class="p">(</span><span class="s1">&#39;0-yes&#39;</span><span class="p">)</span>
+
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cl</span> <span class="o">=</span> <span class="n">vasp_run</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;first run&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;xvoid&#39;</span> <span class="ow">in</span> <span class="n">params</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;xvoid&#39;</span><span class="p">])</span> <span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span> <span class="c1"># read void coordinates</span>
+                <span class="n">cl</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">cl</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">add_atoms</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;xvoid&#39;</span><span class="p">],</span> <span class="s1">&#39;void&#39;</span><span class="p">)</span>
+                <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;I found&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;xvoid&#39;</span><span class="p">]),</span> <span class="s1">&#39;voids in config file. Added to structure.&#39;</span><span class="p">)</span>
+
+            <span class="n">cl</span><span class="o">.</span><span class="n">serialize</span><span class="p">(</span><span class="s1">&#39;0-yes&#39;</span><span class="p">)</span>
+            <span class="n">copyfile</span><span class="p">(</span><span class="s1">&#39;OSZICAR&#39;</span><span class="p">,</span> <span class="s1">&#39;OSZICAR-0&#39;</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;ENERGIES&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:5d}</span><span class="s1">  </span><span class="si">{:.5f}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cl</span><span class="o">.</span><span class="n">e0</span><span class="p">))</span>
+
+
+
+
+
+    <span class="sd">&quot;&quot;&quot;Define rest required parameters&quot;&quot;&quot;</span>
+    <span class="n">st</span> <span class="o">=</span> <span class="n">cl</span><span class="o">.</span><span class="n">end</span>
+    <span class="n">z2</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">get_surface_pos</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Position of top surface is </span><span class="si">{:3.2f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">z2</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="n">xcart_voids</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">get_specific_elements</span><span class="p">([</span><span class="mi">300</span><span class="p">],</span> <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;x&#39;</span><span class="p">)</span>
+    <span class="c1"># printlog</span>
+    <span class="k">if</span> <span class="n">xcart_voids</span><span class="p">:</span>
+        <span class="n">voidz</span> <span class="o">=</span> <span class="p">[</span><span class="mi">300</span><span class="p">]</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Voids were extracted from st, adding them to z group for Monte-Carlo&#39;</span><span class="p">,</span> <span class="n">xcart_voids</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">voidz</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+
+    <span class="k">for</span> <span class="n">i_mcstep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">last_number</span><span class="p">,</span> <span class="mi">1</span><span class="o">+</span><span class="n">last_number</span><span class="o">+</span><span class="n">nmcstep</span><span class="p">):</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;---------------------------------&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n\n\n</span><span class="s1">Monte-Carlo step = &#39;</span><span class="p">,</span> <span class="n">i_mcstep</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+
+
+        <span class="sd">&quot;&quot;&quot;3. Exchange two atoms&quot;&quot;&quot;</span>
+        <span class="c1">#choose two atoms </span>
+        <span class="n">z_groups</span> <span class="o">=</span> <span class="p">[</span><span class="n">ALKALI_ION_ELEMENTS</span><span class="p">,</span> <span class="n">TRANSITION_ELEMENTS</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">voidz</span><span class="p">:</span>
+            <span class="n">z_groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">voidz</span><span class="p">)</span>
+
+
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;All Z groups are &#39;</span><span class="p">,</span> <span class="n">z_groups</span><span class="p">)</span>
+        <span class="c1"># sys.exit()</span>
+        <span class="n">gr1</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">z_groups</span><span class="p">)</span>
+        <span class="n">z_groups</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">gr1</span><span class="p">)</span>
+        <span class="n">gr2</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">z_groups</span><span class="p">)</span>
+
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Chosen Z groups are &#39;</span><span class="p">,</span> <span class="n">gr1</span><span class="p">,</span> <span class="n">gr2</span><span class="p">)</span>
+
+        <span class="c1"># print(st.get_elements_z())</span>
+        <span class="c1"># sys.exit()</span>
+        <span class="n">alk</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">get_specific_elements</span><span class="p">(</span><span class="n">gr1</span><span class="p">,</span> <span class="n">z_range</span> <span class="o">=</span> <span class="p">[</span><span class="n">z2</span> <span class="o">-</span> <span class="n">thickness</span><span class="p">,</span> <span class="n">z2</span><span class="p">])</span>
+        <span class="n">tra</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">get_specific_elements</span><span class="p">(</span><span class="n">gr2</span><span class="p">,</span> <span class="n">z_range</span> <span class="o">=</span> <span class="p">[</span><span class="n">z2</span> <span class="o">-</span> <span class="n">thickness</span><span class="p">,</span> <span class="n">z2</span><span class="p">])</span>
+        
+        
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">alk</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">tra</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Attention, alk or tra are too small:&#39;</span><span class="p">,</span> <span class="n">alk</span><span class="p">,</span> <span class="n">tra</span><span class="p">,</span> <span class="s1">&#39;trying another&#39;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Two groups of atom numbers to swap are&#39;</span><span class="p">,</span> <span class="n">alk</span><span class="p">,</span> <span class="n">tra</span><span class="p">)</span>
+        <span class="c1"># sys.exit()</span>
+
+        <span class="n">at1</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">alk</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">at1</span> <span class="ow">in</span> <span class="n">tra</span><span class="p">:</span>
+            <span class="n">tra</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">at1</span><span class="p">)</span>
+
+        <span class="n">at2</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">tra</span><span class="p">)</span>
+
+        <span class="n">els</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">get_elements</span><span class="p">()</span>
+        <span class="n">st_new_init</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">swap_atoms</span><span class="p">(</span><span class="n">at1</span><span class="p">,</span> <span class="n">at2</span><span class="p">)</span>
+        <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;I swapped&#39;</span><span class="p">,</span> <span class="n">at1</span><span class="p">,</span> <span class="n">els</span><span class="p">[</span><span class="n">at1</span><span class="p">],</span>  <span class="s1">&#39;and&#39;</span><span class="p">,</span> <span class="n">at2</span><span class="p">,</span> <span class="n">els</span><span class="p">[</span><span class="n">at2</span><span class="p">],</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span> <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">voidz</span><span class="p">:</span>
+            <span class="n">xcart_voids</span> <span class="o">=</span> <span class="n">st_new_init</span><span class="o">.</span><span class="n">get_specific_elements</span><span class="p">([</span><span class="mi">300</span><span class="p">],</span> <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;x&#39;</span><span class="p">)</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;The following voids after changes were extracted from st:&#39;</span><span class="p">,</span> <span class="n">xcart_voids</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">debug</span><span class="p">:</span>
+            <span class="n">st_new_init</span><span class="o">.</span><span class="n">write_poscar</span><span class="p">(</span><span class="s1">&#39;POSCAR-&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">))</span>
+            <span class="n">st_new_init</span> <span class="o">=</span> <span class="n">read_poscar</span><span class="p">(</span><span class="n">st_new_init</span><span class="p">,</span> <span class="s1">&#39;POSCAR-&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">))</span>
+            <span class="n">st_new_init</span> <span class="o">=</span> <span class="n">st_new_init</span><span class="o">.</span><span class="n">add_atoms</span><span class="p">(</span><span class="n">xcart_voids</span><span class="p">,</span> <span class="s1">&#39;void&#39;</span><span class="p">)</span>
+            <span class="c1"># xcart_voids = st_new_init.get_specific_elements([300], fmt = &#39;x&#39;)</span>
+            <span class="c1"># print(&#39;After writing and reading the voids are &#39;, xcart_voids)</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">st_new_init</span>
+
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="sd">&quot;&quot;&quot;4. Write new structure and calculate energy  &quot;&quot;&quot;</span>
+
+            <span class="n">st_new_init</span><span class="o">.</span><span class="n">write_poscar</span><span class="p">(</span><span class="s1">&#39;POSCAR&#39;</span><span class="p">)</span> <span class="c1">#here voids are lost</span>
+            
+            <span class="n">cl_new</span> <span class="o">=</span> <span class="n">vasp_run</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;mcstep &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">check</span><span class="p">(</span><span class="n">cl_new</span><span class="p">):</span>
+                <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:5d}</span><span class="s1"> is unlucky configuration, trying another ... &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">),</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+
+
+            <span class="sd">&quot;&quot;&quot;5. Check if to accept new structure  &quot;&quot;&quot;</span>
+            <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;Energies before and after are </span><span class="si">{:3.3f}</span><span class="s1"> and </span><span class="si">{:3.3f}</span><span class="s1">, dE = </span><span class="si">{:3.3f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cl</span><span class="o">.</span><span class="n">e0</span><span class="p">,</span> <span class="n">cl_new</span><span class="o">.</span><span class="n">e0</span><span class="p">,</span> <span class="n">cl_new</span><span class="o">.</span><span class="n">e0</span> <span class="o">-</span> <span class="n">cl</span><span class="o">.</span><span class="n">e0</span><span class="p">),</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;ENERGIES&#39;</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:5d}</span><span class="s1">  </span><span class="si">{:.5f}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">,</span> <span class="n">cl_new</span><span class="o">.</span><span class="n">e0</span><span class="p">))</span>
+            
+            <span class="k">if</span> <span class="n">metropolis</span><span class="p">(</span><span class="n">cl</span><span class="o">.</span><span class="n">e0</span><span class="p">,</span> <span class="n">cl_new</span><span class="o">.</span><span class="n">e0</span><span class="p">,</span> <span class="n">temperature</span><span class="p">):</span>
+                <span class="n">cl</span> <span class="o">=</span> <span class="n">cl_new</span>
+
+                <span class="k">if</span> <span class="n">voidz</span><span class="p">:</span>
+                    <span class="c1">#insert voids</span>
+                    <span class="n">cl_new</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">cl_new</span><span class="o">.</span><span class="n">end</span><span class="o">.</span><span class="n">add_atoms</span><span class="p">(</span><span class="n">xcart_voids</span><span class="p">,</span> <span class="s1">&#39;void&#39;</span><span class="p">)</span> <span class="c1"># here voids are inserted back</span>
+
+                
+                <span class="n">cl</span><span class="o">.</span><span class="n">serialize</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;-yes&#39;</span><span class="p">)</span>
+                <span class="n">copyfile</span><span class="p">(</span><span class="s1">&#39;CONTCAR&#39;</span><span class="p">,</span> <span class="s1">&#39;CONTCAR_last&#39;</span><span class="p">)</span>
+                <span class="n">copyfile</span><span class="p">(</span><span class="s1">&#39;OUTCAR&#39;</span><span class="p">,</span> <span class="s1">&#39;OUTCAR_last&#39;</span><span class="p">)</span>
+
+                <span class="n">st</span> <span class="o">=</span> <span class="n">cl_new</span><span class="o">.</span><span class="n">end</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cl_new</span><span class="o">.</span><span class="n">serialize</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;-no&#39;</span><span class="p">)</span>
+            <span class="n">copyfile</span><span class="p">(</span><span class="s1">&#39;OSZICAR&#39;</span><span class="p">,</span> <span class="s1">&#39;OSZICAR-&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">))</span>
+            <span class="n">copyfile</span><span class="p">(</span><span class="s1">&#39;CONTCAR&#39;</span><span class="p">,</span> <span class="s1">&#39;CONTCAR-&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i_mcstep</span><span class="p">))</span>
+
+    <span class="n">copyfile</span><span class="p">(</span><span class="s1">&#39;OUTCAR_last&#39;</span><span class="p">,</span> <span class="s1">&#39;OUTCAR&#39;</span><span class="p">)</span>
+    <span class="n">printlog</span><span class="p">(</span><span class="s1">&#39;MC simulation finished!&#39;</span><span class="p">,</span> <span class="n">imp</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="../../index.html">Table of Contents</a></h3>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Siman 0.9.5 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2018, Dmitry Aksenov.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.1.
+    </div>
+  </body>
+</html>

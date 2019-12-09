@@ -1,0 +1,11 @@
+SYSTEM =  auto add_des ; 
+EDIFF = 1e-05
+EDIFFG = -0.01
+ENCUT = 150
+IBRION = 1
+ISIF = 2
+ISMEAR = 2
+NBANDS = 4
+NSW = 20
+SIGMA = 0.2
+

@@ -1,0 +1,20 @@
+SYSTEM =  auto add_des ; 
+ALGO = Normal
+EDIFF = 1e-05
+EDIFFG = 0
+ENAUG = 776.16
+ENCUT = 400
+IBRION = 1
+ISIF = 2
+ISMEAR = 1
+ISTART = 0
+KGAMMA = .TRUE.
+LPLANE = .TRUE.
+LREAL = Auto
+NBANDS = 18
+NELM = 50
+NPAR = 1
+NSW = 0
+PREC = Normal
+SIGMA = 0.1
+
