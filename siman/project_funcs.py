@@ -2644,8 +2644,10 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
 
         "Calculate bulk"
         if not update or update_bulk:
-            # cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
+            # if cl.id[1] == ise:
             cl_base = c['cl']
+            # else:
+            # cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
 
 
         header.show = 'fo'
