@@ -2507,7 +2507,7 @@ def calc_antisite_defects(dpi = 300, image_format = 'eps', update = 0):
 
 def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = None, add_loop_dic = None, 
     confs = None, jmol = 0, update_bulk = 0, 
-    up_res = 'up1'):
+    up_res = 'up1', use_input_as_bulk = 0 ):
     """
     High-level wrapper for creating anti-sites and running them
     Interstetials defects are also can be created, please add documentation
@@ -2517,8 +2517,10 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
     confs (list) - list of configuration numbers to created and calculated, use numbers from suggested list
     jmol (bool) - show each created structure with jmol
 
-    update_bulk 
 
+
+    update_bulk - recalculate bulk
+    use_input_as_bulk (int) - use input as bulk
 
         param_dic:
             spinst_AP (str) - one state from header.TM_MAG dict
@@ -2643,11 +2645,15 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
         
 
         "Calculate bulk"
+        if update_bulk:
+            use_input_as_bulk = 0
         if not update or update_bulk:
             # if cl.id[1] == ise:
-            cl_base = c['cl']
-            # else:
-            # cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
+            if use_input_as_bulk:
+                cl_base = c['cl']
+
+            else:
+                cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
 
 
         header.show = 'fo'
