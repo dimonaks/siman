@@ -2004,7 +2004,7 @@ class Structure():
         x = st.xcart[i]
         out_or = local_surrounding(x, st, n, 'atoms', True, only_elements = only)
         # out =  (xcart_local, typat_local, numbers, dlist )
-
+        # print(out_or)
         out = list(out_or)
         # out[0] = list(itertools.chain.from_iterable(out[0]))
         out[1] = [invert(zn[o-1]) for o in out[1]]
