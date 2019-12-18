@@ -1646,7 +1646,7 @@ class Structure():
 
 
 
-    def replace_atoms(self, atoms_to_replace, el_new):
+    def replace_atoms(self, atoms_to_replace, el_new, silent = 0):
         """
         atoms_to_replace - list of atom numbers starting from 0
         el_new - new element periodic table short name
@@ -1666,7 +1666,8 @@ class Structure():
 
                 if n in atoms_to_replace:
                     xcart = st.xcart[i]
-                    print('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new)
+                    if not silent:
+                        print('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new)
                     st = st.del_atom(i)
 
                     st = st.add_atoms([xcart], element = el_new)
@@ -1689,6 +1690,8 @@ class Structure():
 
     def replace_atoms2(self, el_old, el_new, concentration):
         """
+        Replace atoms using random  
+
         el_old - element to replace
 
         el_new - new element

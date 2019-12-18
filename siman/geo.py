@@ -16,6 +16,7 @@ if header.pymatgen_flag:
 
 from siman.header import printlog
 from siman.small_functions import red_prec
+from siman.functions import invert
 # from impurity import find_pores
 
 # sys.path.append('/home/aksenov/Simulation_wrapper/') 
@@ -829,7 +830,7 @@ def ortho_vec(rprim, ortho_sizes = None):
     return mul_matrix
 
 
-def find_mul_mat(rprimd1, rprimd2,silent):
+def find_mul_mat(rprimd1, rprimd2,silent = 0):
     #find mul_matrix to convert from rprimd1 to rprimd2
 
     mul_matrix_float = np.dot( rprimd2,  np.linalg.inv(rprimd1) )
@@ -854,7 +855,7 @@ def find_mul_mat(rprimd1, rprimd2,silent):
 
 
 
-def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1)): 
+def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1), silent = 0 ): 
     """ 
     st (Structure) -  
     mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 
@@ -873,11 +874,12 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     sc.rprimd = list( np.dot(mul_matrix, st.rprimd)*np.array(mul)[:, np.newaxis]  )
     
     # print(sc.rprimd)
-
-    printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
+    if not silent:
+        printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
     # printlog('Mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
+    if not silent:
 
-    printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
+        printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
     st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  )
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
@@ -894,7 +896,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
         mag_flag = False        
 
     sc_natom = sc.vol/st.vol*st.natom # test
-    printlog('The supercell should contain', sc_natom, 'atoms ... \n', imp = 'y', end = ' ')
+    printlog('The supercell should contain', sc_natom, 'atoms ... ', imp = 'y', end = ' ')
     sc.xcart = []
     sc.typat = []
     sc.xred  = []
@@ -1864,6 +1866,90 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
     st_half.name+='_half'+str(sg)
     
     return st_x
+
+
+
+
+
+def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, ):
+    """
+    Generate all possible configurations by replacing x of element el1 by el2 from the structure.
+    You should know which space group you want to get.
+    If you don't know the space group, first use info_mode = 1
+
+    st (Structure) - input structure
+    el1 (str) - element name to replace, e.g. Li
+    el2 (str) - replace by
+
+    x - replace x of atoms, for example 0.25 of atoms
+    
+    info_mode (bool) - more information
+
+    sg - number of required space group obtained with info_mode = 1
+    return list of structures with sg space groups
+
+
+    """
+
+    from collections import Counter
+
+    def order(ls, i):
+        """
+        Find recursivly all possible orderings for the given x
+        ls - initial list of atoms 
+        i - index in ls  
+
+        """
+        for s in 1,-1:
+            
+            ls[i] = s
+            
+            if i < len(ls)-1:
+            
+                order(ls, i+1)
+            
+            else:
+                if abs(ls.count(-1)/ntot - x ) < 0.001:
+                    orderings.append(copy.deepcopy(ls) )  
+        return
+
+
+    structures = []
+    orderings = []
+    
+    req = st.get_specific_elements([invert(el1)])
+    # print(req)
+    # sys.exit()
+    ntot = len(req)
+    ls = [0]*ntot
+    order(ls, 0)
+    symmetries = []
+    print('Total number of orderings is', len(orderings))
+
+    for order in orderings:
+        atoms_to_replace = [req[i] for i, s in enumerate(order) if s < 0]
+        # print(atoms_to_replace)
+        st_rep = st.replace_atoms(atoms_to_replace, el2, silent = 1)
+        nm = st_rep.sg(silent = True)[1]
+        symmetries.append(nm)
+        if nm == sg:
+            structures.append(st_rep)
+
+    print('The following space groups were found', Counter(symmetries))
+    if info_mode:
+        return list(set(symmetries))
+
+    return structures
+
+
+
+
+
+
+
+
+
+
 
 
 
