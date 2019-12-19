@@ -2303,6 +2303,159 @@ class Structure():
 
         return st
 
+
+    def localize_polaron_dist(self, i_center, d, nn = 6, axis = None, mode = 'axis_expand'):
+        """
+        
+        localization small polaron at transition metal by adjusting TM-O distances
+        with distortions
+        i_center - number of transition atom, from 0
+        d - shift in angstrom; positive increase TM-O, negative reduce TM-O
+        nn - number of neighbors
+        axis - axis of octahedra, 0, 1, 2,
+
+        Axes of octahedra are determined relative to cartesian coordinates
+
+
+
+        TODO
+        Make it more general to include any ligands; now only O and F are supported
+        Make for other topologies, now tested only for octa
+
+        """
+        st = copy.deepcopy(self)
+        TM = st.get_el_z(i_center)
+        TM_name = st.get_el_name(i_center)
+        if TM not in header.TRANSITION_ELEMENTS:
+            printlog('Warning! provided element ', TM_name, 'is not a transition metal, I hope you know what you are doing. ')
+
+        silent = 1
+        if 'n' in header.warnings or 'e' in header.warnings:
+            silent = 0
+        # silent = 0
+
+        np.set_printoptions(formatter={'float': '{: 6.2f}'.format})
+
+        dic = st.nn(i_center, nn, from_one = 0, silent = silent)
+        av = dic['av(A-O,F)']
+        printlog('Average TM-O distance before localization is {:.2f}'.format(av), imp = '')
+
+        xc = st.xcart[i_center]
+        ligand_xcart = [x-xc for x in  dic['xcart'][1:]]
+        # print(np.array(ligand_xcart))
+        ligand_order     = copy.copy(list(dic['numbers'][1:]))
+
+
+
+        # find octahedron axes
+        pairs = []# first, second, and third pair are along first, second, and third octahedron axes
+        order = []
+        # if id(x1) in map(id, checked):
+        i=0
+        for i1, x1 in zip(ligand_order, ligand_xcart):
+            for i2, x2 in zip(ligand_order[i+1:], ligand_xcart[i+1:]):
+                # print( x1+x2 )
+                ssum = np.linalg.norm(x1+x2 ) # for ideal octa should be zero for axis
+                if ssum < av/2: #should work even for highly distorted octahedra
+                    pairs.append(x1)
+                    pairs.append(x2)
+                    order.append(i1)
+                    order.append(i2)
+                    # print(av, ssum)
+            i+=1
+        if len(pairs) < len(ligand_xcart):
+            #only two axes detected; i.e. pyramid; the third axis is determined relative to the center
+            for i1, x1 in zip(ligand_order, ligand_xcart):
+                # if x1 in pairs:
+                if id(x1) in map(id, pairs):
+                    continue
+                else:
+                    pairs.append(x1)
+                    pairs.append(xc-xc)
+                    order.append(i1)
+                    order.append(dic['numbers'][0])
+
+        # print(np.array(pairs))
+
+        # check the order of pairs; to have first vector in positive xy quater
+        # and third vector #determine pair along z
+
+        pairs_new = [0]* len(pairs)
+        order_new = [0]* len(order)
+        # print(xc)
+        # print(np.array(dic['xcart'][1:]))
+        # print(np.array(pairs))
+        # print(order)
+        iz = np.argmax(np.abs(np.array(pairs).dot([0,0,1]) ))//2
+        pairs_new[4] = copy.copy(pairs[iz*2])
+        pairs_new[5] = copy.copy(pairs[iz*2+1])
+        order_new[4] = order[iz*2]
+        order_new[5] = order[iz*2+1]
+        del pairs[iz*2+1] # 
+        del pairs[iz*2]
+        del order[iz*2+1] # 
+        del order[iz*2]        
+        ix = np.argmax(np.array(pairs).dot([1,0,0]) )//2
+        iy = np.argmax(np.array(pairs).dot([0,1,0]) )//2
+        
+        q1 = sum(np.sign(pairs[0][0:2]))-sum(np.sign(pairs[1][0:2])) # for positive quater should be 4, for negative zero
+        q2 = sum(np.sign(pairs[2][0:2]))-sum(np.sign(pairs[3][0:2]))
+        # print(q1, q2)
+
+        if q1 > q2:
+            pairs_new[0:4] = order
+            order_new[0:4] = order
+        else:
+            #swap axis 
+            pairs_new[0:2] = pairs[2:4]
+            pairs_new[2:4] = pairs[0:2]
+            order_new[0:2] = order[2:4]
+            order_new[2:4] = order[0:2]
+
+        # print(order)
+        # print(order_new)
+
+
+        if mode == 'shift_center':
+            #shift along lattice vectors
+            #a12 
+            ''
+
+        if mode == 'axis_expand':
+            #expand or shring alond one of the axes by d
+            # axis = 0
+            # print(order_new[axis*2:axis*2+2])
+            for i in order_new[axis*2:axis*2+2]:
+                x = st.xcart[i]
+                print(x)
+                v = xc-x
+                vn = np.linalg.norm(v)
+                if vn < 0.1:
+                    mul = 0 # central atom will not move! exatly what we need
+                else:
+                    mul = d/vn
+                dv = v * mul
+                st.xcart[i] = st.xcart[i] -  dv 
+                print(st.xcart[i] )
+
+        # sys.exit()
+
+        st.update_xred()
+
+        dic = st.nn(i, 6, from_one = 0, silent = silent)
+        printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+
+        st.name+='pol'+str(i+1)
+
+        return st
+
+
+
+
+
+
+
+
     def ewald(self, ox_st = None, site = None):
         # ox_st 
         #   # 1 - oxidation states from guess
