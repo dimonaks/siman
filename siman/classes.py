@@ -3071,7 +3071,7 @@ class Calculation(object):
         self.end.get_mag_tran(*args, **kwargs)
 
 
-    def add_new_name(self, idd):
+    def add_new_name  (self, idd):
         """
         
         just adding new key in database for that calculation
@@ -5122,7 +5122,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def get_chg_filefinterc(self, *args, **kwargs):
+    def get_chg_file(self, *args, **kwargs):
         """just wrapper to get chgcar files """
         if 'CHGCAR' in kwargs:
             del kwargs['CHGCAR']
