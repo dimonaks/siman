@@ -495,6 +495,7 @@ class Structure():
 
        
 
+
     def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
         """
         oxidation (dict) - {'Ti':'Ti3+'}
@@ -1130,6 +1131,8 @@ class Structure():
 
         slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
         return slab.dipole
+
+
 
 
     def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None):
@@ -3071,7 +3074,7 @@ class Calculation(object):
         self.end.get_mag_tran(*args, **kwargs)
 
 
-    def add_new_name  (self, idd):
+    def add_new_name(self, idd):
         """
         
         just adding new key in database for that calculation
