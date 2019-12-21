@@ -2304,19 +2304,22 @@ class Structure():
         return st
 
 
-    def localize_polaron_dist(self, i_center, d, nn = 6, axis = None, mode = 'axis_expand'):
+    def localize_polaron_dist(self, i_center, d, nn = 6, axis = None, direction = None, mode = 'axis_expand'):
         """
         
         localization small polaron at transition metal by adjusting TM-O distances
         with distortions
         i_center - number of transition atom, from 0
         d - shift in angstrom; positive increase TM-O, negative reduce TM-O
+            or shift along *direction* 
         nn - number of neighbors
         axis - axis of octahedra, 0, 1, 2,
+        direction - vector to shift central atom in reduced coordinates
 
-        Axes of octahedra are determined relative to cartesian coordinates
-
-
+            Axes of octahedra are determined relative to cartesian coordinates
+        mode 
+            'axis_expand'
+            'shift_center'
 
         TODO
         Make it more general to include any ligands; now only O and F are supported
@@ -2420,6 +2423,11 @@ class Structure():
             #shift along lattice vectors
             #a12 
             ''
+            v = np.dot( direction, st.rprimd) # cart
+            vn = np.linalg.norm(v)
+            dv = v/vn*d
+            # print(dv)
+            st.xcart[i_center] = st.xcart[i_center] + dv
 
         if mode == 'axis_expand':
             #expand or shring alond one of the axes by d

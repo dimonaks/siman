@@ -1347,6 +1347,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
             for d, kt in zip(out['dist'], out['numbers']):
                 if kt not in kts:
                     kts.append(kt)
+                    # print(kt, i, st_as.distance(kt, i))
                     tab_ap.append([kt, d, st_as.distance(kt, i), ])
                 # print('AP ',d, st_as.distance(kt, i) , 'has k=', kt)
             printlog('Possible positions for additional polaron:', imp = 'Y')
@@ -1483,7 +1484,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
                     AP_on = AP_on, i_AP = i_AP, disp_AP = disp_AP, mag_AP = mag_AP )
                 st_as.write_poscar()
                 structures.append(st_as)
-                table.append([i, k]+['', a[0]+1,  a[1]+1, a[2]])
+                table.append([i, k]+['', a[0],  a[1], a[2]])
                 numbers.append(i)
             i+=1
 
@@ -1871,7 +1872,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
-def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, ):
+def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0 ):
     """
     Generate all possible configurations by replacing x of element el1 by el2 from the structure.
     You should know which space group you want to get.
@@ -1924,22 +1925,25 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     ls = [0]*ntot
     order(ls, 0)
     symmetries = []
-    print('Total number of orderings is', len(orderings))
-
+    if not silent:
+    
+        print('Total number of orderings is', len(orderings))
+    at_replace = []
     for order in orderings:
         atoms_to_replace = [req[i] for i, s in enumerate(order) if s < 0]
         # print(atoms_to_replace)
-        st_rep = st.replace_atoms(atoms_to_replace, el2, silent = 1)
-        nm = st_rep.sg(silent = True)[1]
+        st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent)
+        nm = st_rep.sg(silent = silent)[1]
         symmetries.append(nm)
         if nm == sg:
             structures.append(st_rep)
-
-    print('The following space groups were found', Counter(symmetries))
+            at_replace.append(atoms_to_replace)
+    if not silent:
+        print('The following space groups were found', Counter(symmetries))
     if info_mode:
         return list(set(symmetries))
 
-    return structures
+    return structures, at_replace
 
 
 

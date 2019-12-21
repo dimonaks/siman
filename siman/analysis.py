@@ -321,6 +321,84 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
 
 
 
+
+
+def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4$F', 
+    ax = None, first = None, last = None, fmt = 'r-', label = None, color =None):
+    """
+    objs - dict of objects with concentration of alkali (*invert* = 1) or vacancies (*invert* = 0) as a key
+    xs - choose specific concentrations
+    invert - 0 or 1 for concentration axis, see above
+    ax - matplotlib object, if more profiles on one plot are needed
+    """
+
+    if xs is None:
+        xs = sorted(objs.keys())
+
+    es2 = []
+    xs2 = []
+    x_prev = None
+    V_prev = None
+
+    for i in range(len(xs))[:-1] :
+        x = xs[i]
+        # process_cathode_material('KTiPO4F', step = 3, target_x = x, params = params , update = 0 ) #
+        # es.append(obj.e0)
+        # objs[xs[i]].res()
+        # objs[xs[i]].run('1uTU32r', add = 0, up = 'up1')
+
+        V = calc_redox(objs[xs[i+1]], objs[xs[i]])['redox_pot']
+        # print(V)
+        if V_prev is not None:
+            es2.append(V_prev)
+            xs2.append(x)
+        es2.append(V)
+        xs2.append(x)
+        V_prev = V
+
+    xs2.append(1)
+    es2.append(V_prev)
+
+    if invert:
+        es_inv = list(reversed(es2))
+    else:
+        es_inv = es2
+    # xs_inv = list(reversed(xs2))
+
+    # print(es_inv)
+    # print(xs_inv)
+    fit_and_plot(ax = ax, first = first, last = last, 
+        dE1 = {'x':xs2, 'y':es_inv, 'fmt':fmt, 'label':label, 'color':color, }, 
+        ylim = (1.8, 5.7), 
+        legend = 'best', ver=0, alpha = 1,
+        filename = 'figs/ktp_voltage_curve', fig_format = 'pdf',
+        ylabel = 'Voltage, V', xlabel = xlabel, linewidth = 2)
+    return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def matrix_diff(cl1, cl2, energy_ref = 0):
     #energy of substitutional impurity
     e = cl1.energy_sigma0
