@@ -2157,7 +2157,7 @@ class Structure():
         return
 
 
-    def find_unique_topologies(self, el1, el2, nn = 6, tol = 0.5, told = 0.005):
+    def find_unique_topologies(self, el1, el2, nn = 6, tol = 0.5, told = 0.005, tolmag = 0.4, write_loc = 0):
 
         """
         Looks for unique topologies
@@ -2166,7 +2166,11 @@ class Structure():
         el1, el2 (str) - elements that forms topology
         nn (int) - number of neighbours for topology analysis
         tol (float) - tolerance for unique centers defined by deviation, mA
-        told (float) - tolerance for distances, A
+        told (float) - tolerance for distances applied for grouping bonds, A
+        tolmag (float) - tolerance for magnetic moments works with tol
+        write_loc (int) - write local topology
+
+
         """
 
         def group_bonds(lengths, tol):
@@ -2196,6 +2200,7 @@ class Structure():
 
         unique_centers = [] # numbers of unique topology centers 
         unique_deviations = []
+        unique_magmoms = []
         av_dev5 = 0
         for i in n1:
             x = st.xcart[i]
@@ -2203,22 +2208,26 @@ class Structure():
             av_dev, _   = local_surrounding2(x, st, nn, 'av_dev', True, only_elements = [z2], round_flag = 0 )
             # if av_dev > 100:
                 #probably surface atom, deviation is too much
+            mag = st.magmom[i]
             print('Deviation for atom {:d} is {:.1f}'.format(i, av_dev) )
             if len(unique_centers) == 0:
                 unique_centers.append(i)
                 unique_deviations.append(av_dev)
+                unique_magmoms.append(mag)
                 continue
             # print(unique_centers)
             # print(av_dev, min(np.abs(np.array(unique_deviations-av_dev))))
-            if min(np.abs(np.array(unique_deviations-av_dev))) < tol:
+            # print(np.array(unique_magmoms-mag)) 
+            if min(np.abs(np.array(unique_deviations-av_dev))) < tol and min(np.abs(np.array(unique_magmoms)-mag)) < tolmag:
                 continue
             else:
                 unique_centers.append(i)
+                unique_magmoms.append(mag)
                 unique_deviations.append(av_dev)
         
         # pretty = pprint.PrettyPrinter(width=30)
 
-        print('Unique centers are ', unique_centers,'. number, deviation, magmom and topology of polyhedra and  for each:')
+        print('Unique centers are ', unique_centers,'. number, deviation6, deviation5, magmom, and topology of polyhedra and  for each:')
         for i, d in zip(unique_centers, unique_deviations):
             dic = st.nn(i, only = [z2], from_one = 0, silent = 1)
             lengths = dic['dist'][1:]
@@ -2227,7 +2236,8 @@ class Structure():
                 x = st.xcart[i]
                 av_dev5, _   = local_surrounding2(x, st, 5, 'av_dev', True, only_elements = [z2], round_flag = 0 )
                 st.name+=str(i)
-                st.write_xyz(show_around=i+1, analysis = 'imp_surrounding', only_elements = [z2])
+                if write_loc:
+                    st.write_xyz(show_around=i+1, analysis = 'imp_surrounding', only_elements = [z2])
             # print(lengths)
             groups = group_bonds(lengths, told)
             print( '{:2d} | {:4.1f} | {:4.1f} | {:4.1f} :'.format(i, d, av_dev5, st.magmom[i]))
