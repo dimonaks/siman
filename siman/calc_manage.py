@@ -188,11 +188,8 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH -J "+job_name+"\n")
             if 'walltime' in header.cluster:
                 f.write("#SBATCH -t "+str(header.cluster['walltime'])+'\n')
-            # else:
-                # if header.WALLTIME_LIMIT: #deprecated remove
-                    # f.write("#PBS -l walltime=72:00:00 \n")
-                    # f.write("#SBATCH -t 250:00:00 \n")
-
+            else:
+                f.write("#SBATCH -t 250:00:00 \n")
 
             f.write("#SBATCH -N 1\n")
             f.write("#SBATCH -n "+str(number_cores)+"\n")
@@ -528,7 +525,9 @@ def get_file_by_version(geofilelist, version):
 
         elif input_geo_format == 'vasp': #from filename
             if '-' in input_geofile:
+                # print('create calculation for structure',input_geofile)
                 curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+                # print('create calculation for structure with version',curv)
             # try: 
             #     curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
             # except:
@@ -545,6 +544,7 @@ def get_file_by_version(geofilelist, version):
             curv = None
 
         if curv == version:
+            # print('curv = ',curv,' version = ',version)
             printlog('match', curv, version)
             matched_files.append(input_geofile)
 
@@ -577,7 +577,7 @@ def smart_structure_read(filename = None, curver = 1, calcul = None, input_folde
     returns Structure()
     """
 
-    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'cif':'*.cif'}
+    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'vasp-phonopy': 'POSCAR*', 'cif':'*.cif'}
 
     if filename:
         input_geo_file = filename
@@ -1702,6 +1702,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         for v in verlist:
             id = (it,inputset,v)
+
             
            
             blockdir = header.struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
@@ -3633,9 +3634,10 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
     if calctype == 'create':
-        work_path = 'geo/'+struct_des[new_id[0]].sfolder+'/'+new_id[0]
+        work_path = header.struct_des[new_id[0]].sfolder+'/'+new_id[0]
+        print(work_path)
     
-        log_history(  "{:}    #on {:}".format( traceback.extract_stack(None, 2)[0][3],   datetime.date.today() )  )
+        # log_history(  "{:}    #on {:}".format( traceback.extract_stack(None, 2)[0][3],   datetime.date.today() )  )
 
         # print type(from_id)
         if type(from_id) == str:
@@ -3669,21 +3671,22 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
          
         #run phonopy
         print_and_log(
-            runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; rm POSCAR-*; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+            runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; rm POSCAR-*;'+header.path_to_phonopy 
             +confname+' -c '+posname+' -d --tolerance=0.01'), imp = 'y' )
 
         ndis = len( glob.glob('POSCAR-*') )
-        print_and_log( ndis, ' displacement files was created', )
+        print( ndis, ' displacement files was created\n\n\n\n', )
 
         os.chdir(savedPath)
 
 
         #add
-        add_loop(new_id[0],   new_id[1], range(1,ndis+1), up = 'up1', input_geo_format = 'vasp', savefile = 'ocdx')
+        # add_loop(new_id[0],   new_id[1], range(1,ndis+1), up = 'up1', savefile = 'ocdx')
+        add_loop(new_id[0],   new_id[1], range(1,ndis+1), up = 'up1', input_geo_format = 'vasp-phonopy', savefile = 'ocdx')
 
         #copy SPOSCAR - an ideal cell
-        src =  'geo/'+struct_des[new_id[0]].sfolder+'/'+new_id[0]
-        dst = struct_des[new_id[0]].sfolder+'/'+new_id[0]+'.'+new_id[1]+'/'
+        src =  header.struct_des[new_id[0]].sfolder+'/'+new_id[0]
+        dst = header.struct_des[new_id[0]].sfolder+'/'+new_id[0]+'.'+new_id[1]+'/'
         shutil.copy(src+'/SPOSCAR', dst)
         shutil.copy(src+'/disp.yaml', dst)
 
@@ -3692,26 +3695,26 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
         if type(new_id) == tuple:
             new_cl = header.calc[new_id]
 
-            work_path = struct_des[new_id[0]].sfolder+'/'+new_id[0]+'.'+new_id[1]
-            work_path_geo = 'geo/'+struct_des[new_id[0]].sfolder+'/'+new_id[0]
+            work_path = header.struct_des[new_id[0]].sfolder+'/'+new_id[0]+'.'+new_id[1]
+            work_path_geo = header.struct_des[new_id[0]].sfolder+'/'+new_id[0]
 
 
 
             npos = len( glob.glob(work_path+'/*.POSCAR') )
-            # print range(1,npos+1), 'range'
+            print(range(1,npos+1), 'range')
             if not os.path.exists(work_path+"/1.POSCAR"):
                 res_loop(new_id[0],   new_id[1], range(1,npos+1), up = 'up1', input_geo_format = 'vasp', )
 
             if additional:
                 for name in additional:
-                    npos_new = len( glob.glob(struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/*.POSCAR') )
+                    npos_new = len( glob.glob(header.struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/*.POSCAR') )
 
                     if not os.path.exists(struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/'+str(npos+1)+".POSCAR"):
                         res_loop(name,   new_id[1], range(npos+1, npos+npos_new+1), up = 'up1', input_geo_format = 'vasp', )
                     
                     npos = npos+npos_new
 
-                    runBash("rsync "+struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/*.vasprun.xml '+work_path)
+                    runBash("rsync "+header.struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/*.vasprun.xml '+work_path)
                     # print 'Additional vasprun.xml files were copied to ', work_path
 
             savedPath = os.getcwd()
@@ -3723,6 +3726,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
             with open(confname, 'w', newline = '') as f:
                 f.write("DIM = 1 1 1\n")
                 f.write("ATOM_NAME = ")
+                print(new_cl.name)
                 for z in new_cl.end.znucl:
                     el = element_name_inv(z)
                     f.write(el+' ')
@@ -3734,7 +3738,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
                 #run phonopy; read forces
                 ndis = len( glob.glob('*.vasprun.xml') )
                 print_and_log( ndis, ' displacement files was Found')
-                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; '+header.path_to_phonopy 
                     +'  -f {1..'+str(ndis)+'}.vasprun.xml --tolerance=0.01'), imp = 'Y' )
 
             #calculate thermal prop
@@ -3742,7 +3746,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
             if not os.path.exists(result):
 
                 posname = 'SPOSCAR'
-                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; '+header.path_to_phonopy 
                     +confname+' -c '+posname+' -t -p -s --tolerance=0.01'), imp = 'y' )
 
                 shutil.copyfile('thermal_properties.yaml', result)
@@ -3758,7 +3762,8 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
 
-    return T_range, fit_func
+    # return T_range, fit_func
+    return
 
 
 

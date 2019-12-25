@@ -789,14 +789,14 @@ def ortho_vec_old(rprim, ortho_sizes = None):
 
     return mul_matrix
 
-def ortho_vec(rprim, ortho_sizes = None):
+def ortho_vec(rprim, ortho_sizes = None, silent = 0):
     """
     Function returns mul_mat - 3 vectors of integer numbers (ndarray)
     By calculating np.dot(mul_matrix, rprim) you will get rprim of orthogonal supercell (actually as close as possible to it) 
     """
-
-    printlog('Calculating mul_matrix for ortho:',ortho_sizes, imp = 'y',)
-    printlog('rprim is;', rprim)
+    if not silent:
+        printlog('Calculating mul_matrix for ortho:',ortho_sizes, imp = 'y',)
+        printlog('rprim is;', rprim)
     vec_new = np.diag(ortho_sizes)
 
     # print(rprim)
@@ -811,7 +811,8 @@ def ortho_vec(rprim, ortho_sizes = None):
 
     # print(ortho_test)
     # print(mul_matrix_float)
-    printlog('mul_matrix_float:\n',mul_matrix_float, imp = 'y', end = '\n')
+    if not silent:
+        printlog('mul_matrix_float:\n',mul_matrix_float, imp = 'y', end = '\n')
 
     mul_matrix = np.array(mul_matrix_float)
     mul_matrix = mul_matrix.round(0)
@@ -822,8 +823,8 @@ def ortho_vec(rprim, ortho_sizes = None):
         if mul_matrix[i][i] == 0:
             # mul_matrix[i][i] = 1
             ''
-
-    printlog('mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
+    if not silent:
+        printlog('mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
 
 
     return mul_matrix
@@ -836,7 +837,7 @@ def ortho_vec(rprim, ortho_sizes = None):
 
 
 
-def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1)): 
+def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1), silent = 0): 
     """ 
     st (Structure) -  
     mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 
@@ -855,11 +856,11 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     sc.rprimd = list( np.dot(mul_matrix, st.rprimd)*np.array(mul)[:, np.newaxis]  )
     
     # print(sc.rprimd)
+    if not silent:
+        printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
+        # printlog('Mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
 
-    printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
-    # printlog('Mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
-
-    printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
+        printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
     st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  )
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
@@ -876,7 +877,8 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
         mag_flag = False        
 
     sc_natom = sc.vol/st.vol*st.natom # test
-    printlog('The supercell should contain', sc_natom, 'atoms ... \n', imp = 'y', end = ' ')
+    if not silent:
+        printlog('The supercell should contain', sc_natom, 'atoms ... \n', imp = 'y', end = ' ')
     sc.xcart = []
     sc.typat = []
     sc.xred  = []
@@ -924,7 +926,8 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
             'try to increase *mp* of change *bound* ')
 
     else:
-        printlog('OK', imp = 'y')
+        if not silent:
+            printlog('OK', imp = 'y')
     
     if test_overlap: #test 2: overlapping of atoms
         enx = list(enumerate(sc.xcart))
@@ -1958,6 +1961,28 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
     return slabs[surface_i]
 
 
+def stoichiometry_criteria(st1,st2):
+
+    natom1 = st1.get_natom()
+    natom2 = st2.get_natom()
+
+    tra1 = st1.get_transition_elements()
+    tra2 = st2.get_transition_elements()
+    ntra1 = len(tra1)
+    if ntra1 == 0: 
+        ntra1 = natom1
+    ntra2 = len(tra2)
+    if ntra2 == 0: 
+        ntra2 = natom2
+    rat1 = natom1/ntra1
+    rat2 = natom2/ntra2
+    mul = ntra1/ntra2
+
+    if rat1 == rat2:
+        return 1
+    else:
+        return 0
+
 
 def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
     primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1, lll_reduce  = 0 ):
@@ -2000,6 +2025,18 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
     from pymatgen.io.vasp.inputs import Poscar
     from siman.geo import replic
 
+    void_param = 0
+    st_bulk = copy.deepcopy(st)
+
+    if 'void' in st.get_elements():
+        print('\nAttention! Voids are found in the structure!\nChange it by Po atoms\n')
+        void_n = st.get_numbers('void')
+        st = st.replace_atoms(void_n, 'Po')
+        oxidation = {**oxidation, 'Po':'Po2+'}
+        void_param = 1
+
+
+
     if shift:
         st = st.shift_atoms([0,0,shift])
 
@@ -2012,8 +2049,23 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
+    for slab in slabs:
+        sl = st.update_from_pymatgen(slab)
+        if stoichiometry_criteria(sl, st_bulk):
+            print('Stoichiometry slab')
+        else:
+            print('Non-stoichiometry slab')
+
+        
+
+        
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
-    st = st.update_from_pymatgen(slabs[surface_i])
+    if len(slabs):
+        st = st.update_from_pymatgen(slabs[surface_i])
+    else:
+        return slabs
+
+
 
     if write_poscar:
         for i, slab in enumerate(slabs):
@@ -2043,10 +2095,21 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
             st.write_poscar()
 
 
+    
+
     if return_one:
+
+        if void_param:
+            print('Return voids in the structure\n')
+            void_n = st.get_numbers('Po')
+            st = st.replace_atoms(void_n, 'void')
+            void_param = 0
+
         print('Final structure contains ', st.natom, 'atoms')
         return st
     else:
+        if void_param:
+            print('Don\'t forget replace Po atoms by voids in the chosen structure\n')
         return slabs
 
 
@@ -2125,6 +2188,37 @@ def rms_pos_diff(st1, st2):
     return rms 
 
 
+def removed_atoms(st1, st2, tol = 1e-2):
+    '''
+    This function finds voids by comparing ideal structure and structure with removed atoms
+    Input: st1 - ideal, st2 - with removed atoms
+    Return list with atomic numbers of removed atoms 
+    '''
+
+    removed_atoms = []
+    for i in range(0, st1.natom):
+        n = 0
+        for j in range(0,st2.natom):
+            d = np.linalg.norm(st1.xred[i] - st2.xred[j])
+            # if round(st1.xred[i][0],2) == round(st2.xred[j][0],2) and round(st1.xred[i][1],2) == round(st2.xred[j][1],2) and round(st1.xred[i][2],2) == round(st2.xred[j][2],2): 
+            if d < tol: 
+                None
+            else: 
+                n+=1
+
+        if n == st2.natom:
+            removed_atoms.append(i)
+    print('Removed atoms: ',removed_atoms)
+    return removed_atoms
+
+def find_voids(st1, st2):
+    '''
+    Function returns structure with voids in the position of removed atoms
+    '''
+    removed_at = removed_atoms(st1, st2)
+    st = st1.replace_atoms(removed_at, 'void')
+    return st
+
 def hex2rhombo(h,k,l):
     #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
     i = -h - k
@@ -2141,3 +2235,51 @@ def rhombo2hex(h,k,l):
     lh = h + k + l 
     print(hh,kh,lh)
     return hh,kh,lh
+
+
+
+def create_ads_molecule(st, molecule, mol_xc, conf_i = 0, fix_layers = False, fix_xc_range = None):
+    '''
+    The function uses special module AdsorbateSiteFinder  from pymatgen
+
+
+    https://static-content.springer.com/esm/art%3A10.1038%2Fs41524-017-0017-z/MediaObjects/41524_2017_17_MOESM1_ESM.pdf
+    @article{montoya2017high,
+          title={A high-throughput framework for determining adsorption energies on solid surfaces},
+          author={Montoya, Joseph H and Persson, Kristin A},
+          journal={npj Computational Materials},
+          volume={3},
+          number={1},
+          pages={14},
+          year={2017},
+          publisher={Nature Publishing Group}
+        }
+
+    molecule -  'H', 'CO' ...
+    mol_xc - list with xcart of atoms in molecule: [[0,0,0]], [[0,0,0],[0,0,1.23]]
+    return structure with adsorbed molecule on the surface
+    '''
+
+
+
+    from pymatgen import Structure, Lattice, Molecule
+    from pymatgen.analysis.adsorption import AdsorbateSiteFinder
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    from pymatgen.io.vasp.inputs import Poscar
+
+    pm = st.convert2pymatgen()
+    asf_pm = AdsorbateSiteFinder(pm)
+
+    ads_sites = asf_pm.find_adsorption_sites()
+    
+
+    adsorbate = Molecule(molecule, mol_xc)
+    ads_structs = asf_pm.generate_adsorption_structures(adsorbate,repeat=[1, 1, 1])
+    print('\nI found ',len(ads_structs), ' configurations with ', molecule, ' on the surface\n')
+
+    p = st.update_from_pymatgen(ads_structs[conf_i])
+
+    if fix_layers:
+        p = p.fix_layers(xcart_range = fix_xc_range)
+
+    return p

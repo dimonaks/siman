@@ -493,8 +493,8 @@ class Structure():
 
         return st
 
+       
 
-        
 
     def convert2pymatgen(self, oxidation = None, slab = False, chg_type = 'ox'):
         """
@@ -2082,9 +2082,12 @@ class Structure():
 
         return info
 
-    def tm_o_distance(self, criteria = 0.03):
-        #return average TM-O distance in the cell and list of outstanding bonds 
+    def check_YT(self, criteria = 0.03):
+        #Check Yan-Teller effect
+        #check average TM-O distance in the cell and find the outstanding bonds 
+        #return TM-O dist list
         #criteria - value in % of average bond length when bond is outstanding
+        #
 
         tra = self.get_transition_elements()
         
@@ -2149,7 +2152,7 @@ class Structure():
 
         if not k: print('Ok! None outstanding bonds found\n')
 
-        return
+        return dist_list
 
 
 
