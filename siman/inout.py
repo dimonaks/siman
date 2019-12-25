@@ -546,7 +546,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
 
     if analysis == 'imp_surrounding':
-        printlog('analysis = imp_surrounding', imp = 'y')
+        printlog('analysis == imp_surrounding', imp = '')
 
         if show_around == 0:
             printlog('Error! number of atom *show_around* should start from 1')
@@ -585,7 +585,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
                     # ltypat.append(t)
                     # print x, ' x'
                     x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True, only_elements = only_elements)
-                    print (x_t)
+                    # print (x_t)
                     lxcart+=x_t[0]
                     ltypat+=x_t[1]
                 i+=1

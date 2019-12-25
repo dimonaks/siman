@@ -3,6 +3,8 @@
 from __future__ import division, unicode_literals, absolute_import, print_function
 import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil
 import re, io, json
+import pprint
+
 from textwrap import wrap
 
 import numpy as np
@@ -1644,7 +1646,7 @@ class Structure():
 
 
 
-    def replace_atoms(self, atoms_to_replace, el_new):
+    def replace_atoms(self, atoms_to_replace, el_new, silent = 0):
         """
         atoms_to_replace - list of atom numbers starting from 0
         el_new - new element periodic table short name
@@ -1664,7 +1666,8 @@ class Structure():
 
                 if n in atoms_to_replace:
                     xcart = st.xcart[i]
-                    print('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new)
+                    if not silent:
+                        print('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new)
                     st = st.del_atom(i)
 
                     st = st.add_atoms([xcart], element = el_new)
@@ -1687,6 +1690,8 @@ class Structure():
 
     def replace_atoms2(self, el_old, el_new, concentration):
         """
+        Replace atoms using random  
+
         el_old - element to replace
 
         el_new - new element
@@ -2002,7 +2007,7 @@ class Structure():
         x = st.xcart[i]
         out_or = local_surrounding(x, st, n, 'atoms', True, only_elements = only)
         # out =  (xcart_local, typat_local, numbers, dlist )
-
+        # print(out_or)
         out = list(out_or)
         # out[0] = list(itertools.chain.from_iterable(out[0]))
         out[1] = [invert(zn[o-1]) for o in out[1]]
@@ -2155,6 +2160,93 @@ class Structure():
         return dist_list
 
 
+    def find_unique_topologies(self, el1, el2, nn = 6, tol = 0.5, told = 0.005, tolmag = 0.4, write_loc = 0):
+
+        """
+        Looks for unique topologies
+        Currently only octahedral and pentahedral are realized
+
+        el1, el2 (str) - elements that forms topology
+        nn (int) - number of neighbours for topology analysis
+        tol (float) - tolerance for unique centers defined by deviation, mA
+        told (float) - tolerance for distances applied for grouping bonds, A
+        tolmag (float) - tolerance for magnetic moments works with tol
+        write_loc (int) - write local topology
+
+
+        """
+
+        def group_bonds(lengths, tol):
+            #
+            lengths = list(np.around(lengths, 2))
+            unique = []
+            unique.append(lengths[0])
+            groups = {}
+            for l in lengths[1:]:
+                if min(np.abs(unique-l)) > tol:
+                    unique.append(l)
+            # print('lengths', lengths)
+            # print('unique bonds are', unique)
+            for u in unique:
+                groups[u] = 0
+                for l in lengths:
+                    if abs(l-u) < tol:
+                        groups[u] += 1
+            return groups
+
+
+        st = self
+        z1 = invert(el1)
+        z2 = invert(el2)
+        n1 = self.get_specific_elements([z1])
+
+
+        unique_centers = [] # numbers of unique topology centers 
+        unique_deviations = []
+        unique_magmoms = []
+        av_dev5 = 0
+        for i in n1:
+            x = st.xcart[i]
+
+            av_dev, _   = local_surrounding2(x, st, nn, 'av_dev', True, only_elements = [z2], round_flag = 0 )
+            # if av_dev > 100:
+                #probably surface atom, deviation is too much
+            mag = st.magmom[i]
+            print('Deviation for atom {:d} is {:.1f}'.format(i, av_dev) )
+            if len(unique_centers) == 0:
+                unique_centers.append(i)
+                unique_deviations.append(av_dev)
+                unique_magmoms.append(mag)
+                continue
+            # print(unique_centers)
+            # print(av_dev, min(np.abs(np.array(unique_deviations-av_dev))))
+            # print(np.array(unique_magmoms-mag)) 
+            if min(np.abs(np.array(unique_deviations-av_dev))) < tol and min(np.abs(np.array(unique_magmoms)-mag)) < tolmag:
+                continue
+            else:
+                unique_centers.append(i)
+                unique_magmoms.append(mag)
+                unique_deviations.append(av_dev)
+        
+        # pretty = pprint.PrettyPrinter(width=30)
+
+        print('Unique centers are ', unique_centers,'. number, deviation6, deviation5, magmom, and topology of polyhedra and  for each:')
+        for i, d in zip(unique_centers, unique_deviations):
+            dic = st.nn(i, only = [z2], from_one = 0, silent = 1)
+            lengths = dic['dist'][1:]
+            av = dic['av(A-O,F)']
+            if d > 100:
+                x = st.xcart[i]
+                av_dev5, _   = local_surrounding2(x, st, 5, 'av_dev', True, only_elements = [z2], round_flag = 0 )
+                st.name+=str(i)
+                if write_loc:
+                    st.write_xyz(show_around=i+1, analysis = 'imp_surrounding', only_elements = [z2])
+            # print(lengths)
+            groups = group_bonds(lengths, told)
+            print( '{:2d} | {:4.1f} | {:4.1f} | {:4.1f} :'.format(i, d, av_dev5, st.magmom[i]))
+            print(groups, 'av={:.2f} \n'.format(av))
+
+        return
 
     def center(self):
         #return cartesian center of the cell
@@ -2223,6 +2315,167 @@ class Structure():
         st.name+='pol'+str(i+1)
 
         return st
+
+
+    def localize_polaron_dist(self, i_center, d, nn = 6, axis = None, direction = None, mode = 'axis_expand'):
+        """
+        
+        localization small polaron at transition metal by adjusting TM-O distances
+        with distortions
+        i_center - number of transition atom, from 0
+        d - shift in angstrom; positive increase TM-O, negative reduce TM-O
+            or shift along *direction* 
+        nn - number of neighbors
+        axis - axis of octahedra, 0, 1, 2,
+        direction - vector to shift central atom in reduced coordinates
+
+            Axes of octahedra are determined relative to cartesian coordinates
+        mode 
+            'axis_expand'
+            'shift_center'
+
+        TODO
+        Make it more general to include any ligands; now only O and F are supported
+        Make for other topologies, now tested only for octa
+
+        """
+        st = copy.deepcopy(self)
+        TM = st.get_el_z(i_center)
+        TM_name = st.get_el_name(i_center)
+        if TM not in header.TRANSITION_ELEMENTS:
+            printlog('Warning! provided element ', TM_name, 'is not a transition metal, I hope you know what you are doing. ')
+
+        silent = 1
+        if 'n' in header.warnings or 'e' in header.warnings:
+            silent = 0
+        # silent = 0
+
+        np.set_printoptions(formatter={'float': '{: 6.2f}'.format})
+
+        dic = st.nn(i_center, nn, from_one = 0, silent = silent)
+        av = dic['av(A-O,F)']
+        printlog('Average TM-O distance before localization is {:.2f}'.format(av), imp = '')
+
+        xc = st.xcart[i_center]
+        ligand_xcart = [x-xc for x in  dic['xcart'][1:]]
+        # print(np.array(ligand_xcart))
+        ligand_order     = copy.copy(list(dic['numbers'][1:]))
+
+
+
+        # find octahedron axes
+        pairs = []# first, second, and third pair are along first, second, and third octahedron axes
+        order = []
+        # if id(x1) in map(id, checked):
+        i=0
+        for i1, x1 in zip(ligand_order, ligand_xcart):
+            for i2, x2 in zip(ligand_order[i+1:], ligand_xcart[i+1:]):
+                # print( x1+x2 )
+                ssum = np.linalg.norm(x1+x2 ) # for ideal octa should be zero for axis
+                if ssum < av/2: #should work even for highly distorted octahedra
+                    pairs.append(x1)
+                    pairs.append(x2)
+                    order.append(i1)
+                    order.append(i2)
+                    # print(av, ssum)
+            i+=1
+        if len(pairs) < len(ligand_xcart):
+            #only two axes detected; i.e. pyramid; the third axis is determined relative to the center
+            for i1, x1 in zip(ligand_order, ligand_xcart):
+                # if x1 in pairs:
+                if id(x1) in map(id, pairs):
+                    continue
+                else:
+                    pairs.append(x1)
+                    pairs.append(xc-xc)
+                    order.append(i1)
+                    order.append(dic['numbers'][0])
+
+        # print(np.array(pairs))
+
+        # check the order of pairs; to have first vector in positive xy quater
+        # and third vector #determine pair along z
+
+        pairs_new = [0]* len(pairs)
+        order_new = [0]* len(order)
+        # print(xc)
+        # print(np.array(dic['xcart'][1:]))
+        # print(np.array(pairs))
+        # print(order)
+        iz = np.argmax(np.abs(np.array(pairs).dot([0,0,1]) ))//2
+        pairs_new[4] = copy.copy(pairs[iz*2])
+        pairs_new[5] = copy.copy(pairs[iz*2+1])
+        order_new[4] = order[iz*2]
+        order_new[5] = order[iz*2+1]
+        del pairs[iz*2+1] # 
+        del pairs[iz*2]
+        del order[iz*2+1] # 
+        del order[iz*2]        
+        ix = np.argmax(np.array(pairs).dot([1,0,0]) )//2
+        iy = np.argmax(np.array(pairs).dot([0,1,0]) )//2
+        
+        q1 = sum(np.sign(pairs[0][0:2]))-sum(np.sign(pairs[1][0:2])) # for positive quater should be 4, for negative zero
+        q2 = sum(np.sign(pairs[2][0:2]))-sum(np.sign(pairs[3][0:2]))
+        # print(q1, q2)
+
+        if q1 > q2:
+            pairs_new[0:4] = order
+            order_new[0:4] = order
+        else:
+            #swap axis 
+            pairs_new[0:2] = pairs[2:4]
+            pairs_new[2:4] = pairs[0:2]
+            order_new[0:2] = order[2:4]
+            order_new[2:4] = order[0:2]
+
+        # print(order)
+        # print(order_new)
+
+
+        if mode == 'shift_center':
+            #shift along lattice vectors
+            #a12 
+            ''
+            v = np.dot( direction, st.rprimd) # cart
+            vn = np.linalg.norm(v)
+            dv = v/vn*d
+            # print(dv)
+            st.xcart[i_center] = st.xcart[i_center] + dv
+
+        if mode == 'axis_expand':
+            #expand or shring alond one of the axes by d
+            # axis = 0
+            # print(order_new[axis*2:axis*2+2])
+            for i in order_new[axis*2:axis*2+2]:
+                x = st.xcart[i]
+                print(x)
+                v = xc-x
+                vn = np.linalg.norm(v)
+                if vn < 0.1:
+                    mul = 0 # central atom will not move! exatly what we need
+                else:
+                    mul = d/vn
+                dv = v * mul
+                st.xcart[i] = st.xcart[i] -  dv 
+                print(st.xcart[i] )
+
+        # sys.exit()
+
+        st.update_xred()
+
+        dic = st.nn(i, 6, from_one = 0, silent = silent)
+        printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+
+        st.name+='pol'+str(i+1)
+
+        return st
+
+
+
+
+
+
+
 
     def ewald(self, ox_st = None, site = None):
         # ox_st 
