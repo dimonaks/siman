@@ -248,6 +248,7 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
 
     """
     # print(addr)
+    # sys.exit()
 
 
     def download(file, to_file):
@@ -275,7 +276,8 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
         elif header.sshpass:
             com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
             out = runBash(com)
-
+            # print(addr)
+            # sys.exit()
 
         else:
             # print(addr,file,to_file)

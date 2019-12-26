@@ -2630,4 +2630,3 @@ def triangle_area_points(v1, v2, v3):
 
 
     return a
->>>>>>> simanaks

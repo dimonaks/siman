@@ -4604,7 +4604,7 @@ class Calculation(object):
         # sys.exit()
         address = self.cluster['address']
         if header.override_cluster_address:
-            clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
+            clust = header.CLUSTERS[self.cluster['name']]
             self.project_path_cluster = clust['homepath']
             address = clust['address']
 
