@@ -962,7 +962,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     """
 
 
-
     def add_loop_prepare():
 
         nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params
@@ -2878,7 +2877,6 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
-
     if not is_list_like(verlist):
         verlist = [verlist]
 
@@ -2902,12 +2900,14 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             # cluster = cl.cluster 
         if header.override_cluster_address:
             
-            if cluster_name:
-                cl.cluster['name'] = cluster_name
+            # if cluster_name:
             if not cluster_name:
                 cluster_name = cl.cluster.get('name')
             if not cluster_name:
                 cluster_name = header.DEFAULT_CLUSTER
+
+            cl.cluster['name'] = cluster_name
+
 
             if cl.cluster['address'] != header.CLUSTERS[cluster_name]['address']:
                 cl.cluster['address'] = header.CLUSTERS[cluster_name]['address']
