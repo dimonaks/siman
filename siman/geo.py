@@ -2189,11 +2189,11 @@ def rms_pos_diff(st1, st2):
 
 
 def removed_atoms(st1, st2, tol = 1e-2):
-    '''
+    """
     This function finds voids by comparing ideal structure and structure with removed atoms
     Input: st1 - ideal, st2 - with removed atoms
     Return list with atomic numbers of removed atoms 
-    '''
+    """
 
     removed_atoms = []
     for i in range(0, st1.natom):
@@ -2212,9 +2212,9 @@ def removed_atoms(st1, st2, tol = 1e-2):
     return removed_atoms
 
 def find_voids(st1, st2):
-    '''
+    """
     Function returns structure with voids in the position of removed atoms
-    '''
+    """
     removed_at = removed_atoms(st1, st2)
     st = st1.replace_atoms(removed_at, 'void')
     return st
@@ -2239,7 +2239,7 @@ def rhombo2hex(h,k,l):
 
 
 def create_ads_molecule(st, molecule, mol_xc, conf_i = 0, fix_layers = False, fix_xc_range = None):
-    '''
+    """
     The function uses special module AdsorbateSiteFinder  from pymatgen
 
 
@@ -2258,7 +2258,7 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = 0, fix_layers = False, fi
     molecule -  'H', 'CO' ...
     mol_xc - list with xcart of atoms in molecule: [[0,0,0]], [[0,0,0],[0,0,1.23]]
     return structure with adsorbed molecule on the surface
-    '''
+    """
 
 
 

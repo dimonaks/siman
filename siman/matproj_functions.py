@@ -23,12 +23,93 @@ from siman.classes import CalculationVasp
 import csv
 from siman.analysis import suf_en
 
+###############################################3
+### read and write pmg csv file
+#############################################
+def read_matproj_info(path):
+    """
+    """
+
+    data = []
+    with open(path+'.csv', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for d in reader:
+            data.append(d)
+
+    return data
+
+def read_matproj_info_1(path):
+    """
+    Addition of MP_Compound() objects to db
+    """
+    from siman.classes import MP_Compound
+    # data = []
+    compound_list = []
+    with open(path+'.csv', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for d in reader:
+            mp_name = d['pretty_formula']+'.MP'
+            mp = MP_Compound()
+            mp.name = mp_name
+            mp.pretty_formula = d['pretty_formula']
+            mp.material_id = d['material_id']
+            mp.elements = d['elements']
+            mp.sg_symbol = d['spacegroup.symbol']
+            mp.sg_crystal_str = d['spacegroup.crystal_system']
+            mp.band_gap = d['band_gap']
+            mp.price_per_gramm = d['price_per_gramm']
+            mp.total_magnetization = d['total_magnetization']
+            
+            db[mp_name] = mp
+            # print(db[mp_name].pretty_formula)
+            compound_list.append(mp_name)
+
+    return compound_list
+
+
+def read_matproj_list(path):
+    """
+    Addition of MP_Compound() objects to db
+    """
+    from siman.classes import MP_Compound
+    # data = []
+    compound_list = []
+    with open(path+'.csv', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+
+        for d in reader:
+            mp_name = d['pretty_formula']+'.MP'
+            compound_list.append(mp_name)
+
+    return compound_list
 
 
 
+def write_matproj_info(data, path, properties):
+    """
+    """
+    with open(path+'.csv', 'w', newline='') as csvfile:
+            fieldnames = properties
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            for st_name in sorted(data.keys()):
+                d_i = data[st_name]
+                # print(d_i)
+                for ss in d_i.keys():
+                    if type(d_i[ss]) == float:
+                        d_i[ss] = format(d_i[ss],'.2f')
+
+                writer.writerow(d_i)
 
 
-def get_matproj_info2(criteria, properties, name = None, price = 0, element_price = None, only_stable = 0):
+#############################################
+#############################################
+
+
+def get_matproj_info2(criteria, properties, path = None, price = 0, element_price = None, only_stable = 0, exclude_list = []):
     """
     get data from  materials project server
 
@@ -54,59 +135,56 @@ def get_matproj_info2(criteria, properties, name = None, price = 0, element_pric
 
             for string_to_write in results:
 
-                if price:
 
-                    if 'price_per_gramm' not in properties:
-                        properties.append('price_per_gramm')
-                    cost = 0
-                    for p in string_to_write['elements']:
-                        if p in element_price.keys():
-                            # print(element_price[p])
-                            cost+= element_price[p]/1000
-                        else:
-                            print('Warning! Element price not found')
-                            cost = 'No data'
-                            break
+                if string_to_write['pretty_formula'] not in exclude_list:
+
+                    if price:
+
+                        if 'price_per_gramm' not in properties:
+                            properties.append('price_per_gramm')
+                        cost = 0
+                        for p in string_to_write['elements']:
+                            if p in element_price.keys():
+                                # print(element_price[p])
+                                cost+= element_price[p]/1000
+                            else:
+                                print('Warning! Element price not found')
+                                cost = 'No data'
+                                break
 
 
-                    string_to_write.update([('price_per_gramm', cost)])
+                        string_to_write.update([('price_per_gramm', cost)])
 
 
 
-                st_name = string_to_write['pretty_formula']
+                    st_name = string_to_write['pretty_formula']
 
-                if not only_stable:
+                    if not only_stable:
 
-                    if st_name not in data.keys():         
-                        data.update([(st_name, string_to_write)])
-                    else:
-                        if string_to_write['e_above_hull'] < data[st_name]['e_above_hull']:
+                        if st_name not in data.keys():         
                             data.update([(st_name, string_to_write)])
-                else:
-                    try:
-                        entries = m.get_entries_in_chemsys(string_to_write['elements'])
-                        print(st_name)
-
-                        for i in m.get_stability(entries):
-
-                            if i['entry_id'] in i['decomposes_to'][0]['material_id']:
+                        else:
+                            if string_to_write['e_above_hull'] < data[st_name]['e_above_hull']:
                                 data.update([(st_name, string_to_write)])
-                                # print(i)
-                    except pymatgen.ext.matproj.MPRestError:
-                        properties.append('warnings')
-                        string_to_writeupdate([('warnings', 'Stability MPRestError')]) 
-                        data.update([(st_name, string_to_write)])
+                    else:
+                        try:
+                            entries = m.get_entries_in_chemsys(string_to_write['elements'])
+                            print(st_name)
+
+                            for i in m.get_stability(entries):
+
+                                if i['entry_id'] in i['decomposes_to'][0]['material_id']:
+                                    data.update([(st_name, string_to_write)])
+                                    # print(i)
+                        except pymatgen.ext.matproj.MPRestError:
+                            properties.append('warnings')
+                            string_to_writeupdate([('warnings', 'Stability MPRestError')]) 
+                            data.update([(st_name, string_to_write)])
 
     # write data in csv file
-    if name:
-        with open(name+'.csv', 'w', newline='') as csvfile:
-            fieldnames = properties
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-
-            for st_name in sorted(data.keys()):
-                # print(data[st_name])
-                writer.writerow(data[st_name])
+    if path:
+        write_matproj_info(data, path, properties)
+        
 
     return data
 
@@ -154,33 +232,7 @@ def get_matproj_chem_pot(atom_list =None):
 
 
 
-###############################################3
-### read and write pmg csv file
-#############################################
-def read_matproj_info(path):
-    """
-    """
 
-    data = []
-    with open(path+'.csv', newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-
-        for d in reader:
-            data.append(d)
-
-    return data
-
-def write_matproj_info(data, path):
-    """
-    """
-    with open(path+'.csv', 'w', newline='') as csvfile:
-        fieldnames = data[0].keys()
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for i in data:
-            # print(data[st_name])
-            writer.writerow(i)
 
 ###################################################################################################
 ######################################################################################################3

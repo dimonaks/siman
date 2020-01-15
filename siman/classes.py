@@ -5519,3 +5519,114 @@ class CalculationVasp(Calculation):
         os.chdir(cwd)
 
         return
+
+
+
+class MP_Compound():
+    """This class includes information about chemical compounds from MatProj and next operations (bulk calc, slab construction etc.)
+
+    db key is 'pretty_formula.MP': ('AgC.MP')
+    """
+    def __init__(self):
+        self.pretty_formula = ""
+        self.material_id = "material_id"
+        self.elements = []
+        self.sg_symbol =''
+        self.sg_crystal_str = ''
+        self.band_gap = None
+        self.e_above_hull = None
+        self.icsd_ids = None
+        self.total_magnetization = None
+        self.price_per_gramm = None
+
+
+        self.bulk_cl = None
+        self.bulk_status = 'Unknown'
+  
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+
+
+
+
+
+    def calc_bulk(self, ise, bulk_cl_name = ['it','ise', '1'], it_folder = 'bulk/', status = 'add'):
+        from siman.header import db
+        from siman.calc_manage   import add_loop, res_loop
+
+        name = '.'.join(bulk_cl_name)
+
+        it = '.'.join([self.pretty_formula, self.sg_crystal_str])
+        st = self.get_st()
+        self.bulk_cl = name
+
+
+        if status == 'add':
+            # if bulk_cl_name[0] not in header.struct_des:
+
+                add_loop(it,ise,1, input_st = st, it_folder = it_folder, override = 1)
+                self.bulk_status = 'run'
+
+        if status == 'res':
+            res_loop(it,ise,1)
+            try: 
+                if max(db[name].maxforce_list[-1]) > 50:
+                    self.bulk_status = 'big max_f'
+                else:
+                    self.bulk_status = 'calculated'
+
+            except AttributeError:
+                    self.bulk_status = 'Error!'
+                    print(name, '\tUnfinished calculation!!!\n\n')
+
+        if status == 'add_scale':
+            # if bulk_cl_name[0] not in header.struct_des:
+
+                add_loop(it,ise,1, input_st = st, calc_method = 'uniform_scale',  scale_region = (-7, 7), it_folder = it_folder)
+                self.bulk_status_scale = 'run_scale'
+
+
+
+    def get_st(self, folder = 'geo/'):
+        """
+        check downloaded POSCAR files in geo/ folder
+        if not POSCAR of some structure - download it from Mat Proj
+
+        mat_in_list - data dict for any structure from MP,  result of get_fata('mp-...')
+        """
+
+        from siman.calc_manage import  get_structure_from_matproj, smart_structure_read
+        
+        
+        name = self.material_id+'.POSCAR'
+        if name not in os.listdir(folder):
+            os.chdir(folder)
+            st = get_structure_from_matproj(mat_proj_id = self.material_id, it_folder = folder)
+            os.chdir('..')
+        else:
+            st = smart_structure_read(folder+name)
+            # print('ok')
+        return st
+
+    def e_cohesive(self, e_box):
+        '''
+        return cohesive energy
+
+        e_vacuum - dict{element: energy_of_element_in_box}
+        '''
+        cl_bulk = self.bulk_cl
+        e_bulk = cl_bulk.energy_sigma0
+        n_at_sum = cl_bulk.end.natom
+        el_list = cl_bulk.end.get_elements()
+
+        e_at_sum = 0
+        for el in el_list:
+            e_at = e_box[el]
+            e_at_sum+=e_at
+
+        e_coh = (e_at_sum-e_bulk)/n_at_sum
+        print('{}  \t\tE_coh = {} eV'.format(it_bulk.split('.')[0], round(e_coh,1)))
+
+        return e_coh
