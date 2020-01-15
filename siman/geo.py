@@ -16,6 +16,7 @@ if header.pymatgen_flag:
 
 from siman.header import printlog
 from siman.small_functions import red_prec
+from siman.functions import invert
 # from impurity import find_pores
 
 # sys.path.append('/home/aksenov/Simulation_wrapper/') 
@@ -829,6 +830,24 @@ def ortho_vec(rprim, ortho_sizes = None, silent = 0):
 
     return mul_matrix
 
+
+def find_mul_mat(rprimd1, rprimd2,silent = 0):
+    #find mul_matrix to convert from rprimd1 to rprimd2
+
+    mul_matrix_float = np.dot( rprimd2,  np.linalg.inv(rprimd1) )
+    if not silent:
+        printlog('mul_matrix_float:\n',mul_matrix_float, imp = 'y', end = '\n')
+
+    mul_matrix = np.array(mul_matrix_float)
+    mul_matrix = mul_matrix.round(0)
+    mul_matrix = mul_matrix.astype(int)
+    if not silent:
+
+        printlog('mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
+
+    return mul_matrix_float, mul_matrix
+
+
 # def mul_matrix(rprimd1, rprimd2):
 #     """
 #     Determines mul matrix needed to obtain rprimd2 from rprimd1
@@ -837,7 +856,9 @@ def ortho_vec(rprim, ortho_sizes = None, silent = 0):
 
 
 
+
 def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1), silent = 0): 
+
     """ 
     st (Structure) -  
     mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 
@@ -858,7 +879,12 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     # print(sc.rprimd)
     if not silent:
         printlog('Old vectors (rprimd):\n',np.round(st.rprimd,1), imp = 'y', end = '\n')
+
         # printlog('Mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
+
+        # printlog('Mul_matrix:\n',mul_matrix, imp = 'y', end = '\n')
+    if not silent:
+
 
         printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
@@ -877,8 +903,11 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
         mag_flag = False        
 
     sc_natom = sc.vol/st.vol*st.natom # test
+
     if not silent:
         printlog('The supercell should contain', sc_natom, 'atoms ... \n', imp = 'y', end = ' ')
+
+
     sc.xcart = []
     sc.typat = []
     sc.xred  = []
@@ -1330,6 +1359,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
             for d, kt in zip(out['dist'], out['numbers']):
                 if kt not in kts:
                     kts.append(kt)
+                    # print(kt, i, st_as.distance(kt, i))
                     tab_ap.append([kt, d, st_as.distance(kt, i), ])
                 # print('AP ',d, st_as.distance(kt, i) , 'has k=', kt)
             printlog('Possible positions for additional polaron:', imp = 'Y')
@@ -1466,7 +1496,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
                     AP_on = AP_on, i_AP = i_AP, disp_AP = disp_AP, mag_AP = mag_AP )
                 st_as.write_poscar()
                 structures.append(st_as)
-                table.append([i, k]+['', a[0]+1,  a[1]+1, a[2]])
+                table.append([i, k]+['', a[0],  a[1], a[2]])
                 numbers.append(i)
             i+=1
 
@@ -1852,6 +1882,93 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
+
+
+def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0 ):
+    """
+    Generate all possible configurations by replacing x of element el1 by el2 from the structure.
+    You should know which space group you want to get.
+    If you don't know the space group, first use info_mode = 1
+
+    st (Structure) - input structure
+    el1 (str) - element name to replace, e.g. Li
+    el2 (str) - replace by
+
+    x - replace x of atoms, for example 0.25 of atoms
+    
+    info_mode (bool) - more information
+
+    sg - number of required space group obtained with info_mode = 1
+    return list of structures with sg space groups
+
+
+    """
+
+    from collections import Counter
+
+    def order(ls, i):
+        """
+        Find recursivly all possible orderings for the given x
+        ls - initial list of atoms 
+        i - index in ls  
+
+        """
+        for s in 1,-1:
+            
+            ls[i] = s
+            
+            if i < len(ls)-1:
+            
+                order(ls, i+1)
+            
+            else:
+                if abs(ls.count(-1)/ntot - x ) < 0.001:
+                    orderings.append(copy.deepcopy(ls) )  
+        return
+
+
+    structures = []
+    orderings = []
+    
+    req = st.get_specific_elements([invert(el1)])
+    # print(req)
+    # sys.exit()
+    ntot = len(req)
+    ls = [0]*ntot
+    order(ls, 0)
+    symmetries = []
+    if not silent:
+    
+        print('Total number of orderings is', len(orderings))
+    at_replace = []
+    for order in orderings:
+        atoms_to_replace = [req[i] for i, s in enumerate(order) if s < 0]
+        # print(atoms_to_replace)
+        st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent)
+        nm = st_rep.sg(silent = silent)[1]
+        symmetries.append(nm)
+        if nm == sg:
+            structures.append(st_rep)
+            at_replace.append(atoms_to_replace)
+    if not silent:
+        print('The following space groups were found', Counter(symmetries))
+    if info_mode:
+        return list(set(symmetries))
+
+    return structures, at_replace
+
+
+
+
+
+
+
+
+
+
+
+
+
 def two_cell_to_one(st1, st2):
     # let to join two supercells
 
@@ -2060,12 +2177,10 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
         
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
-    if len(slabs):
-        st = st.update_from_pymatgen(slabs[surface_i])
-    else:
-        return slabs
 
-
+    if len(slabs) == 1:
+        surface_i =0
+    st = st.update_from_pymatgen(slabs[surface_i])
 
     if write_poscar:
         for i, slab in enumerate(slabs):
@@ -2283,3 +2398,236 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = 0, fix_layers = False, fi
         p = p.fix_layers(xcart_range = fix_xc_range)
 
     return p
+
+
+def best_miller(hkl):
+    #find best representation of hkl
+    #returns float
+    if min(hkl) == 0: 
+        n = abs(max(hkl))
+    else:
+        n = abs(min(hkl)) 
+    hkl = hkl/n
+
+    d_m = 100
+    for mul in range(1,10):
+        hklm = hkl*mul
+        hkli = hklm.round(0).astype(int)
+        d = np.linalg.norm(hkli-hklm)
+        # print(d, d < d_m, hklm, hkli, )
+        if d < d_m:
+            d_m = d
+            hkli_opt = hkli
+            hklm_opt = hklm
+        if d < 0.001: # the obtained multiplier is nice
+            break
+
+    return hklm_opt
+
+
+def hkl2uvw(hkl, rprimd):
+    #convert hkl to uvw
+    # print(rprimd)
+    # print('rprimd', rprimd)
+
+    recip = calc_recip_vectors(rprimd)
+    # print('recip', recip)
+    ghkl = np.dot(hkl, recip) # convert to cartesian
+    # print('hkl', hkl)
+    # print('ghkl', ghkl)
+    grprimd = np.asarray( np.matrix(rprimd).I.T ) #Transpose of the inverse matrix of rprimd
+    uvw = np.dot(grprimd, ghkl )
+    # print('uvw', uvw)
+    m = np.linalg.norm(uvw)
+    uvw = uvw/m # normalize
+    # uvw = uvw.round(0).astype(int)
+    uvwo = best_miller(uvw)
+
+
+    return uvwo
+
+def uvw2hkl(uvw, rprimd):
+    #convert,
+    #tested vice versa
+    recip = calc_recip_vectors(rprimd)
+    ruvw = np.dot(uvw, rprimd) # convert to cartesian
+    grecip = np.asarray( np.matrix(recip).I.T ) #Transpose of the inverse matrix of rprimd
+    hkl = np.dot(grecip, ruvw )
+    # .round(0).astype(int)
+    # print(hkl)
+    m = np.linalg.norm(hkl)
+    hkl = hkl/m # normalaze
+    # print(hkl)
+    hklo = best_miller(hkl)
+
+    return hklo
+
+
+def transform_miller(rprimd1, rprimd2, hkl, silent = 1):
+    """
+    Convert miller indicies between two choices of primitive vectors for the same lattice.
+    defined in rprimd1 to miller indicies defined in rprimd2. 
+    rprimd1 and rprimd2 are two primitive vectors chosen 
+
+    Can be used for different homomorphic lattices, but first be 
+    sure that they are correctly oriented in space.
+
+    rprimd1 (list of arrays) - first set of vectors 
+    rprimd2 (list of arrays) - second set of vectors
+    hkl (list of int) - hkl - miller index for first set of vectors
+
+    RETURN
+    hkl2 - miller index for second set of vectors corresponding to hkl
+
+
+    """
+
+    recip1 = calc_recip_vectors(rprimd1)
+    recip2 = calc_recip_vectors(rprimd2)
+    grecip2 = np.asarray( np.matrix(recip2).I.T ) # transpose of the inverse matrix 
+
+    ghkl1 = np.dot(hkl, recip1) # convert reciprocal vector to cartesian space
+
+    hkl2 = np.dot(grecip2, ghkl1) # get miller indices of this vector for new set of vectors
+
+
+    hkl2o = best_miller(hkl2)
+    hkl2i = hkl2o.round(0).astype(int)
+
+    printlog('Check my conversion of hkl2 from float to integer', hkl2o, '->' , hkl2i)
+
+    if not silent:
+        printlog('new Miller is', hkl2i, imp = 'y')
+
+    return hkl2i
+
+
+
+def test_transform_miller(rprimd1, rprimd2, hkl, silent = 1):
+    """
+    Different attempts to find correct way of index transformstion
+    rprimd1 (list of arrays) - primitive vectors 1
+    rprimd2 (list of arrays) - primitive vectors 2
+    hkl (list of int) - miller index for rprimd1
+
+    """
+
+
+
+
+    mul_mat, _ = find_mul_mat(rprimd1, rprimd2, silent = 1)
+    norm = np.linalg.norm
+    # print('Lengths R1=', norm(rprimd1[0]),norm(rprimd1[1]),norm(rprimd1[2]) )
+    
+    test = 4
+
+    if test == 1:
+        #transform cartesian normals,  wrong
+        uvw = hkl2uvw(hkl, rprimd1)
+        if not silent:
+            print('Converting hkl to uvw', hkl, '->',uvw)
+
+        #transform using cartesian - correct
+        ruvw = np.dot(uvw, rprimd1) # convert to cartesian
+
+        ruvw2 = np.dot(mul_mat, ruvw)
+
+        grprimd2 = np.asarray( np.matrix(rprimd2).I.T ) #Transpose of the inverse matrix of rprimd
+        uvw2 = np.dot(grprimd2, ruvw2 )
+        if not silent:
+            print('Converting uvw to ruvw', uvw, '->',ruvw)
+            print('Transforming ruvw to ruvw2', ruvw, '->',ruvw2)
+            print('Converting ruvw2 to uvw2', ruvw2, '->',uvw2)
+            
+        if 0:
+            #transform using direct - gives wrong result
+            uvw2 = np.dot(mul_mat, uvw)
+            print('Transforming uvw to uvw2', uvw, '->',uvw2)
+
+
+        hkl2 = uvw2hkl(uvw2, rprimd2)
+        print('Converting uvw2 to hkl2', uvw2, '->',hkl2)
+
+    if test == 2:
+        #transform miller indexes
+
+        #transformation matrix between two lattices allow to obtain new millre indexes
+        #! only  works in case, when lattices coincide with each other 
+
+        hkl2 = np.dot(mul_mat, hkl)
+        if not silent:
+            print('Transforming hkl to hkl2', hkl, '->',hkl2)
+
+
+    recip1 = calc_recip_vectors(rprimd1)
+    recip2 = calc_recip_vectors(rprimd2)
+    grecip2 = np.asarray( np.matrix(recip2).I.T ) #Transpose of the inverse matrix of rprimd
+
+
+    if test == 3:
+        #use g, equivalent to test2,
+        #in fact it gives some new plane, as vector is transformed!!!
+        ghkl1 = np.dot(hkl, recip1) # convert to cartesian
+
+        ghkl2 = np.dot(mul_mat, ghkl1 ) # transform
+
+        hkl2 = np.dot(grecip2, ghkl2) # convert to index
+
+    if test == 4:
+        #correct if orientation of two phases in cartesian space coincide!
+        #seems equivalent to test=2
+        #more clear to understand!
+        ghkl1 = np.dot(hkl, recip1) # convert to cartesian
+
+        hkl2 = np.dot(grecip2, ghkl1) # convert to index
+
+
+
+
+
+    d_m = 100
+    for mul in range(1,10):
+        hkl2m = hkl2*mul
+        hkl2i = hkl2m.round(0).astype(int)
+        # print(hkl2m, hkl2i)
+        d = np.linalg.norm(hkl2i-hkl2m)
+        # print(mul, d)
+        if d < d_m:
+            d_m = d
+            hkl2i_opt = hkl2i
+    if d > 0.1 or not silent:
+        printlog('Attention! Check my conversion of hkl2 from float to integer', hkl2, '->' , hkl2i_opt)
+
+
+    # print(uvw2_int_opt)
+    # hkl = uvw2hkl(uvw2_int_opt, rprimd2)
+    if not silent:
+        # print('Converting uvw to hkl', uvw2_int_opt, '->',hkl)
+        printlog('new Miller is', hkl2i_opt, imp = 'y')
+
+
+    return hkl2i_opt
+
+
+
+def calc_volume(v1, v2, v3):
+    return np.dot( v1, np.cross(v2, v3)  )
+
+def triangle_area_points(v1, v2, v3):
+    # if one vector is zero, then return difference of two non zero vectors
+    v1v2  = v1 - v2
+    v1v3  = v1 - v3
+    
+    if np.linalg.norm(v1) == 0:
+        a = np.linalg.norm(v2-v3)
+    elif np.linalg.norm(v2) == 0:
+        a = np.linalg.norm(v1-v3)
+    elif np.linalg.norm(v3) == 0:
+        # print(v1,v2, v1-v2)
+        a = np.linalg.norm(v1-v2)
+    else:
+        a = np.linalg.norm(np.cross(v1v2, v1v3) ) / 2
+
+
+    return a
+>>>>>>> simanaks
