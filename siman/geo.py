@@ -504,7 +504,7 @@ def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = F
         n_neighbours = float(n_neighbours)
         dav = sum(dlistnn)/n_neighbours
         # output = my_round(dav, 2)
-        print(dlistnn)
+        # print(dlistnn)
         output = dav
 
     elif control == 'avsq':
@@ -600,6 +600,8 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
     """
     !!! Attempt to improve speed of periodic conditions!
     #control = 'atoms' could work wrong!!! check
+    #In case of small cell also works wrong with PBC. Does not take into account the several atoms should be counted more
+    than once
 
     Return list of distances to n closest atoms around central atom. (By defauld sum of distances)
     
@@ -618,6 +620,7 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
               atoms  - coordinates of neighbours
 
     - periodic - if True, then cell is additionaly replicated; needed for small cells
+    
     Only for control = atoms
         - *only_elements* - list of z of elements to which only the distances are needed; 
         - only_numbers  (list of int) - calc dist only to this atoms 
@@ -675,7 +678,14 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
     dlist_unsort = [image_distance(x_central, x, st.rprimd)[0] for x in xcart ]# if all (x != x_central)] # list of all distances
 
     if only_elements:
+        # print('only')
+        # print(xcart)
+        # print(zlist)
         dlist = [image_distance(x_central, x, st.rprimd)[0]  for x, z in zip(xcart, zlist) if z in only_elements]
+        # for i, x, z in zip(list(range(natom)), xcart, zlist):
+        #     if z in only_elements:
+        #         print(i, x, z, image_distance(x_central, x, st.rprimd)[0] )
+
     else:
         dlist = copy.deepcopy(dlist_unsort)
     dlist.sort()
@@ -700,6 +710,8 @@ def local_surrounding2(x_central, st, n_neighbours, control = 'sum', periodic = 
     elif control == 'av':
         n_neighbours = float(n_neighbours)
         dav = sum(dlistnn)/n_neighbours
+        print(dlistnn)
+        print(n_neighbours)
         output = my_round(dav, 2)
 
     elif control == 'avsq':

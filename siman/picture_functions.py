@@ -277,12 +277,39 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     # print(fontsize)
     # sys.exit()
     if fontsize:
-        header.mpl.rcParams.update({'font.size': fontsize+4})
+        # header.mpl.rcParams.update({'font.size': fontsize+4})
+        # fontsize = 2
+        SMALL_SIZE = fontsize
+        MEDIUM_SIZE = fontsize
+        BIGGER_SIZE = fontsize
+
+        plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+        plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+        plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
+        # font = {'family' : 'normal',
+        #         'weight' : 'bold',
+        #         'size'   : fontsize}
+
+        # header.mpl.rc('font', **font)
+
+
         if legend_fontsize is None:
             legend_fontsize = fontsize
+    
+
+
+
     if legend_fontsize:
         header.mpl.rc('legend', fontsize= legend_fontsize) 
 
+
+    # print('fontsize', fontsize, legend_fontsize)
 
 
     if hasattr(header, 'first'):
@@ -329,6 +356,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     if corner_letter:
         # print(corner_letter)
+        ''
         sz = header.mpl.rcParams['font.size']
         ax.text(0.05, 0.85, corner_letter, size = sz*1.5, transform=ax.transAxes) # transform = None - by default in data coordinates!
 
@@ -473,7 +501,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 else:
                     for name, x, y in zip(con['annotates'], con['x'], con['y']):
                         ax.annotate(name, xy=(x, y),
-                            xytext=(-20, 20), fontsize = 9,
+                            xytext=(-20, 20), fontsize = fontsize,
                         textcoords='offset points', ha='center', va='bottom',
                         # bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                         arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5', 
@@ -497,6 +525,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                     if max(points[simplex, 1]) > 0:
                         continue
                     ax.plot(points[simplex, 0], points[simplex, 1], 'k-')
+
 
 
     if not linewidth:

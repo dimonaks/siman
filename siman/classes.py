@@ -2052,8 +2052,8 @@ class Structure():
 
         el = st.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
-        info['av(A-O,F)'] = local_surrounding2(x, st, n, 'av', True, only_elements = [8,9], round_flag = 0)
-        
+        info['av(A-O,F)'] = local_surrounding(x, st, n, 'av', True, only_elements = [8,9], round_flag = 0)
+
         if more_info:
             info['avsq(A-O,F)'] = local_surrounding2(x, st, n, 'avsq', True, only_elements = [8,9])
             info['avharm(A-O,F)'] = local_surrounding2(x, st, n, 'avharm', True, only_elements = [8,9])

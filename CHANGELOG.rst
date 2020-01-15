@@ -1,3 +1,8 @@
+current
+    fontsize argument was removed from plot_dos(). Use plot_param dictionary, which is transfered to fit_and_plot
+
+
+
 0.9.6
 
     new regime for add() 
