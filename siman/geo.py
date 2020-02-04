@@ -1908,7 +1908,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
 
     x - replace x of atoms, for example 0.25 of atoms
     
-    info_mode (bool) - more information
+    info_mode (bool) - print all possible configurations
 
     sg - number of required space group obtained with info_mode = 1
     return list of structures with sg space groups

@@ -3327,6 +3327,51 @@ class Calculation(object):
         self.end.get_mag_tran(*args, **kwargs)
 
 
+    def dos(self, *args, **kwargs):
+        from siman.header import db
+        from siman.dos_functions import plot_dos
+        # print(self.children)
+        for id in self.children:
+            # print(s[1])
+            if 'dos' in id[1]:
+                printlog('Child with DOS set is found', id, imp = 'y')
+                id_dos = id
+                break 
+        cl = db[id]
+
+        cl.res()
+        st = cl.end
+        n = st.get_transition_elements(fmt = 'n')
+        iTM = n[0]
+        el = st.get_elements()[iTM]
+        # determine_symmetry_positions(st, el)
+        # print(iTM)
+
+        plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
+        dostype = 'partial', orbitals = ['d', 'p6'], 
+        # labels = ['Ti1', 'Ti2'], 
+        nsmooth = 1, 
+        # invert_spins = invert_spins,
+        show = 0,  plot_param = {
+        'figsize': (6,3), 
+        'linewidth':0.8, 
+        'fontsize':8,
+        'ylim':(-6,7), 'ver':1, 'fill':1,
+        # 'ylim':(-1,1), 
+        'xlim':(-8,6), 
+        # 'xlim':(-0.5,0.1), 
+        'dashes':(5,1) })
+
+
+
+
+
+
+
+
+
+
+
     def add_new_name(self, idd):
         """
         
@@ -3850,6 +3895,10 @@ class Calculation(object):
                 
                 if 'x' in savefile:
                     f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+
+                if 't' in savefile:
+                    f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
+               
                
                 if 'w' in savefile:
                     fln = 'WAVECAR'
