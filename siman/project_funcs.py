@@ -3988,6 +3988,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     target_x (float) - required concentration of Na in DS state
     update - allows to rewrite service table
     params (dic)
+        primitive - try to start from primitive cell
         active_cation - if more than one type of cations exists in structure choose required
         show_fit
         run_neb
@@ -4006,8 +4007,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     pn = projectname
     pf = pn.split('_')[0] # project_folder
 
-    
+    # print()
     p = params
+    prim  = p.get('primitive')
     show_fit  = p.get('show_fit')
     up    = p.get('up') or 'up1'
     up_scale  = p.get('up_scale')
@@ -4027,6 +4029,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     clust = p.get('cluster') or 'cee'
     corenum = p.get('corenum')
     readfiles = p.get('readfiles')
+
+    if prim is None:
+        prim = 1
 
     if readfiles is None:
         readfiles = 1
@@ -4052,7 +4057,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             startgeofile = db[pn]['startgeofile'] 
             print('geo file is ', startgeofile)
             st = smart_structure_read(startgeofile)
-            st = primitive(st)
+            if prim:
+                printlog('Converting cell to primitive', imp = 'y')
+                st = primitive(st)
+
             add_loop(pn, m_set, 1, input_st = st, it_folder = pf, up = up, **add_loop_dic)
             startgeofile = db[pn]['steps'].append(1) 
         else:

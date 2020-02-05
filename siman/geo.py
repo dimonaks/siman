@@ -1821,7 +1821,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
     """
 
-    prim = 0
+    prim = 0 # find primitive based only on element el
 
 
     st_ohne_el = st.remove_atoms([el])
@@ -1886,10 +1886,10 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
     # sc_only_el_half.write_poscar('xyz/POSCAR2')
 
 
-    st_half = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
+    st_x = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
 
-    st_half.name+='_half'+str(sg)
-    
+    st_x.name+='_'+str(x)+'_'+str(sg)
+    # st_x.write_poscar()
     return st_x
 
 

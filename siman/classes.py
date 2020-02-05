@@ -2885,6 +2885,7 @@ class Calculation(object):
 
         self.init = Structure()
         self.end = Structure()
+        self.children = [] # inherited calculations 
         self.state = "0.Initialized"
         self.path = {
         "input":None,
@@ -5673,6 +5674,10 @@ class CalculationVasp(Calculation):
             iopt = 'full'
 
 
+        if 'it_suffix' in kwargs:
+            it_suffix = '.'+kwargs['it_suffix']
+        else:
+            it_suffix = ''
 
         # if self.id[1] != ise:
         if 1:
@@ -5680,12 +5685,12 @@ class CalculationVasp(Calculation):
                 self.children = []
 
             if not add and len(self.children)>0:
-                print('Children were found:', self.children, 'by defauld reading last, choose with *i_child* ')
+                print('Children were found in self.children:', len(self.children), ' childs, by default reading last, choose with *i_child* ')
                 
                 idd = None
                 for i in self.children:
-                    print(i, ise, i[1], i[1] == ise)
-                    if i[1] == ise:
+                    # print(i, ise, i[1], i[1] == ise)
+                    if i[0] == self.id[0]+it_suffix and i[1] == ise:
                         # print(i)
                         idd = i
                         # add = True
@@ -5741,6 +5746,36 @@ class CalculationVasp(Calculation):
  
 
         return header.calc[child]
+
+
+    def full(self, ise = None, up = 0, fit = 1):
+        """
+        Wrapper for full optimization
+        ise (str) - optimization set; if None then choosen from dict
+        up (int) - 0 read results if exist, 1 - update
+        fig (int) - 1 or 0
+        """
+        from siman.project_funcs import optimize
+        if ise is None:
+            if 'u' in self.id[1]:
+                ise = '4uis'
+        st = self.end
+        it = self.id[0]
+        child = (it+'.su', ise, 100)
+
+        if not hasattr(self, 'children'):
+            self.children = []
+        if not up and child in self.children:
+            optimize(st, self.id[0], ise = ise, fit = fit)
+        else:
+            optimize(st, self.id[0], ise = ise, add = 1)
+            self.children.append(child)
+
+        return
+
+
+
+
 
 
     def read_pdos_using_phonopy(self, mode = 'pdos', poscar = '', plot = 1, up = 'up1'):
