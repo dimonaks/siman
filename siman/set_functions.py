@@ -129,6 +129,8 @@ vasp_other_keys = [
 'KPPRA',
 'SUBATOM',
 'NWRITE',
+'NBLOCK',
+'KBLOCK',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 

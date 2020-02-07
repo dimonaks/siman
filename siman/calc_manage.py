@@ -20,7 +20,7 @@ except:
 import siman
 from siman import header
 from siman.header import print_and_log, runBash, mpl, plt
-from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt
+from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt, setting_sshpass
 from siman.classes import Calculation, CalculationVasp, Description, CalculationAims, Structure
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import write_xyz, read_xyz, write_occmatrix
@@ -86,6 +86,8 @@ def write_batch_header(batch_script_filename = None,
 
 
         if schedule_system == 'PBS':
+
+            prefix = '#PBS'
             f.write("#!/bin/bash   \n")
             f.write("#PBS -N "+job_name+"\n")
             
@@ -106,9 +108,7 @@ def write_batch_header(batch_script_filename = None,
             if header.PBS_PROCS or nodes == 0: # parameter in header
                 f.write("#PBS -l procs="+str(number_cores)+"\n")
             else: #  node option 
-                # print(type(nodes))
-                # print(nodes)
-                # sys.exit()
+
                 if type(nodes) is str:
                     f.write("#PBS -l nodes="+nodes+"\n")
                 else:
@@ -128,25 +128,25 @@ def write_batch_header(batch_script_filename = None,
                 f.write("#PBS -l feature="+header.cluster['feature']+"\n")
 
 
-            # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
-            
+
             f.write("#PBS -r n\n")
             f.write("#PBS -j eo\n")
             f.write("#PBS -m bea\n")
-            # f.write("#PBS -M dimonaks@gmail.com\n")
-            
+
+            if 'any_commands' in header.cluster:
+                lines = header.cluster['any_commands']
+                if not is_list_like(lines):
+                    printlog('Error! Please use list for sbatch key in cluster description')
+                for line in lines:
+                    f.write(prefix+' '+line+'\n')
+
+
+
             f.write("cd $PBS_O_WORKDIR\n")
             
 
-            # f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
-            # f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
             if 'modules' in header.cluster:
                 f.write(header.cluster['modules']+'\n')
-
-            # f.write("module load Compilers/Intel/psxe_2015.6\n")
-            # f.write("module load MPI/intel/5.1.3.258/intel \n")
-            # f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
-            # f.write("module load ScriptLang/python/2.7\n\n")
 
 
 
@@ -189,7 +189,8 @@ def write_batch_header(batch_script_filename = None,
             if 'walltime' in header.cluster:
                 f.write("#SBATCH -t "+str(header.cluster['walltime'])+'\n')
             else:
-                f.write("#SBATCH -t 250:00:00 \n")
+                ''
+                # f.write("#SBATCH -t 250:00:00 \n")
 
             f.write("#SBATCH -N 1\n")
             f.write("#SBATCH -n "+str(number_cores)+"\n")
@@ -202,8 +203,8 @@ def write_batch_header(batch_script_filename = None,
             if 'partition' in hc:
                 f.write('#SBATCH -p '+hc['partition']+'\n')
 
-            if 'sbatch' in header.cluster:
-                lines = header.cluster['sbatch']
+            if 'any_commands' in header.cluster:
+                lines = header.cluster['any_commands']
                 if not is_list_like(lines):
                     printlog('Error! Please use list for sbatch key in cluster description')
                 for line in lines:
@@ -730,13 +731,14 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
 
 
     # print(clust)
-    if 'sshpass' in clust and clust['sshpass']:
-        printlog('setting sshpass to True', imp = '')
-        # sys.exit()
+    setting_sshpass(clust = clust)
+    # if 'sshpass' in clust and clust['sshpass']:
+    #     printlog('setting sshpass to True', imp = '')
+    #     # sys.exit()
 
-        header.sshpass = clust['sshpass']
-    else:
-        header.sshpass = None
+    #     header.sshpass = clust['sshpass']
+    # else:
+    #     header.sshpass = None
 
 
 
@@ -959,7 +961,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     no duplication of different input is realized in different places
 
     """
-
 
 
     def add_loop_prepare():
@@ -2821,6 +2822,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             - sur  - surround atoms
             - efav - energy average force 
             - est - energy per step
+            - time - time per electronic iteration is seconds
 
         energy_ref - energy in eV; substracted from energy diffs
         
@@ -2847,7 +2849,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         - ise_new - dummy
         - inherit_option - dummy
         - savefile - dummy
-        - cluster - dummy
+        - cluster - used to override cluster name
         - override - dummy
         
         - params - dictionary of additional parameters to control internal, many arguments could me moved here 
@@ -2876,7 +2878,6 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
-
     if not is_list_like(verlist):
         verlist = [verlist]
 
@@ -2898,12 +2899,16 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             cl.cluster = {}
             cl.cluster['address'] = cl.cluster_address
             # cluster = cl.cluster 
-
         if header.override_cluster_address:
+            
+            # if cluster_name:
             if not cluster_name:
                 cluster_name = cl.cluster.get('name')
             if not cluster_name:
                 cluster_name = header.DEFAULT_CLUSTER
+
+            cl.cluster['name'] = cluster_name
+
 
             if cl.cluster['address'] != header.CLUSTERS[cluster_name]['address']:
                 cl.cluster['address'] = header.CLUSTERS[cluster_name]['address']

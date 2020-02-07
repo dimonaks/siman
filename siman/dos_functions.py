@@ -133,7 +133,7 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
-    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 3,
+    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
     lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, efermi_origin = True, invert_spins  = 0):
     """
     cl1 (CalculationVasp) - object created by add_loop()
@@ -192,10 +192,6 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
 
     """
-    if fontsize:
-        header.mpl.rcParams.update({'font.size': fontsize+4})
-        header.mpl.rc('legend', fontsize= fontsize) 
-
 
 
     if dostype == 'partial'  :

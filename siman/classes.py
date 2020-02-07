@@ -2056,8 +2056,8 @@ class Structure():
 
         el = st.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
-        info['av(A-O,F)'] = local_surrounding2(x, st, n, 'av', True, only_elements = [8,9], round_flag = 0)
-        
+        info['av(A-O,F)'] = local_surrounding(x, st, n, 'av', True, only_elements = [8,9], round_flag = 0)
+
         if more_info:
             info['avsq(A-O,F)'] = local_surrounding2(x, st, n, 'avsq', True, only_elements = [8,9])
             info['avharm(A-O,F)'] = local_surrounding2(x, st, n, 'avharm', True, only_elements = [8,9])
@@ -2889,6 +2889,7 @@ class Calculation(object):
 
         self.init = Structure()
         self.end = Structure()
+        self.children = [] # inherited calculations 
         self.state = "0.Initialized"
         self.path = {
         "input":None,
@@ -3329,6 +3330,51 @@ class Calculation(object):
         self.end.printme()
     def gmt(self, *args, **kwargs):
         self.end.get_mag_tran(*args, **kwargs)
+
+
+    def dos(self, *args, **kwargs):
+        from siman.header import db
+        from siman.dos_functions import plot_dos
+        # print(self.children)
+        for id in self.children:
+            # print(s[1])
+            if 'dos' in id[1]:
+                printlog('Child with DOS set is found', id, imp = 'y')
+                id_dos = id
+                break 
+        cl = db[id]
+
+        cl.res()
+        st = cl.end
+        n = st.get_transition_elements(fmt = 'n')
+        iTM = n[0]
+        el = st.get_elements()[iTM]
+        # determine_symmetry_positions(st, el)
+        # print(iTM)
+
+        plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
+        dostype = 'partial', orbitals = ['d', 'p6'], 
+        # labels = ['Ti1', 'Ti2'], 
+        nsmooth = 1, 
+        # invert_spins = invert_spins,
+        show = 0,  plot_param = {
+        'figsize': (6,3), 
+        'linewidth':0.8, 
+        'fontsize':8,
+        'ylim':(-6,7), 'ver':1, 'fill':1,
+        # 'ylim':(-1,1), 
+        'xlim':(-8,6), 
+        # 'xlim':(-0.5,0.1), 
+        'dashes':(5,1) })
+
+
+
+
+
+
+
+
+
 
 
     def add_new_name(self, idd):
@@ -3854,6 +3900,10 @@ class Calculation(object):
                 
                 if 'x' in savefile:
                     f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+
+                if 't' in savefile:
+                    f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
+               
                
                 if 'w' in savefile:
                     fln = 'WAVECAR'
@@ -4608,7 +4658,7 @@ class Calculation(object):
         # sys.exit()
         address = self.cluster['address']
         if header.override_cluster_address:
-            clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
+            clust = header.CLUSTERS[self.cluster['name']]
             self.project_path_cluster = clust['homepath']
             address = clust['address']
 
@@ -5628,6 +5678,10 @@ class CalculationVasp(Calculation):
             iopt = 'full'
 
 
+        if 'it_suffix' in kwargs:
+            it_suffix = '.'+kwargs['it_suffix']
+        else:
+            it_suffix = ''
 
         # if self.id[1] != ise:
         if 1:
@@ -5635,12 +5689,12 @@ class CalculationVasp(Calculation):
                 self.children = []
 
             if not add and len(self.children)>0:
-                print('Children were found:', self.children, 'by defauld reading last, choose with *i_child* ')
+                print('Children were found in self.children:', len(self.children), ' childs, by default reading last, choose with *i_child* ')
                 
                 idd = None
                 for i in self.children:
-                    print(i, ise, i[1], i[1] == ise)
-                    if i[1] == ise:
+                    # print(i, ise, i[1], i[1] == ise)
+                    if i[0] == self.id[0]+it_suffix and i[1] == ise:
                         # print(i)
                         idd = i
                         # add = True
@@ -5696,6 +5750,36 @@ class CalculationVasp(Calculation):
  
 
         return header.calc[child]
+
+
+    def full(self, ise = None, up = 0, fit = 1):
+        """
+        Wrapper for full optimization
+        ise (str) - optimization set; if None then choosen from dict
+        up (int) - 0 read results if exist, 1 - update
+        fig (int) - 1 or 0
+        """
+        from siman.project_funcs import optimize
+        if ise is None:
+            if 'u' in self.id[1]:
+                ise = '4uis'
+        st = self.end
+        it = self.id[0]
+        child = (it+'.su', ise, 100)
+
+        if not hasattr(self, 'children'):
+            self.children = []
+        if not up and child in self.children:
+            optimize(st, self.id[0], ise = ise, fit = fit)
+        else:
+            optimize(st, self.id[0], ise = ise, add = 1)
+            self.children.append(child)
+
+        return
+
+
+
+
 
 
     def read_pdos_using_phonopy(self, mode = 'pdos', poscar = '', plot = 1, up = 'up1'):

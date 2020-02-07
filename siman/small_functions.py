@@ -195,16 +195,23 @@ def calc_ngkpt(recip, kspacing):
     return N_from_kspacing
 
 
-def setting_sshpass(cl):
-    if hasattr(cl , 'cluster'):
-        # print(cl.cluster)
-        # clust = header.CLUSTERS[cl.cluster]
-        if 'sshpass' in cl.cluster and cl.cluster['sshpass']:
-            printlog('setting sshpass to True', imp = '')
-            # sys.exit()
-            header.sshpass = cl.cluster['sshpass']
-        else:
-            header.sshpass = None
+def setting_sshpass(cl = None, clust = None):
+    """
+    Creates some variables for sshpass mode
+    cl (Caluculation) - object, should contain cluster dict, has higher priority
+    clust (dict) - cluster dicts
+    """
+
+    if cl and hasattr(cl , 'cluster'):
+        clust = cl.cluster
+
+    if 'sshpass' in clust and clust['sshpass']:
+        printlog('setting sshpass to True', imp = '')
+        header.sshpass = clust['sshpass']
+        header.path2pass = clust['path2pass']
+    else:
+        header.sshpass = None
+        header.path2pass = None
 
 
 

@@ -1816,6 +1816,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         np.set_printoptions(precision=0, linewidth=150, )
         printlog('Conv each step, de/toldfe (toldfe = {:.0g} eV) =  \n{:};'.format(toldfe, np.array([de/toldfe for de in de_each_md_list ])), imp = 'Y')
     
+    if 'time' in show:
+        print('Time is {:.1f} s'.format(self.time))
+        print('Time is {:.1f} s/it'.format(self.time/1./iterat))
 
 
 
