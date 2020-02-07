@@ -1646,7 +1646,7 @@ class Structure():
 
 
 
-    def replace_atoms(self, atoms_to_replace, el_new, silent = 0):
+    def replace_atoms(self, atoms_to_replace, el_new, silent = 1):
         """
         atoms_to_replace - list of atom numbers starting from 0
         el_new - new element periodic table short name

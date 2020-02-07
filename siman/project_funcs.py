@@ -4010,6 +4010,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     # print()
     p = params
     prim  = p.get('primitive')
+    scale_region  = p.get('scale_region') or (-3, 5)
     show_fit  = p.get('show_fit')
     up    = p.get('up') or 'up1'
     up_scale  = p.get('up_scale')
@@ -4092,7 +4093,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
         'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
-        'scale_region':(-3, 5), 'readfiles':readfiles, 'ortho':ortho,
+        'scale_region':scale_region, 'readfiles':readfiles, 'ortho':ortho,
         'end_pos_types_z':end_z,
         'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom'),
         'center_on_moving':p.get('center_on_moving')
