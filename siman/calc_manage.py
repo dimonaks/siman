@@ -20,7 +20,7 @@ except:
 import siman
 from siman import header
 from siman.header import print_and_log, runBash, mpl, plt
-from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt
+from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt, setting_sshpass
 from siman.classes import Calculation, CalculationVasp, Description, CalculationAims, Structure
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import write_xyz, read_xyz, write_occmatrix
@@ -731,13 +731,14 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
 
 
     # print(clust)
-    if 'sshpass' in clust and clust['sshpass']:
-        printlog('setting sshpass to True', imp = '')
-        # sys.exit()
+    setting_sshpass(clust = clust)
+    # if 'sshpass' in clust and clust['sshpass']:
+    #     printlog('setting sshpass to True', imp = '')
+    #     # sys.exit()
 
-        header.sshpass = clust['sshpass']
-    else:
-        header.sshpass = None
+    #     header.sshpass = clust['sshpass']
+    # else:
+    #     header.sshpass = None
 
 
 

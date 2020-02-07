@@ -101,7 +101,7 @@ def run_on_server(command, addr = None):
         out = header.ssh_object.run(command, noerror = True, printout = 'ne' in header.warnings)
 
     elif header.sshpass and header.sshpass == 'proxy':
-        com = 'ssh -tt sdv sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'
+        com = 'ssh -tt sdv sshpass -f '+ header.path2pass +' ssh '+addr+' "'+command+'"'
         # print(com)
         # sys.exit()
 
@@ -111,7 +111,7 @@ def run_on_server(command, addr = None):
         # sys.exit()
 
     elif header.sshpass:
-        com = 'sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'
+        com = 'sshpass -f '+header.path2pass+' ssh '+addr+' "'+command+'"'
         # print(com)
         # sys.exit()
         
