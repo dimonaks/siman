@@ -2180,7 +2180,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
     if len(slabs) == 1:
         surface_i =0
-    st = st.update_from_pymatgen(slabs[surface_i])
+        st = st.update_from_pymatgen(slabs[surface_i])
 
     if write_poscar:
         for i, slab in enumerate(slabs):
@@ -2353,7 +2353,7 @@ def rhombo2hex(h,k,l):
 
 
 
-def create_ads_molecule(st, molecule, mol_xc, conf_i = 0, fix_layers = False, fix_xc_range = None):
+def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, fix_xc_range = None):
     """
     The function uses special module AdsorbateSiteFinder  from pymatgen
 
@@ -2392,12 +2392,22 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = 0, fix_layers = False, fi
     ads_structs = asf_pm.generate_adsorption_structures(adsorbate,repeat=[1, 1, 1])
     print('\nI found ',len(ads_structs), ' configurations with ', molecule, ' on the surface\n')
 
-    p = st.update_from_pymatgen(ads_structs[conf_i])
+    st_ads_pack = []
 
-    if fix_layers:
-        p = p.fix_layers(xcart_range = fix_xc_range)
+    for i in conf_i:
+        p = st.update_from_pymatgen(ads_structs[i])
 
-    return p
+        if fix_layers:
+            p = p.fix_layers(xcart_range = fix_xc_range)
+
+        st_ads_pack.append(p)
+
+    if len(st_ads_pack) == 1:
+        st_ads = st_ads_pack[0]
+
+        return st_ads
+    else:
+        return st_ads_pack
 
 
 def best_miller(hkl):
@@ -2630,4 +2640,4 @@ def triangle_area_points(v1, v2, v3):
 
 
     return a
->>>>>>> simanaks
+

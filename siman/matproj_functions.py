@@ -39,37 +39,37 @@ def read_matproj_info(path):
 
     return data
 
-def read_matproj_info_1(path):
-    """
-    Addition of MP_Compound() objects to db
-    """
-    from siman.classes import MP_Compound
-    # data = []
-    compound_list = []
-    with open(path+'.csv', newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
+# def read_matproj_info_1(path):
+#     """
+#     Addition of MP_Compound() objects to db
+#     """
+#     from siman.classes import MP_Compound
+#     # data = []
+#     compound_list = []
+#     with open(path+'.csv', newline='') as csvfile:
+#         reader = csv.DictReader(csvfile)
 
-        for d in reader:
-            mp_name = d['pretty_formula']+'.MP'
-            mp = MP_Compound()
-            mp.name = mp_name
-            mp.pretty_formula = d['pretty_formula']
-            mp.material_id = d['material_id']
-            mp.elements = d['elements']
-            mp.sg_symbol = d['spacegroup.symbol']
-            mp.sg_crystal_str = d['spacegroup.crystal_system']
-            mp.band_gap = d['band_gap']
-            mp.price_per_gramm = d['price_per_gramm']
-            mp.total_magnetization = d['total_magnetization']
+#         for d in reader:
+#             mp_name = d['pretty_formula']+'.MP'
+#             mp = MP_Compound()
+#             mp.name = mp_name
+#             mp.pretty_formula = d['pretty_formula']
+#             mp.material_id = d['material_id']
+#             mp.elements = d['elements']
+#             mp.sg_symbol = d['spacegroup.symbol']
+#             mp.sg_crystal_str = d['spacegroup.crystal_system']
+#             mp.band_gap = d['band_gap']
+#             mp.price_per_gramm = d['price_per_gramm']
+#             mp.total_magnetization = d['total_magnetization']
             
-            db[mp_name] = mp
-            # print(db[mp_name].pretty_formula)
-            compound_list.append(mp_name)
+#             db[mp_name] = mp
+#             # print(db[mp_name].pretty_formula)
+#             compound_list.append(mp_name)
 
-    return compound_list
+#     return compound_list
 
 
-def read_matproj_list(path):
+def read_matproj_list(path, new_list = 0, new_object = 0):
     """
     Addition of MP_Compound() objects to db
     """
@@ -82,6 +82,26 @@ def read_matproj_list(path):
         for d in reader:
             mp_name = d['pretty_formula']+'.MP'
             compound_list.append(mp_name)
+            if new_list:
+                if new_object:
+                    mp = MP_Compound()
+                else:
+                    mp = db[mp_name]
+                mp.name = mp_name
+                mp.pretty_formula = d['pretty_formula']
+                mp.material_id = d['material_id']
+                mp.elements = d['elements']
+                mp.sg_symbol = d['spacegroup.symbol']
+                mp.sg_crystal_str = d['spacegroup.crystal_system']
+                mp.band_gap = d['band_gap']
+                mp.price_per_gramm = d['price_per_gramm']
+                mp.total_magnetization = d['total_magnetization']
+                mp.formation_energy_per_atom = d['formation_energy_per_atom']
+                mp.e_above_hull = d['e_above_hull']
+                mp.icsd_ids = d['icsd_ids']
+                db[mp_name] = mp
+
+
 
     return compound_list
 
@@ -103,6 +123,41 @@ def write_matproj_info(data, path, properties):
                         d_i[ss] = format(d_i[ss],'.2f')
 
                 writer.writerow(d_i)
+
+
+
+def write_MP_compound(compound_list, path, properties):
+    """
+    """
+    if not properties:
+        properties = ['material_id', 'pretty_formula', 'sg_symbol', 'sg_crystal_str', 'formation_energy_per_atom',  
+                    'band_gap', 'total_magnetization', 'e_above_hull', 'price_per_gramm', 'bulk_status_scale', 'e_cohesive', 'ec_es',  'suf_en', 'icsd_ids']
+
+
+    with open(path+'.csv', 'w', newline='') as csvfile:
+            fieldnames = properties
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            string = {}
+            for st_name in compound_list:
+                # print(dir(db[st_name]))
+                for i in properties:
+                    try:
+                        string[i] = eval('db[st_name].'+i)
+                    except AttributeError:
+                        None
+                # print(string)
+
+
+                # d_i = data[st_name]
+                # # print(d_i)
+                # for ss in d_i.keys():
+                #     if type(d_i[ss]) == float:
+                #         d_i[ss] = format(d_i[ss],'.2f')
+
+                writer.writerow(string)
+
 
 
 #############################################
