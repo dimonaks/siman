@@ -3917,9 +3917,11 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
 def create_project_from_geofile(filename, projectname = None, up = 0):
     """
     empty project is added to database
-    get name from geofile and create required folder and put file into it  
+    get name from geofile or projectnameand create required folder and put file into it  
     Various rules to create project name
     up - update
+    projectname (str) - choose name for project
+    
     """
     db = header.db
     if 1:

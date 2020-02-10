@@ -2586,7 +2586,7 @@ class Structure():
 
 
         if not filename:
-            filename = ('xyz/POSCAR_'+st.name).replace('.', '_')
+            filename = os.getcwd()+('/xyz/POSCAR_'+st.name).replace('.', '_')
 
         makedir(filename)
 
@@ -2733,7 +2733,11 @@ class Structure():
         
 
         f.close()
-        path = os.getcwd()+'/'+filename
+        # if os.getcwd() not in filename:
+        #     print('rep', str(os.getcwd()), filename)
+        #     path = os.getcwd()+'/'+filename
+        # else:
+        path = filename
         print_and_log("POSCAR was written to", path, imp = 'y')
         return path
 
@@ -3328,7 +3332,10 @@ class Calculation(object):
         self.end.get_mag_tran(*args, **kwargs)
 
 
-    def dos(self, *args, **kwargs):
+    def dos(self, isym, *args, **kwargs):
+        """
+        isym (int) - choose symmetry position to plot DOS
+        """
         from siman.header import db
         from siman.dos_functions import plot_dos
         # print(self.children)
@@ -3345,8 +3352,9 @@ class Calculation(object):
         n = st.get_transition_elements(fmt = 'n')
         iTM = n[0]
         el = st.get_elements()[iTM]
-        # determine_symmetry_positions(st, el)
-        # print(iTM)
+        pos = determine_symmetry_positions(st, el)
+        iTM = pos[isym][0]
+        print('Choosing ', isym, 'atom ',iTM)
 
         plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
         dostype = 'partial', orbitals = ['d', 'p6'], 
