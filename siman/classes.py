@@ -708,9 +708,13 @@ class Structure():
         s = stpm._sites[0]
 
         if 'magmom' in s.properties:
+            for i in stpm._sites:
+                if 'magmom' not in i.properties:
+                    i.properties['magmom'] = 0
             st.magmom = [site.properties['magmom'] for site in stpm._sites]
         else:
             st.magmom = [None]
+
         # print( dir(s._lattice) )
         # print( dir(s) )
         # print( s.properties )
@@ -5856,3 +5860,300 @@ class CalculationVasp(Calculation):
         os.chdir(cwd)
 
         return
+
+
+
+class MP_Compound():
+    """This class includes information about chemical compounds from MatProj and next operations (bulk calc, slab construction etc.)
+
+    db key is 'pretty_formula.MP': ('AgC.MP')
+    """
+    def __init__(self):
+        self.pretty_formula = ""
+        self.material_id = "material_id"
+        self.elements = []
+        self.sg_symbol =''
+        self.sg_crystal_str = ''
+        self.band_gap = None
+        self.e_above_hull = None
+        self.icsd_ids = None
+        self.total_magnetization = None
+        self.price_per_gramm = None
+
+
+        self.bulk_cl = None
+        self.bulk_status = 'Unknown'
+
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+
+
+
+
+
+    def calc_bulk(self, ise, bulk_cl_name = ['it','ise', '1'], it_folder = 'bulk/', status = 'add'):
+        from siman.header import db
+        from siman.calc_manage   import add_loop, res_loop
+
+        name = '.'.join(bulk_cl_name)
+
+        it = '.'.join([self.pretty_formula, self.sg_crystal_str])
+        st = self.get_st()
+        self.bulk_cl = name
+
+
+        if status == 'add':
+            # if bulk_cl_name[0] not in header.struct_des:
+
+                add_loop(it,ise,1, input_st = st, it_folder = it_folder, override = 1)
+                self.bulk_status = 'run'
+
+        if status == 'res':
+            res_loop(it,ise,1)
+            try: 
+                if max(db[name].maxforce_list[-1]) > 50:
+                    self.bulk_status = 'big max_f'
+                else:
+                    self.bulk_status = 'calculated'
+
+            except AttributeError:
+                    self.bulk_status = 'Error!'
+                    print(name, '\tUnfinished calculation!!!\n\n')
+
+        if status == 'add_scale':
+            # if bulk_cl_name[0] not in header.struct_des:
+
+                add_loop(it,ise,1, input_st = st, calc_method = 'uniform_scale',  scale_region = (-9, 5), n_scale_images = 10, it_folder = it_folder)
+                self.bulk_status_scale = 'run_scale'
+        
+        if status == 'res_scale':
+            # if bulk_cl_name[0] not in header.struct_des:
+
+                name_scale = '.'.join([it,'su',ise,'100'])
+                self.bulk_cl_scale = name_scale
+
+                try:
+                    # res_loop(it+'.su',ise,list(range(1,11))+[100], up = 'up2', show = 'fit', analys_type = 'fit_a')
+                    res_loop(it+'.su',ise,[100], up = 'up2')
+                except ValueError:
+                    self.bulk_status_scale = 'Error!'
+                    print('\n\nValueError!!!\n\n')
+                    return
+                try: 
+                    if max(db[name_scale].maxforce_list[-1]) > 50:
+                        self.bulk_status_scale = 'big max_f'
+                    else:
+                        self.bulk_status_scale = 'calculated'
+
+                except AttributeError:
+                    self.bulk_status_scale = 'Error!'
+                    print(name_scale, '\tUnfinished calculation!!!\n\n')
+
+
+    def calc_suf(self, ise = '9sm', bulk_cl_name = ['it','ise', '1'], it_folder = 'bulk/', status = 'create', suf_list = [[1,1,0], [1,1,1]], 
+            min_slab_size = 12, only_stoich = 1, corenum = 4):
+        from siman.header import db
+        from siman.geo import create_surface2, stoichiometry_criteria
+        from siman.calc_manage   import add_loop, res_loop
+
+        st_bulk = db[self.bulk_cl_scale].end
+        st_name = '.'.join([self.pretty_formula, self.sg_crystal_str, self.sg_symbol])
+        st_name = st_name.replace('/','_')
+        # st_bulk.printme()
+        try:
+            print(self.suf)
+        except AttributeError:
+            self.suf = {}
+            self.suf_status = {}
+
+        try:
+            print(self.suf_cl)
+        except AttributeError:
+            self.suf_cl = {}
+
+        try:
+            print(self.suf_en)
+        except AttributeError:
+            self.suf_en = {}
+            
+            # None
+
+
+
+        # print(self.suf)
+
+
+        if status == 'create':
+
+
+            try:
+                for surface in suf_list:
+
+                    if self.suf == {} or ''.join([str(surface[0]),str(surface[1]),str(surface[2])]) not in self.suf.keys():
+
+                        slabs = create_surface2(st_bulk, miller_index = surface,  min_slab_size = min_slab_size, min_vacuum_size = 15, surface_i = 0,
+                          symmetrize = True, lll_reduce = 1, primitive = 1)
+                        
+                        s_i = 0
+                        if len(slabs):
+                            for sl_i in slabs:
+                                st = st_bulk
+                                sl = st.update_from_pymatgen(sl_i)
+                                suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(s_i)
+                                # print(suf_name)
+                                self.suf[suf_name] = sl
+                                self.suf_status[suf_name] = 'created'
+                                print(st_name + '\n', surface, s_i+1, ' from ', len(slabs), ' slabs\n', sl.natom, ' atoms'  )
+
+                                s_i+=1
+
+                        else:
+                            self.suf_status = 'Zero slabs constructed'
+                            print('\nWarning!  Zero slabs constructed!\n')
+
+            except AttributeError:
+                self.suf_status = 'Bulk calculation has some problems'
+                print('\nWarning!  Bulk calculation of {} has some problems!!\n'.format(st_name)) 
+
+
+
+
+        if status == 'add':
+            # for surface in suf_list:
+                for suf_name in self.suf.keys():
+                    if self.suf_status[suf_name] in ['added', 'created']:
+                        sl = self.suf[suf_name]
+                        # sl.jmol()
+                        
+                        if only_stoich:
+
+                            if stoichiometry_criteria(sl, st_bulk):
+                                    # print(st_name+'.sl.'+ suf_name, ise, 1, suf_name)
+
+                                    add_loop(st_name+'.sl.'+ suf_name, ise, 1 , 
+                                        input_st = sl,  it_folder = 'slabs_new/'+st_name, up = 'up2', corenum = corenum)
+                                    self.suf_status[suf_name] = 'added'
+                                    self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
+
+                            else:
+                                print('Non-stoichiometric slab')
+
+                        else:
+                            None
+                    else:
+                        print('\nThis slab hasn\'t been created yet!\n')
+                        print(self.suf_status[suf_name])
+    
+
+        if status == 'res':
+            # print('1111')
+            print(self.suf.keys(), self.suf_status)
+            for suf_name in self.suf.keys():
+                if self.suf_status[suf_name] in ['added', 'calculated']:
+                    res_loop(st_name+'.sl.'+ suf_name, ise, 1 , up = 'up2')
+                    self.suf_status[suf_name] = 'calculated'
+
+                    from siman.analysis import suf_en 
+
+                    try:
+                        print(self.suf_cl[suf_name])
+                    except KeyError:
+                        self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
+
+                    try:
+                        e = '-'
+                        e = suf_en(db[self.suf_cl[suf_name]],db[self.bulk_cl_scale])
+                        self.suf_en[suf_name] = e
+                    except AttributeError:
+                        self.suf_en[suf_name] = 'Error'
+
+            if self.suf_status == 'Zero slabs constructed':
+                self.suf_en = 'Zero slabs constructed'
+                        
+
+
+
+
+
+    def get_st(self, folder = 'geo/'):
+        """
+        check downloaded POSCAR files in geo/ folder
+        if not POSCAR of some structure - download it from Mat Proj
+
+        mat_in_list - data dict for any structure from MP,  result of get_fata('mp-...')
+        """
+
+        from siman.calc_manage import  get_structure_from_matproj, smart_structure_read
+        
+        
+        name = self.material_id+'.POSCAR'
+        if name not in os.listdir(folder):
+            os.chdir(folder)
+            st = get_structure_from_matproj(mat_proj_id = self.material_id, it_folder = folder)
+            os.chdir('..')
+        else:
+            st = smart_structure_read(folder+name)
+            # print('ok')
+        return st
+
+    def e_cohesive_calc(self, e_box):
+        from siman.header import db
+        '''
+        return cohesive energy
+
+        e_box - dict{element: energy_of_element_in_box}
+        '''
+        
+        # print(self.bulk_cl_scale)
+        try:
+            cl_bulk = db[self.bulk_cl_scale]
+            e_bulk = cl_bulk.energy_sigma0
+            n_at_sum = cl_bulk.end.natom
+            el_list = cl_bulk.end.get_elements()
+
+            e_at_sum = 0
+            for el in el_list:
+                e_at = e_box[el]
+                e_at_sum+=e_at
+
+            e_coh = (e_at_sum-e_bulk)/n_at_sum
+            print('{}  \t\tE_coh = {} eV'.format(self.pretty_formula, round(e_coh,1)))
+            self.e_cohesive = round(e_coh,2)
+            
+        except AttributeError:
+            self.e_cohesive = None
+
+
+
+
+        # return e_coh
+
+
+    def calc_ec_es(self):
+        from siman.header import db
+        '''
+        
+        '''
+        ec_es = []
+
+        try:
+            print(self.e_cohesive)
+            for i in self.suf_en.keys():
+                print(self.suf_en)
+                if self.suf_en[i] !='Error':
+                    print(self.suf_en[i])
+                    ec_es.append(round(float(self.e_cohesive)/float(self.suf_en[i]), 2))
+                else:
+                    ec_es.append('None')
+
+            self.ec_es = ec_es
+        except AttributeError:
+            self.ec_es = None
+        
+
+
+
+
+

@@ -49,7 +49,7 @@ def log_func_exec():
 
 
 def write_batch_header(batch_script_filename = None,
-    schedule_system = None, path_to_job = None, job_name = 'SuperJob', number_cores = 1  ):
+    schedule_system = None, path_to_job = None, job_name = 'SuperJob', number_cores = 1):
     """
     self-explanatory)
     path_to_job (str) - absolute path to job folder 
