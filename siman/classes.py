@@ -593,7 +593,8 @@ class Structure():
 
 
 
-        if oxi:
+        if oxi and not oxidation:
+            # print(oxi)
             pm.add_oxidation_state_by_site(oxi)
 
 

@@ -2181,9 +2181,15 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
     for slab in slabs:
         sl = st.update_from_pymatgen(slab)
         if stoichiometry_criteria(sl, st_bulk):
-            print('Stoichiometry slab')
+            stoi = 'Stoichiometric slab'
         else:
-            print('Non-stoichiometry slab')
+            stoi = 'Non-stoichiometric slab'
+        
+
+        # printlog(stoi, 
+        #     ';Polar:',       slab.is_polar(),
+        #     ';Eqvuivalent:', slab.have_equivalent_surfaces(), 
+        #     ';symmetric:',   slab.is_symmetric(), imp = 'y')
 
         
 
@@ -2216,8 +2222,12 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         # print(st.rprimd[2])
 
         st.update_xred()
+        print(oxidation)
+        slab = st.convert2pymatgen(oxidation = oxidation, slab = 1)
+        # print('Eqvuivalent after cutting:', slab.have_equivalent_surfaces() )
 
-        st.name+='cutted'
+
+        st.name+='cutted'+str(cut_thickness)
         if write_poscar:
             st.write_poscar()
 
