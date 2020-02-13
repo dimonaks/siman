@@ -1734,9 +1734,9 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
 
     sg (int) - give back structure with specific space group
 
-    info_mode (bool) if 1 then return list of possible space groups
+    info_mode (bool) if 1 then return list of possible space groups (and structures)
     
-    return list of structures with sg space groups
+    return list of structures (only first ten) with sg space groups
 
 
     """
@@ -1763,7 +1763,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
         return
 
 
-    structures = []
+    structures = {}
     orderings = []
     ls = [0]*st.natom
     order(ls, 0)
@@ -1779,21 +1779,27 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
             # print(nm)
         symmetries.append(nm)
         # print(nm)
-        if nm == sg:
+        if nm not in structures:
+            structures[nm] = []
+        if len(structures[nm]) < 10:
+            structures[nm].append(st_rem)
+        else:
+            continue  
+        # if nm == sg:
             # st_rem.jmol()
             # sc = supercell(st_rem, [14,14,14])
             # sc.jmol()
             # sc.write_poscar('xyz/POSCAR_SC2_half')
             # sc.write_cif('xyz/POSCAR_SC2_half')
             # sys.exit()
-            structures.append(st_rem)
+            # structures.append(st_rem)
 
     # print(len(orderings))
     print('The following space groups were found', Counter(symmetries))
     if info_mode:
-        return list(set(symmetries))
+        return list(set(symmetries)), structures
 
-    return structures
+    return structures[sg]
 
 
 

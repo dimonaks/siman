@@ -4176,14 +4176,24 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                 name = el+x_str+it_ds
                 # print(name)
                 # sys.exit()
-                syms =  remove_x(st, el, info_mode = 1, x = x_vac)
+                key = 'syms_rem'+str(target_x)
+                if key not in db[pn] or 'up2' in up_scale:
+                    syms, sts_dic =  remove_x(st, el, info_mode = 1, x = x_vac)
+                    db[pn][key] = syms
+                else:
+                    syms = db[pn][key]
+
 
                 printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
 
 
                 # sys.exit()
                 for sg in syms:
-                    st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
+                    # st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
+                    try:
+                        st_rem  =  sts_dic[sg]
+                    except:
+                        st_rem = None # for res_loop mode
 
                     id_new = (name+'sg'+str(sg), m_set, 1)
 
