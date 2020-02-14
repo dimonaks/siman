@@ -1858,45 +1858,51 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
     if info_mode:
-        return remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
-
-    sts = remove_x_based_on_symmetry(st_prim, sg, x = x )
+        syms, sts_dic = remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
+    else:
+        sts = remove_x_based_on_symmetry(st_prim, sg, x = x )
+        syms = [sg]
+        sts_dic = {}
+        sts_dic[sg] = sts
     # st_prim.jmol()
     # print(sts)
-    if len(sts) == 0:
-        printlog('Error! number of structures is zero')
 
 
+    sts_dic_one = {} # only first st for each sg
+    for sg in syms:
+        sts = sts_dic[sg]
+        if len(sts) == 0:
+            printlog('Warning! number of structures for sg',sg,'is zero')
 
-    st_only_el_x = sts[0]   # now only first configuration is taken, they could be different
-
-
-    if prim:
-        mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
-        mul_matrix = np.array(mul_matrix_float)
-        mul_matrix = mul_matrix.round(0)
-        mul_matrix = mul_matrix.astype(int)
+        st_only_el_x = sts[0]   # now only first configuration is taken, they could be different
 
 
+        if prim:
+            mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
+            mul_matrix = np.array(mul_matrix_float)
+            mul_matrix = mul_matrix.round(0)
+            mul_matrix = mul_matrix.astype(int)
+            sc_only_el_half = create_supercell(st_only_el_x, mul_matrix = mul_matrix)
+            sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
+            sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
+        else:
+            sc_only_el_x = st_only_el_x
 
-        sc_only_el_half = create_supercell(st_only_el_x, mul_matrix = mul_matrix)
 
-        sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
-        sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
+        # st_only_el.write_poscar('xyz/POSCAR1')
+        # sc_only_el_half.write_poscar('xyz/POSCAR2')
 
+
+        st_x = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
+
+        st_x.name+='_'+str(x)+'_'+str(sg)
+        # st_x.write_poscar()
+        sts_dic_one[sg] = st_x
+
+    if info_mode:
+        return syms, sts_dic_one
     else:
-        sc_only_el_x = st_only_el_x
-
-
-    # st_only_el.write_poscar('xyz/POSCAR1')
-    # sc_only_el_half.write_poscar('xyz/POSCAR2')
-
-
-    st_x = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
-
-    st_x.name+='_'+str(x)+'_'+str(sg)
-    # st_x.write_poscar()
-    return st_x
+        return sts_dic_one[sg] # only one structure is returned
 
 
 

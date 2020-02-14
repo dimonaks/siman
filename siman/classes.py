@@ -3009,12 +3009,12 @@ class Calculation(object):
             
             self.xred = read_vectors("xred", self.natom, gen_words)
             #print self.xred
-            
-            if self.xred == [None]:
+            # print(self.xcart)
+            if self.xred is [None]:
                 print_and_log("Convert xcart to xred")
                 self.xred = xcart2xred(self.xcart, self.rprimd)
             
-            if self.xcart == [None]:
+            if self.xcart is [None]:
                 print_and_log("Convert xred to xcart")
                 self.xcart = xred2xcart(self.xred, self.rprimd)
 

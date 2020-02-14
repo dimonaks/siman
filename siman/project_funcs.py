@@ -4177,26 +4177,33 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                 # print(name)
                 # sys.exit()
                 key = 'syms_rem'+str(target_x)
-                if key not in db[pn] or 'up2' in up_scale:
+                # print(db[pn], up_scale)
+                if key not in db[pn] or up_scale == 1:
                     syms, sts_dic =  remove_x(st, el, info_mode = 1, x = x_vac)
                     db[pn][key] = syms
                 else:
+                    printlog('Loading syms from db[pn][key] ', pn, key,  imp = 'y')
+
                     syms = db[pn][key]
+                    sts_dic = {}
 
 
                 printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
 
 
                 # sys.exit()
+                # print(syms)
                 for sg in syms:
                     # st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
-                    try:
-                        st_rem  =  sts_dic[sg]
-                    except:
+                    if sg in sts_dic:
+                        # print(sg, sts_dic)
+                        st_rem  =  sts_dic[sg] # only the first one is used
+                    else:
                         st_rem = None # for res_loop mode
 
                     id_new = (name+'sg'+str(sg), m_set, 1)
-
+                    # st_rem.jmol()
+                    # sys.exit()
                     add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
