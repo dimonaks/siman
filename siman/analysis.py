@@ -1481,6 +1481,6 @@ def wulff(st, miller_list = None, e_surf_list = None):
     # print(lat)
     from pymatgen.analysis.wulff import WulffShape
     WS = WulffShape(lat, miller_list, e_surf_list)
-    print(dir(WS))
+    # print(dir(WS))
     WS.show()
     return
