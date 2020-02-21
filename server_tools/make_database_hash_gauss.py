@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 from __future__ import division, unicode_literals, absolute_import, print_function
-import sys, glob, os, json
+import sys, glob, os, json, pickle
+from siman.small_functions import makedir
 from siman.classes import CalculationVasp 
-
+from pymatgen.io.gaussian import GaussianOutput
 """
 NAME
-    make_database_hash.py - serialize all found .out vasp files into .pickle
+    make_database_hash.py - serialize all found .out Gaussian files into .pickle
 
 SYNOPSIS
     make_database_hash.py path_to_database
@@ -33,6 +34,18 @@ __status__ = "alpha"
 __date__ = ""
 
 
+
+def serialize(cl, filename):
+    """
+    save as pickle object, return path
+    """
+    file = filename+'.pickle'
+    makedir(file)
+    with open(file, 'wb') as f:
+        pickle.dump(cl, f, 2)
+    return file
+
+
 path2database = sys.argv[1]
 
 
@@ -53,9 +66,8 @@ if 1:
 
                 pickle_file = os.path.join(mat_folder, 'bin', iid)
                 if not os.path.isfile(pickle_file+'.pickle'):
-                  cl = CalculationVasp(output = os.path.join(mat_folder, outcar ) )
-                  # print(cl.path['output'])
-                  cl.read_results()
+                  cl = GaussianOutput(os.path.join(mat_folder, outcar ) )
+                  # cl.read_results()
                   # material = os.path.basename(mat_folder)
                   # print(mat_folder, material)
                   material = mat_folder.split('/')[0]
@@ -63,7 +75,7 @@ if 1:
                   cl.name = material
 
                   print(pickle_file)
-                  pickle_file = cl.serialize(os.path.join(mat_folder, 'bin', iid) )
+                  pickle_file = serialize(cl, os.path.join(mat_folder, 'bin', iid) )
                 else:
                   print('pickle file', pickle_file, 'exist')
                 # concentr = outcar.split('_')[0]

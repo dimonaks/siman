@@ -230,6 +230,39 @@ def read_poscar(st, filename, new = True):
                     # print(flagset)
                     select.append(flagset)
 
+
+        velocities = []
+        newline = f.readline() # if velocities are available - they are separated by one new line
+        vel1 = f.readline()
+        # print(vel1)
+        if vel1:
+            #usually vasp return zero velocities, which are not needed, skip them
+            vec = vel1.split()
+            vel_vec = np.asarray([float(vec[0]), float(vec[1]), float(vec[2])])
+            vellen = abs(np.linalg.norm(vel_vec))
+            # print(vellen)
+        if vel1 and vellen > 1e-12:
+            vec = vel1.split()
+            velocities.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
+            printlog('Reading velocities from POS/CONT-CAR', imp = 'y')
+            for i in range(len(coordinates)-1): # vel for first atom is already read
+                vec = f.readline().split()
+                velocities.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
+            st.vel = velocities
+
+            newline = f.readline() # new empty line between blocks
+            start = f.readline() # something appears after velocity
+            if start:
+                printlog('Reading predictor-corrector from POS/CONT-CAR', imp = 'y')
+                predictor = start+f.read()
+                # print(predictor)
+                # sys.exit()
+                st.predictor = predictor
+
+
+
+
+
         st.select = select
 
         if "Car" in type_of_coordinates or 'car' in type_of_coordinates:

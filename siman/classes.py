@@ -43,7 +43,7 @@ from siman.header import printlog, print_and_log, runBash, plt
 
 from siman import set_functions
 from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
-from siman.functions import (read_vectors, read_list, words,
+from siman.functions import (read_vectors, read_list, words, read_string,
      element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
@@ -129,6 +129,8 @@ class Structure():
         self.xred = []
         self.magmom = []
         self.select = [] # flags for selective dynamics
+        self.vel    = [] # velocities, could be empty
+        self.predictor = None # string , predictor-corrector information to continiue MD run
         # self.pos = write_poscar()
 
     def copy(self):
@@ -2544,11 +2546,13 @@ class Structure():
             None - not written
 
         shift - shift atoms
+        
         NOTE
         #void element type is not written to POSCAR
 
         TODO
             selective_dynamics for coord_type = 'cart'
+            Velocity and predictor are not reordered; Can be used only for continiue MD
         """
 
 
@@ -2691,7 +2695,7 @@ class Structure():
 
 
             if "car" in coord_type:
-                print_and_log("Warning! may be obsolete!!! and incorrect", imp = 'Y')
+                print_and_log("Warning! Cartesian regime of coordination may be obsolete and incorrect !!!", imp = 'Y')
                 f.write("Cartesian\n")
                 for xcart in zxcart:
                     for x in xcart:
@@ -2699,11 +2703,6 @@ class Structure():
                         f.write("\n")
 
                 
-                if hasattr(self.init, 'vel'):
-                    print_and_log("I write to POSCAR velocity as well")
-                    f.write("Cartesian\n")
-                    for v in self.init.vel:
-                        f.write( '  {:18.16f}  {:18.16f}  {:18.16f}\n'.format(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )
 
             elif "dir" in coord_type:
                 f.write("Direct\n")
@@ -2731,6 +2730,23 @@ class Structure():
             else:
                 print_and_log("Error! The type of coordinates should be 'car' or 'dir' ")
                 raise NameError
+
+
+
+            # print('write_poscar(): predictor:\n', st.predictor)
+            if hasattr(st, 'vel') and len(st.vel)>0:
+                printlog("Writing velocity to POSCAR ", imp = 'y')
+                # f.write("Cartesian\n")
+                f.write("\n")
+                for v in st.vel:
+                    f.write( '  {:18.16f}  {:18.16f}  {:18.16f}\n'.format(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )
+
+            if hasattr(st, 'predictor') and st.predictor:
+                printlog("Writing predictor POSCAR ", imp = 'y')
+                f.write("\n")
+                f.write(st.predictor)
+
+
         
 
         f.close()
@@ -3046,8 +3062,7 @@ class Calculation(object):
 
 
             vel = read_vectors("vel", self.natom, gen_words)
-            # print vel
-            if vel[0] != None: 
+            if vel[0] is not None: 
                 self.init.vel = vel
 
             #read magnetic states; name of vasp variable
@@ -3061,6 +3076,15 @@ class Calculation(object):
             select = read_vectors("select", self.natom, gen_words, type_func = lambda a : int(a), lists = True )
             if None not in select: 
                 self.init.select = select
+
+            predictor_length = read_list("pred_length", 1, int, gen_words)[0]
+            # print('pred_length', predictor_length)
+            # sys.exit()
+            if predictor_length:
+                predictor = read_string('predictor', predictor_length, memfile)
+                # print('predictor', predictor)
+                self.init.predictor = predictor
+
 
 
 
@@ -3195,6 +3219,17 @@ class Calculation(object):
                 f.write("\nselect  ")
                 for v in st.select:
                     f.write("{:d} {:d} {:d}\n".format(v[0], v[1], v[2])  )
+
+            if hasattr(st, 'vel') and len(st.vel) > 0:
+                f.write("\nvel ")
+                for v in st.vel:
+                    f.write("{:18.16f} {:18.16f} {:18.16f}\n".format(v[0], v[1], v[2])  )
+
+            if hasattr(st, 'predictor') and st.predictor:
+                
+                f.write("\npred_length "+str(len(st.predictor)))
+                f.write("\npredictor ")
+                f.write(st.predictor)
 
             #Write build information
             try:
