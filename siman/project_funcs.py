@@ -1584,6 +1584,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
             id_res = (id_base[0]+'.su', ise_new, 100)
 
+            it_suffix = add_loop_dic.get('it_suffix')
 
             if update or id_res not in calc:
                 printlog('Scale region is ', scale_region, imp = 'y')
@@ -1594,9 +1595,11 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(dic['scale_outcar.'+mode_id], up_res)
                 # print(up_res)
                 # sys.exit()
-                res_loop(*id_res, up = up_res, readfiles= readfiles, choose_outcar = choose_outcar, show = 'e', check_job = 0)
+                res_loop(*id_res, up = up_res, readfiles= readfiles, 
+                    choose_outcar = choose_outcar, show = 'e', check_job = 0, it_suffix = it_suffix)
                 if show_fit:
-                    res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0)
+                    res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, 
+                        choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0 , it_suffix = it_suffix)
                 # sys.exit()
                 if '2'  in calc[id_res].state or '5' in calc[id_res].state:
                     ''

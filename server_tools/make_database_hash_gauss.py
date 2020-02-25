@@ -66,7 +66,12 @@ if 1:
 
                 pickle_file = os.path.join(mat_folder, 'bin', iid)
                 if not os.path.isfile(pickle_file+'.pickle'):
-                  cl = GaussianOutput(os.path.join(mat_folder, outcar ) )
+                  try:
+                    cl = GaussianOutput(os.path.join(mat_folder, outcar ) )
+                    print('Gauss file succesfully read')
+                  except:
+                    print('Gauss file is broken, skipping', os.path.join(mat_folder, outcar ))
+                    continue 
                   # cl.read_results()
                   # material = os.path.basename(mat_folder)
                   # print(mat_folder, material)

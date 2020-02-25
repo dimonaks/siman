@@ -1295,7 +1295,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             
 
             if it_suffix:
-                it_new = it+'.'+it_suffix
+                it_new = it_new+'.'+it_suffix
                 it_suffix = None
 
 
@@ -1391,7 +1391,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                         description = s.des, override = True)
                     write_xyz(s)
                     verlist_new.append(ver_new)
-                
+
+
+
                 if 'uniform_scale' in calc_method:
                     #make version 100
                     cl_temp.version = 100
@@ -1407,6 +1409,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     cl_temp.cluster_address      = header.cluster_address
                     cl_temp.project_path_cluster = header.project_path_cluster
                     calc[cl_temp.id] = cl_temp
+                    printlog(cl_temp.id, 'was created in database')
+                    # sys.exit()
+
                     # cl_temp.init = None
                     fitted_v100_id = cl_temp.id
 
@@ -3035,10 +3040,14 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
     """Main loop"""
+    if it_suffix:
+        it_suffix = '.'+it_suffix
+    else:
+        it_suffix = ''
     final_outstring = 'no calculation found'
     for inputset in setlist:
         for v in verlist:
-            id = (it,inputset,v)
+            id = (it+it_suffix,inputset,v)
             # print(id)
             if id not in calc:
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
