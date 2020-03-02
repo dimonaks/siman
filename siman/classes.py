@@ -699,14 +699,19 @@ class Structure():
 
         """
         st = copy.deepcopy(self)
-        st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
+        if hasattr(stpm, '_lattice'):
+            st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
+        else:
+            st.rprimd = [[10,0,0],[0,10,0],[0,0,10]] #temporary workaround
         # for site in stpm._sites:
             # print(dir(site))
-        st.xred   = [np.array(site._frac_coords) for site in stpm._sites]
-        
-
+        if hasattr(stpm._sites[0], '_frac_coords'):
+            st.xred   = [np.array(site._frac_coords) for site in stpm._sites]
+            st.update_xcart()
+        else:
+            st.xcart   = [np.array(site.coords) for site in stpm._sites]
+            st.xred = [None]
         # print(elements)
-        st.update_xcart()
 
         s = stpm._sites[0]
 
@@ -741,11 +746,15 @@ class Structure():
 
         st = st.update_types(elements)
 
+        # print(len(st.typat))
         st.natom = len(st.typat)
         # sys.exit()
 
-        if st.natom != len(st.xred):
+        if st.natom != len(st.xcart):
             printlog('Error! number of atoms was changed, please improve this method')
+
+        # print(st.xcart)
+
 
         st.name+='_from_pmg'
         return st

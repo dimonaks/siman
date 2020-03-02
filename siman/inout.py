@@ -525,15 +525,15 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         st = replic(st, mul = replications, inv = 1 )
   
     def update_var(st):
-        if st.natom != len(st.xred) != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
+        if st.natom != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
             printlog( "Error! write_xyz: check your arrays.\n\n"    )
 
-        if st.xcart == [] or len(st.xcart) != len(st.xred):
+        if st.xcart is [None] :
             printlog( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n")
             st.xcart = xred2xcart(st.xred, st.rprimd)
             #print xcart[1]
 
-        return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xred)
+        return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xcart)
 
     
     st = st.copy()
@@ -700,6 +700,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
                 f.write( "%s %.5f %.5f %.5f \n"%( el[3], el[0], el[1], el[2] ) )
                 # print 'composite -pointsize 60 label:{0:d} -geometry +{1:d}+{2:d} 1.png 2.png'.format(i, el[0], el[1])
 
+        # print(range(natom))
 
         for i in range(natom):
             typ = typat[i] - 1
