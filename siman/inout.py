@@ -73,7 +73,7 @@ def read_xyz(st, filename, rprimd = None):
 
 
     # print(st.rprimd)
-    if rprimd == None or None in rprimd or 0 in rprimd or len(rprimd) != 3:
+    if rprimd is None or any(x is None for x in rprimd) or len(rprimd) != 3:
         printlog('None detected in *rprimd*, I use vectors from xyz file')
         if len(st.rprimd) != 3:
             printlog('Only these primitive vectors were found in xyz :\n', np.round(st.rprimd, 3), '\nI take rest from *rprimd*', imp ='y')
