@@ -5732,6 +5732,10 @@ class CalculationVasp(Calculation):
         else:
             it_suffix = ''
 
+        if kwargs.get('it_suffix'):
+            del kwargs['it_suffix']
+
+
         # if self.id[1] != ise:
         if 1:
             if not hasattr(self, 'children'):
