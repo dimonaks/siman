@@ -1595,6 +1595,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(dic['scale_outcar.'+mode_id], up_res)
                 # print(up_res)
                 # sys.exit()
+                # print(id_res)
                 res_loop(*id_res, up = up_res, readfiles= readfiles, 
                     choose_outcar = choose_outcar, show = 'e', check_job = 0, it_suffix = it_suffix)
                 if show_fit:
@@ -1657,6 +1658,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
             calc[support_dict_key] = {} #create supportive dictionary, which depends on ortho parameter
         
 
+        it_suffix = add_loop_dic.get('it_suffix')
+        if it_suffix:
+            base_id = (base_id[0]+'.'+it_suffix, base_id[1], base_id[2])
 
 
         if base_id:
@@ -1679,6 +1683,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     if 1:
                         printlog ('Cell obtained by removing atoms', imp = 'y')
                         printlog ('I use mul_matrix and ngkpt from intercalated structure', imp = 'y')
+                        # print(support_dict_key, calc[support_dict_key][cat[0], 'mul_matrix'], calc[support_dict_key][cat[0], 'ngkpt_dict'])
+
+                        # sys.exit()
+
                         try:
                             mul_matrix = calc[support_dict_key][cat[0], 'mul_matrix']
                             ngkpt_dict      = calc[support_dict_key][cat[0], 'ngkpt_dict']
@@ -1689,9 +1697,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                         ngkpt = ngkpt_dict[ks]
                         # printlog ('I use mul_matrix and ngkpt from intercalated structure', imp = 'y')
 
-
+                # print(base_id[0])
                 sfolder = struct_des[base_id[0]].sfolder
-                # print (sfolder)
+                # print (base_id[0], sfolder)
                 # sys.exit()
                 itA = add_loop(*base_id, ise_new = ise_new, up = up_add_loop, 
                 it_folder = sfolder+'/super/', inherit_option = 'supercell', ortho = ortho,
@@ -1708,6 +1716,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(db[('Cu.su', '1lo', 100)].inh_id)
                 # header.db = db
                 if 'normal' in mode:
+                    # print('saving mul_matrix', struct_des[itA].mul_matrix  )
                     calc[support_dict_key][cat[0], 'mul_matrix'] = struct_des[itA].mul_matrix               #save for intercalated structure
                     calc[support_dict_key][cat[0], 'ngkpt_dict'] = struct_des[itA].ngkpt_dict_for_kspacings #save for intercalated structure
 
@@ -1723,7 +1732,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(dic['neb_outcar.'+mode_id])
                 # print('suprecell: chosen outcar:', choose_outcar)
                 # print(up_res)
-                res_loop(*idA, up = up_res, readfiles = readfiles, choose_outcar = choose_outcar, show = 'm', check_job = 0)
+                res_loop(*idA, up = up_res, 
+                    readfiles = readfiles, 
+                    choose_outcar = choose_outcar, show = 'm', check_job = 0)
                 # res_loop(*idA, choose_outcar = 3, show = 'fo')
                 # res_loop(*idA, choose_outcar = 4, show = 'fo')
                 curres['id_sc'] = idA

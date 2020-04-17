@@ -1078,8 +1078,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
 
-            if it_suffix: # override default behaviour
-                it_new = it+'.'+it_suffix
+            if it_suffix: # add to default behaviour; make additional key, which can allow to override default behavior
+                it_new = it_new+'.'+it_suffix
                 it_suffix = None
 
 

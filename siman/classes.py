@@ -4707,7 +4707,12 @@ class Calculation(object):
         # sys.exit()
         address = self.cluster['address']
         if header.override_cluster_address:
-            clust = header.CLUSTERS[self.cluster['name']]
+            if self.cluster['name']:
+                clust = header.CLUSTERS[self.cluster['name']]
+            else:
+                printlog('Youve chosen to override cluster_address, but name of cluster is None, trying default', imp = 'Y')
+                clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
+
             self.project_path_cluster = clust['homepath']
             address = clust['address']
 

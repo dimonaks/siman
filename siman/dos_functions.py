@@ -134,7 +134,8 @@ def det_gravity(dos, Erange = (-100, 0)):
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
-    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, efermi_origin = True, invert_spins  = 0):
+    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, 
+    efermi_origin = True, invert_spins  = 0, name_suffix = ''):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -161,7 +162,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     plot_param - dict of parameters to fit_and_plot
         dashes - control of dahsed lines
 
-    suf2 - additional suffix
+    suf2 - additional suffix for label
+    name_suffix - modify name
 
     # nsmooth = 15 # smooth of dos
     lts2 - style of lines for cl2
@@ -766,7 +768,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             plot_param['ver'] = False
         """Plot everything"""
 
-        image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))
+        image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))+name_suffix
 
 
         if 'xlabel' not in plot_param:
