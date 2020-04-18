@@ -1855,6 +1855,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
                 # print('sdfsaf')
+                if 'it_suffix' in add_loop_dic:
+                    del add_loop_dic['it_suffix'] # already taken into name
 
                 if 'normal' in mode or 'replace' in mode:
                 
