@@ -1067,6 +1067,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         st1.name +='_all'
         # st1.write_cif('xyz/'+st1.name)
         st1.write_xyz()
+        st1.write_poscar()
 
 
     if dAO2: # find maximum change of distance during migration
