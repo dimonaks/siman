@@ -145,7 +145,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             '261018' - after this moment new namig convention applied if end_pos_types_z is used
 
         - add_loop_dic - standart parameters of add()
-        - params (dic) - provide additional parameters to add()
+        - params (dic) - provide additional parameters to add() # should be removed
 
     ###RETURN:
         None
@@ -858,7 +858,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         add_loop_dic['run'] = run
 
     add_loop_dic['corenum'] = corenum
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, params=params, **add_loop_dic  )
+    # print(add_loop_dic)
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, 
+        # params=params, 
+        **add_loop_dic  )
     
 
     if upload_vts:

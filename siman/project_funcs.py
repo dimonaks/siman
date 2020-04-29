@@ -1585,10 +1585,12 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
             id_res = (id_base[0]+'.su', ise_new, 100)
 
             it_suffix = add_loop_dic.get('it_suffix')
-
+            # print(id_base)
+            # sys.exit()
             if update or id_res not in calc:
                 printlog('Scale region is ', scale_region, imp = 'y')
-                add_loop(*id_base, up = up_add_loop, ise_new = ise_new, savefile = savefile, calc_method = 'uniform_scale', scale_region = scale_region, 
+                add_loop(*id_base, up = up_add_loop, ise_new = ise_new, savefile = savefile, 
+                    calc_method = 'uniform_scale', scale_region = scale_region, 
                 inherit_option = 'inherit_xred', it_folder = curfol+'/scaled/', **add_loop_dic)                    
             
             else:
@@ -4048,6 +4050,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     clust = p.get('cluster') or 'cee'
     corenum = p.get('corenum')
     readfiles = p.get('readfiles')
+    it_suffix = p.get('it_suffix')
 
     if prim is None:
         prim = 1
@@ -4068,7 +4071,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
 
     service_list = db[pn]['res']
-    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum, 'it_suffix':p.get('it_suffix')}
+    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum }
+    
+    if it_suffix:
+        add_loop_dic['it_suffix'] = it_suffix
 
     if step == 1:
         ''
@@ -4101,11 +4107,15 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         el  = get_alkali_ion(cl.end, active_cation)
 
         it_ds = it.replace(el, '')
-        if it_ds[0] == '2':
+
+
+        if it_ds[0] == '2': #e.g. Na2
             it_ds = it_ds[1:]
             coeff = 2
         else:
             coeff = 1
+
+
 
         printlog('Name for DS is', it_ds)
 
@@ -4130,7 +4140,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
-            a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+            a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), 
+            param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic, 
             run_neb = run_neb, run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global') ) 
             
@@ -4167,7 +4178,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             # cl.me()
 
             if target_x == 0:
-                a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+                a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, 
+                upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                 fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
                 run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global')) 
                 
