@@ -158,7 +158,8 @@ def determine_barrier(positions = None, energies = None):
 
 
 
-def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, mode = None, scale = 1):
+def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, mode = None, 
+    scale = 1, config_entropy = None, x_vac1 = None, x_vac2 = None):
     """
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
@@ -172,7 +173,9 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
         ewald_vasp
 
     scale - experimental 
-
+    
+    config_entropy - cacluculate configuration entropy change and add to redox potential
+        x_vac - vacancy concentration - should be provided
 
     return dic {'redox_pot', 'vol_red', ...}
     """
@@ -293,6 +296,12 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
         redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  ) / scale
     else:
         redox = 0
+
+
+    if config_entropy:
+        ''
+
+
 
     # print(n1, n2)
 
