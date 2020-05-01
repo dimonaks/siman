@@ -760,7 +760,7 @@ def inherit_iset(ise_new, ise_from, varset, override = False, newblockfolder = N
     ise_from = ise_from.strip()
 
     if ise_from not in varset:
-        print_and_log( "\nError! Set "+ise_from+" does not exist. I return new empty set\n")
+        printlog( "\nWarning! Set "+ise_from+" does not exist. I return new empty set\n")
         return InputSet(ise_new)
 
     old = varset[ise_from]
