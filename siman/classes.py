@@ -3471,7 +3471,8 @@ class Calculation(object):
         # if self.set.kpoints_file  == False:#self.set.vasp_params['KSPACING']:
         #     N = N_from_kspacing
         kspacing = self.set.vasp_params['KSPACING']
-
+        # print(kspacing)
+        # sys.exit()
         # print (struct_des)
         if ngkpt:
             N = ngkpt
