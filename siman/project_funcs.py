@@ -4082,6 +4082,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             startgeofile = db[pn]['startgeofile'] 
             print('geo file is ', startgeofile)
             st = smart_structure_read(startgeofile)
+            # print(prim)
+            # sys.exit()
             if prim:
                 printlog('Converting cell to primitive', imp = 'y')
                 st = primitive(st)

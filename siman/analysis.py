@@ -1314,7 +1314,51 @@ def polaron_analysis(cl, readfiles):
 
 
 
+def interface_en(cl, cl1, cl2, silent = 0, n_intefaces = 1):
+    """
+    Calculate surface energy
+    cl - slab or cell with interface
+    cl1 - slab or cell with phase 1
+    cl2 - slab or cell with phase 2
+    n_intefaces - number of similar  interfaces in the system
 
+    Interface is assumed to be normal to R3!
+
+    """
+    st = cl.end
+    st1 = cl1.end
+    st2 = cl2.end
+    natom = st.natom
+    natom1 = st1.natom
+    natom2 = st2.natom
+
+
+    A = np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
+    A1 = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
+    A2 = np.linalg.norm( np.cross(st2.rprimd[0] , st2.rprimd[1]) )
+
+
+    print('Surface areas:', A,A1,A2)
+
+
+
+    mul = natom/(natom1+natom2) # natom1 and natom2 should be scaled equally
+
+
+
+
+    # print(mul)
+    if natom != (natom1+natom2)*mul:
+        printlog('Error! Number of atoms are different:', st.natom, st1.natom, st2.natom)
+
+    diff  = cl.e0 - (cl1.e0 + cl2.e0)* mul  
+    gamma = diff / A * header.eV_A_to_J_m / n_intefaces# inteface
+
+    if not silent:
+        print('Interface energy = {:3.2f} J/m2   | {:} eV '.format(gamma, diff))
+    
+
+    return gamma
 
 def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
     """Calculate surface energy
