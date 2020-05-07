@@ -793,6 +793,21 @@ class Structure():
         st = st.return_atoms_to_cell()
         return st
 
+    def sizes(self):
+        #return sizes along x, y, and z
+
+        # for x in self.xcart:
+        xyz = list(map(list, zip(*self.xcart)))
+
+        dx = max(xyz[0]) - min(xyz[0]) 
+        dy = max(xyz[1]) - min(xyz[1]) 
+        dz = max(xyz[2]) - min(xyz[2]) 
+        return dx,dy, dz
+    def rprimd_len(self):
+        #return vector lengths
+        r = self.rprimd
+        n = np.linalg.norm
+        return n(r[0]), n(r[1]), n(r[2])
 
     def add_z(self, z):
         # method appends additional height to the cell
