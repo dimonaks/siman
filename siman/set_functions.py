@@ -131,6 +131,9 @@ vasp_other_keys = [
 'NWRITE',
 'NBLOCK',
 'KBLOCK',
+'IVDW',
+'LVDW_EWALD',
+
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
