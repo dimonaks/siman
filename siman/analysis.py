@@ -1314,12 +1314,14 @@ def polaron_analysis(cl, readfiles):
 
 
 
-def interface_en(cl, cl1, cl2, silent = 0, n_intefaces = 1):
+def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
     """
     Calculate surface energy
     cl - slab or cell with interface
     cl1 - slab or cell with phase 1
     cl2 - slab or cell with phase 2
+    mul1, mul2, - multiply cells
+
     n_intefaces - number of similar  interfaces in the system
 
     Interface is assumed to be normal to R3!
@@ -1334,24 +1336,24 @@ def interface_en(cl, cl1, cl2, silent = 0, n_intefaces = 1):
 
 
     A = np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
-    A1 = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
-    A2 = np.linalg.norm( np.cross(st2.rprimd[0] , st2.rprimd[1]) )
+    A1 = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )*mul1
+    A2 = np.linalg.norm( np.cross(st2.rprimd[0] , st2.rprimd[1]) )*mul2
 
 
     print('Surface areas:', A,A1,A2)
 
 
 
-    mul = natom/(natom1+natom2) # natom1 and natom2 should be scaled equally
+    mul = natom/(natom1*mul1+natom2*mul2) # natom1 and natom2 should be scaled equally
 
 
 
 
     # print(mul)
-    if natom != (natom1+natom2)*mul:
+    if natom != (natom1*mul1+natom2*mul2)*mul:
         printlog('Error! Number of atoms are different:', st.natom, st1.natom, st2.natom)
 
-    diff  = cl.e0 - (cl1.e0 + cl2.e0)* mul  
+    diff  = cl.e0 - (cl1.e0*mul1 + cl2.e0*mul2)* mul  
     gamma = diff / A * header.eV_A_to_J_m / n_intefaces# inteface
 
     if not silent:
