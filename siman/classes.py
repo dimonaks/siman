@@ -2871,7 +2871,7 @@ class Structure():
         return read_xyz(self, *args, **kwargs)
 
 
-    def jmol(self, shift = None, r = 0, show_voids = False):
+    def jmol(self, shift = None, r = 0, show_voids = False, rep = None):
         """open structure in Jmol
         
         INPUT:
@@ -2882,9 +2882,14 @@ class Structure():
             2 - open mcif to see magnetic moments
             3 - xyz
         show_voids (bool) - replace voids (z = 300) with Po to visualize them
+        rep  (list 3*int) - replicate along vectors
         
         """
         st = copy.deepcopy(self)
+
+        if rep:
+            st = st.replic(rep)
+
         if shift:
             st = st.shift_atoms(shift)
 
