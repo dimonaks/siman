@@ -43,6 +43,7 @@ CLUSTERS['ut1'] = {'address':'ut1',
 
 """Local constants"""
 PATH2POTENTIALS = '~/potcars/'
+PATH2NEBMAKE = 'nebmaker.pl'
 PATH2JMOL = 'jmol'
 PATH2PHONOPY = 'phonopy'
 pmgkey = "AWqKPyV8EmTRlf1t" #MAPI_KEY
