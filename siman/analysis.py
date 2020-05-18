@@ -1149,6 +1149,9 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     results_dic['atom_pos'] = [list(pos) for pos in atom_pos]
     results_dic['mep_energies'] = mep_energies
 
+    cl1.atom_pos = results_dic['atom_pos']
+    cl1.mep_energies = results_dic['mep_energies']
+
 
     if 'mep' in show:
         if 'mepp' in show:
