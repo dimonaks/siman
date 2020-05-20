@@ -24,7 +24,7 @@ from siman.calc_manage import add_loop, name_mod_supercell, res_loop, inherit_ic
 from siman.neb import add_neb
 from siman.classes import Calculation
 from siman.analysis import calc_redox,  matrix_diff
-from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions
+from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions, create_single_antisite
 from siman.inout import write_occmatrix
 from siman.database import add_to_archive_database
 from siman.impurity import insert_atom
@@ -2517,7 +2517,89 @@ def calc_antisite_defects(dpi = 300, image_format = 'eps', update = 0):
     return
 
 
+def pol_disp(typ):
+    """ Displacement around polaron, determined from calculations
+        type (str) - 
+        'elec' - electron
+        'hole' - hole
+    """
+    if typ == 'zero':
+        disp = 0.0
+    elif typ == 'elec':
+        disp = 0.2
+    elif typ == 'hole':
+        disp = -0.2
+    elif typ == 'Co_Li':
+        disp = -0.1  # obtained from dft in LiCoO2
+    elif typ == 'Li_Co':
+        disp = 0.15  # obtained from dft in LiCoO2
+    elif typ == 'Ni_Na':
+        disp = -0.18  # obtained from dft in NaNiO2
+    elif typ == 'Na_Ni':
+        disp = 0.1  # obtained from dft in NaNiO2
 
+    else:
+        printlog('Error! unknown type of polaron', typ, 'use zero, elec or hole')
+    return disp
+
+
+def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_loop_dic = None, 
+    confs = None, update_bulk = 0, up_res = 'up1'):
+    """
+    Wrapper for creating single antisites
+    taking into account formation of polarons.
+
+    mode
+        1 - show possible configurations
+        2 - run configurations provided in confs dict
+        
+    """
+    pd = param_dic
+    c =pd
+    st = pd['cl'].end
+    it_base = pd['cl'].id[0]
+    it = it_base + suf
+
+
+    "Section for determining parameters for AS1 and AP polarons"
+    pol_suf = '' # polaron suffix name
+    if c.get('spinst_AS1'):
+        spinst_AS1 = c.get('spinst_AS1')
+        if c['el2'] not in spinst_AS1:
+            printlog('Warning! AS1: Youve chosen spin state ', spinst_AS1, 'for element ', c['el2'])
+        c['mag_AS1'] = header.TM_MAG[spinst_AS1]
+        c['disp_AS1'] = pol_disp(c['pol_AS1'])
+        pol_suf = 'AS1'
+
+    if c.get('AP_on'):
+        i_AP = c.get('i_AP')
+        pol_suf+='AP'+str(i_AP)
+
+        spinst_AP = c.get('spinst_AP')
+        if i_AP is not None:
+            el_AP = st.get_el_name(i_AP)
+            if el_AP not in spinst_AP:
+                printlog('Warning! AP: Youve chosen spin state ', spinst_AP, 'for element ', el_AP)
+
+        c['mag_AP'] = header.TM_MAG[spinst_AP]
+        c['disp_AP'] = pol_disp(c['pol_AP'])
+
+    "end of section"
+
+
+
+    tol = c.get('tol') or 0.1
+    sts = create_single_antisite(st, c['el1'], c['el2'], i_el2_list = c.get('i_el2_list'),
+        return_with_table = 1, tol = tol,
+        mag_AS1 = c.get('mag_AS1'), disp_AS1 = c.get('disp_AS1'),
+        AP_on = c.get('AP_on'), i_AP = c.get('i_AP'), 
+        mag_AP = c.get('mag_AP'), disp_AP = c.get('disp_AP'),
+        confs = confs  )
+
+
+
+    for st in sts:
+        st.write_poscar()
 
 
 
@@ -2527,7 +2609,7 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
     confs = None, jmol = 0, update_bulk = 0, 
     up_res = 'up1', use_input_as_bulk = 0 ):
     """
-    High-level wrapper for creating anti-sites and running them
+    High-level wrapper for creating anti-site pairs and running them
     Interstetials defects are also can be created, please add documentation
 
 
@@ -2540,35 +2622,11 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
     update_bulk - recalculate bulk
     use_input_as_bulk (int) - use input as bulk
 
-        param_dic:
+        param_dic: - see full description in create_antisite_defects3
             spinst_AP (str) - one state from header.TM_MAG dict
             mag_AP (float) - 
 
     """
-
-    def pol_disp(typ):
-        """type (str) - 
-            'elec' - electron
-            'hole' - hole
-        """
-        if typ == 'zero':
-            disp = 0.0
-        elif typ == 'elec':
-            disp = 0.2
-        elif typ == 'hole':
-            disp = -0.2
-        elif typ == 'Co_Li':
-            disp = -0.1  # obtained from dft in LiCoO2
-        elif typ == 'Li_Co':
-            disp = 0.15  # obtained from dft in LiCoO2
-        elif typ == 'Ni_Na':
-            disp = -0.18  # obtained from dft in NaNiO2
-        elif typ == 'Na_Ni':
-            disp = 0.1  # obtained from dft in NaNiO2
-
-        else:
-            printlog('Error! unknown type of polaron', typ)
-        return disp
 
 
 

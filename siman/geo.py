@@ -1269,6 +1269,114 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
 
     return st
 
+def create_single_antisite(st, el1, el2, i_el2_list = None,
+    tol = 0.1, max_sep = 4, iatom = None, 
+    return_with_table = False, 
+    disp_AS1 = None, mag_AS1 = None, disp_AS2 = None,
+    AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None ):
+    
+    
+    """
+    Looks for all unique single antisites for el1 and el2
+    takes into account formation of polaron and change of oxidation state
+
+
+    confs (dict)
+    """
+
+    "Start determining unique positions"
+    r = st.rprimd
+    
+    pos1 = determine_symmetry_positions(st, el1, silent = 0)
+
+    # print()
+    printlog('Use confs to chose Non-equivalent sites for AS; Only first atom is taken',imp = 'y')
+    sts = []
+    for conf, p in enumerate(pos1):
+        if confs is not None and conf not in confs:
+            continue
+        i = p[0] # only first atom is taken
+
+        st_as = st.replace_atoms([i], el2, silent = 0)
+        st_as.jmol(r=2)
+        print(st.get_elements()[i])
+        print(st_as.get_elements()[i])
+        # print(el2)
+        print( st_as.get_el_z(i)  )
+        sys.exit()
+
+        smag_i = ''
+        if mag_AS1 is not None:
+            smag_i = 'm'+str(mag_AS1)
+            if st_as.get_el_z(i) not in header.TRANSITION_ELEMENTS:
+                printlog('Warning! Your element in antisite is ', st.get_el_name(i), ' which is not a TM'  )
+            if disp_AS1 is None:
+                printlog('Error! Provide disp_i')
+        
+        suf = 'as'+str(i)+smag_i
+
+
+
+        if AP_on:
+
+            'Determine possible atom candidates near AS1 for changing oxidation state'
+            z2 = st_as.get_el_z(i) # e.g. Ni_Li
+
+            out = st_as.nn(i, n= 40,only  = [z2], from_one = 0, silent = 1)
+            
+            d1 = 'd({0}-{1}_AP), A'.format(el2, el2)
+            tabheader = ['No of AP '+el2, d1]
+            tab_ap = []
+            kts = []
+            for d, kt in zip(out['dist'], out['numbers']):
+                if kt not in kts:
+                    kts.append(kt)
+                    # print(kt, i, st_as.distance(kt, i))
+                    tab_ap.append([kt, d, ])
+                # print('AP ',d, st_as.distance(kt, i) , 'has k=', kt)
+            printlog('Possible positions for additional polaron:', imp = 'Y')
+            printlog( tabulate(tab_ap[1:], headers = tabheader, tablefmt='psql', floatfmt=".2f"), imp = 'Y')
+
+            if i_AP is None:
+                printlog('Error! Youve chosen AP_on, Provide i_AP based on suggestions above')
+
+            if st_as.get_el_z(i_AP) not in header.TRANSITION_ELEMENTS:
+                printlog('Warning! You want to change oxidation state on ', st_as.get_el_name(i), ' which is not a TM'  )
+
+            if mag_AP is None:
+                printlog('Error! Provide mag_AP')
+            if disp_AP is None:
+                printlog('Error! Provide disp_AP')                
+
+            suf+='-'+str(i_AP)+'m'+str(mag_AP)
+
+
+        if mag_AS1  is None and mag_AP is None:
+            st_as.magmom = [None]
+
+        if mag_AS1:
+            st_as.magmom[i] = mag_AS1
+
+        if disp_AS1:
+            st_as = st_as.localize_polaron(i, disp_AS1)
+
+
+        if mag_AP is not None:
+            st_as.magmom[i_AP] = mag_AP
+
+
+        if disp_AP is not None:
+            # st_as.magmom[i_AP] = mag_AP
+            st_as = st_as.localize_polaron(i_AP, disp_AP)
+
+
+        st_as.name+='_'+suf
+        sts.append(st_as)
+
+
+    return sts
+
+
 
 
 def create_antisite_defect3(st, el1, el2, i_el2_list = None,
@@ -1279,7 +1387,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
     
     
     """
-    Looks for all unique antisites for el1 and el2
+    Looks for all unique antisite pairs for el1 and el2
     takes into account formation of polaron and change of oxidation state
 
 
@@ -1447,7 +1555,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
     # if confs == None:
         # confs = []
 
-
+    "Start determining unique positions"
     r = st.rprimd
     pos1 = determine_symmetry_positions(st, el1)
 
