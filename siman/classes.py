@@ -1673,17 +1673,33 @@ class Structure():
 
 
 
-    def replace_atoms(self, atoms_to_replace, el_new, silent = 1):
+    def replace_atoms(self, atoms_to_replace, el_new, silent = 1, mode = 1):
         """
         atoms_to_replace - list of atom numbers starting from 0
         el_new - new element periodic table short name
+
+        mode 
+            1 - old behaviour, numbering is not conserved
+            2 - numbering is conserved if el_new already exists in self
+
+        TODO:
+        Now if el_new already exists in structure, numbering is conserved,
+        otherwise numbering is not conserved.
+        Make numbering conservation in case when new element is added
+        Both modes can be useful, as the second case is compat with VASP
+
+
         """
         st = copy.deepcopy(self)
 
         numbers = list(range(st.natom))
-
-
+        z_new = invert(el_new)
         atom_exsist = True
+        if silent:
+            warn = 'n'
+        else:
+            warn = 'Y'
+
 
         while atom_exsist:
 
@@ -1693,18 +1709,23 @@ class Structure():
 
                 if n in atoms_to_replace:
                     xcart = st.xcart[i]
-                    if not silent:
-                        print('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new)
-                    st = st.del_atom(i)
 
-                    st = st.add_atoms([xcart], element = el_new)
-                    # print(st.natom)
-                    # print(st.get_elements())
+                    if mode == 2 and el_new in st.get_elements():
+                        it = st.znucl.index(z_new)+1
+                        st.typat[n] = it
+                        # print(it, z_new, st.typat)
+                        # print(st.get_elements())
+                        # sys.exit()
+                        del numbers[i]
 
-                    # print(st.natom)
+                        printlog('replace_atoms(): atom', i, el, 'replaced with', st.get_elements()[n], '; Atom number stayed the same' , imp = warn)
 
-                    # print(st.get_elements())
-                    del numbers[i]
+                    else:
+                        # atom number is changed, since new typat is added
+                        st = st.del_atom(i)
+                        del numbers[i]
+                        st = st.add_atoms([xcart], element = el_new)
+                        printlog('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new, '; Atom number was changed', imp = warn)
 
                     break
             else:

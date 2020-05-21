@@ -2,6 +2,9 @@
 import sys, copy, itertools, math
 from operator import itemgetter
 
+import itertools
+flatten = itertools.chain.from_iterable
+
 import numpy as np
 try:
     from tabulate import tabulate
@@ -1269,7 +1272,7 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
 
     return st
 
-def create_single_antisite(st, el1, el2, i_el2_list = None,
+def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
     tol = 0.1, max_sep = 4, iatom = None, 
     return_with_table = False, 
     disp_AS1 = None, mag_AS1 = None, disp_AS2 = None,
@@ -1282,12 +1285,16 @@ def create_single_antisite(st, el1, el2, i_el2_list = None,
 
 
     confs (dict)
+        i_el1 - choose specific atom, from 0
     """
 
     "Start determining unique positions"
     r = st.rprimd
     
     pos1 = determine_symmetry_positions(st, el1, silent = 0)
+    if i_el1 and i_el1 not in list(flatten(pos1)):
+        printlog('Error!', el1, 'and', i_el1, 'are not compatible.')
+
 
     # print()
     printlog('Use confs to chose Non-equivalent sites for AS; Only first atom is taken',imp = 'y')
@@ -1295,15 +1302,19 @@ def create_single_antisite(st, el1, el2, i_el2_list = None,
     for conf, p in enumerate(pos1):
         if confs is not None and conf not in confs:
             continue
-        i = p[0] # only first atom is taken
+        if i_el1:
+            i = i_el1
+        else:
+            i = p[0] # only first atom is taken
 
-        st_as = st.replace_atoms([i], el2, silent = 0)
-        st_as.jmol(r=2)
-        print(st.get_elements()[i])
-        print(st_as.get_elements()[i])
+        st_as = st.replace_atoms([i], el2, silent = 0, mode = 2)
+        # st_as.jmol(r=2)
+
+        # print(st.get_elements()[i])
+        # print(st_as.get_elements()[i])
         # print(el2)
-        print( st_as.get_el_z(i)  )
-        sys.exit()
+        # print( st_as.get_el_z(i)  )
+        # sys.exit()
 
         smag_i = ''
         if mag_AS1 is not None:

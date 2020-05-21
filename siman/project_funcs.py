@@ -2544,12 +2544,14 @@ def pol_disp(typ):
 
 
 def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_loop_dic = None, 
-    confs = None, update_bulk = 0, up_res = 'up1'):
+    confs = None, update_bulk = 0, up_res = 'up1', use_input_as_bulk = None, jmol = None, table = 1):
     """
     Wrapper for creating single antisites
     taking into account formation of polarons.
-
-    mode
+    use_input_as_bulk - allows to skip recalculation of bulk and use input Calculation
+    jmol - show structure
+    table - show table with results
+    mode (not implemented yet)
         1 - show possible configurations
         2 - run configurations provided in confs dict
         
@@ -2559,6 +2561,12 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
     st = pd['cl'].end
     it_base = pd['cl'].id[0]
     it = it_base + suf
+    if update:
+        up = 'up2'
+    else:
+        up = 'up1'
+    if not add_loop_dic:
+        add_loop_dic = {}
 
 
     "Section for determining parameters for AS1 and AP polarons"
@@ -2589,7 +2597,7 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
 
 
     tol = c.get('tol') or 0.1
-    sts = create_single_antisite(st, c['el1'], c['el2'], i_el2_list = c.get('i_el2_list'),
+    sts = create_single_antisite(st, c['el1'], c['el2'], i_el1 = c['i_el1'], i_el2_list = c.get('i_el2_list'),
         return_with_table = 1, tol = tol,
         mag_AS1 = c.get('mag_AS1'), disp_AS1 = c.get('disp_AS1'),
         AP_on = c.get('AP_on'), i_AP = c.get('i_AP'), 
@@ -2600,6 +2608,82 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
 
     for st in sts:
         st.write_poscar()
+        # print(st.magmom)
+
+
+
+
+    "Calculation section"
+    if update_bulk:
+        use_input_as_bulk = 0
+    if not update or update_bulk:
+        # if cl.id[1] == ise:
+        if use_input_as_bulk:
+            cl_base = c['cl']
+
+        else:
+            cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
+
+
+    header.show = 'fo'
+    # print(confs)
+    # sys.exit()
+    j = 0
+    table = []
+    
+    for i, st_as in enumerate(sts):
+        # if confs is not None:
+        #     if i not in confs:
+        #         continue
+        suf = 'sas'+str(i)+pol_suf #single as
+        st_as.name+=suf
+        if jmol:
+            st_as.jmol(r=2,)
+        add_loop(it+'.'+suf, c['set'], 1, 
+            input_st = st_as, it_folder = header.struct_des[it_base].sfolder+'/as', up = up, 
+            params = {'res_params':{'up':up_res}},
+            **add_loop_dic)
+        cl_as = calc[it+'.'+suf, c['set'], 1]
+        # print(cl_as.path['output'])
+
+        "analysis section"
+        try:
+            if 1:
+                Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
+                print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
+                st = cl_as.end
+                pol, _ = find_polaron(st, st_as.i_el1, out_prec = 2)
+                sep = image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0]
+                print('Separation after relax = {:.2f} A'.format(   sep )  )
+                
+                polarons = []
+                for z in pol:
+                    # if pol[z] > 2:
+                        # printlog
+                    for k in pol[z]:
+                        d1 = image_distance(st.xcart[st_as.i_el1], st.xcart[k], st.rprimd )[0]
+                        d2 = image_distance(st.xcart[st_as.i_el2], st.xcart[k], st.rprimd )[0]
+                        dist = ' {:.2f} {:.2f}'.format(d2, d1) # Co_Li - Co_AP, Li_Co - Co_AP 
+                        
+                        string = '{:2s}{:3d} m={:4.1f} {:s}'.format(invert(z), k, st.magmom[k], dist)
+                        polarons.append(string)
+
+                table[j][2] = cl_as.id[0]
+                table[j].append('{:.2f}'.format(sep) )
+                table[j].append('{:.2f}'.format(Eas) )
+                table[j].append('\n'.join(polarons) )
+
+                j+=1
+        except:
+            pass
+
+        # if 'as0' in suf:
+        #     break
+    if table:
+        printlog( tabulate(table, headers = ['No.', 'AS type', 'it', 'at1', 'at2', 'Sep, A', 'Sep opt, A', 'Eas, eV', 'polaron mag   d1  d2'], tablefmt='psql'), imp = 'Y' )
+
+
+    return
 
 
 
