@@ -2531,6 +2531,11 @@ def pol_disp(typ):
         disp = -0.2
     elif typ == 'Co_Li':
         disp = -0.1  # obtained from dft in LiCoO2
+
+    elif typ == 'Ni_Li':
+        disp = -0.05  # obtained from dft in LiNiO2 for p2/c smaller diff
+
+
     elif typ == 'Li_Co':
         disp = 0.15  # obtained from dft in LiCoO2
     elif typ == 'Ni_Na':
@@ -2544,13 +2549,17 @@ def pol_disp(typ):
 
 
 def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_loop_dic = None, 
-    confs = None, update_bulk = 0, up_res = 'up1', use_input_as_bulk = None, jmol = None, table = 1):
+    conf = None, update_bulk = 0, up_res = 'up1', use_input_as_bulk = None, 
+    jmol = None, shift = None,
+    table = 1):
     """
     Wrapper for creating single antisites
     taking into account formation of polarons.
     use_input_as_bulk - allows to skip recalculation of bulk and use input Calculation
     jmol - show structure
     table - show table with results
+    conf (int) - only one configuration allowed 
+
     mode (not implemented yet)
         1 - show possible configurations
         2 - run configurations provided in confs dict
@@ -2597,12 +2606,12 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
 
 
     tol = c.get('tol') or 0.1
-    sts = create_single_antisite(st, c['el1'], c['el2'], i_el1 = c['i_el1'], i_el2_list = c.get('i_el2_list'),
+    sts, i_el1s = create_single_antisite(st, c['el1'], c['el2'], i_el1 = c['i_el1'], i_el2_list = c.get('i_el2_list'),
         return_with_table = 1, tol = tol,
         mag_AS1 = c.get('mag_AS1'), disp_AS1 = c.get('disp_AS1'),
         AP_on = c.get('AP_on'), i_AP = c.get('i_AP'), 
         mag_AP = c.get('mag_AP'), disp_AP = c.get('disp_AP'),
-        confs = confs  )
+        confs = [conf]  )
 
 
 
@@ -2630,15 +2639,15 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
     # sys.exit()
     j = 0
     table = []
-    
-    for i, st_as in enumerate(sts):
+    # print(i_el1s, len(sts), list(range(sts)))
+    for i, st_as, i_el1 in zip(list(range(len(sts))), sts, i_el1s):
         # if confs is not None:
         #     if i not in confs:
         #         continue
-        suf = 'sas'+str(i)+pol_suf #single as
+        suf = 'sas'+str(conf)+pol_suf #single as
         st_as.name+=suf
         if jmol:
-            st_as.jmol(r=2,)
+            st_as.jmol(r=2, shift = shift)
         add_loop(it+'.'+suf, c['set'], 1, 
             input_st = st_as, it_folder = header.struct_des[it_base].sfolder+'/as', up = up, 
             params = {'res_params':{'up':up_res}},
@@ -2649,38 +2658,59 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
         "analysis section"
         try:
             if 1:
-                Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
-                print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
-                st = cl_as.end
-                pol, _ = find_polaron(st, st_as.i_el1, out_prec = 2)
-                sep = image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0]
-                print('Separation after relax = {:.2f} A'.format(   sep )  )
+                chem_pot = param_dic.get('chem_pot')
+
+                muA = chem_pot.get('Li') or chem_pot.get('Na')
+                muO = chem_pot.get('O')
+                muTM = cl_base.e0_fu - muA - 2*muO
+                print('Chemical pot of TM is', muTM, 'eV')
+
+                Eas = (cl_as.e0 + muA - muTM) - cl_base.e0
                 
+
+
+
+                print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
+
+
+
+                st = cl_as.end
+                # st.jmol(r=2)
+                i_el1 = cl_as.init.poscar_atom_order.index(i_el1) # the order can change in the end Structure
+                # print(i_el1)
+
+
+                pol, _ = find_polaron(st, i_el1, out_prec = 2)
+                table.append(['0', '0', ''])
                 polarons = []
                 for z in pol:
                     # if pol[z] > 2:
                         # printlog
                     for k in pol[z]:
-                        d1 = image_distance(st.xcart[st_as.i_el1], st.xcart[k], st.rprimd )[0]
-                        d2 = image_distance(st.xcart[st_as.i_el2], st.xcart[k], st.rprimd )[0]
-                        dist = ' {:.2f} {:.2f}'.format(d2, d1) # Co_Li - Co_AP, Li_Co - Co_AP 
+                        d1 = image_distance(st.xcart[i_el1], st.xcart[k], st.rprimd )[0]
+                        dist = ' {:.2f} '.format(d1) # Co_Li - Co_AP 
                         
                         string = '{:2s}{:3d} m={:4.1f} {:s}'.format(invert(z), k, st.magmom[k], dist)
                         polarons.append(string)
 
                 table[j][2] = cl_as.id[0]
-                table[j].append('{:.2f}'.format(sep) )
+                # table[j].append('{:.2f}'.format(sep) )
                 table[j].append('{:.2f}'.format(Eas) )
                 table[j].append('\n'.join(polarons) )
 
                 j+=1
         except:
             pass
-
+        # sys.exit()
         # if 'as0' in suf:
         #     break
+
+
+
+
     if table:
-        printlog( tabulate(table, headers = ['No.', 'AS type', 'it', 'at1', 'at2', 'Sep, A', 'Sep opt, A', 'Eas, eV', 'polaron mag   d1  d2'], tablefmt='psql'), imp = 'Y' )
+        # print(table[0])
+        printlog( tabulate(table, headers = ['No.', 'AS type', 'it', 'Eas, eV',  'polaron mag   d1  d2'], tablefmt='psql'), imp = 'Y' )
 
 
     return

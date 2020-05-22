@@ -698,7 +698,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
     Can be problems with charged-ordered materials
 
     INPUT:
-        i_alk_ion - number of ion from 0 to calculate distances to transition metals
+        i_alk_ion - number of ion from 0 to calculate distances to detected polarons
         out_prec (int) - precision of magmom output
 
     RETURN:

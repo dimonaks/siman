@@ -4801,11 +4801,22 @@ class Calculation(object):
         self.name = str(self.id[0])+'.'+str(self.id[1])+'.'+str(self.id[2])
         return self.name
 
+
+
+
     @property
     def sfolder(self):
         self._x = header.struct_des[self.id[0]].sfolder
         return self._x
 
+    @property
+    def e0_fu(self):
+        # please improve
+        n1 = self.end.nznucl[0]
+        print('e0_fu: Normalization by element z=', self.end.znucl[0])
+        e0_fu = self.e0/n1
+        
+        return e0_fu
 
 
 

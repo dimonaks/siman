@@ -1299,6 +1299,7 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
     # print()
     printlog('Use confs to chose Non-equivalent sites for AS; Only first atom is taken',imp = 'y')
     sts = []
+    i_el1s = []
     for conf, p in enumerate(pos1):
         if confs is not None and conf not in confs:
             continue
@@ -1383,9 +1384,10 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
 
         st_as.name+='_'+suf
         sts.append(st_as)
+        i_el1s.append(i)
 
 
-    return sts
+    return sts, i_el1s
 
 
 
