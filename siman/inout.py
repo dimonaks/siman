@@ -434,7 +434,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
     printlog( runBash('convert '+pngfile+' -trim '+pngfile)  ) # trim background
     printlog('png file by Jmol',pngfile, 'was written', imp = 'y' )
     # print(header.PATH2JMOL)
-    return
+    return pngfile
 
 
 def write_xyz(st = None, path = None, filename = None, file_name = None,

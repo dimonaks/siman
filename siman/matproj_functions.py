@@ -94,11 +94,17 @@ def read_matproj_list(path, new_list = 0, new_object = 0):
                 mp.sg_symbol = d['spacegroup.symbol']
                 mp.sg_crystal_str = d['spacegroup.crystal_system']
                 mp.band_gap = d['band_gap']
-                mp.price_per_gramm = d['price_per_gramm']
+                try:
+                    mp.price_per_gramm = d['price_per_gramm']
+                except KeyError:
+                    mp.price_per_gramm = None
                 mp.total_magnetization = d['total_magnetization']
                 mp.formation_energy_per_atom = d['formation_energy_per_atom']
                 mp.e_above_hull = d['e_above_hull']
-                mp.icsd_ids = d['icsd_ids']
+                try:
+                    mp.icsd_ids = d['icsd_ids']
+                except KeyError:
+                    mp.icsd_ids = None
                 db[mp_name] = mp
 
 
@@ -131,7 +137,7 @@ def write_MP_compound(compound_list, path, properties):
     """
     if not properties:
         properties = ['material_id', 'pretty_formula', 'sg_symbol', 'sg_crystal_str', 'formation_energy_per_atom',  
-                    'band_gap', 'total_magnetization', 'e_above_hull', 'price_per_gramm', 'bulk_status_scale', 'e_cohesive', 'ec_es',  'suf_en', 'icsd_ids']
+                    'band_gap', 'total_magnetization', 'e_above_hull', 'price_per_gramm', 'bulk_status_scale', 'e_cohesive',  'e_cohesive_MP', 'ec_es',  'suf_en', 'icsd_ids']
 
 
     with open(path+'.csv', 'w', newline='') as csvfile:
@@ -553,11 +559,16 @@ def suf_en_list(it_suf, it_bulk, ise_suf, ise_bulk, hkl_list):
 
 
 
-def energy_list(data_list, sg_symbol = None, suf_en = 0, coh_en = 0, ise_bulk = '8', ise_box = '0mboxn', ise_suf = '9s', hkl_list = ['110','111']):
+def energy_list(data_list, sg_symbol = None, suf_en = 0, coh_en = 0, ise_bulk = '8', ise_box = '0mboxn', ise_suf = '9s', hkl_list = None):
 
     """
     Is waiting
     """
+    if not hkl_list:
+        hkl_list = ['110','111']
+
+
+
     out = {'coh_en': None, 'suf_en': None,}
     coh_en_f = []
     suf_en_f = []

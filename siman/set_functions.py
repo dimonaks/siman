@@ -131,6 +131,9 @@ vasp_other_keys = [
 'NWRITE',
 'NBLOCK',
 'KBLOCK',
+'LELF',
+'IVDW',
+'LVDW_EWALD'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -370,7 +373,7 @@ class InputSet():
                 s.set_vaspp(key, param[key] )
             
             else:
-                print_and_log('Error! Uknown key: '+key)
+                print_and_log('Error! Unknown key: '+key)
                 raise RuntimeError
          
 
@@ -555,7 +558,7 @@ class InputSet():
             return
         self.history += " "+name+"  was changed from "+str(old)+" to "+str(arg) + "\n"
         print_and_log(" "+name+"  was changed from "+str(old)+" to "+str(arg) + " in set "+self.ise+" \n")
-        return
+        return #ISTAR
 
     def set_ngkpt(self,arg):
         if not is_list_like(arg):

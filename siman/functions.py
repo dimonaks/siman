@@ -178,7 +178,9 @@ def push_to_server(files = None, to = None,  addr = None):
         # print(l)
         # user = l[0]
         # ad   = l[1]
-        com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+files_str+ ' '+addr+':'+to
+        # com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+files_str+ ' '+addr+':'+to
+        com = 'rsync --rsh='+"'sshpass -f "+header.path2pass+" ssh' "  +' -uaz  '+files_str+ ' '+addr+':'+to
+
         # print(com)
         # sys.exit()
         out = runBash(com)
@@ -274,7 +276,9 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
             out = runBash(com)
 
         elif header.sshpass:
-            com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
+            #com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
+            com = 'rsync --rsh='+"'sshpass -f "+header.path2pass+" ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
+
             out = runBash(com)
             # print(addr)
             # sys.exit()

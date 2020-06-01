@@ -200,7 +200,7 @@ J_mol_T2eV_T = 1.0364e-5
 J2eV = 6.242e+18
 
 kB = 8.617e-5 # eV/K
-TRANSITION_ELEMENTS = [22, 23, 25, 26, 27, 28]
+TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 74]
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
 TM_MAG = {'Co2+hs':3, 'Co2+ls':1, 'Co3+hs':4, 'Co3+ls':0, 'Co4+hs':5, 'Co4+ls':1,

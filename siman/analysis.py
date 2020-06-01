@@ -1380,9 +1380,11 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
 
     diff  = cl1.e0 - (cl2.e0 * mul + E_nonst)
     gamma = diff / 2 / A * header.eV_A_to_J_m
+    gamma_ev = diff / 2 / A 
 
     if not silent:
         print('Surface energy = {:3.2f} J/m2   | {:} | {:} '.format(gamma, cl1.id, cl2.id))
+        print('Surface energy = {:3.2f} eV/A2   | {:} | {:} '.format(gamma_ev, cl1.id, cl2.id))
     
     if return_diff_energy:
         return gamma, diff
