@@ -1333,11 +1333,13 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
 
             'Determine possible atom candidates near AS1 for changing oxidation state'
             z2 = st_as.get_el_z(i) # e.g. Ni_Li
-
-            out = st_as.nn(i, n= 40,only  = [z2], from_one = 0, silent = 1)
+            el2 = invert(z2)
+            el_pol = st_as.get_elements()[i_AP]
+            z_pol = invert(el_pol)
+            out = st_as.nn(i, n= 40,only  = [z_pol], from_one = 0, silent = 1)
             
-            d1 = 'd({0}-{1}_AP), A'.format(el2, el2)
-            tabheader = ['No of AP '+el2, d1]
+            d1 = 'd({0}-{1}_AP), A'.format(el2, el_pol)
+            tabheader = ['No of AP '+el_pol, d1]
             tab_ap = []
             kts = []
             for d, kt in zip(out['dist'], out['numbers']):
