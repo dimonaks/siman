@@ -2,6 +2,9 @@
 import sys, copy, itertools, math
 from operator import itemgetter
 
+import itertools
+flatten = itertools.chain.from_iterable
+
 import numpy as np
 try:
     from tabulate import tabulate
@@ -899,6 +902,8 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
 
 
         printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
+    
+    # print(sc.rprimd)
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
     st.vol = np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  )
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
@@ -1267,6 +1272,124 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
 
     return st
 
+def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
+    tol = 0.1, max_sep = 4, iatom = None, 
+    return_with_table = False, 
+    disp_AS1 = None, mag_AS1 = None, disp_AS2 = None,
+    AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None ):
+    
+    
+    """
+    Looks for all unique single antisites for el1 and el2
+    takes into account formation of polaron and change of oxidation state
+
+
+    confs (dict)
+        i_el1 - choose specific atom, from 0
+    """
+
+    "Start determining unique positions"
+    r = st.rprimd
+    
+    pos1 = determine_symmetry_positions(st, el1, silent = 0)
+    if i_el1 and i_el1 not in list(flatten(pos1)):
+        printlog('Error!', el1, 'and', i_el1, 'are not compatible.')
+
+
+    # print()
+    printlog('Use confs to chose Non-equivalent sites for AS; Only first atom is taken',imp = 'y')
+    sts = []
+    i_el1s = []
+    for conf, p in enumerate(pos1):
+        if confs is not None and conf not in confs:
+            continue
+        if i_el1:
+            i = i_el1
+        else:
+            i = p[0] # only first atom is taken
+
+        st_as = st.replace_atoms([i], el2, silent = 0, mode = 2)
+        # st_as.jmol(r=2)
+
+        # print(st.get_elements()[i])
+        # print(st_as.get_elements()[i])
+        # print(el2)
+        # print( st_as.get_el_z(i)  )
+        # sys.exit()
+
+        smag_i = ''
+        if mag_AS1 is not None:
+            smag_i = 'm'+str(mag_AS1)
+            if st_as.get_el_z(i) not in header.TRANSITION_ELEMENTS:
+                printlog('Warning! Your element in antisite is ', st.get_el_name(i), ' which is not a TM'  )
+            if disp_AS1 is None:
+                printlog('Error! Provide disp_i')
+        
+        suf = 'as'+str(i)+smag_i
+
+
+
+        if AP_on:
+
+            'Determine possible atom candidates near AS1 for changing oxidation state'
+            z2 = st_as.get_el_z(i) # e.g. Ni_Li
+
+            out = st_as.nn(i, n= 40,only  = [z2], from_one = 0, silent = 1)
+            
+            d1 = 'd({0}-{1}_AP), A'.format(el2, el2)
+            tabheader = ['No of AP '+el2, d1]
+            tab_ap = []
+            kts = []
+            for d, kt in zip(out['dist'], out['numbers']):
+                if kt not in kts:
+                    kts.append(kt)
+                    # print(kt, i, st_as.distance(kt, i))
+                    tab_ap.append([kt, d, ])
+                # print('AP ',d, st_as.distance(kt, i) , 'has k=', kt)
+            printlog('Possible positions for additional polaron:', imp = 'Y')
+            printlog( tabulate(tab_ap[1:], headers = tabheader, tablefmt='psql', floatfmt=".2f"), imp = 'Y')
+
+            if i_AP is None:
+                printlog('Error! Youve chosen AP_on, Provide i_AP based on suggestions above')
+
+            if st_as.get_el_z(i_AP) not in header.TRANSITION_ELEMENTS:
+                printlog('Warning! You want to change oxidation state on ', st_as.get_el_name(i), ' which is not a TM'  )
+
+            if mag_AP is None:
+                printlog('Error! Provide mag_AP')
+            if disp_AP is None:
+                printlog('Error! Provide disp_AP')                
+
+            suf+='-'+str(i_AP)+'m'+str(mag_AP)
+
+
+        if mag_AS1  is None and mag_AP is None:
+            st_as.magmom = [None]
+
+        if mag_AS1:
+            st_as.magmom[i] = mag_AS1
+
+        if disp_AS1:
+            st_as = st_as.localize_polaron(i, disp_AS1)
+
+
+        if mag_AP is not None:
+            st_as.magmom[i_AP] = mag_AP
+
+
+        if disp_AP is not None:
+            # st_as.magmom[i_AP] = mag_AP
+            st_as = st_as.localize_polaron(i_AP, disp_AP)
+
+
+        st_as.name+='_'+suf
+        sts.append(st_as)
+        i_el1s.append(i)
+
+
+    return sts, i_el1s
+
+
 
 
 def create_antisite_defect3(st, el1, el2, i_el2_list = None,
@@ -1277,7 +1400,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
     
     
     """
-    Looks for all unique antisites for el1 and el2
+    Looks for all unique antisite pairs for el1 and el2
     takes into account formation of polaron and change of oxidation state
 
 
@@ -1445,7 +1568,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
     # if confs == None:
         # confs = []
 
-
+    "Start determining unique positions"
     r = st.rprimd
     pos1 = determine_symmetry_positions(st, el1)
 
@@ -1734,9 +1857,9 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
 
     sg (int) - give back structure with specific space group
 
-    info_mode (bool) if 1 then return list of possible space groups
+    info_mode (bool) if 1 then return list of possible space groups (and structures)
     
-    return list of structures with sg space groups
+    return list of structures (only first ten) with sg space groups
 
 
     """
@@ -1763,7 +1886,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
         return
 
 
-    structures = []
+    structures = {}
     orderings = []
     ls = [0]*st.natom
     order(ls, 0)
@@ -1779,21 +1902,27 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
             # print(nm)
         symmetries.append(nm)
         # print(nm)
-        if nm == sg:
+        if nm not in structures:
+            structures[nm] = []
+        if len(structures[nm]) < 10:
+            structures[nm].append(st_rem)
+        else:
+            continue  
+        # if nm == sg:
             # st_rem.jmol()
             # sc = supercell(st_rem, [14,14,14])
             # sc.jmol()
             # sc.write_poscar('xyz/POSCAR_SC2_half')
             # sc.write_cif('xyz/POSCAR_SC2_half')
             # sys.exit()
-            structures.append(st_rem)
+            # structures.append(st_rem)
 
     # print(len(orderings))
     print('The following space groups were found', Counter(symmetries))
     if info_mode:
-        return list(set(symmetries))
+        return list(set(symmetries)), structures
 
-    return structures
+    return structures[sg]
 
 
 
@@ -1852,45 +1981,51 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
     if info_mode:
-        return remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
-
-    sts = remove_x_based_on_symmetry(st_prim, sg, x = x )
+        syms, sts_dic = remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
+    else:
+        sts = remove_x_based_on_symmetry(st_prim, sg, x = x )
+        syms = [sg]
+        sts_dic = {}
+        sts_dic[sg] = sts
     # st_prim.jmol()
     # print(sts)
-    if len(sts) == 0:
-        printlog('Error! number of structures is zero')
 
 
+    sts_dic_one = {} # only first st for each sg
+    for sg in syms:
+        sts = sts_dic[sg]
+        if len(sts) == 0:
+            printlog('Warning! number of structures for sg',sg,'is zero')
 
-    st_only_el_x = sts[0]   # now only first configuration is taken, they could be different
-
-
-    if prim:
-        mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
-        mul_matrix = np.array(mul_matrix_float)
-        mul_matrix = mul_matrix.round(0)
-        mul_matrix = mul_matrix.astype(int)
+        st_only_el_x = sts[0]   # now only first configuration is taken, they could be different
 
 
+        if prim:
+            mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
+            mul_matrix = np.array(mul_matrix_float)
+            mul_matrix = mul_matrix.round(0)
+            mul_matrix = mul_matrix.astype(int)
+            sc_only_el_half = create_supercell(st_only_el_x, mul_matrix = mul_matrix)
+            sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
+            sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
+        else:
+            sc_only_el_x = st_only_el_x
 
-        sc_only_el_half = create_supercell(st_only_el_x, mul_matrix = mul_matrix)
 
-        sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
-        sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
+        # st_only_el.write_poscar('xyz/POSCAR1')
+        # sc_only_el_half.write_poscar('xyz/POSCAR2')
 
+
+        st_x = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
+
+        st_x.name+='_'+str(x)+'_'+str(sg)
+        # st_x.write_poscar()
+        sts_dic_one[sg] = st_x
+
+    if info_mode:
+        return syms, sts_dic_one
     else:
-        sc_only_el_x = st_only_el_x
-
-
-    # st_only_el.write_poscar('xyz/POSCAR1')
-    # sc_only_el_half.write_poscar('xyz/POSCAR2')
-
-
-    st_x = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
-
-    st_x.name+='_'+str(x)+'_'+str(sg)
-    # st_x.write_poscar()
-    return st_x
+        return sts_dic_one[sg] # only one structure is returned
 
 
 
@@ -2181,9 +2316,15 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
     for slab in slabs:
         sl = st.update_from_pymatgen(slab)
         if stoichiometry_criteria(sl, st_bulk):
-            print('Stoichiometry slab')
+            stoi = 'Stoichiometric slab'
         else:
-            print('Non-stoichiometry slab')
+            stoi = 'Non-stoichiometric slab'
+        
+
+        # printlog(stoi, 
+        #     ';Polar:',       slab.is_polar(),
+        #     ';Eqvuivalent:', slab.have_equivalent_surfaces(), 
+        #     ';symmetric:',   slab.is_symmetric(), imp = 'y')
 
         
 
@@ -2216,8 +2357,12 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         # print(st.rprimd[2])
 
         st.update_xred()
+        print(oxidation)
+        slab = st.convert2pymatgen(oxidation = oxidation, slab = 1)
+        # print('Eqvuivalent after cutting:', slab.have_equivalent_surfaces() )
 
-        st.name+='cutted'
+
+        st.name+='cutted'+str(cut_thickness)
         if write_poscar:
             st.write_poscar()
 

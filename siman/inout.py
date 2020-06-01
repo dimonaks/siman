@@ -73,7 +73,7 @@ def read_xyz(st, filename, rprimd = None):
 
 
     # print(st.rprimd)
-    if rprimd == None or None in rprimd or 0 in rprimd or len(rprimd) != 3:
+    if rprimd is None or any(x is None for x in rprimd) or len(rprimd) != 3:
         printlog('None detected in *rprimd*, I use vectors from xyz file')
         if len(st.rprimd) != 3:
             printlog('Only these primitive vectors were found in xyz :\n', np.round(st.rprimd, 3), '\nI take rest from *rprimd*', imp ='y')
@@ -229,6 +229,39 @@ def read_poscar(st, filename, new = True):
                             flagset[fi] = False
                     # print(flagset)
                     select.append(flagset)
+
+
+        velocities = []
+        newline = f.readline() # if velocities are available - they are separated by one new line
+        vel1 = f.readline()
+        # print(vel1)
+        if vel1:
+            #usually vasp return zero velocities, which are not needed, skip them
+            vec = vel1.split()
+            vel_vec = np.asarray([float(vec[0]), float(vec[1]), float(vec[2])])
+            vellen = abs(np.linalg.norm(vel_vec))
+            # print(vellen)
+        if vel1 and vellen > 1e-12:
+            vec = vel1.split()
+            velocities.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
+            printlog('Reading velocities from POS/CONT-CAR', imp = 'y')
+            for i in range(len(coordinates)-1): # vel for first atom is already read
+                vec = f.readline().split()
+                velocities.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
+            st.vel = velocities
+
+            newline = f.readline() # new empty line between blocks
+            start = f.readline() # something appears after velocity
+            if start:
+                printlog('Reading predictor-corrector from POS/CONT-CAR', imp = 'y')
+                predictor = start+f.read()
+                # print(predictor)
+                # sys.exit()
+                st.predictor = predictor
+
+
+
+
 
         st.select = select
 
@@ -492,15 +525,15 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         st = replic(st, mul = replications, inv = 1 )
   
     def update_var(st):
-        if st.natom != len(st.xred) != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
+        if st.natom != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
             printlog( "Error! write_xyz: check your arrays.\n\n"    )
 
-        if st.xcart == [] or len(st.xcart) != len(st.xred):
+        if st.xcart is [None] :
             printlog( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n")
             st.xcart = xred2xcart(st.xred, st.rprimd)
             #print xcart[1]
 
-        return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xred)
+        return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xcart)
 
     
     st = st.copy()
@@ -667,6 +700,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
                 f.write( "%s %.5f %.5f %.5f \n"%( el[3], el[0], el[1], el[2] ) )
                 # print 'composite -pointsize 60 label:{0:d} -geometry +{1:d}+{2:d} 1.png 2.png'.format(i, el[0], el[1])
 
+        # print(range(natom))
 
         for i in range(natom):
             typ = typat[i] - 1

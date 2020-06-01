@@ -1,6 +1,6 @@
 current
     fontsize argument was removed from plot_dos(). Use plot_param dictionary, which is transfered to fit_and_plot
-
+    velocities and predictor are read from CONTCAR, allows to continiue MD
 
 
 0.9.6

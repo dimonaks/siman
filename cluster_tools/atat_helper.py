@@ -45,7 +45,9 @@ for d in os.listdir('.'):
                 os.remove('energy')
             os.system('extract_vasp')
             os.chdir('..')
-
+        if d == '1':
+            continue #skip 1 as energy is usually provided by hands due to DFT+U problem
+	
         if maxf > 700:
             ''
             #get current step

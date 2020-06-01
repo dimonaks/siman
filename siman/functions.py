@@ -760,6 +760,18 @@ def read_vectors(token, number_of_vectors, list_of_words, type_func = None, list
     return out
 
 
+def read_string(token, length, string):
+    sh = len(token)+1
+    i = string.find(token)+sh
+    # print('length', i, i+length)
+    # sys.exit()
+    if i is -1:
+        return ''
+    else:
+        return string[i:i+length]
+
+
+
 def read_list(token, number_of_elements, ttype, list_of_words):
     """Input is token to find, number of elements to read, type of elements and list of words, 
     where to search

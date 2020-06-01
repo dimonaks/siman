@@ -43,7 +43,7 @@ from siman.header import printlog, print_and_log, runBash, plt
 
 from siman import set_functions
 from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
-from siman.functions import (read_vectors, read_list, words,
+from siman.functions import (read_vectors, read_list, words, read_string,
      element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
@@ -129,6 +129,8 @@ class Structure():
         self.xred = []
         self.magmom = []
         self.select = [] # flags for selective dynamics
+        self.vel    = [] # velocities, could be empty
+        self.predictor = None # string , predictor-corrector information to continiue MD run
         # self.pos = write_poscar()
 
     def copy(self):
@@ -593,7 +595,8 @@ class Structure():
 
 
 
-        if oxi:
+        if oxi and not oxidation:
+            # print(oxi)
             pm.add_oxidation_state_by_site(oxi)
 
 
@@ -696,14 +699,19 @@ class Structure():
 
         """
         st = copy.deepcopy(self)
-        st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
+        if hasattr(stpm, '_lattice'):
+            st.rprimd = [np.array(vec) for vec in stpm._lattice._matrix]
+        else:
+            st.rprimd = [[10,0,0],[0,10,0],[0,0,10]] #temporary workaround
         # for site in stpm._sites:
             # print(dir(site))
-        st.xred   = [np.array(site._frac_coords) for site in stpm._sites]
-        
-
+        if hasattr(stpm._sites[0], '_frac_coords'):
+            st.xred   = [np.array(site._frac_coords) for site in stpm._sites]
+            st.update_xcart()
+        else:
+            st.xcart   = [np.array(site.coords) for site in stpm._sites]
+            st.xred = [None]
         # print(elements)
-        st.update_xcart()
 
         s = stpm._sites[0]
 
@@ -742,11 +750,15 @@ class Structure():
 
         st = st.update_types(elements)
 
+        # print(len(st.typat))
         st.natom = len(st.typat)
         # sys.exit()
 
-        if st.natom != len(st.xred):
+        if st.natom != len(st.xcart):
             printlog('Error! number of atoms was changed, please improve this method')
+
+        # print(st.xcart)
+
 
         st.name+='_from_pmg'
         return st
@@ -785,6 +797,21 @@ class Structure():
         st = st.return_atoms_to_cell()
         return st
 
+    def sizes(self):
+        #return sizes along x, y, and z
+
+        # for x in self.xcart:
+        xyz = list(map(list, zip(*self.xcart)))
+
+        dx = max(xyz[0]) - min(xyz[0]) 
+        dy = max(xyz[1]) - min(xyz[1]) 
+        dz = max(xyz[2]) - min(xyz[2]) 
+        return dx,dy, dz
+    def rprimd_len(self):
+        #return vector lengths
+        r = self.rprimd
+        n = np.linalg.norm
+        return n(r[0]), n(r[1]), n(r[2])
 
     def add_z(self, z):
         # method appends additional height to the cell
@@ -1650,17 +1677,33 @@ class Structure():
 
 
 
-    def replace_atoms(self, atoms_to_replace, el_new, silent = 0):
+    def replace_atoms(self, atoms_to_replace, el_new, silent = 1, mode = 1):
         """
         atoms_to_replace - list of atom numbers starting from 0
         el_new - new element periodic table short name
+
+        mode 
+            1 - old behaviour, numbering is not conserved
+            2 - numbering is conserved if el_new already exists in self
+
+        TODO:
+        Now if el_new already exists in structure, numbering is conserved,
+        otherwise numbering is not conserved.
+        Make numbering conservation in case when new element is added
+        Both modes can be useful, as the second case is compat with VASP
+
+
         """
         st = copy.deepcopy(self)
 
         numbers = list(range(st.natom))
-
-
+        z_new = invert(el_new)
         atom_exsist = True
+        if silent:
+            warn = 'n'
+        else:
+            warn = 'Y'
+
 
         while atom_exsist:
 
@@ -1670,18 +1713,23 @@ class Structure():
 
                 if n in atoms_to_replace:
                     xcart = st.xcart[i]
-                    if not silent:
-                        print('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new)
-                    st = st.del_atom(i)
 
-                    st = st.add_atoms([xcart], element = el_new)
-                    # print(st.natom)
-                    # print(st.get_elements())
+                    if mode == 2 and el_new in st.get_elements():
+                        it = st.znucl.index(z_new)+1
+                        st.typat[n] = it
+                        # print(it, z_new, st.typat)
+                        # print(st.get_elements())
+                        # sys.exit()
+                        del numbers[i]
 
-                    # print(st.natom)
+                        printlog('replace_atoms(): atom', i, el, 'replaced with', st.get_elements()[n], '; Atom number stayed the same' , imp = warn)
 
-                    # print(st.get_elements())
-                    del numbers[i]
+                    else:
+                        # atom number is changed, since new typat is added
+                        st = st.del_atom(i)
+                        del numbers[i]
+                        st = st.add_atoms([xcart], element = el_new)
+                        printlog('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new, '; Atom number was changed', imp = warn)
 
                     break
             else:
@@ -2547,11 +2595,13 @@ class Structure():
             None - not written
 
         shift - shift atoms
+        
         NOTE
         #void element type is not written to POSCAR
 
         TODO
             selective_dynamics for coord_type = 'cart'
+            Velocity and predictor are not reordered; Can be used only for continiue MD
         """
 
 
@@ -2590,7 +2640,7 @@ class Structure():
 
 
         if not filename:
-            filename = ('xyz/POSCAR_'+st.name).replace('.', '_')
+            filename = os.getcwd()+('/xyz/POSCAR_'+st.name).replace('.', '_')
 
         makedir(filename)
 
@@ -2694,7 +2744,7 @@ class Structure():
 
 
             if "car" in coord_type:
-                print_and_log("Warning! may be obsolete!!! and incorrect", imp = 'Y')
+                print_and_log("Warning! Cartesian regime of coordination may be obsolete and incorrect !!!", imp = 'Y')
                 f.write("Cartesian\n")
                 for xcart in zxcart:
                     for x in xcart:
@@ -2702,11 +2752,6 @@ class Structure():
                         f.write("\n")
 
                 
-                if hasattr(self.init, 'vel'):
-                    print_and_log("I write to POSCAR velocity as well")
-                    f.write("Cartesian\n")
-                    for v in self.init.vel:
-                        f.write( '  {:18.16f}  {:18.16f}  {:18.16f}\n'.format(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )
 
             elif "dir" in coord_type:
                 f.write("Direct\n")
@@ -2734,10 +2779,31 @@ class Structure():
             else:
                 print_and_log("Error! The type of coordinates should be 'car' or 'dir' ")
                 raise NameError
+
+
+
+            # print('write_poscar(): predictor:\n', st.predictor)
+            if hasattr(st, 'vel') and len(st.vel)>0:
+                printlog("Writing velocity to POSCAR ", imp = 'y')
+                # f.write("Cartesian\n")
+                f.write("\n")
+                for v in st.vel:
+                    f.write( '  {:18.16f}  {:18.16f}  {:18.16f}\n'.format(v[0]*to_ang, v[1]*to_ang, v[2]*to_ang) )
+
+            if hasattr(st, 'predictor') and st.predictor:
+                printlog("Writing predictor POSCAR ", imp = 'y')
+                f.write("\n")
+                f.write(st.predictor)
+
+
         
 
         f.close()
-        path = os.getcwd()+'/'+filename
+        # if os.getcwd() not in filename:
+        #     print('rep', str(os.getcwd()), filename)
+        #     path = os.getcwd()+'/'+filename
+        # else:
+        path = filename
         print_and_log("POSCAR was written to", path, imp = 'y')
         return path
 
@@ -2830,7 +2896,7 @@ class Structure():
         return read_xyz(self, *args, **kwargs)
 
 
-    def jmol(self, shift = None, r = 0, show_voids = False):
+    def jmol(self, shift = None, r = 0, show_voids = False, rep = None):
         """open structure in Jmol
         
         INPUT:
@@ -2841,9 +2907,14 @@ class Structure():
             2 - open mcif to see magnetic moments
             3 - xyz
         show_voids (bool) - replace voids (z = 300) with Po to visualize them
+        rep  (list 3*int) - replicate along vectors
         
         """
         st = copy.deepcopy(self)
+
+        if rep:
+            st = st.replic(rep)
+
         if shift:
             st = st.shift_atoms(shift)
 
@@ -3008,12 +3079,12 @@ class Calculation(object):
             
             self.xred = read_vectors("xred", self.natom, gen_words)
             #print self.xred
-            
-            if self.xred == [None]:
+            # print(self.xcart)
+            if self.xred is [None]:
                 print_and_log("Convert xcart to xred")
                 self.xred = xcart2xred(self.xcart, self.rprimd)
             
-            if self.xcart == [None]:
+            if self.xcart is [None]:
                 print_and_log("Convert xred to xcart")
                 self.xcart = xred2xcart(self.xred, self.rprimd)
 
@@ -3045,8 +3116,7 @@ class Calculation(object):
 
 
             vel = read_vectors("vel", self.natom, gen_words)
-            # print vel
-            if vel[0] != None: 
+            if vel[0] is not None: 
                 self.init.vel = vel
 
             #read magnetic states; name of vasp variable
@@ -3060,6 +3130,15 @@ class Calculation(object):
             select = read_vectors("select", self.natom, gen_words, type_func = lambda a : int(a), lists = True )
             if None not in select: 
                 self.init.select = select
+
+            predictor_length = read_list("pred_length", 1, int, gen_words)[0]
+            # print('pred_length', predictor_length)
+            # sys.exit()
+            if predictor_length:
+                predictor = read_string('predictor', predictor_length, memfile)
+                # print('predictor', predictor)
+                self.init.predictor = predictor
+
 
 
 
@@ -3194,6 +3273,17 @@ class Calculation(object):
                 f.write("\nselect  ")
                 for v in st.select:
                     f.write("{:d} {:d} {:d}\n".format(v[0], v[1], v[2])  )
+
+            if hasattr(st, 'vel') and len(st.vel) > 0:
+                f.write("\nvel ")
+                for v in st.vel:
+                    f.write("{:18.16f} {:18.16f} {:18.16f}\n".format(v[0], v[1], v[2])  )
+
+            if hasattr(st, 'predictor') and st.predictor:
+                
+                f.write("\npred_length "+str(len(st.predictor)))
+                f.write("\npredictor ")
+                f.write(st.predictor)
 
             #Write build information
             try:
@@ -3332,7 +3422,10 @@ class Calculation(object):
         self.end.get_mag_tran(*args, **kwargs)
 
 
-    def dos(self, *args, **kwargs):
+    def dos(self, isym, *args, **kwargs):
+        """
+        isym (int) - choose symmetry position to plot DOS
+        """
         from siman.header import db
         from siman.dos_functions import plot_dos
         # print(self.children)
@@ -3349,8 +3442,9 @@ class Calculation(object):
         n = st.get_transition_elements(fmt = 'n')
         iTM = n[0]
         el = st.get_elements()[iTM]
-        # determine_symmetry_positions(st, el)
-        # print(iTM)
+        pos = determine_symmetry_positions(st, el)
+        iTM = pos[isym][0]
+        print('Choosing ', isym, 'atom ',iTM)
 
         plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
         dostype = 'partial', orbitals = ['d', 'p6'], 
@@ -3422,7 +3516,8 @@ class Calculation(object):
         # if self.set.kpoints_file  == False:#self.set.vasp_params['KSPACING']:
         #     N = N_from_kspacing
         kspacing = self.set.vasp_params['KSPACING']
-
+        # print(kspacing)
+        # sys.exit()
         # print (struct_des)
         if ngkpt:
             N = ngkpt
@@ -4658,7 +4753,12 @@ class Calculation(object):
         # sys.exit()
         address = self.cluster['address']
         if header.override_cluster_address:
-            clust = header.CLUSTERS[self.cluster['name']]
+            if self.cluster['name']:
+                clust = header.CLUSTERS[self.cluster['name']]
+            else:
+                printlog('Youve chosen to override cluster_address, but name of cluster is None, trying default', imp = 'Y')
+                clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
+
             self.project_path_cluster = clust['homepath']
             address = clust['address']
 
@@ -4705,11 +4805,22 @@ class Calculation(object):
         self.name = str(self.id[0])+'.'+str(self.id[1])+'.'+str(self.id[2])
         return self.name
 
+
+
+
     @property
     def sfolder(self):
         self._x = header.struct_des[self.id[0]].sfolder
         return self._x
 
+    @property
+    def e0_fu(self):
+        # please improve
+        n1 = self.end.nznucl[0]
+        print('e0_fu: Normalization by element z=', self.end.znucl[0])
+        e0_fu = self.e0/n1
+        
+        return e0_fu
 
 
 
@@ -5682,6 +5793,10 @@ class CalculationVasp(Calculation):
             it_suffix = '.'+kwargs['it_suffix']
         else:
             it_suffix = ''
+
+        if kwargs.get('it_suffix'):
+            del kwargs['it_suffix']
+
 
         # if self.id[1] != ise:
         if 1:

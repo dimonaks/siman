@@ -17,7 +17,7 @@ from siman.classes import CalculationVasp, Structure
 from siman.set_functions import InputSet
 from siman.functions import  return_atoms_to_cell, element_name_inv
 from siman.inout import write_xyz
-from siman.geo import local_surrounding, local_surrounding2
+from siman.geo import local_surrounding, local_surrounding2, xcart2xred, xred2xcart
 
 lib = cdll.LoadLibrary(os.path.dirname(__file__)+'/libfindpores.so')
 
@@ -617,70 +617,157 @@ def insert_cluster(insertion, i_center, matrix, m_center):
     insertion -  object of class Structure(), which is supposed to be inserted in matrix
     in such a way that i_center will be combined with m_center.
     matrix - object of class Structure().
-    i_center, m_center - numpy arrays (3).
+    i_center, m_center - numpy arrays (3) cartesian coordinates
     """
     ins = copy.deepcopy(insertion)
     mat = copy.deepcopy(matrix)
     r = mat.rprimd
 
-    for i, z in enumerate(ins.znucl):
-        if z not in mat.znucl:
-            mat.znucl.append(z)
-            mat.ntypat+=1
-            mat.nznucl.append( ins.nznucl[i]  )
-
 
 
     hproj = [ (r[0][i]+r[1][i]+r[2][i]) * 0.5 for i in (0,1,2) ] #projection of vectors on three axis
+    if 1:
+        for i, x in enumerate(ins.xcart):
+            ins.xcart[i] = x - i_center
 
-    for i, x in enumerate(ins.xcart):
-        ins.xcart[i] = x - i_center
-
-    for i, x in enumerate(mat.xcart):
-        mat.xcart[i] = x - m_center
+        for i, x in enumerate(mat.xcart):
+            mat.xcart[i] = x - m_center
 
     max_dis = 1
     for i_x, ix in enumerate(ins.xcart):
         dv_min = max_dis
         print_and_log( "Insertion atom ",ix,)
-        
-        for j, mx in enumerate(mat.xcart):
-            dv = mx - ix
-            for i in 0,1,2:
-                if dv[i] >  hproj[i]: dv = dv - mat.rprimd[i] #periodic boundary conditions - can be not correct (in the sense that closest image can lie not 100 % in the neighbourhood image cell ) for oblique cells and large absolute values of dv 
-                if dv[i] < -hproj[i]: dv = dv + mat.rprimd[i]
-            
-            len1 = np.linalg.norm(dv)
-            len2, second_len2 = mat.image_distance(mx, ix, r, 2) #check len1
-            
+        if 1:
+            for j, mx in enumerate(mat.xcart):
+                dv = mx - ix
+                for i in 0,1,2:
+                    if dv[i] >  hproj[i]: dv = dv - mat.rprimd[i] #periodic boundary conditions - can be not correct (in the sense that closest image can lie not 100 % in the neighbourhood image cell ) for oblique cells and large absolute values of dv 
+                    if dv[i] < -hproj[i]: dv = dv + mat.rprimd[i]
+                
+                len1 = np.linalg.norm(dv)
+                len2, second_len2 = mat.image_distance(mx, ix, r, 1) #check len1
+                
 
-            #print "Lengths calculated with two methods ", len1, len2
-            len1 = len2 #just use second method
-            #assert np.around(len1,1) == np.around(len2,1)
+                #print "Lengths calculated with two methods ", len1, len2
+                len1 = len2 #just use second method
+                #assert np.around(len1,1) == np.around(len2,1)
 
-            if len1 < dv_min: 
-                dv_min = len1;   
-                j_r = j # number of matrix atom to replace
+                if len1 < dv_min: 
+                    dv_min = len1;   
+                    j_r = j # number of matrix atom to replace
 
 
 
-        if dv_min == max_dis:
-            print_and_log( " is more far away from any matrix atom than ",dv_min," A; I insert it")
-            mat.xcart.append( ix )
-            print_and_log( 'type of added atom is ', ins.typat[i_x])
-            mat.typat.append( ins.typat[i_x]   )
-        else:        
-            print_and_log( "will replace martix atom", mat.xcart[j_r] )
-            mat.xcart[j_r] = ix.copy()
+
+
+        if 1:
+            #Modify to replace overlapping atoms 
+            if dv_min == max_dis:
+                print_and_log( " is more far away from any matrix atom than ",dv_min," A; I insert it")
+                # mat.xcart.append( ix )
+                # print_and_log( 'type of added atom is ', ins.typat[i_x])
+                # mat.typat.append( ins.typat[i_x]   )
+                mat = mat.add_atom(xc = ix, element = ins.get_elements()[i_x] )
+
+
+
+            else:        
+                print_and_log( "will replace martix atom", mat.xcart[j_r] )
+                mat.xcart[j_r] = ix.copy()
     
+
+
+
+
+
 
     mat.rprimd = r
     mat.xcart2xred()
     mat.natom = len(mat.xcart)
     mat.name = 'test_of_insert'
-    write_xyz(mat)
+    st = mat
+    # print(st.natom, len(st.xcart), len(st.typat), len(st.znucl), max(st.typat) )
+    # write_xyz(mat)
+    mat = mat.return_atoms_to_cell()
+    mat.write_poscar()
     return mat
     #write_xyz(mat)
+
+
+def make_interface(main_slab, m_xc, second_slab, s_xc):
+    """
+    Make interfaces
+    Both slabs should have close sizes along x and y and should be oriented correctly
+    
+    Input:
+    main_slab (Structure) - slab
+    second_slab (Structure) - slab, scaled to coincide with the main slab
+    m_xc, s_xc (array(3)) - cartesian coordinates of pointis in main_slab and secondary slab to be combined
+    
+
+    Return Slab with interface and scaled second slab
+    """
+    ins = copy.deepcopy(second_slab)
+    mat = copy.deepcopy(main_slab)
+
+
+    if 1:
+        #scale insertion
+        mr = mat.rprimd_len()
+        ir = ins.rprimd_len()
+        print('Matrix vlength', mr)
+        print('Insert vlength', ir)
+        x_scale = mr[0]/ ir[0]
+        y_scale = mr[1]/ ir[1]
+
+        print('Scaling factors', x_scale, y_scale)
+
+        # print('i_center', i_center)
+
+        s_xred = xcart2xred([s_xc], ins.rprimd)[0]
+        ins.rprimd[0] = ins.rprimd[0]*x_scale
+        ins.rprimd[1] = ins.rprimd[1]*y_scale
+        ir = ins.rprimd_len()
+        print('Insert vlength after scaling', ir)
+
+        ins.update_xcart()
+        ins_sc = ins.copy()
+        ins_sc.name+='_scaled'
+
+        s_xc = xred2xcart([s_xred], ins.rprimd)[0]
+     
+        # print('i_center', i_center)
+
+
+
+    if 1:
+        for i, x in enumerate(ins.xcart):
+            ins.xcart[i] = x - s_xc
+
+        for i, x in enumerate(mat.xcart):
+            mat.xcart[i] = x - m_xc
+
+    for i_x, ix in enumerate(ins.xcart):
+
+        mat = mat.add_atom(xc = ix, element = ins.get_elements()[i_x] ) 
+
+
+    mat.xcart2xred()
+    mat.natom = len(mat.xcart)
+    mat.name += 'inteface'
+    mat = mat.return_atoms_to_cell()
+    mat = mat.shift_atoms([0,0,0.5])
+
+    return mat, ins_sc
+
+
+
+
+
+
+
+
+
 
 
 def insert(it_ins, ise_ins, mat_path, it_new, calc, type_of_insertion = "xcart" ):

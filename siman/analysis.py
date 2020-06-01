@@ -158,7 +158,8 @@ def determine_barrier(positions = None, energies = None):
 
 
 
-def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, mode = None, scale = 1):
+def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, mode = None, 
+    scale = 1, config_entropy = None, x_vac1 = None, x_vac2 = None):
     """
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
@@ -172,7 +173,9 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
         ewald_vasp
 
     scale - experimental 
-
+    
+    config_entropy - cacluculate configuration entropy change and add to redox potential
+        x_vac - vacancy concentration - should be provided
 
     return dic {'redox_pot', 'vol_red', ...}
     """
@@ -293,6 +296,12 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
         redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  ) / scale
     else:
         redox = 0
+
+
+    if config_entropy:
+        ''
+
+
 
     # print(n1, n2)
 
@@ -689,7 +698,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
     Can be problems with charged-ordered materials
 
     INPUT:
-        i_alk_ion - number of ion from 0 to calculate distances to transition metals
+        i_alk_ion - number of ion from 0 to calculate distances to detected polarons
         out_prec (int) - precision of magmom output
 
     RETURN:
@@ -1067,6 +1076,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         st1.name +='_all'
         # st1.write_cif('xyz/'+st1.name)
         st1.write_xyz()
+        st1.write_poscar()
 
 
     if dAO2: # find maximum change of distance during migration
@@ -1138,6 +1148,9 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
     results_dic['atom_pos'] = [list(pos) for pos in atom_pos]
     results_dic['mep_energies'] = mep_energies
+
+    cl1.atom_pos = results_dic['atom_pos']
+    cl1.mep_energies = results_dic['mep_energies']
 
 
     if 'mep' in show:
@@ -1304,7 +1317,53 @@ def polaron_analysis(cl, readfiles):
 
 
 
+def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
+    """
+    Calculate surface energy
+    cl - slab or cell with interface
+    cl1 - slab or cell with phase 1
+    cl2 - slab or cell with phase 2
+    mul1, mul2, - multiply cells
 
+    n_intefaces - number of similar  interfaces in the system
+
+    Interface is assumed to be normal to R3!
+
+    """
+    st = cl.end
+    st1 = cl1.end
+    st2 = cl2.end
+    natom = st.natom
+    natom1 = st1.natom
+    natom2 = st2.natom
+
+
+    A = np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
+    A1 = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )*mul1
+    A2 = np.linalg.norm( np.cross(st2.rprimd[0] , st2.rprimd[1]) )*mul2
+
+
+    print('Surface areas:', A,A1,A2)
+
+
+
+    mul = natom/(natom1*mul1+natom2*mul2) # natom1 and natom2 should be scaled equally
+
+
+
+
+    # print(mul)
+    if natom != (natom1*mul1+natom2*mul2)*mul:
+        printlog('Error! Number of atoms are different:', st.natom, st1.natom, st2.natom)
+
+    diff  = cl.e0 - (cl1.e0*mul1 + cl2.e0*mul2)* mul  
+    gamma = diff / A * header.eV_A_to_J_m / n_intefaces# inteface
+
+    if not silent:
+        print('Interface energy = {:3.2f} J/m2   | {:} eV '.format(gamma, diff))
+    
+
+    return gamma
 
 def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
     """Calculate surface energy
@@ -1483,6 +1542,6 @@ def wulff(st, miller_list = None, e_surf_list = None):
     # print(lat)
     from pymatgen.analysis.wulff import WulffShape
     WS = WulffShape(lat, miller_list, e_surf_list)
-    print(dir(WS))
+    # print(dir(WS))
     WS.show()
     return

@@ -262,6 +262,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     params - dictionary with parameters 
         - 'xlim_power' - xlim for power
         - 'y0' - move plot to have y = 0
+        - 'xnbins' - number of bins x
 
     TODO:
     remove some arguments that can be provided in data dict
@@ -276,6 +277,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     # print(fontsize)
     # sys.exit()
+
+
     if fontsize:
         # header.mpl.rcParams.update({'font.size': fontsize+4})
         # fontsize = 2
@@ -591,6 +594,17 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         # plt.legend()
 
     # plt.tight_layout(pad = 2, h_pad = 0.5)
+
+
+    if params.get('xnbins'):
+        # print(params.get('xnbins'))
+        ax.locator_params(tight=True, axis='x', nbins=params['xnbins'])
+        # plt.locator_params(axis='x', numticks=params['xnbins'])
+
+    if params.get('xticks_step'):
+
+        start, end = ax.get_xlim()
+        ax.xaxis.set_ticks(np.arange(start+params.get('step_shift'), end+params.get('step_shift'), params.get('xticks_step')))
 
 
 

@@ -24,7 +24,7 @@ from siman.calc_manage import add_loop, name_mod_supercell, res_loop, inherit_ic
 from siman.neb import add_neb
 from siman.classes import Calculation
 from siman.analysis import calc_redox,  matrix_diff
-from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions
+from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions, create_single_antisite
 from siman.inout import write_occmatrix
 from siman.database import add_to_archive_database
 from siman.impurity import insert_atom
@@ -1584,19 +1584,25 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
             id_res = (id_base[0]+'.su', ise_new, 100)
 
-
+            it_suffix = add_loop_dic.get('it_suffix')
+            # print(id_base)
+            # sys.exit()
             if update or id_res not in calc:
                 printlog('Scale region is ', scale_region, imp = 'y')
-                add_loop(*id_base, up = up_add_loop, ise_new = ise_new, savefile = savefile, calc_method = 'uniform_scale', scale_region = scale_region, 
+                add_loop(*id_base, up = up_add_loop, ise_new = ise_new, savefile = savefile, 
+                    calc_method = 'uniform_scale', scale_region = scale_region, 
                 inherit_option = 'inherit_xred', it_folder = curfol+'/scaled/', **add_loop_dic)                    
             
             else:
                 # print(dic['scale_outcar.'+mode_id], up_res)
                 # print(up_res)
                 # sys.exit()
-                res_loop(*id_res, up = up_res, readfiles= readfiles, choose_outcar = choose_outcar, show = 'e', check_job = 0)
+                # print(id_res)
+                res_loop(*id_res, up = up_res, readfiles= readfiles, 
+                    choose_outcar = choose_outcar, show = 'e', check_job = 0, it_suffix = it_suffix)
                 if show_fit:
-                    res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0)
+                    res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, 
+                        choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0 , it_suffix = it_suffix)
                 # sys.exit()
                 if '2'  in calc[id_res].state or '5' in calc[id_res].state:
                     ''
@@ -1654,6 +1660,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
             calc[support_dict_key] = {} #create supportive dictionary, which depends on ortho parameter
         
 
+        it_suffix = add_loop_dic.get('it_suffix')
+        if it_suffix:
+            base_id = (base_id[0]+'.'+it_suffix, base_id[1], base_id[2])
 
 
         if base_id:
@@ -1676,6 +1685,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     if 1:
                         printlog ('Cell obtained by removing atoms', imp = 'y')
                         printlog ('I use mul_matrix and ngkpt from intercalated structure', imp = 'y')
+                        # print(support_dict_key, calc[support_dict_key][cat[0], 'mul_matrix'], calc[support_dict_key][cat[0], 'ngkpt_dict'])
+
+                        # sys.exit()
+
                         try:
                             mul_matrix = calc[support_dict_key][cat[0], 'mul_matrix']
                             ngkpt_dict      = calc[support_dict_key][cat[0], 'ngkpt_dict']
@@ -1686,9 +1699,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                         ngkpt = ngkpt_dict[ks]
                         # printlog ('I use mul_matrix and ngkpt from intercalated structure', imp = 'y')
 
-
+                # print(base_id[0])
                 sfolder = struct_des[base_id[0]].sfolder
-                # print (sfolder)
+                # print (base_id[0], sfolder)
                 # sys.exit()
                 itA = add_loop(*base_id, ise_new = ise_new, up = up_add_loop, 
                 it_folder = sfolder+'/super/', inherit_option = 'supercell', ortho = ortho,
@@ -1705,6 +1718,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(db[('Cu.su', '1lo', 100)].inh_id)
                 # header.db = db
                 if 'normal' in mode:
+                    # print('saving mul_matrix', struct_des[itA].mul_matrix  )
                     calc[support_dict_key][cat[0], 'mul_matrix'] = struct_des[itA].mul_matrix               #save for intercalated structure
                     calc[support_dict_key][cat[0], 'ngkpt_dict'] = struct_des[itA].ngkpt_dict_for_kspacings #save for intercalated structure
 
@@ -1720,7 +1734,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(dic['neb_outcar.'+mode_id])
                 # print('suprecell: chosen outcar:', choose_outcar)
                 # print(up_res)
-                res_loop(*idA, up = up_res, readfiles = readfiles, choose_outcar = choose_outcar, show = 'm', check_job = 0)
+                res_loop(*idA, up = up_res, 
+                    readfiles = readfiles, 
+                    choose_outcar = choose_outcar, show = 'm', check_job = 0)
                 # res_loop(*idA, choose_outcar = 3, show = 'fo')
                 # res_loop(*idA, choose_outcar = 4, show = 'fo')
                 curres['id_sc'] = idA
@@ -1841,6 +1857,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
 
                 # print('sdfsaf')
+                if 'it_suffix' in add_loop_dic:
+                    del add_loop_dic['it_suffix'] # already taken into name
 
                 if 'normal' in mode or 'replace' in mode:
                 
@@ -2499,7 +2517,203 @@ def calc_antisite_defects(dpi = 300, image_format = 'eps', update = 0):
     return
 
 
+def pol_disp(typ):
+    """ Displacement around polaron, determined from calculations
+        type (str) - 
+        'elec' - electron
+        'hole' - hole
+    """
+    if typ == 'zero':
+        disp = 0.0
+    elif typ == 'elec':
+        disp = 0.2
+    elif typ == 'hole':
+        disp = -0.2
+    elif typ == 'Co_Li':
+        disp = -0.1  # obtained from dft in LiCoO2
 
+    elif typ == 'Ni_Li':
+        disp = -0.05  # obtained from dft in LiNiO2 for p2/c smaller diff
+
+
+    elif typ == 'Li_Co':
+        disp = 0.15  # obtained from dft in LiCoO2
+    elif typ == 'Ni_Na':
+        disp = -0.18  # obtained from dft in NaNiO2
+    elif typ == 'Na_Ni':
+        disp = 0.1  # obtained from dft in NaNiO2
+
+    else:
+        printlog('Error! unknown type of polaron', typ, 'use zero, elec or hole')
+    return disp
+
+
+def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_loop_dic = None, 
+    conf = None, update_bulk = 0, up_res = 'up1', use_input_as_bulk = None, 
+    jmol = None, shift = None,
+    table = 1):
+    """
+    Wrapper for creating single antisites
+    taking into account formation of polarons.
+    use_input_as_bulk - allows to skip recalculation of bulk and use input Calculation
+    jmol - show structure
+    table - show table with results
+    conf (int) - only one configuration allowed 
+
+    mode (not implemented yet)
+        1 - show possible configurations
+        2 - run configurations provided in confs dict
+        
+    """
+    pd = param_dic
+    c =pd
+    st = pd['cl'].end
+    it_base = pd['cl'].id[0]
+    it = it_base + suf
+    if update:
+        up = 'up2'
+    else:
+        up = 'up1'
+    if not add_loop_dic:
+        add_loop_dic = {}
+
+
+    "Section for determining parameters for AS1 and AP polarons"
+    pol_suf = '' # polaron suffix name
+    if c.get('spinst_AS1'):
+        spinst_AS1 = c.get('spinst_AS1')
+        if c['el2'] not in spinst_AS1:
+            printlog('Warning! AS1: Youve chosen spin state ', spinst_AS1, 'for element ', c['el2'])
+        c['mag_AS1'] = header.TM_MAG[spinst_AS1]
+        c['disp_AS1'] = pol_disp(c['pol_AS1'])
+        pol_suf = 'AS1'
+
+    if c.get('AP_on'):
+        i_AP = c.get('i_AP')
+        pol_suf+='AP'+str(i_AP)
+
+        spinst_AP = c.get('spinst_AP')
+        if i_AP is not None:
+            el_AP = st.get_el_name(i_AP)
+            if el_AP not in spinst_AP:
+                printlog('Warning! AP: Youve chosen spin state ', spinst_AP, 'for element ', el_AP)
+
+        c['mag_AP'] = header.TM_MAG[spinst_AP]
+        c['disp_AP'] = pol_disp(c['pol_AP'])
+
+    "end of section"
+
+
+
+    tol = c.get('tol') or 0.1
+    sts, i_el1s = create_single_antisite(st, c['el1'], c['el2'], i_el1 = c['i_el1'], i_el2_list = c.get('i_el2_list'),
+        return_with_table = 1, tol = tol,
+        mag_AS1 = c.get('mag_AS1'), disp_AS1 = c.get('disp_AS1'),
+        AP_on = c.get('AP_on'), i_AP = c.get('i_AP'), 
+        mag_AP = c.get('mag_AP'), disp_AP = c.get('disp_AP'),
+        confs = [conf]  )
+
+
+
+    for st in sts:
+        st.write_poscar()
+        # print(st.magmom)
+
+
+
+
+    "Calculation section"
+    if update_bulk:
+        use_input_as_bulk = 0
+    if not update or update_bulk:
+        # if cl.id[1] == ise:
+        if use_input_as_bulk:
+            cl_base = c['cl']
+
+        else:
+            cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
+
+
+    header.show = 'fo'
+    # print(confs)
+    # sys.exit()
+    j = 0
+    table = []
+    # print(i_el1s, len(sts), list(range(sts)))
+    for i, st_as, i_el1 in zip(list(range(len(sts))), sts, i_el1s):
+        # if confs is not None:
+        #     if i not in confs:
+        #         continue
+        suf = 'sas'+str(conf)+pol_suf #single as
+        st_as.name+=suf
+        if jmol:
+            st_as.jmol(r=2, shift = shift)
+        add_loop(it+'.'+suf, c['set'], 1, 
+            input_st = st_as, it_folder = header.struct_des[it_base].sfolder+'/as', up = up, 
+            params = {'res_params':{'up':up_res}},
+            **add_loop_dic)
+        cl_as = calc[it+'.'+suf, c['set'], 1]
+        # print(cl_as.path['output'])
+
+        "analysis section"
+        try:
+            if 1:
+                chem_pot = param_dic.get('chem_pot')
+
+                muA = chem_pot.get('Li') or chem_pot.get('Na')
+                muO = chem_pot.get('O')
+                muTM = cl_base.e0_fu - muA - 2*muO
+                print('Chemical pot of TM is', muTM, 'eV')
+
+                Eas = (cl_as.e0 + muA - muTM) - cl_base.e0
+                
+
+
+
+                print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
+
+
+
+                st = cl_as.end
+                # st.jmol(r=2)
+                i_el1 = cl_as.init.poscar_atom_order.index(i_el1) # the order can change in the end Structure
+                # print(i_el1)
+
+
+                pol, _ = find_polaron(st, i_el1, out_prec = 2)
+                table.append(['0', '0', ''])
+                polarons = []
+                for z in pol:
+                    # if pol[z] > 2:
+                        # printlog
+                    for k in pol[z]:
+                        d1 = image_distance(st.xcart[i_el1], st.xcart[k], st.rprimd )[0]
+                        dist = ' {:.2f} '.format(d1) # Co_Li - Co_AP 
+                        
+                        string = '{:2s}{:3d} m={:4.1f} {:s}'.format(invert(z), k, st.magmom[k], dist)
+                        polarons.append(string)
+
+                table[j][2] = cl_as.id[0]
+                # table[j].append('{:.2f}'.format(sep) )
+                table[j].append('{:.2f}'.format(Eas) )
+                table[j].append('\n'.join(polarons) )
+
+                j+=1
+        except:
+            pass
+        # sys.exit()
+        # if 'as0' in suf:
+        #     break
+
+
+
+
+    if table:
+        # print(table[0])
+        printlog( tabulate(table, headers = ['No.', 'AS type', 'it', 'Eas, eV',  'polaron mag   d1  d2'], tablefmt='psql'), imp = 'Y' )
+
+
+    return
 
 
 
@@ -2509,7 +2723,7 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
     confs = None, jmol = 0, update_bulk = 0, 
     up_res = 'up1', use_input_as_bulk = 0 ):
     """
-    High-level wrapper for creating anti-sites and running them
+    High-level wrapper for creating anti-site pairs and running them
     Interstetials defects are also can be created, please add documentation
 
 
@@ -2522,35 +2736,11 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
     update_bulk - recalculate bulk
     use_input_as_bulk (int) - use input as bulk
 
-        param_dic:
+        param_dic: - see full description in create_antisite_defects3
             spinst_AP (str) - one state from header.TM_MAG dict
             mag_AP (float) - 
 
     """
-
-    def pol_disp(typ):
-        """type (str) - 
-            'elec' - electron
-            'hole' - hole
-        """
-        if typ == 'zero':
-            disp = 0.0
-        elif typ == 'elec':
-            disp = 0.2
-        elif typ == 'hole':
-            disp = -0.2
-        elif typ == 'Co_Li':
-            disp = -0.1  # obtained from dft in LiCoO2
-        elif typ == 'Li_Co':
-            disp = 0.15  # obtained from dft in LiCoO2
-        elif typ == 'Ni_Na':
-            disp = -0.18  # obtained from dft in NaNiO2
-        elif typ == 'Na_Ni':
-            disp = 0.1  # obtained from dft in NaNiO2
-
-        else:
-            printlog('Error! unknown type of polaron', typ)
-        return disp
 
 
 
@@ -3917,9 +4107,11 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
 def create_project_from_geofile(filename, projectname = None, up = 0):
     """
     empty project is added to database
-    get name from geofile and create required folder and put file into it  
+    get name from geofile or projectnameand create required folder and put file into it  
     Various rules to create project name
     up - update
+    projectname (str) - choose name for project
+    
     """
     db = header.db
     if 1:
@@ -4010,6 +4202,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     # print()
     p = params
     prim  = p.get('primitive')
+    scale_region  = p.get('scale_region') or (-3, 5)
     show_fit  = p.get('show_fit')
     up    = p.get('up') or 'up1'
     up_scale  = p.get('up_scale')
@@ -4029,6 +4222,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     clust = p.get('cluster') or 'cee'
     corenum = p.get('corenum')
     readfiles = p.get('readfiles')
+    it_suffix = p.get('it_suffix')
 
     if prim is None:
         prim = 1
@@ -4049,7 +4243,10 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
 
     service_list = db[pn]['res']
-    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum, }
+    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum }
+    
+    if it_suffix:
+        add_loop_dic['it_suffix'] = it_suffix
 
     if step == 1:
         ''
@@ -4057,6 +4254,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             startgeofile = db[pn]['startgeofile'] 
             print('geo file is ', startgeofile)
             st = smart_structure_read(startgeofile)
+            # print(prim)
+            # sys.exit()
             if prim:
                 printlog('Converting cell to primitive', imp = 'y')
                 st = primitive(st)
@@ -4082,17 +4281,21 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         el  = get_alkali_ion(cl.end, active_cation)
 
         it_ds = it.replace(el, '')
-        if it_ds[0] == '2':
+
+
+        if it_ds[0] == '2': #e.g. Na2
             it_ds = it_ds[1:]
             coeff = 2
         else:
             coeff = 1
 
+
+
         printlog('Name for DS is', it_ds)
 
         pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
         'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
-        'scale_region':(-3, 5), 'readfiles':readfiles, 'ortho':ortho,
+        'scale_region':scale_region, 'readfiles':readfiles, 'ortho':ortho,
         'end_pos_types_z':end_z,
         'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom'),
         'center_on_moving':p.get('center_on_moving')
@@ -4111,7 +4314,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
-            a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+            a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), 
+            param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic, 
             run_neb = run_neb, run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global') ) 
             
@@ -4148,7 +4352,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             # cl.me()
 
             if target_x == 0:
-                a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+                a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, 
+                upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                 fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
                 run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global')) 
                 
@@ -4173,17 +4378,34 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                 name = el+x_str+it_ds
                 # print(name)
                 # sys.exit()
-                syms =  remove_x(st, el, info_mode = 1, x = x_vac)
+                key = 'syms_rem'+str(target_x)
+                # print(db[pn], up_scale)
+                if key not in db[pn] or up_scale == 1:
+                    syms, sts_dic =  remove_x(st, el, info_mode = 1, x = x_vac)
+                    db[pn][key] = syms
+                else:
+                    printlog('Loading syms from db[pn][key] ', pn, key,  imp = 'y')
+
+                    syms = db[pn][key]
+                    sts_dic = {}
+
 
                 printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
 
 
                 # sys.exit()
+                # print(syms)
                 for sg in syms:
-                    st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
+                    # st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
+                    if sg in sts_dic:
+                        # print(sg, sts_dic)
+                        st_rem  =  sts_dic[sg] # only the first one is used
+                    else:
+                        st_rem = None # for res_loop mode
 
                     id_new = (name+'sg'+str(sg), m_set, 1)
-
+                    # st_rem.jmol()
+                    # sys.exit()
                     add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
