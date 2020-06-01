@@ -2591,10 +2591,13 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
     if c.get('AP_on'):
         i_AP = c.get('i_AP')
         pol_suf+='AP'+str(i_AP)
-
+        el_pol = c.get('el_pol')
         spinst_AP = c.get('spinst_AP')
         if i_AP is not None:
             el_AP = st.get_el_name(i_AP)
+            if el_pol != el_AP:
+                printlog('Error!, el_pol and el_AP should be the same')
+
             if el_AP not in spinst_AP:
                 printlog('Warning! AP: Youve chosen spin state ', spinst_AP, 'for element ', el_AP)
 

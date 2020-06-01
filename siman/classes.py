@@ -1690,7 +1690,7 @@ class Structure():
         Now if el_new already exists in structure, numbering is conserved,
         otherwise numbering is not conserved.
         Make numbering conservation in case when new element is added
-        Both modes can be useful, as the second case is compat with VASP
+        Both modes can be useful, as the first case is compat with VASP
 
 
         """
@@ -1714,8 +1714,16 @@ class Structure():
                 if n in atoms_to_replace:
                     xcart = st.xcart[i]
 
-                    if mode == 2 and el_new in st.get_elements():
+                    if mode == 2:
+                        if st.get_elements().count(el) == 1:
+                            printlog('Error! The functions replace_atoms() in mode == 2 works incorrectly if one atom of type ', el)
+                        if el_new not in st.get_elements():
+                            st.znucl.append(z_new)
+                            # print(st.nznucl)
+                            st.ntypat+=1
+                        
                         it = st.znucl.index(z_new)+1
+                        
                         st.typat[n] = it
                         # print(it, z_new, st.typat)
                         # print(st.get_elements())
@@ -1734,6 +1742,7 @@ class Structure():
                     break
             else:
                 atom_exsist = False
+        st.get_nznucl()
         # printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
 
         # print(st.get_elements())
