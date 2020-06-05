@@ -1040,10 +1040,10 @@ def determine_symmetry_positions(st, element, silent = 0):
         printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y', end = '\n')
     positions_for_print = {}
     for key in positions:
-        positions_for_print[key] = [p+1 for p in positions[key]]
+        positions_for_print[key] = [p for p in positions[key]]
 
     if not silent:
-        printlog('Atom numbers: ', positions_for_print, imp = 'y')
+        printlog('Atom numbers (from zero!): ', positions_for_print, imp = 'y')
     
     sorted_keys = sorted(list(positions.keys()))
     pos_lists = [positions[key] for key in sorted_keys ]
@@ -1288,6 +1288,10 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
         i_el1 - choose specific atom, from 0
     """
 
+    if i_AP is None:
+        AP_on = False
+
+
     "Start determining unique positions"
     r = st.rprimd
     
@@ -1372,16 +1376,28 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
             st_as.magmom[i] = mag_AS1
 
         if disp_AS1:
-            st_as = st_as.localize_polaron(i, disp_AS1)
+
+            if st_as.if_surface_atom(i):
+                nn = 5
+            else:
+                nn = 6
+
+            st_as = st_as.localize_polaron(i, disp_AS1, nn)
 
 
-        if mag_AP is not None:
+        if i_AP and mag_AP is not None:
             st_as.magmom[i_AP] = mag_AP
 
 
-        if disp_AP is not None:
-            # st_as.magmom[i_AP] = mag_AP
-            st_as = st_as.localize_polaron(i_AP, disp_AP)
+        if i_AP and disp_AP is not None:
+            # av1 = st.nn(atTM,          6, only = [8], from_one = 0, silent = 1)['av(A-O,F)']
+
+            if st_as.if_surface_atom(i_AP):
+                nn = 5
+            else:
+                nn = 6
+
+            st_as = st_as.localize_polaron(i_AP, disp_AP, nn = nn)
 
 
         st_as.name+='_'+suf

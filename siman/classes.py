@@ -1021,6 +1021,15 @@ class Structure():
         return surface_atoms[surface]
 
 
+    def  if_surface_atom(self, i):
+        st = self
+        suf = st.get_surface_pos()
+        sufd = min(abs(st.xcart[i][2]-suf[0]),abs(st.xcart[i][2]-suf[1]))
+        if sufd < 0.5:
+            printlog('TM is on surface, sufd', sufd , imp = 'y')
+            return True
+
+
     def get_surface_area(self):
         #currently should be normal to rprim[0] and rprim[1]
         st = self
@@ -2331,12 +2340,16 @@ class Structure():
 
 
 
-    def localize_polaron(self, i, d):
+    def localize_polaron(self, i, d, nn = 6):
         """
         Localize small polaron at transition metal by adjusting TM-O distances
         i - number of transition atom, from 0
         d - shift in angstrom; positive increase TM-O, negative reduce TM-O
+        nn - number of neigbours
+
         """
+        # nn
+
         st = copy.deepcopy(self)
         TM = st.get_el_z(i)
         TM_name = st.get_el_name(i)
@@ -2349,7 +2362,7 @@ class Structure():
         # silent = 0
 
 
-        dic = st.nn(i, 6, from_one = 0, silent = silent)
+        dic = st.nn(i, nn, from_one = 0, silent = silent, only = [8,9])
         printlog('Average TM-O distance before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
 
         #updated xcart
@@ -2370,7 +2383,7 @@ class Structure():
 
         st.update_xred()
 
-        dic = st.nn(i, 6, from_one = 0, silent = silent)
+        dic = st.nn(i, nn, from_one = 0, silent = silent, only = [8,9])
         printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
 
         st.name+='pol'+str(i+1)
@@ -3429,6 +3442,47 @@ class Calculation(object):
         self.end.printme()
     def gmt(self, *args, **kwargs):
         self.end.get_mag_tran(*args, **kwargs)
+
+
+    def occ_diff(self, cl2, i_at = 0):
+        """
+        difference bettween occupation matricies
+        first five for spin up
+        then five for spin down
+
+        """
+        TM = self.end.get_transition_elements(fmt = 'n')
+        # print(TM)
+        max_diff = 0.01
+        for i_at in TM:
+            occ1 = np.array(self.occ_matrices[i_at])
+            occ2 = np.array(cl2.occ_matrices[i_at])
+
+            # print(occ1-occ2)
+            docc = occ1-occ2
+            l05 = len(docc)//2
+
+            # print(occ1[0:l05])
+            det1 = np.linalg.det(docc[0:l05])
+            det2 = np.linalg.det(docc[l05:])
+            # m1 = np.matrix.max(np.matrix(docc))
+            m1 = max(docc.min(), docc.max(), key=abs)
+            # print(det1, det2, m1)
+            df = pd.DataFrame(docc).round(5)
+
+            if abs(m1) > max_diff:
+                printlog('max diff larger than ', max_diff, 'was detected', imp = 'y')
+                printlog('For atom ', i_at, 'max diff is ', '{:0.2f}'.format(m1), imp = 'y')
+                printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
+        else:
+            printlog('No diffs larger than', max_diff, '; Last matrix:', imp = 'y')
+            printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
+
+
+
+        return
+
+
 
 
     def dos(self, isym, *args, **kwargs):
@@ -4822,12 +4876,20 @@ class Calculation(object):
         self._x = header.struct_des[self.id[0]].sfolder
         return self._x
 
-    @property
-    def e0_fu(self):
+    def e0_fu(self, n_fu = None):
         # please improve
-        n1 = self.end.nznucl[0]
-        print('e0_fu: Normalization by element z=', self.end.znucl[0])
+        #n_fu - number of atoms in formual unit
+        if n_fu:
+            n1 = self.end.natom/n_fu
+            print('e0_fu: Normalization by provided n_fu', n_fu)
+
+        else:
+            self.end.get_nznucl()
+            n1 = self.end.nznucl[0]
+            print('e0_fu: Normalization by element z=', self.end.znucl[0])
+
         e0_fu = self.e0/n1
+        print('e0_fu: e0_fu=',e0_fu)
         
         return e0_fu
 

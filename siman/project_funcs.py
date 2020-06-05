@@ -2665,7 +2665,7 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
 
                 muA = chem_pot.get('Li') or chem_pot.get('Na')
                 muO = chem_pot.get('O')
-                muTM = cl_base.e0_fu - muA - 2*muO
+                muTM = cl_base.e0_fu(4) - muA - 2*muO
                 print('Chemical pot of TM is', muTM, 'eV')
 
                 Eas = (cl_as.e0 + muA - muTM) - cl_base.e0
