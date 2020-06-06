@@ -998,6 +998,7 @@ class Structure():
         #elememt - which element is interesting?
         #surface_width - which atoms to consider as surface 
         #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
+        #TODO - make more general,  surfaces tilted relative to z are not correct
         st = self
         surface_atoms = [[],[]]
         
@@ -1022,10 +1023,13 @@ class Structure():
 
 
     def  if_surface_atom(self, i):
+        """
+        Based on reduced coordinates
+        """
         st = self
-        suf = st.get_surface_pos()
-        sufd = min(abs(st.xcart[i][2]-suf[0]),abs(st.xcart[i][2]-suf[1]))
-        if sufd < 0.5:
+        suf = st.get_surface_pos(reduced = 1)
+        sufd = min(abs(st.xred[i][2]-suf[0]),abs(st.xred[i][2]-suf[1]))
+        if sufd < 0.5/np.linalg.norm(st.rprimd[2]):
             printlog('TM is on surface, sufd', sufd , imp = 'y')
             return True
 
