@@ -441,10 +441,10 @@ class Structure():
         l, mag_numbers = self.get_maglist()
 
         keys = list(mag_numbers.keys())#[0]
-        print('In the present cell are next TM types:', keys)
+        print('The following TM are found:', keys)
 
         mag = list(np.array(self.magmom)[l])
-
+        magnetic_all = []
         for key in keys:
         
             # print(mag)
@@ -460,7 +460,9 @@ class Structure():
 
             print('\n Znucl:  ', key)
             # print(' '+s0.format(*mag_numbers[key]))
+            # print(magnetic)
             print(' '+s.format(*magnetic))
+            magnetic_all += magnetic
             if to_ox:
                 if to_ox > 0:
                     ox = [to_ox-abs(m) for m in magnetic]
@@ -471,7 +473,7 @@ class Structure():
                 print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
 
 
-        return s.format(*magnetic) 
+        return magnetic
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -3445,7 +3447,7 @@ class Calculation(object):
     def me(self):
         self.end.printme()
     def gmt(self, *args, **kwargs):
-        self.end.get_mag_tran(*args, **kwargs)
+        return self.end.get_mag_tran(*args, **kwargs)
 
 
     def occ_diff(self, cl2, i_at = 0):
@@ -3491,17 +3493,38 @@ class Calculation(object):
 
     def dos(self, isym, *args, **kwargs):
         """
+        Plot dos either for self or for children with dos
         isym (int) - choose symmetry position to plot DOS
+        
+
         """
         from siman.header import db
         from siman.dos_functions import plot_dos
         # print(self.children)
-        for id in self.children:
-            # print(s[1])
-            if 'dos' in id[1]:
-                printlog('Child with DOS set is found', id, imp = 'y')
-                id_dos = id
-                break 
+        
+
+        pm = kwargs
+        x_nbins = pm.get('x_nbins')
+        ylim = pm.get('ylim') or (-6,7)
+        fontsize = pm.get('fontsize') or 13
+        ver_lines = pm.get('ver_lines')
+
+        ifdos = False
+        if hasattr(self, 'children'):
+            for id in self.children:
+                # print(s[1])
+                if 'dos' in id[1]:
+                    printlog('Child with DOS set is found', id, imp = 'y')
+                    id_dos = id
+                    ifdos = True
+
+                    break
+            else:
+                ifdos = False 
+        if not ifdos:
+            printlog('No children were found, using self', self.id, imp = 'y')
+            id = self.id
+
         cl = db[id]
 
         cl.res()
@@ -3522,11 +3545,13 @@ class Calculation(object):
         'figsize': (6,3), 
         'linewidth':0.8, 
         'fontsize':8,
-        'ylim':(-6,7), 'ver':1, 'fill':1,
+        'ylim':ylim, 'ver':1, 'fill':1,
         # 'ylim':(-1,1), 
+        'ver_lines':ver_lines,
         'xlim':(-8,6), 
+        'x_nbins':x_nbins,
         # 'xlim':(-0.5,0.1), 
-        'dashes':(5,1) })
+        'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
 
 
 
@@ -4818,9 +4843,10 @@ class Calculation(object):
         # print(self.cluster_address)
         # print(self.project_path_cluster+'/')
         # sys.exit()
-        address = self.cluster['address']
+        if hasattr(self, 'cluster'):
+            address = self.cluster['address']
         if header.override_cluster_address:
-            if self.cluster['name']:
+            if hasattr(self, 'cluster') and self.cluster.get('name'):
                 clust = header.CLUSTERS[self.cluster['name']]
             else:
                 printlog('Youve chosen to override cluster_address, but name of cluster is None, trying default', imp = 'Y')

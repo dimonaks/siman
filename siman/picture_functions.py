@@ -275,7 +275,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     if image_name == None:
         image_name  = filename
 
-    # print(fontsize)
+    # print(ver_lines)
     # sys.exit()
 
 
