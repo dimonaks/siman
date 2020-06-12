@@ -1725,8 +1725,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         e_diff_md = (self.list_e_sigma0[-1] - self.list_e_sigma0[-2])*1000 #meV
 
     e_diff = (e_sig0_prev - e_sig0)*1000 #meV
-
-    if abs(e_diff) > toldfe*1000:
+    # print(e_diff)
+    if abs(e_diff) > float(toldfe)*1000:
         toldfe_warning = '!'
         printlog("Attention!, SCF was not converged to desirable prec", 
             round(e_diff,3), '>', toldfe*1000, 'meV', imp = 'y')
