@@ -2643,17 +2643,23 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
     j = 0
     table = []
     # print(i_el1s, len(sts), list(range(sts)))
+
+    charge = c.get('charge')
+
     for i, st_as, i_el1 in zip(list(range(len(sts))), sts, i_el1s):
         # if confs is not None:
         #     if i not in confs:
         #         continue
         suf = 'sas'+str(conf)+pol_suf #single as
+        if charge:
+            suf+='c'+str(charge)
+
         st_as.name+=suf
         if jmol:
             st_as.jmol(r=2, shift = shift)
         add_loop(it+'.'+suf, c['set'], 1, 
             input_st = st_as, it_folder = header.struct_des[it_base].sfolder+'/as', up = up, 
-            params = {'res_params':{'up':up_res}},
+            params = {'res_params':{'up':up_res}, 'charge':charge}, 
             **add_loop_dic)
         cl_as = calc[it+'.'+suf, c['set'], 1]
         # print(cl_as.path['output'])
