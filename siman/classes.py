@@ -1887,6 +1887,15 @@ class Structure():
         return st
 
 
+    def perturb(self, d=0.1):
+        """
+        d is distance
+        """
+        st = self.copy()
+        pm = st.convert2pymatgen()
+        pm.perturb(d)
+        st = st.update_from_pymatgen(pm)
+        return st
 
     def find_atom_num_by_xcart(self, x_tar, prec = 1e-6):
         """take into account periodic conditions
