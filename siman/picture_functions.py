@@ -200,7 +200,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     legend = False, ncol = 1, 
     fontsize = None, legend_fontsize=None, markersize = None,  
     linewidth = None, hor = False, ver = True, fig_format = 'eps', dpi = 300,
-    ver_lines = None, xy_line = None, x_nbins = None,
+    ver_lines = None, hor_lines = None, xy_line = None, x_nbins = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
     convex = None, dashes = None,
@@ -239,6 +239,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
     ver_lines - list of dic args for  vertical lines {'x':, 'c', 'lw':, 'ls':}
+    hor_lines
     ver - vertical line at 0
     hor - horizontal line at 0
 
@@ -543,6 +544,11 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     if ver_lines:
         for line in ver_lines:
             ax.axvline(**line)
+
+    if hor_lines:
+        for line in hor_lines:
+            ax.axhline(**line)
+
 
     if xy_line:
         xlim = ax.get_xlim()

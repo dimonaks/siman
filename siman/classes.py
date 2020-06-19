@@ -3563,6 +3563,25 @@ class Calculation(object):
         'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
 
 
+    def plot_locpot(self, filename = None):
+        'plot LOCPOT'
+        from siman.chg.chg_func import chg_at_z_direct
+        from siman.picture_functions import fit_and_plot
+
+        z_coord1, elst1 =  chg_at_z_direct(self, filetype = 'LOCPOT', plot = 0)
+
+        if filename:
+            show = False
+            filename='figs/'+filename
+        else:
+            show = True
+
+        fit_and_plot(pot=(z_coord1, elst1, '-b', ),
+            xlabel = 'Z coordinate, $\AA$', 
+            ylabel = 'Potential, eV', legend = 2,
+            show = show, hor_lines = [{'y':elst1[0]}],
+            filename = filename
+            )
 
 
 
