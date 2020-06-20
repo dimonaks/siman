@@ -4768,7 +4768,7 @@ class Calculation(object):
 
 
 
-            if params and 'charge' in params:
+            if params and 'charge' in params and params['charge']:
                 vp['NELECT'] = int(tve - params['charge'])
 
 
