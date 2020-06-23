@@ -2869,7 +2869,8 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
             st_as.name+=suf
             st_as.write_poscar()
             if jmol:
-                st_as.jmol(r=2, shift = (0.5,0.5,0.2))
+                # st_as.jmol(r=2, shift = (0.5,0.5,0.2))
+                st_as.jmol(r=2, )
             add_loop(it+'.'+suf, c['set'], 1, 
                 input_st = st_as, it_folder = struct_des[it_base].sfolder+'/as', up = up, 
                 params = {'res_params':{'up':up_res}},

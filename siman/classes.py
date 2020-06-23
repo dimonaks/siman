@@ -3459,6 +3459,50 @@ class Calculation(object):
         return self.end.get_mag_tran(*args, **kwargs)
 
 
+    def mag_diff(self, cl2, dm_skip = 0.5, el = None):
+
+        """
+        rms difference of magmom, skippting large deviations, due to defects
+        dm_skip (float) - skip differences larger than this 
+        el (str) - only for this element, could be several 
+
+        the order of elements should be the same!!!
+
+        """
+        m1 = self.end.magmom
+        m2 = cl2.end.magmom
+        el1 = self.end.get_elements()
+        el2 = cl2.end.get_elements()
+        
+        ms = 0
+        tot=0
+        for i in range(len(m1)):
+            if el1[i] != el2[i]:
+                print('Warinig! el1 is not equal el2 for i=', i, el1[i], el2[i])
+            
+            dm = abs(m1[i]-m2[i])
+            if dm > dm_skip:
+                print('For i=', i, el1[i], 'dm = ',dm, 'which is larger than dm_skip =', dm_skip, '; probably defect, skipping')
+                continue
+            if el and el1[i] not in el:
+                continue
+
+
+            ms+= (dm)**2
+            tot+=1
+        rms = (ms/tot)**0.5
+
+        if el:
+            print('For '+el+' atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
+
+        else:
+            print('For rest atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
+
+        return rms
+
+
+
+
     def occ_diff(self, cl2, i_at = 0):
         """
         difference bettween occupation matricies
