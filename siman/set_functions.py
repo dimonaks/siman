@@ -133,6 +133,7 @@ vasp_other_keys = [
 'KBLOCK',
 'IVDW',
 'LVDW_EWALD',
+'NUPDOWN',
 
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys

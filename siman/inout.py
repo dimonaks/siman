@@ -1476,7 +1476,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             if 'number of electron ' in line:
                 # print (line)
                 try:
-                    self.mag_sum.append( [float(line.split()[5]), 0])
+                    self.mag_sum.append( [float(line.split()[5]), 0]) # magnetization at each relaxation step
                 except:
                     pass
 

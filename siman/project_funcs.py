@@ -2854,7 +2854,7 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
                 cl_base = c['cl']
 
             else:
-                cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up, add = update_bulk, **add_loop_dic)
+                cl_base = c['cl'].run(c['set'], iopt = 'full_nomag', up = up,  show = 'fo', add = update_bulk, **add_loop_dic,)
 
 
         header.show = 'fo'
@@ -2881,6 +2881,10 @@ def calc_antisite_defects3(update = 0, suf = '', cathodes = None, param_dic = No
                 if 1:
                     Eas = cl_as.energy_sigma0-cl_base.energy_sigma0
                     print('dE(as) = {:.0f} meV'.format( (Eas)*1000))
+
+                    cl_as.mag_diff(cl_base, el = 'NiCo')
+                    cl_as.mag_diff(cl_base, el = 'O')
+                    
                     st = cl_as.end
                     pol, _ = find_polaron(st, st_as.i_el1, out_prec = 2)
                     sep = image_distance(st.xcart[st_as.i_el1], st.xcart[st_as.i_el2], st.rprimd )[0]

@@ -475,6 +475,12 @@ class Structure():
 
         return magnetic
 
+
+
+
+
+
+
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
         # element (str) - elements for which moments should be set 
@@ -997,27 +1003,31 @@ class Structure():
 
     def get_surface_atoms(self, element, surface = 0, surface_width = 0.5 ):
         #return numbers of surface atoms
-        #elememt - which element is interesting?
+        #elememt (str) - which element is interesting? can be CoO to take two elements
         #surface_width - which atoms to consider as surface 
         #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
-        #TODO - make more general,  surfaces tilted relative to z are not correct
+        #TODO - 
+        #now only along third vector, make more general
+        #PBC may work incorrect
         st = self
         surface_atoms = [[],[]]
         
-        z = st.get_surface_pos()
+        z = st.get_surface_pos(reduced  = True)
 
 
         els = st.get_elements()
 
+        suf_width_red = surface_width/np.linalg.norm(st.rprimd[2])
 
-        for i, x in enumerate(st.xcart):
+
+        for i, x in enumerate(st.xred):
             el = els[i]
-            if el == element:
+            if el in element:
                 # print(x[2])
-                if z[0] <= x[2] < z[0]+surface_width:
+                if z[0] <= x[2] < z[0]+suf_width_red:
                     surface_atoms[0].append(i)
 
-                if z[1] - surface_width  < x[2] <= z[1]:
+                if z[1] - suf_width_red  < x[2] <= z[1]:
                     surface_atoms[1].append(i)
 
 
@@ -3013,8 +3023,9 @@ class Calculation(object):
             self.id = ('0','0',0)
     
     def get_path(self,):
-        print( os.path.dirname(os.getcwd()+'/'+self.path['output']))
-
+        path = os.path.dirname(os.getcwd()+'/'+self.path['output'])
+        print( path)
+        return path
 
     def read_geometry(self, filename = None):
         """Reads geometrical data from filename file in abinit format"""
@@ -3459,13 +3470,13 @@ class Calculation(object):
         return self.end.get_mag_tran(*args, **kwargs)
 
 
-    def mag_diff(self, cl2, dm_skip = 0.5, el = None):
+    def mag_diff(self, cl2, dm_skip = 0.5, el = None, more = 0):
 
         """
         rms difference of magmom, skippting large deviations, due to defects
         dm_skip (float) - skip differences larger than this 
         el (str) - only for this element, could be several 
-
+        more (bool) - show more info about mag diff at each pos
         the order of elements should be the same!!!
 
         """
@@ -3482,11 +3493,13 @@ class Calculation(object):
             
             dm = abs(m1[i]-m2[i])
             if dm > dm_skip:
-                print('For i=', i, el1[i], 'dm = ',dm, 'which is larger than dm_skip =', dm_skip, '; probably defect, skipping')
+                print('For i=', i, el1[i], 'dm= {:0.3f} muB'.format(dm), ', which is larger than dm_skip =', dm_skip, '; probably defect, skipping')
                 continue
             if el and el1[i] not in el:
                 continue
 
+            if more:
+                print('For ', i, el1[i], el2[i], 'dm= {:0.3f} muB'.format(dm))
 
             ms+= (dm)**2
             tot+=1
@@ -3497,6 +3510,27 @@ class Calculation(object):
 
         else:
             print('For rest atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
+        mag1 = sum(self.end.magmom)
+        mag2 = sum(cl2.end.magmom)
+        mag_abs1 = sum([abs(m) for m in self.end.magmom])
+        mag_abs2 = sum([abs(m) for m in cl2.end.magmom])
+
+        el = 'NiCoO'
+        w= 1
+        st1 = self.end
+        st2 = cl2.end
+        suf_at1 = self.end.get_surface_atoms(el, surface = 0, surface_width=w)+self.end.get_surface_atoms(el, surface = 1, surface_width=w)
+        suf_at2 = cl2.end.get_surface_atoms(el, surface = 0, surface_width=w)+cl2.end.get_surface_atoms(el, surface = 1, surface_width=w)
+        print(suf_at2)
+        mag_sufabs1 = sum([abs(st1.magmom[i]) for i in suf_at1 ])
+        mag_sufabs2 = sum([abs(st2.magmom[i]) for i in suf_at2  ])
+
+        # self.end.jmol(r=2)
+
+        print('Absolute magnetizations {:0.1f} muB, {:0.1f} muB'.format(mag_abs1, mag_abs2) )
+        print('Absolute suf magnetizat {:0.1f} muB, {:0.1f} muB'.format(mag_sufabs1, mag_sufabs2) )
+        print('Diff of summed magnetizations = {:0.1f} muB, total = {:0.1f} muB, absolute = {:0.1f} muB and abs suf = {:0.1f} muB'.format(mag1-mag2, self.mag_sum[-1][0]-cl2.mag_sum[-1][0], mag_abs1 - mag_abs2, mag_sufabs1 - mag_sufabs2) )
+
 
         return rms
 
@@ -3622,7 +3656,7 @@ class Calculation(object):
 
         fit_and_plot(pot=(z_coord1, elst1, '-b', ),
             xlabel = 'Z coordinate, $\AA$', 
-            ylabel = 'Potential, eV', legend = 2,
+            ylabel = 'Potential, eV', legend = None, fontsize = 12,
             show = show, hor_lines = [{'y':elst1[0]}],
             filename = filename
             )
@@ -5867,9 +5901,51 @@ class CalculationVasp(Calculation):
         
 
 
+    def get_occ_mat(self, i):
+        """
+        return occupation matrix for atom i (from zero)
 
 
+        TODO: probably it is better to move occ_matrix to structure class and make this method their
+        """
+        st = self.end
+        i_tran = st.get_transition_elements('n')
+        # print(st.get_elements())
+        # print(i_tran[21])
+        i_mag = i_tran.index(i)
+        # print(i_mag)
 
+        return self.occ_matrices[i_mag]
+
+    def set_occ_mat(self, i, m):
+        """
+        set occupation matrix m for atom i (from zero)
+
+
+        TODO: probably it is better to move occ_matrix to structure class and make this method their
+        """
+        cl = self.copy()
+        st = cl.end
+        i_tran = st.get_transition_elements('n')
+        # print(st.get_elements())
+        # print(i_tran[21])
+        i_mag = i_tran.index(i)
+        # print(i_mag)
+        cl.occ_matrices[i_mag] = m
+
+        return cl
+
+
+    def write_occmatrix(self):
+
+        #write occmatrix file to calculation folder
+        from siman.inout import write_occmatrix
+        # print(self.get_path())
+        # sys.exit()
+
+    
+
+        return write_occmatrix(self.occ_matrices, self.get_path())
 
 
     def bader_coseg():
