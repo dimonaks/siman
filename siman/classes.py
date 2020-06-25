@@ -1022,7 +1022,8 @@ class Structure():
 
         for i, x in enumerate(st.xred):
             el = els[i]
-            if el in element:
+
+            if el in element or element is None:
                 # print(x[2])
                 if z[0] <= x[2] < z[0]+suf_width_red:
                     surface_atoms[0].append(i)
@@ -2182,7 +2183,7 @@ class Structure():
 
         return info
 
-    def check_YT(self, criteria = 0.03):
+    def check_JT(self, criteria = 0.03):
         #Check Yan-Teller effect
         #check average TM-O distance in the cell and find the outstanding bonds 
         #return TM-O dist list
@@ -2247,7 +2248,7 @@ class Structure():
             mind = round(np.mean(min_dist),2)
 
             if maxd and mind: 
-                print('Yan-Teller effect is found\n Average min TM-O length is %s \n Average max TM-O length is %s \n'%(mind, maxd) )
+                print('Jahn-Teller effect is found\n Average min TM-O length is %s \n Average max TM-O length is %s \n'%(mind, maxd) )
 
 
         if not k: print('Ok! None outstanding bonds found\n')
@@ -6316,66 +6317,87 @@ class MP_Compound():
                     print(name_scale, '\tUnfinished calculation!!!\n\n')
 
 
-    def calc_suf(self, ise = '9sm', bulk_cl_name = ['it','ise', '1'], it_folder = 'bulk/', status = 'create', suf_list = [[1,1,0], [1,1,1]], 
-            min_slab_size = 12, only_stoich = 1, corenum = 4):
+    def calc_suf(self, ise = '9sm', bulk_cl_name = None,  it_folder = 'bulk/', status = 'create', suf_list = None, 
+            min_slab_size = 12, only_stoich = 1, symmetrize = True, corenum = 4, cluster = 'cee', conv = 1, create = 1, reset_old = 0):
         from siman.header import db
         from siman.geo import create_surface2, stoichiometry_criteria
         from siman.calc_manage   import add_loop, res_loop
 
+
+        if not bulk_cl_name:
+            bulk_cl_name = ['it','ise', '1']
+            
+        if not suf_list:
+            suf_list = [[1,1,0], [1,1,1]]
+
+
         st_bulk = db[self.bulk_cl_scale].end
+
+        if conv:
+            st_bulk = st_bulk.get_conventional_cell()
+
         st_name = '.'.join([self.pretty_formula, self.sg_crystal_str, self.sg_symbol])
         st_name = st_name.replace('/','_')
         # st_bulk.printme()
         try:
-            print(self.suf)
+            # print(self.suf)
+            self.suf.keys()
         except AttributeError:
             self.suf = {}
             self.suf_status = {}
 
         try:
-            print(self.suf_cl)
+            self.suf_cl.keys()
         except AttributeError:
             self.suf_cl = {}
 
         try:
-            print(self.suf_en)
+            self.suf_en.keys()
         except AttributeError:
             self.suf_en = {}
-            
-            # None
+
+        if reset_old:
+            self.suf = {}
+            self.suf_status = {}
+            self.suf_cl = {}
+            self.suf_en = {}
 
 
 
-        # print(self.suf)
 
-
+        ##################### create slab
         if status == 'create':
 
 
             try:
                 for surface in suf_list:
+                    print(surface)
 
                     if self.suf == {} or ''.join([str(surface[0]),str(surface[1]),str(surface[2])]) not in self.suf.keys():
 
                         slabs = create_surface2(st_bulk, miller_index = surface,  min_slab_size = min_slab_size, min_vacuum_size = 15, surface_i = 0,
-                          symmetrize = True, lll_reduce = 1, primitive = 1)
+                          symmetrize = symmetrize, lll_reduce = 1, primitive = 1)
                         
                         s_i = 0
-                        if len(slabs):
-                            for sl_i in slabs:
-                                st = st_bulk
-                                sl = st.update_from_pymatgen(sl_i)
-                                suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(s_i)
-                                # print(suf_name)
-                                self.suf[suf_name] = sl
-                                self.suf_status[suf_name] = 'created'
-                                print(st_name + '\n', surface, s_i+1, ' from ', len(slabs), ' slabs\n', sl.natom, ' atoms'  )
+                        if create:
+                            if len(slabs):
+                                for sl_i in slabs:
+                                    st = st_bulk
+                                    sl = st.update_from_pymatgen(sl_i)
+                                    suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(s_i)
 
-                                s_i+=1
+                                    if self.suf_status == 'Zero slabs constructed':
+                                        self.suf_status = {}
 
-                        else:
-                            self.suf_status = 'Zero slabs constructed'
-                            print('\nWarning!  Zero slabs constructed!\n')
+                                    self.suf[suf_name] = sl
+                                    self.suf_status[suf_name] = 'created'
+                                    print(st_name + '\n', surface, s_i+1, ' from ', len(slabs), ' slabs\n', sl.natom, ' atoms'  )
+
+                                    s_i+=1
+
+                            else:
+                                self.suf_status = 'Zero slabs constructed'
+                                print('\nWarning!  Zero slabs constructed!\n')
 
             except AttributeError:
                 self.suf_status = 'Bulk calculation has some problems'
@@ -6383,13 +6405,13 @@ class MP_Compound():
 
 
 
+        ##################### add slab calc
 
         if status == 'add':
             # for surface in suf_list:
-                for suf_name in self.suf.keys():
-                    if self.suf_status[suf_name] in ['added', 'created']:
+                for suf_name in self.suf_status.keys():
+                    if self.suf_status[suf_name] in ['created']:
                         sl = self.suf[suf_name]
-                        # sl.jmol()
                         
                         if only_stoich:
 
@@ -6397,7 +6419,7 @@ class MP_Compound():
                                     # print(st_name+'.sl.'+ suf_name, ise, 1, suf_name)
 
                                     add_loop(st_name+'.sl.'+ suf_name, ise, 1 , 
-                                        input_st = sl,  it_folder = 'slabs_new/'+st_name, up = 'up2', corenum = corenum)
+                                        input_st = sl,  it_folder = 'slabs_new/'+st_name, up = 'up2', cluster = cluster, corenum = corenum)
                                     self.suf_status[suf_name] = 'added'
                                     self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
 
@@ -6410,13 +6432,41 @@ class MP_Compound():
                         print('\nThis slab hasn\'t been created yet!\n')
                         print(self.suf_status[suf_name])
     
+        
+
+
+
+        ##################### res slab calc
 
         if status == 'res':
             # print('1111')
             print(self.suf.keys(), self.suf_status)
             for suf_name in self.suf.keys():
-                if self.suf_status[suf_name] in ['added', 'calculated']:
-                    res_loop(st_name+'.sl.'+ suf_name, ise, 1 , up = 'up2')
+                s_hkl = suf_name.split('.')[0]
+                # print(s_hkl)
+                key = []
+                delta = 0
+                for i in range(0,3):
+                    i+=delta
+                    if s_hkl[i] != '-':
+                        key.append(int(s_hkl[i]))
+                    else:
+                        key.append(-int(s_hkl[i+1]))
+                        delta = 1
+                # hkl = [int(s_hkl[0]), int(s_hkl[1]), int(s_hkl[2])]
+                hkl = key
+                if self.suf_status[suf_name] in ['added', 'calculated'] and hkl in suf_list:
+
+                    try:
+                        try:
+                            res_loop(st_name+'.sl.'+ suf_name, ise, 1 , up = 'up2')
+                        except ValueError:
+                            self.suf_status[suf_name] = 'Error'
+                            self.suf_en[suf_name] = 'Error'
+                            break
+                    except KeyError:
+                        break
+
                     self.suf_status[suf_name] = 'calculated'
 
                     from siman.analysis import suf_en 
@@ -6429,6 +6479,7 @@ class MP_Compound():
                     try:
                         e = '-'
                         e = suf_en(db[self.suf_cl[suf_name]],db[self.bulk_cl_scale])
+                        # self.suf_en = {}
                         self.suf_en[suf_name] = e
                     except AttributeError:
                         self.suf_en[suf_name] = 'Error'
@@ -6490,25 +6541,43 @@ class MP_Compound():
             self.e_cohesive = None
 
 
+    def e_cohesive_from_MP(self):
 
 
-        # return e_coh
+        try:
+            from pymatgen.ext.matproj import MPRester
+            from pymatgen.io.vasp.inputs import Poscar
+            from pymatgen.io.cif import CifParser
+            pymatgen_flag = True 
+        except:
+            print('pymatgen is not available')
+            pymatgen_flag = False 
+
+        with MPRester(header.pmgkey) as m:
+            material_id = self.material_id
+            ec = round(m.get_cohesive_energy(material_id, per_atom = 1),2)
+            self.e_cohesive_MP = ec
+            print(self.pretty_formula, ec)
 
 
-    def calc_ec_es(self):
+    def calc_ec_es(self, ev = 0):
         from siman.header import db
         '''
         
         '''
+
         ec_es = []
 
         try:
             print(self.e_cohesive)
             for i in self.suf_en.keys():
-                print(self.suf_en)
+                # print(self.suf_en)
                 if self.suf_en[i] !='Error':
-                    print(self.suf_en[i])
-                    ec_es.append(round(float(self.e_cohesive)/float(self.suf_en[i]), 2))
+                    # print(self.suf_en[i])
+                    if ev:
+                        ec_es.append(round(float(self.e_cohesive)/float(self.suf_en[i]/ header.eV_A_to_J_m), 2))
+                    else:
+                        ec_es.append(round(float(self.e_cohesive)/float(self.suf_en[i]), 2))
                 else:
                     ec_es.append('None')
 
