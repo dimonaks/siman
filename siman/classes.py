@@ -3470,7 +3470,7 @@ class Calculation(object):
         return self.end.get_mag_tran(*args, **kwargs)
 
 
-    def mag_diff(self, cl2, dm_skip = 0.5, el = None, more = 0):
+    def mag_diff(self, cl2, dm_skip = 0.5, el = 'NiCoVMnO', more = 0):
 
         """
         rms difference of magmom, skippting large deviations, due to defects
@@ -3521,7 +3521,7 @@ class Calculation(object):
         st2 = cl2.end
         suf_at1 = self.end.get_surface_atoms(el, surface = 0, surface_width=w)+self.end.get_surface_atoms(el, surface = 1, surface_width=w)
         suf_at2 = cl2.end.get_surface_atoms(el, surface = 0, surface_width=w)+cl2.end.get_surface_atoms(el, surface = 1, surface_width=w)
-        print(suf_at2)
+        # print(suf_at2)
         mag_sufabs1 = sum([abs(st1.magmom[i]) for i in suf_at1 ])
         mag_sufabs2 = sum([abs(st2.magmom[i]) for i in suf_at2  ])
 

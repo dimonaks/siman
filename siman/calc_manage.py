@@ -2073,7 +2073,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 dir_2 = cl.dir
                 # sys.exit()
 
-        if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1: #copy occfile
+        if 'occmatrix' in params or ('OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1): #copy occfile
             if 'occmatrix' in params:
                 shutil.copyfile(params['occmatrix'], cl.dir+'/OCCMATRIX' ) # file is provided explicitly
 
