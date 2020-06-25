@@ -2543,6 +2543,16 @@ def pol_disp(typ):
     elif typ == 'Na_Ni':
         disp = 0.1  # obtained from dft in NaNiO2
 
+
+    elif typ: 
+        dic_sol = {'W_Co':0.1, 'Fels_Co':0.05, 'Fehs_Co':0.1, 'Ti_Co':0.15, 'Ti4+_Co':0.06, 'Cr3+_Co':0.7, 'Cr4+_Co':0.05,
+            'Cr2+hs_Co':0.26, 'Cr2+ls_Co':0.19, 'Ni3+hs_Co':0.05,'Ni3+ls_Co':0,
+            'Mn3+hs_Co':0.1,'Mn3+ls_Co':0.03, 'Mg2+_Co':0.18, 'V4+_Co': 0.03,
+            'Co3+hs_Ni': 0.04, 'Mg2+_Ni':0.15, 'V4+_Ni':0, 'Ti4+_Ni': 0.04, 'Mg2+_Ni4':-0.2,}
+        disp = dic_sol[typ]  #
+
+
+
     else:
         printlog('Error! unknown type of polaron', typ, 'use zero, elec or hole')
     return disp

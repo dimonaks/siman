@@ -467,7 +467,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
     printlog( runBash('convert '+pngfile+' -trim '+pngfile)  ) # trim background
     printlog('png file by Jmol',pngfile, 'was written', imp = 'y' )
     # print(header.PATH2JMOL)
-    return
+    return pngfile
 
 
 def write_xyz(st = None, path = None, filename = None, file_name = None,
@@ -1063,6 +1063,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         de_each_md_list = []
 
 
+
         nsgroup = None
         magnitudes = []
         self.mag_sum = [] #toatal mag summed by atoms, +augmentation
@@ -1075,6 +1076,12 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         ldauu = None
         e_sig0 = 0 #energy sigma 0 every scf iteration
         occ_matrices = {} # the number of atom is the key
+
+        #dipole corrections
+        self.dipole_min_pos = []  
+        self.e_dipol_quadrupol_cor = []
+        self.e_added_field_ion = []
+
 
         #detect neb, improve this 
         if hasattr(self.set, 'vasp_params'):
@@ -1593,6 +1600,23 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 dipol = line.split()[1:4]
                 self.dipol = [float(d) for d in dipol]
                 # print(line)
+
+
+            if 'min pos' in line:
+                dipole_min_pos = line.split()[-1][:-1]
+                self.dipole_min_pos.append(int(dipole_min_pos))
+
+            if 'dipol+quadrupol energy correction' in line:
+                e_dq_cor = line.split()[3]
+                # print(line)
+                self.e_dipol_quadrupol_cor.append(float(e_dq_cor))
+            
+            if 'added-field ion interaction' in line:
+                e_af_ii = line.split()[3]
+                self.e_added_field_ion.append(float(e_af_ii))
+
+                # print(line)
+
 
                 # for i in range(1,4):
                 #     line = outcarlines[i_line+i]
