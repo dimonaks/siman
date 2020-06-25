@@ -2944,8 +2944,10 @@ class Structure():
         return read_xyz(self, *args, **kwargs)
 
 
-    def jmol(self, shift = None, r = 0, show_voids = False, rep = None):
-        """open structure in Jmol
+
+
+    def jmol(self, shift = None, r = 0, show_voids = False, rep = None, program = 'jmol'):
+        """open structure in Jmol or vesta
         
         INPUT:
         shift (list) - shift vector  in reduced coordinates
@@ -2956,6 +2958,9 @@ class Structure():
             3 - xyz
         show_voids (bool) - replace voids (z = 300) with Po to visualize them
         rep  (list 3*int) - replicate along vectors
+        program - 
+            'jmol'
+            'vesta'
         
         """
         st = copy.deepcopy(self)
@@ -2982,8 +2987,16 @@ class Structure():
         
         # print(r, filename)
         # sys.exit()
-        runBash(header.PATH2JMOL+' '+filename, detached = True)
+        if 'jmol' in program :
+            runBash(header.PATH2JMOL+' '+filename, detached = True)
+        elif 'vesta' in program:
+            runBash(header.PATH2VESTA+' '+filename, detached = True)
+
         return
+
+    def vesta(self, *args, **kwargs):
+        kwargs['program'] = 'vesta'
+        self.jmol(*args, **kwargs)
 
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation
