@@ -133,7 +133,8 @@ vasp_other_keys = [
 'KBLOCK',
 'LELF',
 'IVDW',
-'LVDW_EWALD'
+'LVDW_EWALD',
+'NUPDOWN',
 
 
 ]

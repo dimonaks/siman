@@ -2148,7 +2148,7 @@ class Structure():
 
         return info
 
-    def check_YT(self, criteria = 0.03):
+    def check_JT(self, criteria = 0.03):
         #Check Yan-Teller effect
         #check average TM-O distance in the cell and find the outstanding bonds 
         #return TM-O dist list
@@ -2213,7 +2213,7 @@ class Structure():
             mind = round(np.mean(min_dist),2)
 
             if maxd and mind: 
-                print('Yan-Teller effect is found\n Average min TM-O length is %s \n Average max TM-O length is %s \n'%(mind, maxd) )
+                print('Jahn-Teller effect is found\n Average min TM-O length is %s \n Average max TM-O length is %s \n'%(mind, maxd) )
 
 
         if not k: print('Ok! None outstanding bonds found\n')
