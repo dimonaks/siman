@@ -3561,6 +3561,7 @@ class Calculation(object):
         TM = self.end.get_transition_elements(fmt = 'n')
         # print(TM)
         max_diff = 0.01
+        nodiff  = True
         for i_at in TM:
             occ1 = np.array(self.occ_matrices[i_at])
             occ2 = np.array(cl2.occ_matrices[i_at])
@@ -3578,13 +3579,15 @@ class Calculation(object):
             df = pd.DataFrame(docc).round(5)
 
             if abs(m1) > max_diff:
+                nodiff = False
                 printlog('max diff larger than ', max_diff, 'was detected', imp = 'y')
                 printlog('For atom ', i_at, 'max diff is ', '{:0.2f}'.format(m1), imp = 'y')
                 printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
-        else:
+        if nodiff:
             printlog('No diffs larger than', max_diff, '; Last matrix:', imp = 'y')
             printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
-
+        else:
+            printlog('No more diffs', imp = 'y')
 
 
         return
@@ -5043,6 +5046,10 @@ class Calculation(object):
         
         return e0_fu
 
+    @property
+    def e0_at(self,):
+        return self.e0/self.end.natom
+
 
 
 class CalculationAbinit(Calculation):
@@ -5923,13 +5930,14 @@ class CalculationVasp(Calculation):
         TODO: probably it is better to move occ_matrix to structure class and make this method their
         """
         st = self.end
-        i_tran = st.get_transition_elements('n')
+        # i_tran = st.get_transition_elements('n')
         # print(st.get_elements())
         # print(i_tran[21])
-        i_mag = i_tran.index(i)
-        # print(i_mag)
+        # i_mag = i_tran.index(i)
+        # print(i, i_mag)
+        # print( self.occ_matrices )
 
-        return self.occ_matrices[i_mag]
+        return self.occ_matrices[i]
 
     def set_occ_mat(self, i, m):
         """
@@ -5940,12 +5948,12 @@ class CalculationVasp(Calculation):
         """
         cl = self.copy()
         st = cl.end
-        i_tran = st.get_transition_elements('n')
+        # i_tran = st.get_transition_elements('n')
         # print(st.get_elements())
         # print(i_tran[21])
-        i_mag = i_tran.index(i)
+        # i_mag = i_tran.index(i)
         # print(i_mag)
-        cl.occ_matrices[i_mag] = m
+        cl.occ_matrices[i] = m
 
         return cl
 
