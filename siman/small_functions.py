@@ -205,10 +205,11 @@ def setting_sshpass(cl = None, clust = None):
     if cl and hasattr(cl , 'cluster'):
         clust = cl.cluster
 
-    if clust and clust.get('sshpass'):
+    # print(clust.get('sshpass'))
+    if clust and clust.get('sshpass') is True:
         printlog('setting sshpass to True', imp = '')
         header.sshpass = clust['sshpass']
-        header.path2pass = clust['path2pass']
+        header.path2pass = clust.get('path2pass')
     else:
         header.sshpass = None
         header.path2pass = None

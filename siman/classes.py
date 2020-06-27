@@ -3563,8 +3563,18 @@ class Calculation(object):
         max_diff = 0.01
         nodiff  = True
         for i_at in TM:
-            occ1 = np.array(self.occ_matrices[i_at])
-            occ2 = np.array(cl2.occ_matrices[i_at])
+            occ1 = self.occ_matrices.get(i_at)
+            occ2 = cl2.occ_matrices.get(i_at)
+
+            if not occ1:
+                print('Warning! no', i_at, 'in self, skipping')
+                continue
+            if not occ2:
+                print('Warning! no', i_at, 'in cl2, skipping')
+                continue
+
+            occ1 = np.array(occ1)
+            occ2 = np.array(occ2)
 
             # print(occ1-occ2)
             docc = occ1-occ2
@@ -5937,7 +5947,7 @@ class CalculationVasp(Calculation):
         # print(i, i_mag)
         # print( self.occ_matrices )
 
-        return self.occ_matrices[i]
+        return self.occ_matrices.get(i)
 
     def set_occ_mat(self, i, m):
         """
