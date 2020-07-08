@@ -69,6 +69,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     if not style_dic:
         style_dic = {'p':'ro', 'l':'b-', 'label':None}
 
+    if 'p' not in style_dic:
+        style_dic['p']='ro'
+
     if not fitplot_args:
         fitplot_args = {}
 
@@ -278,8 +281,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     # print(ver_lines)
     # sys.exit()
-
-
+    # fontsize = 1
+    # print(fontsize)
+    # sys.exit()
     if fontsize:
         # header.mpl.rcParams.update({'font.size': fontsize+4})
         # fontsize = 2
@@ -287,13 +291,13 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         MEDIUM_SIZE = fontsize
         BIGGER_SIZE = fontsize
 
-        plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-        plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-        plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-        plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
-        plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+        header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
+        header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+        header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+        header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+        header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 
         # font = {'family' : 'normal',
@@ -310,6 +314,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
     if legend_fontsize:
+        ''
         header.mpl.rc('legend', fontsize= legend_fontsize) 
 
 

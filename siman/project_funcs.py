@@ -20,7 +20,7 @@ from siman.table_functions import table_geometry, table_potentials, generate_lat
 
 from siman.small_functions import merge_dics as md, makedir
 from siman.functions import invert
-from siman.calc_manage import add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
+from siman.calc_manage import add, res, add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
 from siman.neb import add_neb
 from siman.classes import Calculation
 from siman.analysis import calc_redox,  matrix_diff
@@ -4499,3 +4499,82 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         generate_latex_report(latex_text, filename = 'tex/'+pn+'/'+pn)
 
+
+
+def run_OMC( cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = None, suf = '', up = 0, gmt = 0):
+    """
+    
+    Optionally for each defect atom an occupation matrix can be provided
+
+    gmt - show mag moments on transition metals
+
+    TODO: Now, the version of cl_defect is not conserved
+
+    """
+    if defect_atoms is None:
+        defect_atoms = []
+
+    cl_defect_init = cl_defect.copy()
+    if not ise:
+        ise = cl_defect.id[1]
+    id_new = (cl_defect.id[0]+'.occ'+suf, ise, 1)
+        
+
+    if up or id_new not in db:
+        print('Check defect atoms magmom:')
+        for i in defect_atoms:
+            print(i, cl_defect.end.magmom[i])
+
+        # print(cl_defect.end.get_transition_elements('n'))
+        # print(cl_ideal.end.get_transition_elements('n'))
+        for i in cl_defect.end.get_transition_elements('n'):
+            
+
+            if i not in defect_atoms and cl_ideal.get_occ_mat(i) : # replace all occs for atoms except those related to defect
+                occ_bulk = cl_ideal.get_occ_mat(i)
+                cl_defect = cl_defect.set_occ_mat(i, occ_bulk)
+
+
+        if defect_occ:
+            for j, i in enumerate(defect_atoms):
+                print('Additionally applying provided occ matrix for i=',i )
+                cl_defect = cl_defect.set_occ_mat(i, defect_occ[j])
+
+
+
+        #test
+        cl_defect.occ_diff(cl_ideal)
+
+
+
+        occfile = cl_defect.write_occmatrix()
+
+
+        #'update_set_dic':{'OCCEXT':1 }
+        add(*id_new, input_st = cl_defect.end, it_folder = cl_defect.sfolder+'/occ',
+            params = {'occmatrix':occfile, } )
+    else:
+
+        db[id_new].res(choose_outcar = 1, up = 'up1', show = 'for')
+        e_OMC = db[id_new].e0
+        if gmt:
+            db[id_new].gmt()
+
+        # db[id_new].end.write_poscar()
+
+        db[id_new].res(show = 'fo', )
+        db[id_new].end.name+='SP'
+        db[id_new].gmt()
+
+        # db[id_new].end.write_poscar()
+        # db[id_new].occ_diff(cl_defect_init)
+        # db[id_new].occ_diff(cl_ideal)
+        # db['LiCoO2.104.3x2.sas0AS1AP45.occ.1u5coccs.1'].jmol(r=2)
+
+        print('Eas (init) = {:.2f} eV'.format(cl_defect.e0-cl_ideal.e0))
+        print('Eas (OMC)  = {:.2f} eV'.format(e_OMC-cl_ideal.e0)) #just OMC
+        print('Eas (OMCr) = {:.2f} eV'.format(db[id_new].e0-cl_ideal.e0)) #OMC electronic relaxed
+
+
+
+    return

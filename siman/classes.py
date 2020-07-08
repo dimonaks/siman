@@ -3856,9 +3856,9 @@ class Calculation(object):
         # print(vp)
         # print(vp['LDAU'])
 
-        if 'LDAU' in vp and vp['LDAU']: 
+        if 'LDAUL' in vp and vp['LDAUL'] is not None: 
             # print(vp['LDAU'])
-
+            # if 
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
                 # print( vp[key])
                 try:
