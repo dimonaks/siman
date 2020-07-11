@@ -478,7 +478,7 @@ def determine_file_format(input_geo_file):
 
     supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif', 'xyz':'.xyz'} #format name:format specifier
 
-    if 'POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file:
+    if ('POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file) and not '.geo' in input_geo_file:
         input_geo_format = 'vasp'
     elif '.vasp' in input_geo_file:
         input_geo_format = 'vasp'
