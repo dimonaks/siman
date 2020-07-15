@@ -389,6 +389,36 @@ class Structure():
 
 
 
+
+    def el_diff(self, st2, mul = 1):
+        """
+        Determine difference in number of atoms between two structures
+        mul (int) - allows to compare supercells
+
+        RETURN:
+        dict[key], where key is element and the value is difference in number of atoms of this element
+        """
+        st1 = self
+
+        els1 = st1.get_elements()
+        els2 = st2.get_elements()
+        uniqe_elements = list(set(els1+els2))
+        el_dif = {} # difference of elements between slab and normalized by transition metals bulk phase
+        for el in uniqe_elements:
+            dif = els1.count(el) - mul * els2.count(el)
+            if not float(dif).is_integer():
+                printlog('Error! difference of atom numbers is not integer for element ', el, 'something is wrong')
+            if abs(dif) > 0:
+                el_dif[el] = int(dif) 
+
+        print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')
+        return el_dif
+
+
+
+
+
+
     def get_total_number_electrons(self):
         zvals = self.get_elements_zval()
         return int(sum(zvals))
@@ -3482,6 +3512,12 @@ class Calculation(object):
         self.end.printme()
     def gmt(self, *args, **kwargs):
         return self.end.get_mag_tran(*args, **kwargs)
+
+
+    def isggau(self):
+        #check if calculation is gga+u
+        #TODO - please finish
+        ''
 
 
     def mag_diff(self, cl2, dm_skip = 0.5, el = 'NiCoVMnO', more = 0):
