@@ -6058,7 +6058,7 @@ class CalculationVasp(Calculation):
         # sys.exit()
         res_loop(*self.id, **argv)
 
-    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, *args, **kwargs):
+    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, it_suffix_del = True, *args, **kwargs):
         """
         Wrapper for add_loop (in development).
         On a first run create new calculation. On a second run will try to read results.
@@ -6089,6 +6089,8 @@ class CalculationVasp(Calculation):
             add (bool) - 
                 1 - overwrite existing children
 
+            it_suffix_del (bool) - needed to achive compatibility with old behaviour; should be improved
+
 
         RETURN:
             cl (Calculation) - new created calculation 
@@ -6110,9 +6112,10 @@ class CalculationVasp(Calculation):
             it_suffix = '.'+kwargs['it_suffix']
         else:
             it_suffix = ''
-
-        if kwargs.get('it_suffix'):
-            del kwargs['it_suffix']
+        
+        if it_suffix_del:
+            if kwargs.get('it_suffix'):
+                del kwargs['it_suffix']
 
 
         # if self.id[1] != ise:

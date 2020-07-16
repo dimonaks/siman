@@ -1448,7 +1448,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             
             if "Maximum memory used (kb):" in line:
                 ''
-                # self.memory_max = float(line.split()[-1]) * self.corenum / 1024 / 1024 
+                if hasattr(self, 'corenum'):
+                    self.memory_max = float(line.split()[-1]) * self.corenum / 1024 / 1024 
+                else:
+                    self.memory_max = 0
             
             if "total amount of memory" in line:
                 ''
