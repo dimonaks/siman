@@ -390,7 +390,7 @@ class Structure():
 
 
 
-    def el_diff(self, st2, mul = 1):
+    def el_diff(self, st2, mul = 1, silent = 0):
         """
         Determine difference in number of atoms between two structures
         mul (int) - allows to compare supercells
@@ -411,7 +411,8 @@ class Structure():
             if abs(dif) > 0:
                 el_dif[el] = int(dif) 
 
-        print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')
+        if not silent:
+            print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')
         return el_dif
 
 
