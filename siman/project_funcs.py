@@ -4251,7 +4251,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     it_suffix = p.get('it_suffix')
 
     if prim is None:
-        prim = 1
+        prim = 0 # no need to make primitive cell by default!
 
     if readfiles is None:
         readfiles = 1
