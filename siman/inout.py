@@ -1493,14 +1493,14 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             if 'augmentation part' in line:
                 # print (line)
                 try:
-                    self.mag_sum[-1][1]= float(line.split()[4])
+                    self.mag_sum[-1][1]= float(line.split()[-1])
                 except:
                     pass
 
             if 'total charge ' in line:
                 chg = []
                 for j in range(self.end.natom):
-                    chg.append( float(outcarlines[i_line+j+4].split()[4]) )
+                    chg.append( float(outcarlines[i_line+j+4].split()[-1]) )
                 
                 tot_chg_by_atoms.append(np.array(chg))#[ifmaglist])                    
 
@@ -1509,7 +1509,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 # print(line)
                 mags = []
                 for j in range(self.end.natom):
-                    mags.append( float(outcarlines[i_line+j+4].split()[4]) )
+                    mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
                 
                 tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
                 # print(ifmaglist)

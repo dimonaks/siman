@@ -804,9 +804,11 @@ class Structure():
 
 
     def rotate(self, axis, angle):
-        #axis - list of 3 elements, [0,0,1]
-        #angle in degrees
-        
+        """
+        Rotate relative to cartesian coordinates
+        axis - list of 3 elements, [0,0,1] in  cartesian coordinates
+        angle in degrees
+        """
         from pymatgen.transformations.standard_transformations import RotationTransformation
         
         st = copy.deepcopy(self)
@@ -817,6 +819,29 @@ class Structure():
         st_r1 = st_r1.return_atoms_to_cell()
         return st_r1
 
+    def align_with_axes(self):
+        """
+        Align with coordinate axes
+        First vector with x
+        Third vector with z
+
+        """
+        from siman.small_functions import normal, angle
+        r_orig = self.rprimd
+        st = self.copy()
+        r = st.rprimd
+
+        st = st.rotate(normal(r[0], [1,0,0]), angle(r[0], [1,0,0])) #combine with x and y
+        r = st.rprimd
+
+        if angle(r[2], [0,0,1]) > 1:
+            st = st.rotate(normal(r[2], [0,0,1]), angle(r[2], [0,0,1])) #combine with x and y
+            r = st.rprimd
+
+        with np.printoptions(precision=2, suppress=True):
+            print('rprimd before:\n',np.array(r_orig))
+            print('rprimd after :\n',np.array(r))
+        return st
 
     def invert_axis(self, axis):
         #invert one vector
@@ -1225,7 +1250,7 @@ class Structure():
 
 
 
-    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None):
+    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
         """
         appends at the end if element is new. Other case insertered according to VASP conventions
         Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
@@ -1234,7 +1259,8 @@ class Structure():
 
         selective (list of lists) - selective dynamics
 
-        magmom is appended with 0.6, please improve me! by using other values for magnetic elements 
+        mag magnetic moment of added atoms, if None, than 0.6 is used
+            magmom is appended with 0.6, please improve me! by using other values for magnetic elements 
 
 
         if return_ins:
@@ -1272,6 +1298,8 @@ class Structure():
         else:
             magmom_flag = False
 
+        if mag is None:
+            mag = 0.6
 
         if el_z_to_add not in st.znucl:
             
@@ -1297,7 +1325,11 @@ class Structure():
                 ''
 
             if magmom_flag:
-                st.magmom.extend( [0.6]*natom_to_add  )
+                # print(mag, natom_to_add)
+
+                # print('add_atoms: magmom = ',st.magmom)
+                st.magmom.extend( [mag]*natom_to_add  )
+                # print('add_atoms: magmom = ',st.magmom)
 
             j_ins = self.natom # first one
 
@@ -1333,7 +1365,7 @@ class Structure():
                 ''
 
             if magmom_flag:
-                st.magmom[j_ins:j_ins] =  [0.6]*natom_to_add
+                st.magmom[j_ins:j_ins] =  [mag]*natom_to_add
 
 
         st.xcart2xred()
@@ -1734,11 +1766,11 @@ class Structure():
 
 
 
-    def replace_atoms(self, atoms_to_replace, el_new, silent = 1, mode = 1):
+    def replace_atoms(self, atoms_to_replace, el_new, mag_new = None, silent = 1, mode = 1):
         """
         atoms_to_replace - list of atom numbers starting from 0
         el_new - new element periodic table short name
-
+        mag_new - new magnetic moment
         mode 
             1 - old behaviour, numbering is not conserved
             2 - numbering is conserved if el_new already exists in self
@@ -1782,6 +1814,9 @@ class Structure():
                         it = st.znucl.index(z_new)+1
                         
                         st.typat[n] = it
+                        # print('mag_new',mag_new)
+                        # sys.exit()
+                        st.magmom[n] = mag_new
                         # print(it, z_new, st.typat)
                         # print(st.get_elements())
                         # sys.exit()
@@ -1791,11 +1826,13 @@ class Structure():
 
                     else:
                         # atom number is changed, since new typat is added
+                        el_rep = st.get_elements()[i]
                         st = st.del_atom(i)
                         del numbers[i]
-                        st = st.add_atoms([xcart], element = el_new)
-                        printlog('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new, '; Atom number was changed', imp = warn)
-
+                        # print(mag_new)
+                        st = st.add_atoms([xcart], element = el_new, mag = mag_new)
+                        printlog('replace_atoms(): atom', i, el_rep, 'replaced with', el_new, '; Atom number was changed', imp = warn)
+                        # print('replace_atoms(): mag, magmom', mag_new, st.magmom)
                     break
             else:
                 atom_exsist = False
