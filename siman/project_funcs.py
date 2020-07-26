@@ -4506,9 +4506,16 @@ def run_OMC( cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = 
     
     Optionally for each defect atom an occupation matrix can be provided
 
+    cl_defect - calculation for cell with defect
+    cl_ideal - calculation for commensurate reference cell
+    defect_atoms - list of atoms in cl_defect which are considered defective
+    defect_occ - list of occupation matrices corresponding to defect_atoms
+    ise - set with occupation matrix parameters
+    suf - additional suffix 
+    up - update
     gmt - show mag moments on transition metals
 
-    TODO: Now, the version of cl_defect is not conserved
+    TODO: Now, the version of cl_defect is not conserved and changed to 1.
 
     """
     if defect_atoms is None:

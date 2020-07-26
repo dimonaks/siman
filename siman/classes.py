@@ -1260,7 +1260,8 @@ class Structure():
         selective (list of lists) - selective dynamics
 
         mag magnetic moment of added atoms, if None, than 0.6 is used
-            magmom is appended with 0.6, please improve me! by using other values for magnetic elements 
+            magmom is appended with 0.6, 
+            please improve me! by using the corresponding list of magmoms
 
 
         if return_ins:
@@ -1293,7 +1294,7 @@ class Structure():
 
         el_z_to_add = element_name_inv(element)
 
-        if hasattr(st, 'magmom') and any(st.magmom):
+        if hasattr(st, 'magmom') and any(st.magmom) or mag:
             magmom_flag = True
         else:
             magmom_flag = False
@@ -1309,7 +1310,11 @@ class Structure():
 
             st.ntypat+=1
 
-            typ = max(st.typat)+1
+            # print (st.typat)
+            if st.typat:
+                typ = max(st.typat)+1
+            else:
+                typ = 1
         
             st.xcart.extend(atoms_xcart)
             
@@ -1531,6 +1536,64 @@ class Structure():
         # st.write_poscar()
 
         return st
+
+    def reorder(self, new_order):
+        """
+        Reorder according to new_order list, len(new_order) should be equal to natom
+
+        """
+        st = self.copy()
+        els = self.get_elements()
+        st = st.remove_atoms(atoms_to_remove = els,  clear_magmom=0)
+        # print(st.natom)
+
+        magmom_flag = False
+        if len(self.magmom) == self.natom:
+            magmom_flag = True
+        # print(st.magmom)
+
+        for i in new_order:
+            x = self.xcart[i]
+            el = els[i]
+
+            if magmom_flag:
+                m = self.magmom[i]
+            else:
+                m = None
+            # print(m)
+            st = st.add_atoms([x], el, mag = m)
+
+        return st
+
+
+
+    def permutate_to_ref(self, st_ref):
+        """
+        Permutate atom numbers of self according to st
+        Structures should have the same amount of atoms and be quite similar
+
+        """
+
+        st = self.copy()
+        els = st_ref.get_elements()
+        new_order = []
+        for el1, x1 in zip(els, st_ref.xcart):
+            i,s,d = st.find_closest_atom(x1)
+            # print(el1, st.get_elements()[i])
+            new_order.append(i)
+        
+        if len(new_order) != self.natom:
+            printlog('Error! something is wrong with number of atoms')
+
+        # print('ref ', st_ref.get_elements())
+
+        # print('init', st.get_elements())
+        st = st.reorder(new_order)
+        # print('reor', st.get_elements())
+
+        return st
+
+
 
 
     def del_atom(self, iat):
@@ -2054,14 +2117,20 @@ class Structure():
         return image_distance(*args, **kwargs)
 
 
-    def distance(self, i1, i2):
+    def distance(self, i1=None, i2=None, x1=None, x2 = None, coord_type = 'xcart'):
         """
         Shortest distance between two atoms acounting PBC, from 0
+        i1 and i2 override x1 and x2
+
+        coord_type - only when x1 and x2 are provided
+
         """
         # print(self.xcart)
-        x1 = self.xcart[i1]
-        x2 = self.xcart[i2]
-        return image_distance(x1, x2, self.rprimd)[0]
+        if i1:
+            x1 = self.xcart[i1]
+        if i2:
+            x2 = self.xcart[i2]
+        return image_distance(x1, x2, self.rprimd, coord_type = coord_type)[0]
 
     def remove_close_lying(self, rm_both = 0, rm_first = 0):
         """
@@ -2117,15 +2186,28 @@ class Structure():
         return st, x1_del, x2_del
 
 
-    def find_closest_atom(self,x):
-        #find closest atom in structure to x cartesian coordinate
-        #return i and dist
-        # for ixs in self.xcart:
-        x = np.asarray(x)
-        abs_shifts = [np.linalg.norm(x-x1) for x1 in self.xcart]
+    def find_closest_atom(self, xc = None, xr = None):
+        """
+        Find closest atom in structure to xc (cartesian) or xr (reduced) coordinate
+
+        RETURN:
+        i shifts, and dist
+        """
+        if xc is not None:
+            x = np.asarray(xc)
+            coord_type = 'xcart'
+            coords = self.xcart
+        if xr is not None:
+            x = np.asarray(xr)
+            coord_type = 'xred'
+            coords = self.xred
+
+        # abs_shifts = [np.linalg.norm(x-x1) for x1 in self.xcart]
+        
+        abs_shifts = [self.distance(x1 = x, x2 = x1, coord_type = coord_type) for x1 in coords]
         # print(sorted(abs_shifts))
         i = np.argmin(abs_shifts)
-        return i, abs_shifts[i], x - self.xcart[i]
+        return i, abs_shifts[i], self.distance(x1 = x, x2 = coords[i], coord_type = coord_type)
 
     def nn(self, i, n = 6, ndict = None, only = None, silent = 0, 
         from_one = True, more_info = 0, oxi_state = 0, print_average = 0):
