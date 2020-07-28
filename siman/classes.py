@@ -393,7 +393,7 @@ class Structure():
     def el_diff(self, st2, mul = 1, silent = 0):
         """
         Determine difference in number of atoms between two structures
-        mul (int) - allows to compare supercells
+        mul (int) - allows to compare supercells; self.natom = mul * st2.natom
 
         RETURN:
         dict[key], where key is element and the value is difference in number of atoms of this element
@@ -409,7 +409,7 @@ class Structure():
             if not float(dif).is_integer():
                 printlog('Error! difference of atom numbers is not integer for element ', el, 'something is wrong')
             if abs(dif) > 0:
-                el_dif[el] = int(dif) 
+                el_dif[el] = int(dif) / mul
 
         if not silent:
             print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')

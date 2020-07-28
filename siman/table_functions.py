@@ -154,6 +154,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
     myprint('\\hline')
     for r in table[tabbeg:] :
+        # print(r)
         if '&-' in r:
             r = r.replace('-','--')
         else:
