@@ -136,7 +136,6 @@ vasp_other_keys = [
 'LVDW_EWALD',
 'NUPDOWN',
 
-
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -365,6 +364,9 @@ class InputSet():
             elif key == 'ngkpt':
                 s.set_ngkpt(param[key])
 
+            elif key == 'kpoints_file':
+                if param[key]:
+                    s.kpoints_file = True 
 
             elif key == 'bfolder':
                 print_and_log( 'New blockfolder', param[key])

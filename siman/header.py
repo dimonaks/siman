@@ -203,7 +203,7 @@ kB = 8.617e-5 # eV/K
 TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 74]
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
-TM_MAG = {'Co2+hs':3, 'Co2+ls':1, 'Co3+hs':4, 'Co3+ls':0, 'Co4+hs':5, 'Co4+ls':1,
+TM_MAG = {'NM':0.6,'Co2+hs':3, 'Co2+ls':1, 'Co3+hs':4, 'Co3+ls':0, 'Co4+hs':5, 'Co4+ls':1,
           'Ni2+hs':2, 'Ni2+ls':0, 'Ni3+hs':3, 'Ni3+ls':1, 'Ni4+hs':4, 'Ni4+ls':0,
           'W4+':0, 'Fe3+hs': 5, 'Fe3+ls': 1, 'Fe2+ls': 0, 'Al3+':0, 'Ti3+':1, 'Ti4+':0,
           'Cr3+':3, 'Cr4+':2, 'Cr2+hs':4, 'Cr2+ls':2,

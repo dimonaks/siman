@@ -1,4 +1,5 @@
 current
+    showing atom numbers from zero in determine_symmetry_positions()
     fontsize argument was removed from plot_dos(). Use plot_param dictionary, which is transfered to fit_and_plot
     velocities and predictor are read from CONTCAR, allows to continiue MD
 

@@ -60,6 +60,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         available: 
         'tabular'
         'tabularx'
+        'ruled' - phys rev format
     width (float) - in units of textwidth
 
 
@@ -124,12 +125,19 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
     if tab_type == 'tabular':
         # tabular = 
         myprint('\\begin{tabular}{l'+ n*'c'+'r}')
+        myprint('\\hline')
+    
     elif tab_type == 'tabularx':
         myprint('\\begin{tabularx}{'+str(width)+'\\textwidth}{X'+ n*'X'+'X}')
+        myprint('\\hline')
+    elif tab_type == 'ruled':
+        myprint('\\begin{ruledtabular}')
+        myprint('\\begin{tabular}{l'+ n*'c'+'r}')
+
+
     else:
         printlog('Error! Unknown type of tabular env!')
 
-    myprint('\\hline')
 
     if header0:
         myprint(header0+'\\\\')
@@ -168,9 +176,13 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
 
 
-
-    myprint('\\hline')
-    myprint('\\end{'+tab_type+'}')
+    if 'ruled' in tab_type:
+        myprint('\\end{tabular}')
+        myprint('\\end{ruledtabular}')
+    else:
+        myprint('\\hline')
+        myprint('\\end{'+tab_type+'}')
+    
     myprint('\\end{table'+fullpage+'}')
 
     if filename:

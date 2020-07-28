@@ -27,7 +27,7 @@ from siman.functions import invert
 
 
 
-def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = False):
+def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = False, coord_type = 'xcart'):
     """
     Calculate smallest distance and the next smallest distance between two atoms 
     correctly treating periodic boundary conditions and oblique cells.
@@ -40,14 +40,30 @@ def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = 
 
     return_n_distances(bool) - returns required number of smallest distances, depending on order
 
+    coord_type (str) 
+        - 'xred'
+        - 'xcart'
+
+
     return d1, d2 - the smallest and next smallest distances between atoms
 
     """
     d = [] # list of distances between 1st atom and images of 2nd atom
+    
+    if coord_type == 'xcart':
+        def dr(i,j,k):
+            return (r[0] * i + r[1] * j + r[2] * k)
+    if coord_type == 'xred':
+        a1=np.array([1,0,0])
+        a2=np.array([0,1,0])
+        a3=np.array([0,0,1])
+        def dr(i,j,k):
+            return (a1 * i + a2 * j + a3 * k)
+
     for i in range(-order, order+1):
         for j in range(-order, order+1):
             for k in range(-order, order+1):
-                x2i = x2 + (r[0] * i + r[1] * j + r[2] * k) #determine coordinates of image of atom 2 in corresponding image cells
+                x2i = x2 +  dr(i,j,k) #determine coordinates of image of atom 2 in corresponding image cells
                 d.append(   np.linalg.norm(x1 - x2i)   )
     
     if sort_flag:
@@ -1040,10 +1056,10 @@ def determine_symmetry_positions(st, element, silent = 0):
         printlog('I have found ', len(positions), 'non-equivalent positions for', element, ':',positions.keys(), imp = 'y', end = '\n')
     positions_for_print = {}
     for key in positions:
-        positions_for_print[key] = [p+1 for p in positions[key]]
+        positions_for_print[key] = [p for p in positions[key]]
 
     if not silent:
-        printlog('Atom numbers: ', positions_for_print, imp = 'y')
+        printlog('Atom numbers (from zero!): ', positions_for_print, imp = 'y')
     
     sorted_keys = sorted(list(positions.keys()))
     pos_lists = [positions[key] for key in sorted_keys ]
@@ -1288,6 +1304,10 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
         i_el1 - choose specific atom, from 0
     """
 
+    if i_AP is None:
+        AP_on = False
+
+
     "Start determining unique positions"
     r = st.rprimd
     
@@ -1372,16 +1392,28 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
             st_as.magmom[i] = mag_AS1
 
         if disp_AS1:
-            st_as = st_as.localize_polaron(i, disp_AS1)
+
+            if st_as.if_surface_atom(i):
+                nn = 5
+            else:
+                nn = 6
+
+            st_as = st_as.localize_polaron(i, disp_AS1, nn)
 
 
-        if mag_AP is not None:
+        if i_AP and mag_AP is not None:
             st_as.magmom[i_AP] = mag_AP
 
 
-        if disp_AP is not None:
-            # st_as.magmom[i_AP] = mag_AP
-            st_as = st_as.localize_polaron(i_AP, disp_AP)
+        if i_AP and disp_AP is not None:
+            # av1 = st.nn(atTM,          6, only = [8], from_one = 0, silent = 1)['av(A-O,F)']
+
+            if st_as.if_surface_atom(i_AP):
+                nn = 5
+            else:
+                nn = 6
+
+            st_as = st_as.localize_polaron(i_AP, disp_AP, nn = nn)
 
 
         st_as.name+='_'+suf
@@ -2033,7 +2065,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
-def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0 ):
+def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6 ):
     """
     Generate all possible configurations by replacing x of element el1 by el2 from the structure.
     You should know which space group you want to get.
@@ -2042,7 +2074,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     st (Structure) - input structure
     el1 (str) - element name to replace, e.g. Li
     el2 (str) - replace by
-
+    mag (float) - magnetic moment of new element
     x - replace x of atoms, for example 0.25 of atoms
     
     info_mode (bool) - print all possible configurations
@@ -2076,6 +2108,11 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
         return
 
 
+    if silent:
+        warn = 'n'
+    else:
+        warn = 'Y'
+
     structures = []
     orderings = []
     
@@ -2084,16 +2121,24 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     # sys.exit()
     ntot = len(req)
     ls = [0]*ntot
+    # print(ls)
+    # sys.exit()
+    if x is None:
+        printlog('Error! Please provide x' )
+
     order(ls, 0)
     symmetries = []
     if not silent:
     
         print('Total number of orderings is', len(orderings))
     at_replace = []
+    els = st.get_elements()
     for order in orderings:
         atoms_to_replace = [req[i] for i, s in enumerate(order) if s < 0]
-        # print(atoms_to_replace)
-        st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent)
+        printlog('Atoms to replace:', list(els[i] for i in atoms_to_replace), atoms_to_replace, imp = warn)
+        st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent, mag_new = mag)
+        # printlog('magmom:', st_rep.magmom, imp = warn)
+
         nm = st_rep.sg(silent = silent)[1]
         symmetries.append(nm)
         if nm == sg:

@@ -389,6 +389,37 @@ class Structure():
 
 
 
+
+    def el_diff(self, st2, mul = 1, silent = 0):
+        """
+        Determine difference in number of atoms between two structures
+        mul (int) - allows to compare supercells
+
+        RETURN:
+        dict[key], where key is element and the value is difference in number of atoms of this element
+        """
+        st1 = self
+
+        els1 = st1.get_elements()
+        els2 = st2.get_elements()
+        uniqe_elements = list(set(els1+els2))
+        el_dif = {} # difference of elements between slab and normalized by transition metals bulk phase
+        for el in uniqe_elements:
+            dif = els1.count(el) - mul * els2.count(el)
+            if not float(dif).is_integer():
+                printlog('Error! difference of atom numbers is not integer for element ', el, 'something is wrong')
+            if abs(dif) > 0:
+                el_dif[el] = int(dif) 
+
+        if not silent:
+            print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')
+        return el_dif
+
+
+
+
+
+
     def get_total_number_electrons(self):
         zvals = self.get_elements_zval()
         return int(sum(zvals))
@@ -441,10 +472,10 @@ class Structure():
         l, mag_numbers = self.get_maglist()
 
         keys = list(mag_numbers.keys())#[0]
-        print('In the present cell are next TM types:', keys)
+        print('The following TM are found:', keys)
 
         mag = list(np.array(self.magmom)[l])
-
+        magnetic_all = []
         for key in keys:
         
             # print(mag)
@@ -460,7 +491,9 @@ class Structure():
 
             print('\n Znucl:  ', key)
             # print(' '+s0.format(*mag_numbers[key]))
+            # print(magnetic)
             print(' '+s.format(*magnetic))
+            magnetic_all += magnetic
             if to_ox:
                 if to_ox > 0:
                     ox = [to_ox-abs(m) for m in magnetic]
@@ -471,7 +504,13 @@ class Structure():
                 print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
 
 
-        return s.format(*magnetic) 
+        return magnetic
+
+
+
+
+
+
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -765,9 +804,11 @@ class Structure():
 
 
     def rotate(self, axis, angle):
-        #axis - list of 3 elements, [0,0,1]
-        #angle in degrees
-        
+        """
+        Rotate relative to cartesian coordinates
+        axis - list of 3 elements, [0,0,1] in  cartesian coordinates
+        angle in degrees
+        """
         from pymatgen.transformations.standard_transformations import RotationTransformation
         
         st = copy.deepcopy(self)
@@ -778,6 +819,29 @@ class Structure():
         st_r1 = st_r1.return_atoms_to_cell()
         return st_r1
 
+    def align_with_axes(self):
+        """
+        Align with coordinate axes
+        First vector with x
+        Third vector with z
+
+        """
+        from siman.small_functions import normal, angle
+        r_orig = self.rprimd
+        st = self.copy()
+        r = st.rprimd
+
+        st = st.rotate(normal(r[0], [1,0,0]), angle(r[0], [1,0,0])) #combine with x and y
+        r = st.rprimd
+
+        if angle(r[2], [0,0,1]) > 1:
+            st = st.rotate(normal(r[2], [0,0,1]), angle(r[2], [0,0,1])) #combine with x and y
+            r = st.rprimd
+
+        with np.printoptions(precision=2, suppress=True):
+            print('rprimd before:\n',np.array(r_orig))
+            print('rprimd after :\n',np.array(r))
+        return st
 
     def invert_axis(self, axis):
         #invert one vector
@@ -995,30 +1059,48 @@ class Structure():
 
     def get_surface_atoms(self, element, surface = 0, surface_width = 0.5 ):
         #return numbers of surface atoms
-        #elememt - which element is interesting?
+        #elememt (str) - which element is interesting? can be CoO to take two elements
         #surface_width - which atoms to consider as surface 
         #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
+        #TODO - 
+        #now only along third vector, make more general
+        #PBC may work incorrect
         st = self
         surface_atoms = [[],[]]
         
-        z = st.get_surface_pos()
+        z = st.get_surface_pos(reduced  = True)
 
 
         els = st.get_elements()
 
+        suf_width_red = surface_width/np.linalg.norm(st.rprimd[2])
 
-        for i, x in enumerate(st.xcart):
+
+        for i, x in enumerate(st.xred):
             el = els[i]
-            if el == element or element == None:
+
+            if el in element or element is None:
                 # print(x[2])
-                if z[0] <= x[2] < z[0]+surface_width:
+                if z[0] <= x[2] < z[0]+suf_width_red:
                     surface_atoms[0].append(i)
 
-                if z[1] - surface_width  < x[2] <= z[1]:
+                if z[1] - suf_width_red  < x[2] <= z[1]:
                     surface_atoms[1].append(i)
 
 
         return surface_atoms[surface]
+
+
+    def  if_surface_atom(self, i):
+        """
+        Based on reduced coordinates
+        """
+        st = self
+        suf = st.get_surface_pos(reduced = 1)
+        sufd = min(abs(st.xred[i][2]-suf[0]),abs(st.xred[i][2]-suf[1]))
+        if sufd < 0.5/np.linalg.norm(st.rprimd[2]):
+            printlog('TM is on surface, sufd', sufd , imp = 'y')
+            return True
 
 
     def get_surface_area(self):
@@ -1168,7 +1250,7 @@ class Structure():
 
 
 
-    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None):
+    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
         """
         appends at the end if element is new. Other case insertered according to VASP conventions
         Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
@@ -1177,7 +1259,9 @@ class Structure():
 
         selective (list of lists) - selective dynamics
 
-        magmom is appended with 0.6, please improve me! by using other values for magnetic elements 
+        mag magnetic moment of added atoms, if None, than 0.6 is used
+            magmom is appended with 0.6, 
+            please improve me! by using the corresponding list of magmoms
 
 
         if return_ins:
@@ -1210,11 +1294,13 @@ class Structure():
 
         el_z_to_add = element_name_inv(element)
 
-        if hasattr(st, 'magmom') and any(st.magmom):
+        if hasattr(st, 'magmom') and any(st.magmom) or mag:
             magmom_flag = True
         else:
             magmom_flag = False
 
+        if mag is None:
+            mag = 0.6
 
         if el_z_to_add not in st.znucl:
             
@@ -1224,7 +1310,11 @@ class Structure():
 
             st.ntypat+=1
 
-            typ = max(st.typat)+1
+            # print (st.typat)
+            if st.typat:
+                typ = max(st.typat)+1
+            else:
+                typ = 1
         
             st.xcart.extend(atoms_xcart)
             
@@ -1240,7 +1330,11 @@ class Structure():
                 ''
 
             if magmom_flag:
-                st.magmom.extend( [0.6]*natom_to_add  )
+                # print(mag, natom_to_add)
+
+                # print('add_atoms: magmom = ',st.magmom)
+                st.magmom.extend( [mag]*natom_to_add  )
+                # print('add_atoms: magmom = ',st.magmom)
 
             j_ins = self.natom # first one
 
@@ -1276,7 +1370,7 @@ class Structure():
                 ''
 
             if magmom_flag:
-                st.magmom[j_ins:j_ins] =  [0.6]*natom_to_add
+                st.magmom[j_ins:j_ins] =  [mag]*natom_to_add
 
 
         st.xcart2xred()
@@ -1442,6 +1536,64 @@ class Structure():
         # st.write_poscar()
 
         return st
+
+    def reorder(self, new_order):
+        """
+        Reorder according to new_order list, len(new_order) should be equal to natom
+
+        """
+        st = self.copy()
+        els = self.get_elements()
+        st = st.remove_atoms(atoms_to_remove = els,  clear_magmom=0)
+        # print(st.natom)
+
+        magmom_flag = False
+        if len(self.magmom) == self.natom:
+            magmom_flag = True
+        # print(st.magmom)
+
+        for i in new_order:
+            x = self.xcart[i]
+            el = els[i]
+
+            if magmom_flag:
+                m = self.magmom[i]
+            else:
+                m = None
+            # print(m)
+            st = st.add_atoms([x], el, mag = m)
+
+        return st
+
+
+
+    def permutate_to_ref(self, st_ref):
+        """
+        Permutate atom numbers of self according to st
+        Structures should have the same amount of atoms and be quite similar
+
+        """
+
+        st = self.copy()
+        els = st_ref.get_elements()
+        new_order = []
+        for el1, x1 in zip(els, st_ref.xcart):
+            i,s,d = st.find_closest_atom(x1)
+            # print(el1, st.get_elements()[i])
+            new_order.append(i)
+        
+        if len(new_order) != self.natom:
+            printlog('Error! something is wrong with number of atoms')
+
+        # print('ref ', st_ref.get_elements())
+
+        # print('init', st.get_elements())
+        st = st.reorder(new_order)
+        # print('reor', st.get_elements())
+
+        return st
+
+
 
 
     def del_atom(self, iat):
@@ -1677,11 +1829,11 @@ class Structure():
 
 
 
-    def replace_atoms(self, atoms_to_replace, el_new, silent = 1, mode = 1):
+    def replace_atoms(self, atoms_to_replace, el_new, mag_new = None, silent = 1, mode = 1):
         """
         atoms_to_replace - list of atom numbers starting from 0
         el_new - new element periodic table short name
-
+        mag_new - new magnetic moment
         mode 
             1 - old behaviour, numbering is not conserved
             2 - numbering is conserved if el_new already exists in self
@@ -1725,6 +1877,9 @@ class Structure():
                         it = st.znucl.index(z_new)+1
                         
                         st.typat[n] = it
+                        # print('mag_new',mag_new)
+                        # sys.exit()
+                        st.magmom[n] = mag_new
                         # print(it, z_new, st.typat)
                         # print(st.get_elements())
                         # sys.exit()
@@ -1734,11 +1889,13 @@ class Structure():
 
                     else:
                         # atom number is changed, since new typat is added
+                        el_rep = st.get_elements()[i]
                         st = st.del_atom(i)
                         del numbers[i]
-                        st = st.add_atoms([xcart], element = el_new)
-                        printlog('replace_atoms(): atom', i, st.get_elements()[i], 'replaced with', el_new, '; Atom number was changed', imp = warn)
-
+                        # print(mag_new)
+                        st = st.add_atoms([xcart], element = el_new, mag = mag_new)
+                        printlog('replace_atoms(): atom', i, el_rep, 'replaced with', el_new, '; Atom number was changed', imp = warn)
+                        # print('replace_atoms(): mag, magmom', mag_new, st.magmom)
                     break
             else:
                 atom_exsist = False
@@ -1872,6 +2029,15 @@ class Structure():
         return st
 
 
+    def perturb(self, d=0.1):
+        """
+        d is distance
+        """
+        st = self.copy()
+        pm = st.convert2pymatgen()
+        pm.perturb(d)
+        st = st.update_from_pymatgen(pm)
+        return st
 
     def find_atom_num_by_xcart(self, x_tar, prec = 1e-6):
         """take into account periodic conditions
@@ -1951,14 +2117,20 @@ class Structure():
         return image_distance(*args, **kwargs)
 
 
-    def distance(self, i1, i2):
+    def distance(self, i1=None, i2=None, x1=None, x2 = None, coord_type = 'xcart'):
         """
         Shortest distance between two atoms acounting PBC, from 0
+        i1 and i2 override x1 and x2
+
+        coord_type - only when x1 and x2 are provided
+
         """
         # print(self.xcart)
-        x1 = self.xcart[i1]
-        x2 = self.xcart[i2]
-        return image_distance(x1, x2, self.rprimd)[0]
+        if i1:
+            x1 = self.xcart[i1]
+        if i2:
+            x2 = self.xcart[i2]
+        return image_distance(x1, x2, self.rprimd, coord_type = coord_type)[0]
 
     def remove_close_lying(self, rm_both = 0, rm_first = 0):
         """
@@ -2014,15 +2186,28 @@ class Structure():
         return st, x1_del, x2_del
 
 
-    def find_closest_atom(self,x):
-        #find closest atom in structure to x cartesian coordinate
-        #return i and dist
-        # for ixs in self.xcart:
-        x = np.asarray(x)
-        abs_shifts = [np.linalg.norm(x-x1) for x1 in self.xcart]
+    def find_closest_atom(self, xc = None, xr = None):
+        """
+        Find closest atom in structure to xc (cartesian) or xr (reduced) coordinate
+
+        RETURN:
+        i shifts, and dist
+        """
+        if xc is not None:
+            x = np.asarray(xc)
+            coord_type = 'xcart'
+            coords = self.xcart
+        if xr is not None:
+            x = np.asarray(xr)
+            coord_type = 'xred'
+            coords = self.xred
+
+        # abs_shifts = [np.linalg.norm(x-x1) for x1 in self.xcart]
+        
+        abs_shifts = [self.distance(x1 = x, x2 = x1, coord_type = coord_type) for x1 in coords]
         # print(sorted(abs_shifts))
         i = np.argmin(abs_shifts)
-        return i, abs_shifts[i], x - self.xcart[i]
+        return i, abs_shifts[i], self.distance(x1 = x, x2 = coords[i], coord_type = coord_type)
 
     def find_closest_neighbor(self,i_at):
         #find closest atom in structure to i_at
@@ -2342,12 +2527,16 @@ class Structure():
 
 
 
-    def localize_polaron(self, i, d):
+    def localize_polaron(self, i, d, nn = 6):
         """
         Localize small polaron at transition metal by adjusting TM-O distances
         i - number of transition atom, from 0
         d - shift in angstrom; positive increase TM-O, negative reduce TM-O
+        nn - number of neigbours
+
         """
+        # nn
+
         st = copy.deepcopy(self)
         TM = st.get_el_z(i)
         TM_name = st.get_el_name(i)
@@ -2360,7 +2549,7 @@ class Structure():
         # silent = 0
 
 
-        dic = st.nn(i, 6, from_one = 0, silent = silent)
+        dic = st.nn(i, nn, from_one = 0, silent = silent, only = [8,9])
         printlog('Average TM-O distance before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
 
         #updated xcart
@@ -2381,7 +2570,7 @@ class Structure():
 
         st.update_xred()
 
-        dic = st.nn(i, 6, from_one = 0, silent = silent)
+        dic = st.nn(i, nn, from_one = 0, silent = silent, only = [8,9])
         printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
 
         st.name+='pol'+str(i+1)
@@ -2916,8 +3105,10 @@ class Structure():
         return read_xyz(self, *args, **kwargs)
 
 
-    def jmol(self, shift = None, r = 0, show_voids = False, rep = None):
-        """open structure in Jmol
+
+
+    def jmol(self, shift = None, r = 0, show_voids = False, rep = None, program = 'jmol'):
+        """open structure in Jmol or vesta
         
         INPUT:
         shift (list) - shift vector  in reduced coordinates
@@ -2928,6 +3119,9 @@ class Structure():
             3 - xyz
         show_voids (bool) - replace voids (z = 300) with Po to visualize them
         rep  (list 3*int) - replicate along vectors
+        program - 
+            'jmol'
+            'vesta'
         
         """
         st = copy.deepcopy(self)
@@ -2954,8 +3148,16 @@ class Structure():
         
         # print(r, filename)
         # sys.exit()
-        runBash(header.PATH2JMOL+' '+filename, detached = True)
+        if 'jmol' in program :
+            runBash(header.PATH2JMOL+' '+filename, detached = True)
+        elif 'vesta' in program:
+            runBash(header.PATH2VESTA+' '+filename, detached = True)
+
         return
+
+    def vesta(self, *args, **kwargs):
+        kwargs['program'] = 'vesta'
+        self.jmol(*args, **kwargs)
 
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation
@@ -2996,8 +3198,9 @@ class Calculation(object):
             self.id = ('0','0',0)
     
     def get_path(self,):
-        print( os.path.dirname(os.getcwd()+'/'+self.path['output']))
-
+        path = os.path.dirname(os.getcwd()+'/'+self.path['output'])
+        print( path)
+        return path
 
     def read_geometry(self, filename = None):
         """Reads geometrical data from filename file in abinit format"""
@@ -3439,22 +3642,170 @@ class Calculation(object):
     def me(self):
         self.end.printme()
     def gmt(self, *args, **kwargs):
-        self.end.get_mag_tran(*args, **kwargs)
+        return self.end.get_mag_tran(*args, **kwargs)
+
+
+    def isggau(self):
+        #check if calculation is gga+u
+        #TODO - please finish
+        ''
+
+
+    def mag_diff(self, cl2, dm_skip = 0.5, el = 'NiCoVMnO', more = 0):
+
+        """
+        rms difference of magmom, skippting large deviations, due to defects
+        dm_skip (float) - skip differences larger than this 
+        el (str) - only for this element, could be several 
+        more (bool) - show more info about mag diff at each pos
+        the order of elements should be the same!!!
+
+        """
+        m1 = self.end.magmom
+        m2 = cl2.end.magmom
+        el1 = self.end.get_elements()
+        el2 = cl2.end.get_elements()
+        
+        ms = 0
+        tot=0
+        for i in range(len(m1)):
+            if el1[i] != el2[i]:
+                print('Warinig! el1 is not equal el2 for i=', i, el1[i], el2[i])
+            
+            dm = abs(m1[i]-m2[i])
+            if dm > dm_skip:
+                print('For i=', i, el1[i], 'dm= {:0.3f} muB'.format(dm), ', which is larger than dm_skip =', dm_skip, '; probably defect, skipping')
+                continue
+            if el and el1[i] not in el:
+                continue
+
+            if more:
+                print('For ', i, el1[i], el2[i], 'dm= {:0.3f} muB'.format(dm))
+
+            ms+= (dm)**2
+            tot+=1
+        rms = (ms/tot)**0.5
+
+        if el:
+            print('For '+el+' atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
+
+        else:
+            print('For rest atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
+        mag1 = sum(self.end.magmom)
+        mag2 = sum(cl2.end.magmom)
+        mag_abs1 = sum([abs(m) for m in self.end.magmom])
+        mag_abs2 = sum([abs(m) for m in cl2.end.magmom])
+
+        el = 'NiCoO'
+        w= 1
+        st1 = self.end
+        st2 = cl2.end
+        suf_at1 = self.end.get_surface_atoms(el, surface = 0, surface_width=w)+self.end.get_surface_atoms(el, surface = 1, surface_width=w)
+        suf_at2 = cl2.end.get_surface_atoms(el, surface = 0, surface_width=w)+cl2.end.get_surface_atoms(el, surface = 1, surface_width=w)
+        # print(suf_at2)
+        mag_sufabs1 = sum([abs(st1.magmom[i]) for i in suf_at1 ])
+        mag_sufabs2 = sum([abs(st2.magmom[i]) for i in suf_at2  ])
+
+        # self.end.jmol(r=2)
+
+        print('Absolute magnetizations {:0.1f} muB, {:0.1f} muB'.format(mag_abs1, mag_abs2) )
+        print('Absolute suf magnetizat {:0.1f} muB, {:0.1f} muB'.format(mag_sufabs1, mag_sufabs2) )
+        print('Diff of summed magnetizations = {:0.1f} muB, total = {:0.1f} muB, absolute = {:0.1f} muB and abs suf = {:0.1f} muB'.format(mag1-mag2, self.mag_sum[-1][0]-cl2.mag_sum[-1][0], mag_abs1 - mag_abs2, mag_sufabs1 - mag_sufabs2) )
+
+
+        return rms
+
+
+
+
+    def occ_diff(self, cl2, i_at = 0):
+        """
+        difference bettween occupation matricies
+        first five for spin up
+        then five for spin down
+
+        """
+        TM = self.end.get_transition_elements(fmt = 'n')
+        # print(TM)
+        max_diff = 0.01
+        nodiff  = True
+        for i_at in TM:
+            occ1 = self.occ_matrices.get(i_at)
+            occ2 = cl2.occ_matrices.get(i_at)
+
+            if not occ1:
+                print('Warning! no', i_at, 'in self, skipping')
+                continue
+            if not occ2:
+                print('Warning! no', i_at, 'in cl2, skipping')
+                continue
+
+            occ1 = np.array(occ1)
+            occ2 = np.array(occ2)
+
+            # print(occ1-occ2)
+            docc = occ1-occ2
+            l05 = len(docc)//2
+
+            # print(occ1[0:l05])
+            det1 = np.linalg.det(docc[0:l05])
+            det2 = np.linalg.det(docc[l05:])
+            # m1 = np.matrix.max(np.matrix(docc))
+            m1 = max(docc.min(), docc.max(), key=abs)
+            # print(det1, det2, m1)
+            df = pd.DataFrame(docc).round(5)
+
+            if abs(m1) > max_diff:
+                nodiff = False
+                printlog('max diff larger than ', max_diff, 'was detected', imp = 'y')
+                printlog('For atom ', i_at, 'max diff is ', '{:0.2f}'.format(m1), imp = 'y')
+                printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
+        if nodiff:
+            printlog('No diffs larger than', max_diff, '; Last matrix:', imp = 'y')
+            printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
+        else:
+            printlog('No more diffs', imp = 'y')
+
+
+        return
+
+
 
 
     def dos(self, isym, *args, **kwargs):
         """
+        Plot dos either for self or for children with dos
         isym (int) - choose symmetry position to plot DOS
+        
+
         """
         from siman.header import db
         from siman.dos_functions import plot_dos
         # print(self.children)
-        for id in self.children:
-            # print(s[1])
-            if 'dos' in id[1]:
-                printlog('Child with DOS set is found', id, imp = 'y')
-                id_dos = id
-                break 
+        
+
+        pm = kwargs
+        x_nbins = pm.get('x_nbins')
+        ylim = pm.get('ylim') or (-6,7)
+        fontsize = pm.get('fontsize') or 13
+        ver_lines = pm.get('ver_lines')
+
+        ifdos = False
+        if hasattr(self, 'children'):
+            for id in self.children:
+                # print(s[1])
+                if 'dos' in id[1]:
+                    printlog('Child with DOS set is found', id, imp = 'y')
+                    id_dos = id
+                    ifdos = True
+
+                    break
+            else:
+                ifdos = False 
+        if not ifdos:
+            printlog('No children were found, using self', self.id, imp = 'y')
+            id = self.id
+
         cl = db[id]
 
         cl.res()
@@ -3475,13 +3826,34 @@ class Calculation(object):
         'figsize': (6,3), 
         'linewidth':0.8, 
         'fontsize':8,
-        'ylim':(-6,7), 'ver':1, 'fill':1,
+        'ylim':ylim, 'ver':1, 'fill':1,
         # 'ylim':(-1,1), 
+        'ver_lines':ver_lines,
         'xlim':(-8,6), 
+        'x_nbins':x_nbins,
         # 'xlim':(-0.5,0.1), 
-        'dashes':(5,1) })
+        'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
 
 
+    def plot_locpot(self, filename = None):
+        'plot LOCPOT'
+        from siman.chg.chg_func import chg_at_z_direct
+        from siman.picture_functions import fit_and_plot
+
+        z_coord1, elst1 =  chg_at_z_direct(self, filetype = 'LOCPOT', plot = 0)
+
+        if filename:
+            show = False
+            filename='figs/'+filename
+        else:
+            show = True
+
+        fit_and_plot(pot=(z_coord1, elst1, '-b', ),
+            xlabel = 'Z coordinate, $\AA$', 
+            ylabel = 'Potential, eV', legend = None, fontsize = 12,
+            show = show, hor_lines = [{'y':elst1[0]}],
+            filename = filename
+            )
 
 
 
@@ -3651,9 +4023,9 @@ class Calculation(object):
         # print(vp)
         # print(vp['LDAU'])
 
-        if 'LDAU' in vp and vp['LDAU']: 
+        if 'LDAUL' in vp and vp['LDAUL'] is not None: 
             # print(vp['LDAU'])
-
+            # if 
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
                 # print( vp[key])
                 try:
@@ -4668,7 +5040,7 @@ class Calculation(object):
 
 
 
-            if params and 'charge' in params:
+            if params and 'charge' in params and params['charge']:
                 vp['NELECT'] = int(tve - params['charge'])
 
 
@@ -4771,9 +5143,10 @@ class Calculation(object):
         # print(self.cluster_address)
         # print(self.project_path_cluster+'/')
         # sys.exit()
-        address = self.cluster['address']
+        if hasattr(self, 'cluster'):
+            address = self.cluster['address']
         if header.override_cluster_address:
-            if self.cluster['name']:
+            if hasattr(self, 'cluster') and self.cluster.get('name'):
                 clust = header.CLUSTERS[self.cluster['name']]
             else:
                 printlog('Youve chosen to override cluster_address, but name of cluster is None, trying default', imp = 'Y')
@@ -4833,14 +5206,26 @@ class Calculation(object):
         self._x = header.struct_des[self.id[0]].sfolder
         return self._x
 
-    @property
-    def e0_fu(self):
+    def e0_fu(self, n_fu = None):
         # please improve
-        n1 = self.end.nznucl[0]
-        print('e0_fu: Normalization by element z=', self.end.znucl[0])
+        #n_fu - number of atoms in formual unit
+        if n_fu:
+            n1 = self.end.natom/n_fu
+            print('e0_fu: Normalization by provided n_fu', n_fu)
+
+        else:
+            self.end.get_nznucl()
+            n1 = self.end.nznucl[0]
+            print('e0_fu: Normalization by element z=', self.end.znucl[0])
+
         e0_fu = self.e0/n1
+        print('e0_fu: e0_fu=',e0_fu)
         
         return e0_fu
+
+    @property
+    def e0_at(self,):
+        return self.e0/self.end.natom
 
 
 
@@ -5714,9 +6099,52 @@ class CalculationVasp(Calculation):
         
 
 
+    def get_occ_mat(self, i):
+        """
+        return occupation matrix for atom i (from zero)
 
 
+        TODO: probably it is better to move occ_matrix to structure class and make this method their
+        """
+        st = self.end
+        # i_tran = st.get_transition_elements('n')
+        # print(st.get_elements())
+        # print(i_tran[21])
+        # i_mag = i_tran.index(i)
+        # print(i, i_mag)
+        # print( self.occ_matrices )
 
+        return self.occ_matrices.get(i)
+
+    def set_occ_mat(self, i, m):
+        """
+        set occupation matrix m for atom i (from zero)
+
+
+        TODO: probably it is better to move occ_matrix to structure class and make this method their
+        """
+        cl = self.copy()
+        st = cl.end
+        # i_tran = st.get_transition_elements('n')
+        # print(st.get_elements())
+        # print(i_tran[21])
+        # i_mag = i_tran.index(i)
+        # print(i_mag)
+        cl.occ_matrices[i] = m
+
+        return cl
+
+
+    def write_occmatrix(self):
+
+        #write occmatrix file to calculation folder
+        from siman.inout import write_occmatrix
+        # print(self.get_path())
+        # sys.exit()
+
+    
+
+        return write_occmatrix(self.occ_matrices, self.get_path())
 
 
     def bader_coseg():
@@ -5761,7 +6189,7 @@ class CalculationVasp(Calculation):
         # sys.exit()
         res_loop(*self.id, **argv)
 
-    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, *args, **kwargs):
+    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, it_suffix_del = True, *args, **kwargs):
         """
         Wrapper for add_loop (in development).
         On a first run create new calculation. On a second run will try to read results.
@@ -5792,6 +6220,8 @@ class CalculationVasp(Calculation):
             add (bool) - 
                 1 - overwrite existing children
 
+            it_suffix_del (bool) - needed to achive compatibility with old behaviour; should be improved
+
 
         RETURN:
             cl (Calculation) - new created calculation 
@@ -5813,9 +6243,10 @@ class CalculationVasp(Calculation):
             it_suffix = '.'+kwargs['it_suffix']
         else:
             it_suffix = ''
-
-        if kwargs.get('it_suffix'):
-            del kwargs['it_suffix']
+        
+        if it_suffix_del:
+            if kwargs.get('it_suffix'):
+                del kwargs['it_suffix']
 
 
         # if self.id[1] != ise:

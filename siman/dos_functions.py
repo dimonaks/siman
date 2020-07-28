@@ -724,7 +724,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         """Additional dos analysis; to be refined"""
         gc = None
-        plot_param['ver_lines'] = []
+        if 'ver_lines' not in plot_param:
+            plot_param['ver_lines'] = []
         if show_gravity:
             if show_gravity[0] == 1:
                 d = d1

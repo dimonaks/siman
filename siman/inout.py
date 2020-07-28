@@ -1448,7 +1448,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             
             if "Maximum memory used (kb):" in line:
                 ''
-                # self.memory_max = float(line.split()[-1]) * self.corenum / 1024 / 1024 
+                if hasattr(self, 'corenum'):
+                    self.memory_max = float(line.split()[-1]) * self.corenum / 1024 / 1024 
+                else:
+                    self.memory_max = 0
             
             if "total amount of memory" in line:
                 ''
@@ -1483,21 +1486,21 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             if 'number of electron ' in line:
                 # print (line)
                 try:
-                    self.mag_sum.append( [float(line.split()[5]), 0])
+                    self.mag_sum.append( [float(line.split()[5]), 0]) # magnetization at each relaxation step
                 except:
                     pass
 
             if 'augmentation part' in line:
                 # print (line)
                 try:
-                    self.mag_sum[-1][1]= float(line.split()[4])
+                    self.mag_sum[-1][1]= float(line.split()[-1])
                 except:
                     pass
 
             if 'total charge ' in line:
                 chg = []
                 for j in range(self.end.natom):
-                    chg.append( float(outcarlines[i_line+j+4].split()[4]) )
+                    chg.append( float(outcarlines[i_line+j+4].split()[-1]) )
                 
                 tot_chg_by_atoms.append(np.array(chg))#[ifmaglist])                    
 
@@ -1506,7 +1509,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 # print(line)
                 mags = []
                 for j in range(self.end.natom):
-                    mags.append( float(outcarlines[i_line+j+4].split()[4]) )
+                    mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
                 
                 tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
                 # print(ifmaglist)
@@ -1749,8 +1752,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         e_diff_md = (self.list_e_sigma0[-1] - self.list_e_sigma0[-2])*1000 #meV
 
     e_diff = (e_sig0_prev - e_sig0)*1000 #meV
-
-    if abs(e_diff) > toldfe*1000:
+    # print(e_diff)
+    if abs(e_diff) > float(toldfe)*1000:
         toldfe_warning = '!'
         printlog("Attention!, SCF was not converged to desirable prec", 
             round(e_diff,3), '>', toldfe*1000, 'meV', imp = 'y')
