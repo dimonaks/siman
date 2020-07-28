@@ -2512,7 +2512,7 @@ def rhombo2hex(h,k,l):
 
 
 
-def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, fix_xc_range = None):
+def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, fix_xc_range = None, under_atom = 1):
     """
     The function uses special module AdsorbateSiteFinder  from pymatgen
 
@@ -2532,6 +2532,9 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, 
     molecule -  'H', 'CO' ...
     mol_xc - list with xcart of atoms in molecule: [[0,0,0]], [[0,0,0],[0,0,1.23]]
     return structure with adsorbed molecule on the surface
+    conf_i - [0,1,2] - list of ads configuration numbers
+            key 'all' means all constructed configurations
+    under_atom return configuration with ads atom strongly under me and neme atoms in surface
     """
 
 
@@ -2552,6 +2555,13 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, 
     print('\nI found ',len(ads_structs), ' configurations with ', molecule, ' on the surface\n')
 
     st_ads_pack = []
+    st_ads_pack_under = {'me': None, 'nme': None}
+    closest_neighbor = {'me': None, 'nme': None}
+
+
+    if conf_i == 'all':
+        conf_i = np.arange(len(ads_structs))
+        print(conf_i)
 
     for i in conf_i:
         p = st.update_from_pymatgen(ads_structs[i])
@@ -2561,12 +2571,55 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, 
 
         st_ads_pack.append(p)
 
-    if len(st_ads_pack) == 1:
-        st_ads = st_ads_pack[0]
+        # find closest atom for ads atom
+        if under_atom:
+            i_close, dist_close, delta_close = p.find_closest_neighbor(p.natom-1)
+            neighbor_el = p.get_elements()[i_close]
+            # print(p.find_closest_neighbor(p.natom-1))
 
-        return st_ads
+            if neighbor_el in header.nme_list:
+                neighbor_type = 'nme'
+            else:
+                neighbor_type = 'me'
+
+            try:
+                if dist_close < closest_neighbor[neighbor_type][1] and abs(delta_close[0]) < 0.25 and  abs(delta_close[1]) < 0.25:
+
+                    closest_neighbor[neighbor_type] = [i, dist_close]
+            except (KeyError, TypeError):
+                closest_neighbor[neighbor_type] = [i, dist_close]
+
+
+
+
+    if under_atom:
+        print(closest_neighbor)
+
+        if closest_neighbor['me']:
+            i_m = closest_neighbor['me'][0]
+            st_ads_pack_under['me'] = st_ads_pack[i_m]
+        else:
+            st_ads_pack_under['me'] = None
+
+        if closest_neighbor['nme']:
+            i_nm = closest_neighbor['nme'][0]
+            st_ads_pack_under['nme'] = st_ads_pack[i_nm]
+        else:
+            st_ads_pack_under['nme'] = None
+
+
+        # st_ads_pack_f = [st_ads_pack[i_m], st_ads_pack[i_nm]]
+
+        return st_ads_pack_under
+         
     else:
-        return st_ads_pack
+        if len(st_ads_pack) == 1:
+            st_ads = st_ads_pack[0]
+
+            return st_ads
+        else:
+            return st_ads_pack
+
 
 
 def best_miller(hkl):

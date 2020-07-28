@@ -2024,6 +2024,17 @@ class Structure():
         i = np.argmin(abs_shifts)
         return i, abs_shifts[i], x - self.xcart[i]
 
+    def find_closest_neighbor(self,i_at):
+        #find closest atom in structure to i_at
+
+        x = self.xcart[i_at]
+        abs_shifts = []
+        for x1 in self.xcart:
+            if list(x1) != list(x):
+                abs_shifts.append(np.linalg.norm(x-x1))
+        i = np.argmin(abs_shifts)
+        return i, abs_shifts[i], x - self.xcart[i]
+
     def nn(self, i, n = 6, ndict = None, only = None, silent = 0, 
         from_one = True, more_info = 0, oxi_state = 0, print_average = 0):
         """
