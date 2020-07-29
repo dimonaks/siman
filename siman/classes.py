@@ -6209,7 +6209,7 @@ class CalculationVasp(Calculation):
             add (bool) - 
                 1 - overwrite existing children
 
-            it_suffix_del (bool) - needed to achive compatibility with old behaviour; should be improved
+            it_suffix_del (bool) - needed to be false to use it_suffix with run. Provides compatibility with old behaviour; should be improved
 
 
         RETURN:
