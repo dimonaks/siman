@@ -465,6 +465,29 @@ class Structure():
 
         return 
 
+    def group_magmom(self, tol = 0.3):
+        """"""
+        st = self
+        lengths = list(np.around(st.magmom, 2))
+        unique = []
+        unique.append(lengths[0])
+        groups_size = {}
+        groups_nums = {}
+        for l in lengths[1:]:
+            if min(np.abs(unique-l)) > tol:
+                unique.append(l)
+        # print('lengths', lengths)
+        # print('unique bonds are', unique)
+        for u in unique:
+            groups_size[u] = 0
+            groups_nums[u] = []
+            for i, l in enumerate(lengths):
+                if abs(l-u) < tol:
+                    groups_size[u] += 1
+                    groups_nums[u].append(i)
+        return groups_size, groups_nums
+
+
     def get_mag_tran(self, to_ox = None):
         #show formatted mag moments of transition metals 
         #to_ox - convert to oxidation state, substract from to_ox
@@ -3761,21 +3784,25 @@ class Calculation(object):
 
 
 
-    def dos(self, isym, *args, **kwargs):
+    def dos(self, isym = None, el = None, i_at = None, iatoms = None,  *args, **kwargs):
         """
         Plot dos either for self or for children with dos
-        isym (int) - choose symmetry position to plot DOS
-        
+        isym (int) - choose symmetry position to plot DOS,
+        otherwise use 
+        i_at - number of atom from 0
+        iatoms - list of atom numbers (from 0) to make one plot with several dos
+        el - element for isym, otherwise first TM is used
 
         """
         from siman.header import db
         from siman.dos_functions import plot_dos
         # print(self.children)
-        
+
 
         pm = kwargs
         x_nbins = pm.get('x_nbins')
         ylim = pm.get('ylim') or (-6,7)
+        xlim = pm.get('xlim') or (-8,6)
         fontsize = pm.get('fontsize') or 13
         ver_lines = pm.get('ver_lines')
 
@@ -3798,30 +3825,96 @@ class Calculation(object):
         cl = db[id]
 
         cl.res()
-        st = cl.end
-        n = st.get_transition_elements(fmt = 'n')
-        iTM = n[0]
-        el = st.get_elements()[iTM]
-        pos = determine_symmetry_positions(st, el)
-        iTM = pos[isym][0]
-        print('Choosing ', isym, 'atom ',iTM)
 
-        plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
-        dostype = 'partial', orbitals = ['d', 'p6'], 
-        # labels = ['Ti1', 'Ti2'], 
-        nsmooth = 1, 
-        # invert_spins = invert_spins,
-        show = 0,  plot_param = {
-        'figsize': (6,3), 
-        'linewidth':0.8, 
-        'fontsize':8,
-        'ylim':ylim, 'ver':1, 'fill':1,
-        # 'ylim':(-1,1), 
-        'ver_lines':ver_lines,
-        'xlim':(-8,6), 
-        'x_nbins':x_nbins,
-        # 'xlim':(-0.5,0.1), 
-        'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
+        st = cl.end
+        if isym is not None:
+
+            if el:
+                n = st.get_specific_elements(required_elements = [invert(el)], fmt = 'n')
+            else:
+                n = st.get_transition_elements(fmt = 'n')
+
+            iTM = n[0]
+            el = st.get_elements()[iTM]
+            pos = determine_symmetry_positions(st, el)
+            iTM = pos[isym][0]
+            print('Choosing ', isym, 'atom ',iTM)
+        else:
+            iTM = i_at
+
+        if not iatoms:
+            #just one plot
+            plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
+            dostype = 'partial', orbitals = ['d', 'p6'], 
+            # labels = ['Ti1', 'Ti2'], 
+            nsmooth = 1, 
+            # invert_spins = invert_spins,
+            show = 0,  plot_param = {
+            'figsize': (6,3), 
+            'linewidth':0.8, 
+            'fontsize':8,
+            'ylim':ylim, 'ver':1, 'fill':1,
+            # 'ylim':(-1,1), 
+            'ver_lines':ver_lines,
+            'xlim':xlim, 
+            'x_nbins':x_nbins,
+            # 'xlim':(-0.5,0.1), 
+            'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
+
+        if iatoms:
+
+            total = len(iatoms)*1
+            # letters = ['(a)', '(b)', '(c)', '(d)']*10
+            letters = [str(i) for i in iatoms]
+            font = 8
+            fig, axs = plt.subplots(total,1,figsize=(6,total*3))    
+            fig.text(0.03, 0.5, 'PDOS (states/atom/eV)', size = font*1.8, ha='center', va='center', rotation='vertical')
+        
+            i = 0
+            first = 0
+            last = 0
+            hide_xlabels = 1
+            xlabel = None
+            ylabel = None
+            # i_last = 1
+            for iat in iatoms:
+            # for cl, iat in zip([RbVsd, KVsd, Vsd], [13, 61, 53]):
+
+                ax = axs[i]
+                letter = letters[i]
+                
+                if i == 0:
+                    first = True
+                    last = False
+                if i == total-1:
+                    last = True
+                    hide_xlabels = 0
+                    xlabel = "Energy (eV)"
+                i+=1
+                plot_dos(cl,  iatom = iat+1,  efermi_origin = 1,
+                dostype = 'partial', orbitals = ['d', 'p6'], 
+                # labels = ['Ti1', 'Ti2'], 
+                nsmooth = 1, 
+                # invert_spins = invert_spins,
+                show = 0,  plot_param = {
+                # 'figsize': (6,3), 
+                'linewidth':0.8, 
+                'fontsize':font, 'legend_fontsize':font+3,
+                'first':first, 'last':last, 'ax':ax, 'pad':1, 'hide_xlabels':hide_xlabels,
+                'xlabel':xlabel, 'ylabel':ylabel,
+                'corner_letter':letter,
+                'ylim':ylim, 'ver':1, 'fill':1,
+                # 'ylim':(-1,1), 
+                'ver_lines':ver_lines,
+                'xlim':xlim, 
+                'x_nbins':x_nbins,
+                # 'xlim':(-0.5,0.1), 
+                'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
+
+
+
+
+        return 
 
 
     def plot_locpot(self, filename = None):
@@ -4358,6 +4451,13 @@ class Calculation(object):
                     f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
                     f.write('gzip -f '+parchg+'\n') 
 
+                if 'l' in savefile: # 
+                    fln = 'LOCPOT'
+                    locpot  = pre +'.'+fln
+                    f.write('cp '+fln+' '+locpot+'\n') #use cp, cause it may be needed for other calcs in run
+                    f.write('gzip -f '+locpot+'\n') 
+
+
                 # else:
                 #     f.write("rm CHG \n") #file can be used only for visualization
 
@@ -4830,7 +4930,7 @@ class Calculation(object):
             #clean at the end
             if final_analysis_flag: 
                 if header.final_vasp_clean:
-                    f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+                    f.write('rm LOCPOT CHGCAR CHG PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
                 f.write('rm RUNNING\n')
 
 

@@ -1,4 +1,6 @@
 current
+    
+    Now LOCPOT is moved to 1.LOCPOT if 'l' in savefile is provided, otherwise removed
     showing atom numbers from zero in determine_symmetry_positions()
     fontsize argument was removed from plot_dos(). Use plot_param dictionary, which is transfered to fit_and_plot
     velocities and predictor are read from CONTCAR, allows to continiue MD
