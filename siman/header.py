@@ -198,6 +198,8 @@ THz2eV = 0.00413566553853599
 kJ_mol2eV = 1.0364e-2
 J_mol_T2eV_T = 1.0364e-5
 J2eV = 6.242e+18
+h = 4.135668e-15 # eV/Hz
+
 
 kB = 8.617e-5 # eV/K
 TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 74]
