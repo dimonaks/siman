@@ -2543,7 +2543,7 @@ class Structure():
         """
         Localize small polaron at transition metal by adjusting TM-O distances
         i - number of transition atom, from 0
-        d - shift in angstrom; positive increase TM-O, negative reduce TM-O
+        d - shift in angstrom; positive increase TM-O, negative reduce TM-O distance
         nn - number of neigbours
 
         """
@@ -2744,11 +2744,17 @@ class Structure():
         return st
 
 
+    def make_polarons(self, atoms, pol_type = 'hole', mag = None, silent = 1):
+        """
+        create polarons
+        """
+        st = self.copy()
+        for i in atoms:
+            st = st.localize_polaron(i, d=-0.1, nn = 6)
+            st.magmom[i] = mag
 
 
-
-
-
+        return st
 
     def ewald(self, ox_st = None, site = None):
         # ox_st 

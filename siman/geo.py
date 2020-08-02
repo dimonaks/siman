@@ -2065,7 +2065,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
-def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6 ):
+def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6, mode = 'rep' ):
     """
     Generate all possible configurations by replacing x of element el1 by el2 from the structure.
     You should know which space group you want to get.
@@ -2078,6 +2078,10 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     x - replace x of atoms, for example 0.25 of atoms
     
     info_mode (bool) - print all possible configurations
+
+    mode 
+        - 'rep' - replace atoms 
+        - 'pol' - create polarons
 
     sg - number of required space group obtained with info_mode = 1
     return list of structures with sg space groups
@@ -2136,7 +2140,15 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     for order in orderings:
         atoms_to_replace = [req[i] for i, s in enumerate(order) if s < 0]
         printlog('Atoms to replace:', list(els[i] for i in atoms_to_replace), atoms_to_replace, imp = warn)
-        st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent, mag_new = mag)
+        
+        if 'rep' in mode:
+            st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent, mag_new = mag)
+        if 'pol' in mode:
+            # print(mag)
+            # sys.exit()
+            st_rep = st.make_polarons(atoms_to_replace, silent = silent, mag = mag)
+
+
         # printlog('magmom:', st_rep.magmom, imp = warn)
 
         nm = st_rep.sg(silent = silent)[1]
