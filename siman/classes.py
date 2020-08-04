@@ -2944,7 +2944,7 @@ class Structure():
             if hasattr(self, 'tmap'):
                 f.write('tmap=[{:s}] ; '.format(list2string(st.tmap).replace(' ', ',') ))
 
-
+            # print(self.name)
             f.write(self.name)
 
 
