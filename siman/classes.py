@@ -3811,6 +3811,11 @@ class Calculation(object):
         xlim = pm.get('xlim') or (-8,6)
         fontsize = pm.get('fontsize') or 13
         ver_lines = pm.get('ver_lines')
+        corner_letter = pm.get('corner_letter')
+        if corner_letter is None:
+            corner_letter = 1
+        # print(corner_letter)
+        # sys.exit()
 
         ifdos = False
         if hasattr(self, 'children'):
@@ -3869,6 +3874,25 @@ class Calculation(object):
 
         if iatoms:
 
+
+            if fontsize:
+                # header.mpl.rcParams.update({'font.size': fontsize+4})
+                # fontsize = 2
+                SMALL_SIZE = fontsize
+                MEDIUM_SIZE = fontsize
+                BIGGER_SIZE = fontsize
+
+                header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
+                header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+                header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+                header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+                header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+                header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+                header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
+            color_dicts = [None, {'p6':'#FF0018', 'd':'g'}]
+
             total = len(iatoms)*1
             # letters = ['(a)', '(b)', '(c)', '(d)']*10
             letters = [str(i) for i in iatoms]
@@ -3883,12 +3907,19 @@ class Calculation(object):
             xlabel = None
             ylabel = None
             # i_last = 1
+
             for iat in iatoms:
             # for cl, iat in zip([RbVsd, KVsd, Vsd], [13, 61, 53]):
 
                 ax = axs[i]
-                letter = letters[i]
+
+                if corner_letter:
+                    letter = letters[i]
+                else:
+                    letter = None
                 
+                # print(letter)
+                # sys.exit()
                 if i == 0:
                     first = True
                     last = False
@@ -3896,16 +3927,17 @@ class Calculation(object):
                     last = True
                     hide_xlabels = 0
                     xlabel = "Energy (eV)"
-                i+=1
                 plot_dos(cl,  iatom = iat+1,  efermi_origin = 1,
                 dostype = 'partial', orbitals = ['d', 'p6'], 
-                # labels = ['Ti1', 'Ti2'], 
+                labels = ['', ''], 
                 nsmooth = 1, 
+                color_dict = color_dicts[i%2],
                 # invert_spins = invert_spins,
+                show_gravity = (1, 'p6', (-10, 10)), 
                 show = 0,  plot_param = {
                 # 'figsize': (6,3), 
                 'linewidth':0.8, 
-                'fontsize':font, 'legend_fontsize':font+3,
+                'fontsize':fontsize, 'legend_fontsize':font+3,
                 'first':first, 'last':last, 'ax':ax, 'pad':1, 'hide_xlabels':hide_xlabels,
                 'xlabel':xlabel, 'ylabel':ylabel,
                 'corner_letter':letter,
@@ -3917,6 +3949,7 @@ class Calculation(object):
                 # 'xlim':(-0.5,0.1), 
                 'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
 
+                i+=1
 
 
 

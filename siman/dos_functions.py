@@ -135,7 +135,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
     lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, 
-    efermi_origin = True, invert_spins  = 0, name_suffix = ''):
+    efermi_origin = True, invert_spins  = 0, name_suffix = '', color_dict = None):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -158,6 +158,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     neighbors - number of neighbours around iatom to plot dos on them using p6 or d6; only p6 is implemented to the moment in plot section
 
     xlim, ylim (tuple)- limits for plot
+
+    color_dict (dict) - custom dict of colors for orbitals. eg: {'s':'g', 'p':}
 
     plot_param - dict of parameters to fit_and_plot
         dashes - control of dahsed lines
@@ -591,7 +593,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         else:
             i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
         # color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g', 'p6':'k'}
-        color = {'s':'k', 'p':'#FF0018', 'd':'#138BFF', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'#138BFF', 'eg':'#8E12FF', 'p6':'#FF0018', 'p_all':'r', 'd_all':'b'} #http://paletton.com/#uid=54-100kwi++bu++hX++++rd++kX
+        
+        if color_dict:
+            color = color_dict
+        else:
+            #default dict
+            color = {'s':'k', 'p':'#FF0018', 'd':'#138BFF', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'#138BFF', 'eg':'#8E12FF', 'p6':'#FF0018', 'p_all':'r', 'd_all':'b'} #http://paletton.com/#uid=54-100kwi++bu++hX++++rd++kX
+        
+
         # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
         j = 0
         for orb in orbitals:
@@ -724,8 +733,12 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         """Additional dos analysis; to be refined"""
         gc = None
-        if 'ver_lines' not in plot_param:
+        # print(plot_param['ver_lines'])
+        if 'ver_lines' not in plot_param or plot_param['ver_lines'] is None:
             plot_param['ver_lines'] = []
+
+        # print(plot_param['ver_lines'])
+
         if show_gravity:
             if show_gravity[0] == 1:
                 d = d1
