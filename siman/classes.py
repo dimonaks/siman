@@ -874,6 +874,16 @@ class Structure():
         st.update_xred()
         st = st.return_atoms_to_cell()
         return st
+    def invert_xred(self, axis):
+        #invert xred coordinates along one vector axis
+        st = copy.deepcopy(self)
+
+        for i in range(st.natom):
+            st.xred[i][axis] = 1 - st.xred[i][axis]
+        st.update_xcart()
+        # st = st.return_atoms_to_cell()
+        return st
+
     def mirror(self, axis):
         #mirror along vector
         j = axis
