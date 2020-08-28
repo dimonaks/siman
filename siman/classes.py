@@ -1604,18 +1604,31 @@ class Structure():
         """
         Permutate atom numbers of self according to st
         Structures should have the same amount of atoms and be quite similar
+        the self can have one extra type of atoms
+
+        #TODO: now extra atom types could be only in self structure
 
         """
 
         st = self.copy()
-        els = st_ref.get_elements()
+        els = st.get_elements()
+        els_ref = st_ref.get_elements()
+        # print(els, els_ref)
+        extra = list(set(els)-set(els_ref))[0] # only one is implemented currently
         new_order = []
-        for el1, x1 in zip(els, st_ref.xcart):
+        for el1, x1 in zip(els_ref, st_ref.xcart):
             i,s,d = st.find_closest_atom(x1)
             # print(el1, st.get_elements()[i])
             new_order.append(i)
         
-        if len(new_order) != self.natom:
+        for i in st.get_specific_elements([1]):
+            # print(i, els[i])
+            new_order.append(i)
+
+        # sys.exit()
+
+
+        if len(new_order) != st.natom:
             printlog('Error! something is wrong with number of atoms')
 
         # print('ref ', st_ref.get_elements())
