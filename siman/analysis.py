@@ -690,7 +690,7 @@ def around_alkali(st, nn, alkali_ion_number):
 
 
 
-def find_polaron(st, i_alk_ion, out_prec = 1):
+def find_polaron(st, i_alk_ion, out_prec = 1, nstd  =1.5):
     """
     Find TM atoms with outlying magnetic moments, which 
     is a good indication of being a small polaron
@@ -700,6 +700,8 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
     INPUT:
         i_alk_ion - number of ion from 0 to calculate distances to detected polarons
         out_prec (int) - precision of magmom output
+
+        nstd - number of standart deviations to detect polaron
 
     RETURN:
         pol (dict of int) - numbers of atoms, where polarons are detected for each TM element 
@@ -746,7 +748,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
         # p = np.where(dev>2)[0] # 2 standard deviations
         # print(dev>2)
         # print (type(numbs))
-        nstd = 1.5
+        # nstd = 1.5
         # nstd = 4
         i_pols = numbs[dev>nstd]
 
