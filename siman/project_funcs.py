@@ -1597,7 +1597,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(dic['scale_outcar.'+mode_id], up_res)
                 # print(up_res)
                 # sys.exit()
-                # print(id_res)
+                # print(id_res, it_suffix)
                 res_loop(*id_res, up = up_res, readfiles= readfiles, 
                     choose_outcar = choose_outcar, show = 'e', check_job = 0, it_suffix = it_suffix)
                 if show_fit:
