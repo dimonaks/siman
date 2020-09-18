@@ -1003,15 +1003,16 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
                 st1 = copy.deepcopy(st)
 
-
-                vec = st.center_on(atom_num)
-                # vec = np.asarray([0.,0.,0.])
-
+                if params.get('center_on_moving'):
+                    vec = st.center_on(atom_num)
+                    printlog('Centering by shifting the cell by ', vec, imp = 'y')
+                else:
+                    vec = np.asarray([0.,0.,0.])
+                
             
-                if params is not None and 'mep_shift_vector' in params:
-                    # vec += np.array([0.11,0.11,0]) # path4
+                if params.get('mep_shift_vector'):
+                    vec += np.array(params['mep_shift_vector']) # 
                     # print(params['mep_shift_vector'])
-                    vec += np.array(params['mep_shift_vector']) # path4
 
             # print(vec)
             st_loc = st_loc.shift_atoms(vec)
