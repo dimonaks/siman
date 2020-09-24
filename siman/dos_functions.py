@@ -722,6 +722,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                 else:
                     # args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
+                    # print(i_orb.keys(), color.keys())
+                    # sys.exit()
                     args[nam] = {'x':d.energy, 'y':smoother(d.site_dos(iat, i_orb[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
                     
                     if spin_pol:

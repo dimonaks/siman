@@ -3835,6 +3835,7 @@ class Calculation(object):
         fontsize = pm.get('fontsize') or 13
         ver_lines = pm.get('ver_lines')
         corner_letter = pm.get('corner_letter')
+        orbitals = pm.get('orbitals')
         if corner_letter is None:
             corner_letter = 1
         # print(corner_letter)
@@ -3860,6 +3861,9 @@ class Calculation(object):
 
         cl.res()
 
+        if orbitals is None:
+            orbitals = ['d', 'p6']
+
         st = cl.end
         if isym is not None:
 
@@ -3879,7 +3883,7 @@ class Calculation(object):
         if not iatoms:
             #just one plot
             plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
-            dostype = 'partial', orbitals = ['d', 'p6'], 
+            dostype = 'partial', orbitals = orbitals, 
             # labels = ['Ti1', 'Ti2'], 
             nsmooth = 1, 
             # invert_spins = invert_spins,
@@ -3914,7 +3918,7 @@ class Calculation(object):
                 header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 
-            color_dicts = [None, {'p6':'#FF0018', 'd':'g'}]
+            color_dicts = [None, {'s':'k', 'p':'r', 'p6':'#FF0018', 'd':'g'}]
 
             total = len(iatoms)*1
             # letters = ['(a)', '(b)', '(c)', '(d)']*10
@@ -3951,7 +3955,7 @@ class Calculation(object):
                     hide_xlabels = 0
                     xlabel = "Energy (eV)"
                 plot_dos(cl,  iatom = iat+1,  efermi_origin = 1,
-                dostype = 'partial', orbitals = ['d', 'p6'], 
+                dostype = 'partial', orbitals = orbitals, 
                 labels = ['', ''], 
                 nsmooth = 1, 
                 color_dict = color_dicts[i%2],
