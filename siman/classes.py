@@ -1254,12 +1254,14 @@ class Structure():
                 return True
 
         xcart = []
+        xred = []
         for i, e, xc, xr in zip( range(self.natom), el, self.xcart, self.xred ):
             Z = invert(e)
             if Z in required_elements and additional_condition(xr[2]):
                 tra.append(e)
                 ns.append(i)
                 xcart.append(xc)
+                xred.append(xr)
         
         if fmt == 'z':
             tra = [invert(t) for t in tra]
@@ -1267,6 +1269,8 @@ class Structure():
             tra = ns
         elif fmt == 'x':
             tra = xcart
+        elif fmt == 'xr':
+            tra = xred
 
         return tra
 
