@@ -1430,6 +1430,7 @@ class Structure():
         allows to add one atom using reduced coordinates or cartesian
         xr - reduced
         xc - cartesian
+        element - element name
         """
 
         if xr is not None:
@@ -2077,6 +2078,39 @@ class Structure():
         # print_and_log(str(n)+" atoms were returned to cell.\n")
         #print st.xred
         return st
+
+
+
+
+
+    def combine(self, st_list, only_numbers = None):
+        """
+        Combine several structures into one
+        using reduced coordinates
+        """
+        st_b = self.copy()
+
+        if only_numbers is None:
+            only_numbers = []
+
+        for i, st in enumerate(st_list):
+            print(i)
+
+            for j, xr, el in zip(list(range(st.natom)), st.xred, st.get_elements() ):
+                if j in only_numbers:
+                    st_b = st_b.add_atom(xr, el)
+
+
+        return st_b
+
+
+
+
+
+
+
+
+
 
 
     def perturb(self, d=0.1):
