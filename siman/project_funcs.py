@@ -3909,7 +3909,7 @@ def neb_wrapper( param_dic = None, paths = None, run_neb = 0, read = 0, plot = 0
     substitute - manually substitute specific points of MEP
 
     """
-    from picture_functions import plot_mep
+    from siman.picture_functions import plot_mep
 
 
 
