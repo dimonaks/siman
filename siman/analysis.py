@@ -1440,6 +1440,7 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     diff  = cl1.e0 - (cl2.e0 * mul + E_nonst)
     gamma = diff / 2 / A * header.eV_A_to_J_m
     gamma_ev = diff / 2 / A 
+    print(A)
 
     if not silent:
         print('Surface energy = {:3.2f} J/m2   | {:} | {:} '.format(gamma, cl1.id, cl2.id))
@@ -1524,6 +1525,19 @@ def suf_en_polar_layered(formula, cl_surf, dmu_a = 0, dmu_b = 0, dmu_c = 0, prin
     if printlog:
             print('Surface energy = {:3.2f} J/m2   | {:}  \n\n'.format(gamma, cl_surf.id))
     return gamma
+
+
+def ads_en(cl_slab_ads, cl_slab, ads_at = 'O'):
+
+    ads_at_dic = {'O':-1.52, 'H':-1.07}
+    ads_at_dic = {'O':-4.22, 'H':-1.07} # half E of A2 mol    -1.36 per O2 mol overestimate error
+    e_ads_at = ads_at_dic[ads_at]
+
+
+    e_ads = cl_slab_ads.energy_sigma0 - cl_slab.energy_sigma0 - e_ads_at
+
+    print('Adsorption energy of {} is {} eV\n'.format(ads_at, round(e_ads,2)))
+    return e_ads
 
 
 def wulff(st, miller_list = None, e_surf_list = None):
