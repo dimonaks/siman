@@ -2094,7 +2094,7 @@ class Structure():
             only_numbers = []
 
         for i, st in enumerate(st_list):
-            print(i)
+            # print(i)
 
             for j, xr, el in zip(list(range(st.natom)), st.xred, st.get_elements() ):
                 if j in only_numbers:
@@ -3874,6 +3874,7 @@ class Calculation(object):
         ver_lines = pm.get('ver_lines')
         corner_letter = pm.get('corner_letter')
         orbitals = pm.get('orbitals')
+        efermi_origin = pm.get('efermi_origin')
         if corner_letter is None:
             corner_letter = 1
         # print(corner_letter)
@@ -3920,11 +3921,12 @@ class Calculation(object):
 
         if not iatoms:
             #just one plot
-            plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
+            plot_dos(cl,  iatom = iTM+1,  
             dostype = 'partial', orbitals = orbitals, 
             # labels = ['Ti1', 'Ti2'], 
             nsmooth = 1, 
             # invert_spins = invert_spins,
+            efermi_origin = efermi_origin,
             show = 0,  plot_param = {
             'figsize': (6,3), 
             'linewidth':0.8, 
