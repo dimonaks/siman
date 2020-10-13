@@ -203,12 +203,32 @@ kB = 8.617e-5 # eV/K
 TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 74]
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
-TM_MAG = {'NM':0.6,'Co2+hs':3, 'Co2+ls':1, 'Co3+hs':4, 'Co3+ls':0, 'Co4+hs':5, 'Co4+ls':1,
-          'Ni2+hs':2, 'Ni2+ls':0, 'Ni3+hs':3, 'Ni3+ls':1, 'Ni4+hs':4, 'Ni4+ls':0,
-          'W4+':0, 'Fe3+hs': 5, 'Fe3+ls': 1, 'Fe2+ls': 0, 'Al3+':0, 'Ti3+':1, 'Ti4+':0,
+TM_MAG = {'NM':0.6,
+          'Co2+hs':3, 'Co2+ls':1, 'Co3+hs':4, 'Co3+ls':0, 'Co4+hs':5, 'Co4+ls':1,
+          'Ni2+':2, 'Ni3+hs':3, 'Ni3+ls':1, 'Ni4+hs':4, 'Ni4+ls':0,
+          'Mn3+ls':0, 'Mn3+hs':4, 'Mn2+hs':5,'Mn2+ls':1, 'Mn4+':3,
+          'Fe3+hs': 5, 'Fe3+ls': 1, 'Fe2+ls': 0,'Fe2+hs': 4, 'Fe4+': 4,
           'Cr3+':3, 'Cr4+':2, 'Cr2+hs':4, 'Cr2+ls':2,
-          'Mn3+ls':0, 'Mn3+hs':4, 'Mg2+':0, 'V4+': 1,}
+          'V4+': 1, 'V2+': 3, 'V3+': 2,
+          'Ti3+':1, 'Ti4+':0, 'Ti2+':2 ,
+          'Al3+':0, 
+          'W4+':0, 
+          'Mg2+':0, 
+          }
            # canonical magnetic moments of TM depending on oxidation state and spin state
+
+
+ION_RADII_coord_6 = { 
+                    'Co2+hs':0.745, 'Co2+ls':0.65, 'Co3+hs':0.61, 'Co3+ls':0.545, 'Co4+hs':0.53, 'Co4+ls': 0.53,
+                    'Ni2+':0.69, 'Ni3+hs':0.6, 'Ni3+ls':0.56, 'Ni4+ls':0.48, 'Ni4+hs':0.48,
+                    'Mn2+ls':0.67, 'Mn2+hs':0.83, 'Mn3+ls':0.58, 'Mn3+hs':0.645, 'Mn4+':0.53,
+                    'Fe2+hs':0.78, 'Fe2+ls':0.61, 'Fe3+ls':0.55, 'Fe3+hs':0.645, 'Fe4+':0.585,
+                    'Cr2+ls':0.73, 'Cr2+hs':0.8,  'Cr3+':0.615,  'Cr4+':0.55,
+                    'V2+':0.79, 'V3+':0.64, 'V4+':0.58,
+                    'Ti2+':0.86, 'Ti3+':0.67, 'Ti4+':0.605, 
+                    'Mg2+':0.72,
+                    'Al3+':0.535,
+                    }
 
 
 EXCLUDE_NODES = False

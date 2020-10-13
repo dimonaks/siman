@@ -504,7 +504,7 @@ class Structure():
                 print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
 
 
-        return magnetic
+        return magnetic_all
 
 
 
