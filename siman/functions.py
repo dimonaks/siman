@@ -35,9 +35,15 @@ def unique_elements(seq, idfun=None):
 
 
 def smoother(x, n, mul = 1, align = 1):
-    #mul - additionally multiplies values
+    """
+    mul - additionally multiplies values
     #align - find first non-zero point and return it to zero
-
+    #n - smooth value, 
+        if algo = 'gaus' than it is sigma
+        use something like 0.8 
+        if algo = 'my'
+            n of 10-15 is good
+    """
     algo = 'gaus'
     # algo = 'my'
 
@@ -61,6 +67,7 @@ def smoother(x, n, mul = 1, align = 1):
     elif algo == 'gaus':
         x_smooth =x
         # x_smooth = scipy.ndimage.filters.median_filter(x,size =4)
+        # print('sigma is ', n)
         x_smooth = scipy.ndimage.filters.gaussian_filter1d(x_smooth, n, order =0)
         # x_smooth = scipy.ndimage.interpolation.spline_filter1d(x, 4)
 

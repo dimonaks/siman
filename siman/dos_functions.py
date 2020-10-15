@@ -135,7 +135,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
     lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, 
-    efermi_origin = True, invert_spins  = 0, name_suffix = '', color_dict = None):
+    efermi_origin = True, efermi_shift = 0, invert_spins  = 0, name_suffix = '', color_dict = None):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -187,6 +187,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     efermi_origin 
         True - e-fermi is zero energy
         False - e-fermi is left, its value is shown
+    efermi_shift (float) - additional shift of fermi energy in case if smearing is too large
+
 
     invert_spins
         invert spin up and spin down, now only for partial d and p
@@ -240,6 +242,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     if 'legend' not in plot_param:
         plot_param['legend'] = 'best'
 
+    pm = plot_param
+    lw = pm.get('linewidth') or 0.8
+
 
     """1. Read dos"""
     printlog("------Start plot_dos()-----", imp = 'Y')
@@ -287,10 +292,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         ylabel = "DOS (states/eV)"
 
         if spin_pol:
-            dosplot = {'Tot up':{'x':dos[0].energy,    'y':smoother(dos[0].dos[0], 10), 'c':'b', 'ls':'-'}, 
-                        'Tot down':{'x':dos[0].energy, 'y':-smoother(dos[0].dos[1], 10),'c':'r', 'ls':'-'}}
+            dosplot = {'Tot up':{'x':dos[0].energy,    'y':smoother(dos[0].dos[0], nsmooth), 'c':'b', 'ls':'-'}, 
+                        'Tot down':{'x':dos[0].energy, 'y':-smoother(dos[0].dos[1], nsmooth),'c':'r', 'ls':'-'}}
         else:
-            dosplot = {'Total':{'x':dos[0].energy, 'y':smoother(dos[0].dos, 10), 'c':'b', 'ls':'-'}}
+            dosplot = {'Total':{'x':dos[0].energy, 'y':smoother(dos[0].dos, nsmooth), 'c':'b', 'ls':'-'}}
 
 
         # args[nam_down] = {'x':d.energy, 'y':-smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':None}
@@ -316,7 +321,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
             fit_and_plot(show = show, image_name = cl1.name+'--'+cl2.name+'.dosTotal_Diff', xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", hor = True,
                 **plot_param,
-                Diff_Total = (dos[0].energy, smoother(dosd, 15), 'b-'))
+                Diff_Total = (dos[0].energy, smoother(dosd, nsmooth), 'b-'))
         else:
             printlog('You provided only one calculation; could not use diff_total')
 
@@ -776,12 +781,16 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             
             plot_param['ver_lines'].append({'x':gc, 'c':'k', 'ls':'--'})
 
-        if not efermi_origin:
+        if efermi_origin:
+            if plot_param['ver']:
+                plot_param['ver_lines'].append({'x':efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
+
+        else:
             #fermi levels
-            plot_param['ver_lines'].append({'x':cl1.efermi, 'c':'k', 'ls':'-'})
+            plot_param['ver_lines'].append({'x':cl1.efermi + efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
             if cl2:
-                plot_param['ver_lines'].append({'x':cl2.efermi, 'c':'k', 'ls':'-'})
-            plot_param['ver'] = False
+                plot_param['ver_lines'].append({'x':cl2.efermi + efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
+        plot_param['ver'] = False
         """Plot everything"""
 
         image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))+name_suffix

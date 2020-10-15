@@ -1234,6 +1234,7 @@ class Structure():
             'z'
             'n' - numbers of atoms
             'x' - xcart
+            'xr' - xred
         
 
 
@@ -2106,7 +2107,34 @@ class Structure():
 
 
 
+    def combine_atoms(self, d = 0.1):
+        """
+        Combine close-lying atoms into one
+        d (float) - all atoms with d less then d are combined into one in Angstrom
+        """
+        st = self
+        # copy()
+        remove_list = []
+        for i, x1 in enumerate(st.xcart):
+            for ii, x2 in enumerate(st.xcart[i+1:]):
+                j = ii+i+1
+                dx = st.distance(x1=x1, x2=x2)
+                xlist = []
+                if dx < d:
+                    xlist.append(x2)
+                    remove_list.append(i)
+                    # print(dx)
+            if xlist:
+                x_new = sum(xlist)/len(xlist)
+                # print(x_new)
+                st.xcart[i] = x_new
+                print('Atom i= {:n}, {:s} replaced with average position'.format(i, st.get_elements()[i]) )
 
+        st = st.remove_atoms(remove_list)
+
+
+
+        return st
 
 
 
@@ -3875,6 +3903,11 @@ class Calculation(object):
         corner_letter = pm.get('corner_letter')
         orbitals = pm.get('orbitals')
         efermi_origin = pm.get('efermi_origin')
+        nsmooth = pm.get('nsmooth') or 0.0001
+        linewidth = pm.get('linewidth') or 0.8
+        efermi_shift = pm.get('efermi_shift')
+
+
         if corner_letter is None:
             corner_letter = 1
         # print(corner_letter)
@@ -3924,13 +3957,14 @@ class Calculation(object):
             plot_dos(cl,  iatom = iTM+1,  
             dostype = 'partial', orbitals = orbitals, 
             # labels = ['Ti1', 'Ti2'], 
-            nsmooth = 1, 
+            nsmooth = nsmooth, 
             # invert_spins = invert_spins,
             efermi_origin = efermi_origin,
+            efermi_shift = efermi_shift,
             show = 0,  plot_param = {
             'figsize': (6,3), 
-            'linewidth':0.8, 
-            'fontsize':8,
+            'linewidth':linewidth, 
+            'fontsize':fontsize,
             'ylim':ylim, 'ver':1, 'fill':1,
             # 'ylim':(-1,1), 
             'ver_lines':ver_lines,
@@ -3994,7 +4028,7 @@ class Calculation(object):
                     last = True
                     hide_xlabels = 0
                     xlabel = "Energy (eV)"
-                plot_dos(cl,  iatom = iat+1,  efermi_origin = 1,
+                plot_dos(cl,  iatom = iat+1,  efermi_origin = efermi_origin,
                 dostype = 'partial', orbitals = orbitals, 
                 labels = ['', ''], 
                 nsmooth = 1, 
@@ -4003,7 +4037,7 @@ class Calculation(object):
                 show_gravity = (1, 'p6', (-10, 10)), 
                 show = 0,  plot_param = {
                 # 'figsize': (6,3), 
-                'linewidth':0.8, 
+                'linewidth':linewidth, 
                 'fontsize':fontsize, 'legend_fontsize':font+3,
                 'first':first, 'last':last, 'ax':ax, 'pad':1, 'hide_xlabels':hide_xlabels,
                 'xlabel':xlabel, 'ylabel':ylabel,
@@ -4014,7 +4048,7 @@ class Calculation(object):
                 'xlim':xlim, 
                 'x_nbins':x_nbins,
                 # 'xlim':(-0.5,0.1), 
-                'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
+                'dashes':(5,1), 'fig_format':'pdf'})
 
                 i+=1
 
