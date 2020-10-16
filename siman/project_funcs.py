@@ -4215,6 +4215,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         atom_to_move
         del_pos
         m_set
+        sg_ds - space group for deintercalated state for step 2
 
         exp_geometry - list of rows with exp geometry for table
 
@@ -4420,10 +4421,15 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                 printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
 
 
-                # sys.exit()
                 # print(syms)
+                # sys.exit()
+                sg_ds = p.get('sg_ds')
                 for sg in syms:
                     # st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
+                    if sg_ds:
+                        if sg != sg_ds:
+                            continue
+
                     if sg in sts_dic:
                         # print(sg, sts_dic)
                         st_rem  =  sts_dic[sg] # only the first one is used

@@ -1,6 +1,8 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
 import os, io, re, math
+from csv import reader
+
 import numpy  as np
 try:
     import pandas as pd 
@@ -20,6 +22,17 @@ from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
 from siman.small_classes import empty_struct
 from siman.geo import local_surrounding, replic
+
+
+
+def read_csv(filename, delimiter =','):
+    with open(filename, 'r') as read_obj:
+        # pass the file object to reader() to get the reader object
+        csv_reader = reader(read_obj, delimiter = delimiter)
+        # Pass reader object to list() to get a list of lists
+        list_of_rows = list(csv_reader)
+        # print(list_of_rows)
+    return list_of_rows
 
 
 def read_xyz(st, filename, rprimd = None):

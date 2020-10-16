@@ -162,6 +162,10 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         r+=' '
         if '-- ' in r:
             r = r.replace('-- ',' - ')
+        
+        if '_' in r:
+            r = r.replace('_','\\_')
+
         if replace:
             for rep in replace:
                 # if rep[0] in r:
