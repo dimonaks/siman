@@ -2174,7 +2174,6 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
 
 
 
-
 def two_cell_to_one(st1, st2):
     # let to join two supercells
 

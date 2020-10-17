@@ -927,8 +927,11 @@ def determine_unique_voids(st_pores, sums, avds):
     
     return insert_positions
 
-def insert_atom(st, el, i_void = None, r_imp = 1.6, ):
-    """Simple Wrapper for inserting atoms """
+def insert_atom(st, el, i_void = None, i_void_list = None, r_imp = 1.6, ):
+    """Simple Wrapper for inserting atoms 
+
+    i_void (int) has higher priority than i_void_list
+    """
 
 
     r_impurity = r_imp
@@ -937,22 +940,30 @@ def insert_atom(st, el, i_void = None, r_imp = 1.6, ):
     insert_positions = determine_unique_voids(st_pores, sums, avds)
 
     printlog('To continue please choose *i_void* from the list above', imp = 'y')
-    if i_void == None:
-        sys.exit()
+
 
     # st.name = st.name.split('+')[0]
 
+    if i_void:
+        i_void_list = [i_void]
 
-    xc = insert_positions[i_void]
+    if i_void_list is None:
+        sys.exit()
+
+    st_new = st.copy()
+    for i in i_void_list:
+        xc = insert_positions[i]
+        
+        st_new, i_add = st_new.add_atoms([xc], el, return_ins = True)
+
+        st_new.name+='+'+el+str(i)
+        st_new.des+=';Atom '+el+' added to '+ str(xc)
     
-    st_new, i_add = st.add_atoms([xc], el, return_ins = True)
-
-    st_new.name+='+'+el+str(i_void)
-    st_new.des+=';Atom '+el+' added to '+ str(xc)
     printlog(st.des, imp = 'y')
 
-    st_new.write_xyz()
+    st_new.write_poscar()
     st_new.magmom = [None]
 
     return st_new, i_add
+
 
