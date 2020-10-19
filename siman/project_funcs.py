@@ -1542,6 +1542,11 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 inherit_icalc('remove_atoms', itS, ver, idA0, calc, 
                     atoms_to_remove = ions, del_pos = del_pos, it_folder = cat[4], use_init = 1) 
         
+
+
+
+
+        
             return itS
 
 
@@ -4175,7 +4180,12 @@ def get_alkali_ion(st, active_cation = None):
                 if el not in for_diffusion:
                     for_diffusion.append(el)
 
-        active_cation = for_diffusion[0]
+        if len(for_diffusion) > 0:
+            active_cation = for_diffusion[0]
+        else:
+            active_cation = 'Li'
+            printlog('Warning! Active cation was not found. I return default  = ', el)
+
         if len(for_diffusion) > 1:
             printlog('Warning! More than one candidate for NEB and removing was found, I use first', el)
 
@@ -4261,9 +4271,14 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
 
     if update or 'res' not in db[pn]:
-        db[pn]['res'] = []
+        db[pn]['res'] = [] #results 
         db[pn]['latex'] = {}
         print('service_list was cleared')
+
+    if update or 'neb_data' not in db[pn]:
+        db[pn]['neb_data'] = {} # data related with neb to transfer coordinates
+        print('service_list neb_data was cleared')
+
 
     if 'latex' not in db[pn]:
         db[pn]['latex'] = {}
@@ -4326,7 +4341,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         'end_pos_types_z':end_z,
         'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom'),
         'center_on_moving':p.get('center_on_moving'),
-        'mep_shift_vector':p.get('mep_shift_vector')
+        'mep_shift_vector':p.get('mep_shift_vector'),
+        'project_data':db[pn], # info specific for this project
 
         }
 
@@ -4347,15 +4363,11 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             fitplot_args = fitplot_args, style_dic = style_dic, 
             run_neb = run_neb, run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global') ) 
             
-            # print(a[0] not in service_list)
-            # service_list = []
-            # print(a[0])
-            # print(service_list)
-            # for ele in service_list:
-            #     print(ele == a[0])
-            #     if ele == a[0]:
-            #         break
-            # else:
+
+
+
+
+
             if a[0] not in service_list:
                 service_list.append(a[0])
             # db[pn]['B'] = [ a[0]['B'] ]
@@ -4423,7 +4435,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
                 # print(syms)
                 # sys.exit()
-                sg_ds = p.get('sg_ds')
+                sg_ds = p.get('sg_ds') # selected deintercalated set
                 for sg in syms:
                     # st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
                     if sg_ds:
@@ -4447,6 +4459,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                     a = calc_barriers('normal', el, el, up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                     fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
                     choose_outcar_global = p.get('choose_outcar_global')) 
+                    
+
                     info = a[0]
                     info['x'] = target_x
                     if info not in service_list:

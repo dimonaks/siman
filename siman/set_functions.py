@@ -367,6 +367,9 @@ class InputSet():
             elif key == 'kpoints_file':
                 if param[key]:
                     s.kpoints_file = True 
+                else:
+                    ''
+                    s.kpoints_file = False
 
             elif key == 'bfolder':
                 print_and_log( 'New blockfolder', param[key])

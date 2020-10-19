@@ -3905,7 +3905,10 @@ class Calculation(object):
         efermi_origin = pm.get('efermi_origin')
         nsmooth = pm.get('nsmooth') or 0.0001
         linewidth = pm.get('linewidth') or 0.8
-        efermi_shift = pm.get('efermi_shift')
+        efermi_shift = pm.get('efermi_shift') or 0
+
+        if efermi_origin is None:
+            efermi_origin = 1
 
 
         if corner_letter is None:

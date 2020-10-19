@@ -904,8 +904,13 @@ def determine_voids(st, r_impurity, fine = 1, step_dec = 0.05):
     return st_pores, sums, avds
 
 def determine_unique_voids(st_pores, sums, avds):
-    crude_prec = 1
+    crude_prec = 1 # number of signs after 0
+
+
     sums_crude = np.unique(sums.round(crude_prec))
+
+
+
     print_and_log('The unique voids based on the sums:', 
         '\nwith 0.01 A prec:',np.unique(sums.round(2)),
         '\nwith 0.1  A prec:',sums_crude,
@@ -931,6 +936,13 @@ def insert_atom(st, el, i_void = None, i_void_list = None, r_imp = 1.6, ):
     """Simple Wrapper for inserting atoms 
 
     i_void (int) has higher priority than i_void_list
+    
+    return st_new, i_add, sts_by_one
+        st_new - all positions are filled 
+        i_add - the number of last inserted atom
+        sts_by_one - list of structures with only one inserted atom in all found positions
+
+
     """
 
 
@@ -948,13 +960,18 @@ def insert_atom(st, el, i_void = None, i_void_list = None, r_imp = 1.6, ):
         i_void_list = [i_void]
 
     if i_void_list is None:
-        sys.exit()
+        i_void_list = list(range(len(insert_positions)))
+        printlog('No i_void was provided, I insert all', imp = 'y')
 
     st_new = st.copy()
+    sts_by_one = []
     for i in i_void_list:
         xc = insert_positions[i]
         
         st_new, i_add = st_new.add_atoms([xc], el, return_ins = True)
+        st_one, _ = st.add_atoms([xc], el, return_ins = True)
+        st_one.name+='+'+el+str(i)
+        sts_by_one.append(st_one)
 
         st_new.name+='+'+el+str(i)
         st_new.des+=';Atom '+el+' added to '+ str(xc)
@@ -964,6 +981,6 @@ def insert_atom(st, el, i_void = None, i_void_list = None, r_imp = 1.6, ):
     st_new.write_poscar()
     st_new.magmom = [None]
 
-    return st_new, i_add
+    return st_new, i_add, sts_by_one
 
 

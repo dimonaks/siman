@@ -542,10 +542,10 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
 
     if cls is None:
         cls = [cl]*len(sts)
+    energies = []
+    for i, st, cl_i in zip(range(len(sts)),sts,cls) : 
 
-    for i, st, cl in zip(range(len(sts)),sts,cls) : 
-
-        itn = cl.id[0]+suf+ str(i)
+        itn = cl_i.id[0]+suf+ str(i)
         # del header.struct_des[itn]
         # continue
         if add:
@@ -561,8 +561,17 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
                 else:
                     db[itn, ise, 1].run(ise1, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up2', ngkpt = ngkpt)
             else:
-                res_loop(itn, ise, 1, up = 'up2')
+                res_loop(itn, ise, 1, up = 'up1')
+                cln = db[itn, ise, 1]
+                energies.append(cln.e0)
 
+    for i, e in enumerate(energies):
+        print(i, e)
 
+    if not add:
+        i_min = energies.index(min(energies))
+        print('Minimum energy is for ', i_min, energies[i_min])
+        itn = cl.id[0]+suf+ str(i_min)
+        db[itn, ise, 1].res()
 
-    return
+    return db[itn, ise, 1].end
