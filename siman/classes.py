@@ -3746,6 +3746,7 @@ class Calculation(object):
         self.end.jmol(*args, **kwargs)
     def poscar(self):
         self.end.write_poscar()
+
     def me(self):
         self.end.printme()
     def gmt(self, *args, **kwargs):
@@ -6550,12 +6551,13 @@ class CalculationVasp(Calculation):
         return header.calc[child]
 
 
-    def full(self, ise = None, up = 0, fit = 1):
+    def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None):
         """
         Wrapper for full optimization
         ise (str) - optimization set; if None then choosen from dict
         up (int) - 0 read results if exist, 1 - update
-        fig (int) - 1 or 0
+        fit (int) - 1 or 0
+        suf - additional suffix
         """
         from siman.project_funcs import optimize
         if ise is None:
@@ -6563,14 +6565,14 @@ class CalculationVasp(Calculation):
                 ise = '4uis'
         st = self.end
         it = self.id[0]
-        child = (it+'.su', ise, 100)
+        child = (it+suf+'.su', ise, 100)
 
         if not hasattr(self, 'children'):
             self.children = []
         if not up and child in self.children:
-            optimize(st, self.id[0], ise = ise, fit = fit)
+            optimize(st, it+suf, ise = ise, fit = fit, add_loop_dic = add_loop_dic)
         else:
-            optimize(st, self.id[0], ise = ise, add = 1)
+            optimize(st, it+suf, ise = ise, add = 1)
             self.children.append(child)
 
         return
