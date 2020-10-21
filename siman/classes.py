@@ -6570,9 +6570,10 @@ class CalculationVasp(Calculation):
         if not hasattr(self, 'children'):
             self.children = []
         if not up and child in self.children:
-            optimize(st, it+suf, ise = ise, fit = fit, add_loop_dic = add_loop_dic)
+            optimize(st, it+suf, ise = ise, fit = fit, ) # read results
         else:
-            optimize(st, it+suf, ise = ise, add = 1)
+            #run
+            optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic)
             self.children.append(child)
 
         return

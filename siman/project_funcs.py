@@ -1872,12 +1872,35 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     else:
                         search_type = 'vacancy_creation'
 
-                    # print('make_neb:', add_loop_dic)
+                    if pd.get('neb_end_points_from_step2_run'):
+                        skl = list(sup_key)
+                        if pd.get('step2_run_name') is None:
+                            printlog('Error! step2_run_name is None')
+
+                        sup_key = tuple([pd['step2_run_name']]+skl[1:]) #replace first item of sup_key tuple
+
+                        xr_start = calc[support_dict_key][sup_key, 'xr_m_ion_start']
+                        xr_final = calc[support_dict_key][sup_key, 'xr_m_ion_final']
+                        printlog('Using start and final positions from step 2', support_dict_key, sup_key, xr_start, xr_final, imp = 'Y')
+                        # sys.exit()
+                        search_type = 'vacancy_creation'
+
+                    else:
+                        xr_start = None
+                        xr_final = None
+
+
                     it = add_neb(clB, up = up_add_loop, ise_new = ise_new, images = images, 
+                        xr_start = xr_start,
+                        xr_final = xr_final,
                         i_void_start = pd['start_pos'], i_void_final = pd['end_pos'], 
                         atom_to_insert = atom_to_insert,
                         search_type = search_type, add_loop_dic = add_loop_dic, old_behaviour = old_behaviour, **other_param)                
                 
+
+
+
+
                 elif 'make_ds' in mode:
 
                     # printlog('made_ds mode')
@@ -1888,6 +1911,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                             add_loop_dic = add_loop_dic, old_behaviour = old_behaviour, **other_param)                          
                     else:
                         # use the same positions as was used in normal
+                        
+                        # print(support_dict_key, sup_key)
+                        # sys.exit()
+
                         xr_start = calc[support_dict_key][sup_key, 'xr_m_ion_start']
                         xr_final = calc[support_dict_key][sup_key, 'xr_m_ion_final']
                         printlog('Using start and final positions from', support_dict_key, sup_key, xr_start, xr_final, imp = 'Y')
@@ -1930,10 +1957,12 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 clB.neb_id[neb_unique_id] = (it, ise_new, 1)  # additional unique id and state, TODO: maybe move to add_neb 
                 # print(clB.id, clB.neb_id)
 
-                if 'normal' in mode:
+                if 'normal' in mode and not pd.get('no_save_neb_coordinates'):
                     calc[support_dict_key][sup_key, 'xr_m_ion_start'] = struct_des[it].xr_m_ion_start # xred coordinate of migrating ion in starting position
                     calc[support_dict_key][sup_key, 'xr_m_ion_final'] = struct_des[it].xr_m_ion_final # xred coordinate of migrating ion in final    position
                     # print (struct_des[it].x_m_ion_start, struct_des[it].x_m_ion_final)
+                    # sys.exit()
+                    # print(support_dict_key, sup_key)
                     # sys.exit()
 
 
@@ -4275,6 +4304,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         db[pn]['latex'] = {}
         print('service_list was cleared')
 
+    # print(db[pn].keys())
+    # sys.exit()
     if update or 'neb_data' not in db[pn]:
         db[pn]['neb_data'] = {} # data related with neb to transfer coordinates
         print('service_list neb_data was cleared')
@@ -4358,12 +4389,13 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
+
+
             a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), 
             param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic, 
             run_neb = run_neb, run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global') ) 
             
-
 
 
 
@@ -4454,6 +4486,12 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                     add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
+
+
+                    pd['step2_run_name'] = service_list[0]['name']
+                    pd['no_save_neb_coordinates'] = 1
+                    pd['neb_end_points_from_step2_run'] = 1
+
                     # print(run_sc)
                     # sys.exit()
                     a = calc_barriers('normal', el, el, up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
