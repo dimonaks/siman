@@ -529,6 +529,13 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
 
     params - pass to add_loop
 
+
+    if add == 0:
+        read results
+
+    RETURN
+    cl with lowest energy
+
     """
     
     if params is None:
@@ -574,4 +581,6 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
         itn = cl.id[0]+suf+ str(i_min)
         db[itn, ise, 1].res()
 
-    return db[itn, ise, 1].end
+        return db[itn, ise, 1]
+    else:
+        return None

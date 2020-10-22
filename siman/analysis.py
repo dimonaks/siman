@@ -464,7 +464,8 @@ def form_en(sources, products, norm_el = None):
         norm = norm_el
     else:
         norm = 1
-    # print('Normalizing by ', norm_el, norm, 'atoms')
+
+    print('Normalizing by ', norm_el, norm, 'atoms')
 
     dE = (El[1]-El[0])/norm
     print('dE = {:4.2f} eV'.format(dE))
@@ -615,30 +616,37 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
         # import inspect
 
         # print (inspect.getfile(EquationOfState))
+        try:
+            v0, e0, B = eos.fit()
 
-        v0, e0, B = eos.fit()
-        #print "c = ", clist[2]
-        printlog( '''
-        v0 = {0} A^3
-        a0 = {1} A
-        E0 = {2} eV
-        B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
+            #print "c = ", clist[2]
+            printlog( '''
+            v0 = {0} A^3
+            a0 = {1} A
+            E0 = {2} eV
+            B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
 
-        savedpath = 'figs/'+cl.name+'.png'
-        makedir(savedpath)
+            savedpath = 'figs/'+cl.name+'.png'
+            makedir(savedpath)
 
 
-        cl.B = B*160.218
-        # plt.close()
-        # plt.clf()
-        # plt.close('all')
-        if 'fit' in show:
-            mpl.rcParams.update({'font.size': 14})
+            cl.B = B*160.218
+            # plt.close()
+            # plt.clf()
+            # plt.close('all')
+            if 'fit' in show:
+                mpl.rcParams.update({'font.size': 14})
 
-            eos.plot(savedpath, show = True)
-            printlog('fit results are saved in ',savedpath, imp = 'y')
-        else:
-            printlog('To use fitting install ase: pip install ase')
+                eos.plot(savedpath, show = True)
+                printlog('fit results are saved in ',savedpath, imp = 'y')
+        except:
+            printlog('Warning!, no minimum or something is wrong')
+            v0 = 0
+            e0 = 0
+            B = 0
+
+    else:
+        printlog('Warning! To use fitting, install ase: pip install ase')
     # plt.clf()
 
     if push2archive:

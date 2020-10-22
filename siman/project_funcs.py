@@ -4131,7 +4131,7 @@ def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = No
     return
 
 
-def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, add_loop_dic = None ):
+def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, add_loop_dic = None, up_res = 'up1' ):
 
     """
 
@@ -4155,7 +4155,7 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
             res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
 
         else:
-            res_loop(*idd, show = 'fo', up = 'up1')#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
+            res_loop(*idd, show = 'fo', up = up_res)#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
         # st = calc[idd].end
         # print(st.get_space_group_info())
         # alpha, beta, gamma = st.get_angles()

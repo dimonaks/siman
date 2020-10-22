@@ -6551,7 +6551,7 @@ class CalculationVasp(Calculation):
         return header.calc[child]
 
 
-    def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None):
+    def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None, up_res = 'up1'):
         """
         Wrapper for full optimization
         ise (str) - optimization set; if None then choosen from dict
@@ -6573,7 +6573,7 @@ class CalculationVasp(Calculation):
             optimize(st, it+suf, ise = ise, fit = fit, ) # read results
         else:
             #run
-            optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic)
+            optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic, up_res = up_res)
             self.children.append(child)
 
         return
