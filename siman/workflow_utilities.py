@@ -556,7 +556,8 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
         # del header.struct_des[itn]
         # continue
         if add:
-            add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', **params ) #
+            # add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', **params ) #
+            add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder, **params ) #
         
         else:
             ''

@@ -1768,7 +1768,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
         """
         pd = cat[7]#param_dic
 
-        # print(atom_to_insert)
+        # print('atom_to_insert', atom_to_insert)
         # sys.exit()
 
 
@@ -1884,12 +1884,16 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                         printlog('Using start and final positions from step 2', support_dict_key, sup_key, xr_start, xr_final, imp = 'Y')
                         # sys.exit()
                         search_type = 'vacancy_creation'
-
+                        atom_to_insert = pd['atom_to_move']
                     else:
                         xr_start = None
                         xr_final = None
 
+                    # print(atom_to_insert)
 
+                    # print(other_param)
+                    # print('atom_to_insert', atom_to_insert)
+                    # sys.exit()
                     it = add_neb(clB, up = up_add_loop, ise_new = ise_new, images = images, 
                         xr_start = xr_start,
                         xr_final = xr_final,
@@ -1903,7 +1907,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 elif 'make_ds' in mode:
 
-                    # printlog('made_ds mode')
+                    # print('made_ds mode')
+                    # print(atom_to_insert)
+                    # sys.exit()
                     if 'neb_search_voids' in pd and pd['neb_search_voids'] == 1:
                         it = add_neb(clB, up = up_add_loop, ise_new = ise_new, images = images, 
                             i_void_start = pd['start_pos'], i_void_final = pd['end_pos'],
@@ -1924,7 +1930,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                             xr_final = xr_final,
                             i_void_start = pd['start_pos'], i_void_final = pd['end_pos'], #just for name
                             atom_to_insert = atom_to_insert, add_loop_dic = add_loop_dic,
-                            old_behaviour = old_behaviour)                
+                            old_behaviour = old_behaviour, **other_param)                
 
                 id_n = (it, ise_new, 1)
                 
@@ -2116,7 +2122,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
         scale_regions[new_ion] = (-4,4)
         
-        # print(new_ion)
+        # print('new_ion', new_ion)
         # sys.exit()
 
         
@@ -2302,6 +2308,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                                 dic['start_pos'] = mep[0]
                                 dic['end_pos']   = mep[1]
                                 make_neb(idB, new_ion, cat, updateC)
+                        
                         elif 'meps2' in dic: # (i_atom_to_move, end_pos)
                             for mep in dic['meps2']:
 
@@ -2310,6 +2317,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                                 make_neb(idB, new_ion, cat, updateC)
 
                         else:
+                            # print('new_ion', new_ion)
+                            # sys.exit()
+
                             make_neb(idB, new_ion, cat, updateC)
 
 
@@ -3971,6 +3981,9 @@ def neb_wrapper( param_dic = None, paths = None, run_neb = 0, read = 0, plot = 0
     mep = []
 
     el = param_dic['el']
+    # print(el, 'el')
+    # sys.exit()
+
     # if 'old_behaviour' in param_dic:
     #     old_behaviour = param_dic['old_behaviour']
     # else:
@@ -4366,7 +4379,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         printlog('Name for DS is', it_ds)
 
-        pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
+        pd = {'id':cl.id, 
+        # 'el':el, 
+        'ds':it_ds, 'itfolder':cl.sfolder, 
         'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
         'scale_region':scale_region, 'readfiles':readfiles, 'ortho':ortho,
         'end_pos_types_z':end_z,
@@ -4376,9 +4391,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         'project_data':db[pn], # info specific for this project
 
         }
-
-
         pd['atom_to_move'] = p.get('atom_to_move')
+
         path = p.get('path') or (1,1)
         # print(pd['atom_to_move'])
 
@@ -4488,13 +4502,16 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                     pd['id'] = id_new
 
 
-                    pd['step2_run_name'] = service_list[0]['name']
                     pd['no_save_neb_coordinates'] = 1
                     pd['neb_end_points_from_step2_run'] = 1
+                    pd['step2_run_name'] = service_list[0]['name']
 
-                    # print(run_sc)
+                    # print(pd['atom_to_move'])
+                    # print(pd['atom_to_insert'])
                     # sys.exit()
-                    a = calc_barriers('normal', el, el, up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+                    # el, el
+                    a = calc_barriers('normal',  up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, 
+                        upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                     fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
                     choose_outcar_global = p.get('choose_outcar_global')) 
                     

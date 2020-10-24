@@ -1330,6 +1330,11 @@ class Structure():
 
         st.natom+=natom_to_add
 
+        # print(element)
+        # sys.exit()
+        if type(element) is not str:
+            printlog('Error! element is', element, 'but should be element name')
+
         el_z_to_add = element_name_inv(element)
 
         if hasattr(st, 'magmom') and any(st.magmom) or mag:

@@ -164,7 +164,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         naming_conventions209 = False #
 
 
-    # print(atom_to_insert)
+    # print('atom_to_insert', atom_to_insert)
     # sys.exit()
 
     calc = header.calc
@@ -273,6 +273,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         if is_list_like(xr_start):
             x_start = xred2xcart([xr_start], st.rprimd)[0]
+            # print('atom_to_insert', atom_to_insert)
+            # sys.exit()
+
             st1, i_m = st.add_atoms([x_start], atom_to_insert, return_ins = 1)
             x_m = x_start
             # i_m = st1.find_atom_num_by_xcart(x_start)
@@ -395,6 +398,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
                 i_m = st.natom-1
                 x_m = st.xcart[i_m]
+
 
                 search_type = 'existing_voids'
                 type_atom_to_move = atom_to_insert
