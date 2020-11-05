@@ -2140,10 +2140,13 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     elif 'ts' in out_type   : outst = outst_ts
     
     elif not header.siman_run:
-        outst_simple = '|'.join([etot, lens, strs, Nmd])
+        # if not hasattr(cl, 'name'):
+            # cl.name = 'noname'
+
+        outst_simple = '|'.join([cl.name, etot, lens, strs, Nmd])
         # print("Bi2Se3.static.1               |  -20.1543  |    10.27;10.27;10.27    | -680,-680,-657 |   1,13, 13   |    ")
-        if header.show_head:
-            printlog("name                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
+        if header.show_head :
+            printlog("                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
             header.show_head = False
         
         outst = outst_simple

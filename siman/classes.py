@@ -3307,8 +3307,10 @@ class Calculation(object):
             self.id = iid
             self.name = str(iid[0])+'.'+str(iid[1])+'.'+str(iid[2])
         else:
-            self.id = ('0','0',0)
-    
+            self.id = (output,'0', 1)
+        header.db[self.id] = self
+        self.cluster_address = ''
+        self.project_path_cluster = ''
     def get_path(self,):
         path = os.path.dirname(os.getcwd()+'/'+self.path['output'])
         print( path)
@@ -3912,6 +3914,8 @@ class Calculation(object):
         nsmooth = pm.get('nsmooth') or 0.0001
         linewidth = pm.get('linewidth') or 0.8
         efermi_shift = pm.get('efermi_shift') or 0
+        labels = pm.get('labels')
+        image_name = pm.get('image_name')
 
         if efermi_origin is None:
             efermi_origin = 1
@@ -3965,8 +3969,9 @@ class Calculation(object):
             #just one plot
             plot_dos(cl,  iatom = iTM+1,  
             dostype = 'partial', orbitals = orbitals, 
-            # labels = ['Ti1', 'Ti2'], 
+            labels = labels, 
             nsmooth = nsmooth, 
+            image_name = image_name, 
             # invert_spins = invert_spins,
             efermi_origin = efermi_origin,
             efermi_shift = efermi_shift,
