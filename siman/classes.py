@@ -3916,6 +3916,7 @@ class Calculation(object):
         efermi_shift = pm.get('efermi_shift') or 0
         labels = pm.get('labels')
         image_name = pm.get('image_name')
+        fig_format = pm.get('fig_format') or 'pdf'
 
         if efermi_origin is None:
             efermi_origin = 1
@@ -3985,7 +3986,7 @@ class Calculation(object):
             'xlim':xlim, 
             'x_nbins':x_nbins,
             # 'xlim':(-0.5,0.1), 
-            'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
+            'dashes':(5,1), 'fig_format':fig_format, 'fontsize':fontsize})
 
         if iatoms:
 
@@ -4047,6 +4048,8 @@ class Calculation(object):
                 labels = ['', ''], 
                 nsmooth = 1, 
                 color_dict = color_dicts[i%2],
+                image_name = image_name, 
+
                 # invert_spins = invert_spins,
                 show_gravity = (1, 'p6', (-10, 10)), 
                 show = 0,  plot_param = {
@@ -4062,7 +4065,7 @@ class Calculation(object):
                 'xlim':xlim, 
                 'x_nbins':x_nbins,
                 # 'xlim':(-0.5,0.1), 
-                'dashes':(5,1), 'fig_format':'pdf'})
+                'dashes':(5,1), 'fig_format':fig_format})
 
                 i+=1
 
