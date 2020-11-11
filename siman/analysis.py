@@ -333,12 +333,17 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
 
 
 def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4$F', 
-    ax = None, first = None, last = None, fmt = 'r-', label = None, color =None):
+    ax = None, first = 1, last = 1, fmt = 'k-', label = None, 
+    color =None, filename = 'voltage_curve', xlim = None, ylim = None, last_point = 1, exclude = None, formula = None):
     """
     objs - dict of objects with concentration of alkali (*invert* = 1) or vacancies (*invert* = 0) as a key
     xs - choose specific concentrations
     invert - 0 or 1 for concentration axis, see above
     ax - matplotlib object, if more profiles on one plot are needed
+
+    exclude - list of objects to skip
+
+    formula - chemical formula used to calculate capacity in mAh/g
     """
 
     if xs is None:
@@ -349,7 +354,13 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
     x_prev = None
     V_prev = None
 
-    for i in range(len(xs))[:-1] :
+    # if last_point:
+
+
+    for i in range(len(xs))[:-1] : 
+        if i in exclude:
+            continue
+
         x = xs[i]
         # process_cathode_material('KTiPO4F', step = 3, target_x = x, params = params , update = 0 ) #
         # es.append(obj.e0)
@@ -365,8 +376,9 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
         xs2.append(x)
         V_prev = V
 
-    xs2.append(1)
-    es2.append(V_prev)
+    if last_point:
+        xs2.append(1)
+        es2.append(V_prev)
 
     if invert:
         es_inv = list(reversed(es2))
@@ -374,14 +386,38 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
         es_inv = es2
     # xs_inv = list(reversed(xs2))
 
-    # print(es_inv)
-    # print(xs_inv)
-    fit_and_plot(ax = ax, first = first, last = last, 
-        dE1 = {'x':xs2, 'y':es_inv, 'fmt':fmt, 'label':label, 'color':color, }, 
-        ylim = (1.8, 5.7), 
+    # print( len(es_inv) )
+    # print( len(xs2) )
+
+
+    xf = [float(x) for x in xs2] #x float
+    # formula = 0
+    if formula:
+        from pymatgen.core.composition import Composition
+        # from 
+        comp = Composition(formula)
+
+
+        x = [x*header.F/comp.weight/3.6 for x in xf] # capacity in mA/g
+        g = lambda x: x*header.F/comp.weight/3.6
+        f = lambda x: x*comp.weight*3.6/header.F
+
+    else:
+        x = xf # just in concentration
+        xlim = (0,1.2)
+        f = None
+        g = None
+
+    x.insert(0, 0)
+    es_inv.insert(0, 2.2)
+
+
+    fit_and_plot(ax = ax, first = first, last = last, power = 4,
+        dE1 = {'x':x, 'x2_func':f, 'x2_func_inv':g, 'x2label':'x in Li$_{x}$TiPO$_4$', 'y':es_inv, 'fmt':fmt, 'label':label, 'color':color, }, 
+        ylim = ylim, xlim = xlim,
         legend = 'best', ver=0, alpha = 1,
-        filename = 'figs/ktp_voltage_curve', fig_format = 'pdf',
-        ylabel = 'Voltage, V', xlabel = xlabel, linewidth = 2)
+        filename = 'figs/'+filename, fig_format = 'pdf',
+        ylabel = 'Voltage, V', xlabel = xlabel, linewidth = 2, fontsize = 12)
     return
 
 

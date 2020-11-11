@@ -199,7 +199,7 @@ kJ_mol2eV = 1.0364e-2
 J_mol_T2eV_T = 1.0364e-5
 J2eV = 6.242e+18
 h = 4.135668e-15 # eV/Hz
-
+F = 96485.3329 # sA/mol
 
 kB = 8.617e-5 # eV/K
 kB_SI = 1.380649e-23 # J/K
