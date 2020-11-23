@@ -5410,6 +5410,7 @@ class Calculation(object):
         if os.path.exists(path_to_file) and 'up2' not in up: 
             out = None
         else:
+            printlog('File', path_to_file, 'was not found. Trying to update from server', imp = 'y')
             out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = address)
 
 
