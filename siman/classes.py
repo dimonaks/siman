@@ -2212,7 +2212,7 @@ class Structure():
                 xc+=vec_cart
             st.update_xred()
             
-        else:
+        elif vector_red is not None:
             vec = np.array(vector_red)
             for xr in st.xred:
                 xr+=vec
@@ -2617,14 +2617,17 @@ class Structure():
 
     def center_on(self, i):
         #calc vector which alows to make particular atom in the center 
-        x_r = self.xred[i]
-        center = np.sum(self.xred, 0)/self.natom
-        # print(center)
-        # sys.exit()
-        # print(x_r)
-        dv = center - x_r
-        # print(dv)
-        # print(dv+x_r)
+        if i and i < len(self.xred):
+            x_r = self.xred[i]
+            center = np.sum(self.xred, 0)/self.natom
+            # print(center)
+            # sys.exit()
+            # print(x_r)
+            dv = center - x_r
+            # print(dv)
+            # print(dv+x_r)
+        else:
+            dv = None
         return dv
 
 

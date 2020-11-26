@@ -354,6 +354,8 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
     x_prev = None
     V_prev = None
 
+    if exclude is None:
+        exclude = []
     # if last_point:
 
 
@@ -409,7 +411,7 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
         g = None
 
     x.insert(0, 0)
-    es_inv.insert(0, 2.2)
+    es_inv.insert(0, 2.75)
 
 
     fit_and_plot(ax = ax, first = first, last = last, power = 4,

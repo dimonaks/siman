@@ -806,6 +806,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         st2s = copy.deepcopy(st2)
     
     if center_on_moving and search_type is not None:
+
         vec = st1.center_on(i1)
         st1s = st1s.shift_atoms(vec)
         st2s = st2s.shift_atoms(vec)
@@ -820,7 +821,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     
     with cd('xyz'):
         a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
-        
+        print(a)
         dst = it_new+'_all'
         makedir(dst+'/any')
         for f in ['00', '01', '02', '03', '04']:
