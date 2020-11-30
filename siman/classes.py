@@ -2180,9 +2180,10 @@ class Structure():
         printlog('find_atom_num_by_xcart(): x_tar after periodic = ', x_tar)
 
         # print(x_tar)
-        self = self.return_atoms_to_cell()
+        # self = self.return_atoms_to_cell()
 
         for i, x in enumerate(self.xcart):
+            # print (np.linalg.norm(x-x_tar), prec)
             if np.linalg.norm(x-x_tar) < prec:
             # if all(x == x_tar):
                 printlog('Atom', i+1, 'corresponds to', x_tar)
