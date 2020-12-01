@@ -759,7 +759,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         # st1, _, _ = st1.remove_close_lying()
         # st2, _, _ = st2.remove_close_lying()
-        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.0)
+        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
 
         # sys.exit()
         i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
