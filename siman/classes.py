@@ -3899,6 +3899,7 @@ class Calculation(object):
         i_at - number of atom from 0
         iatoms - list of atom numbers (from 0) to make one plot with several dos
         el - element for isym, otherwise first TM is used
+        orbitals
 
         """
         from siman.header import db
