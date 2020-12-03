@@ -4262,6 +4262,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         active_cation - if more than one type of cations exists in structure choose required
         show_fit
         run_neb
+        neb_charged - -1 for vacancy (one electron is added to compensate oxidation) or +1 for interstitial (one electron
+        is remove to compensate reduction)
+
         up_SC
         up_res
         atom_to_move
@@ -4270,6 +4273,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         sg_ds - space group for deintercalated state for step 2
 
         exp_geometry - list of rows with exp geometry for table
+
 
         show - a number of control for neb, see analysis
 
@@ -4291,6 +4295,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     sc_set    = p.get('sc_set') or '4uis'
     sc_set_ds    = p.get('sc_set_ds') or sc_set
     n_set     = p.get('neb_set') or '1u'
+    neb_charged     = p.get('neb_charged')
     run_sc   = p.get('run_sc')
     run_neb   = p.get('run_neb')
     end_z   = p.get('end_z')
@@ -4329,7 +4334,9 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
 
     service_list = db[pn]['res']
-    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum }
+
+
+    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum, 'params':{'charge':neb_charged} }
     
     if it_suffix:
         add_loop_dic['it_suffix'] = it_suffix

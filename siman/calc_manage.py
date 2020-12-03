@@ -931,7 +931,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 - 'mcsteps' - number of Monte-Carlo steps
                 - 'temp'    - temperature (K) for Metropolis Algorithm
                 - 'normal'  - vector normal to surface
-            - 'charge' - charge of the system, +1, -1
+            - 'charge' - charge of the system, +1 - electrons are removed, -1 - electrons are added
 
 
             - 'polaron'
