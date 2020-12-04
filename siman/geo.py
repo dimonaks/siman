@@ -2389,8 +2389,8 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
 
-    if len(slabs) == 1:
-        surface_i =0
+    if len(slabs) > 1:
+        # surface_i =0
         st = st.update_from_pymatgen(slabs[surface_i])
 
     if write_poscar:
