@@ -332,9 +332,10 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
 
 
 
-def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4$F', 
+def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4$F', ylabel = 'Voltage, V',
     ax = None, first = 1, last = 1, fmt = 'k-', label = None, 
-    color =None, filename = 'voltage_curve', xlim = None, ylim = None, last_point = 1, exclude = None, formula = None):
+    color =None, filename = 'voltage_curve', xlim = None, ylim = None, last_point = 1, exclude = None, 
+    formula = None):
     """
     objs - dict of objects with concentration of alkali (*invert* = 1) or vacancies (*invert* = 0) as a key
     xs - choose specific concentrations
@@ -414,12 +415,22 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
     es_inv.insert(0, 2.75)
 
 
+    font = {'family' : 'Arial',
+            # 'weight' : 'boolld',
+            'size'   : 14}
+
+    header.mpl.rc('font', **font)
+
+    print([f(xi) for xi in x] )
+
     fit_and_plot(ax = ax, first = first, last = last, power = 4,
-        dE1 = {'x':x, 'x2_func':f, 'x2_func_inv':g, 'x2label':'x in Li$_{x}$TiPO$_4$', 'y':es_inv, 'fmt':fmt, 'label':label, 'color':color, }, 
-        ylim = ylim, xlim = xlim,
+        dE1 = {'x':x, 'x2_func':f, 'x2_func_inv':g, 
+        'x2label':'x in Li$_{x}$TiPO$_4$', 
+        'y':es_inv, 'fmt':fmt, 'label':label, 'color':color, },#'xticks':np.arange(0, 170, 20)}, 
+        ylim = ylim, xlim = xlim, 
         legend = 'best', ver=0, alpha = 1,
         filename = 'figs/'+filename, fig_format = 'pdf',
-        ylabel = 'Voltage, V', xlabel = xlabel, linewidth = 2, fontsize = 12)
+        ylabel = ylabel, xlabel = xlabel, linewidth = 2, fontsize = None)
     return
 
 
