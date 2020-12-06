@@ -187,6 +187,8 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
         return
 
     energy_ref_dict = {3:-1.9,  11:-1.31,  19:-1.02, 37:-0.93}
+    #
+
     z_alk_ions = [3, 11, 19, 37]
 
 
