@@ -2183,7 +2183,7 @@ class Structure():
         printlog('find_atom_num_by_xcart(): x_tar after periodic = ', x_tar)
 
         # print(x_tar)
-        # self = self.return_atoms_to_cell() # please solve the problem, as neb not always works correctly!
+        self = self.return_atoms_to_cell() # please solve the problem, as neb not always works correctly!
 
         for i, x in enumerate(self.xcart):
             # print (np.linalg.norm(x-x_tar), prec)
