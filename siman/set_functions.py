@@ -135,7 +135,10 @@ vasp_other_keys = [
 'IVDW',
 'LVDW_EWALD',
 'NUPDOWN',
-
+'AEXX', 
+'AGGAX', 
+'AGGAC', 
+'ALDAC'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 

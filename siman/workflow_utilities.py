@@ -564,22 +564,30 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
             
             if acc:
                 if acc2:
-                    db[itn+'.ifc', ise1, 1].run(ise2, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up2', ngkpt = ngkpt)
+                    db[itn+'.ifc', ise1, 1].run(ise2, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up1', ngkpt = ngkpt)
+                    cln = db[itn+'.ifc.ifc', ise2, 1]
 
                 else:
-                    db[itn, ise, 1].run(ise1, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up2', ngkpt = ngkpt)
+                    # db[itn, ise, 1].run(ise1, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up1', ngkpt = ngkpt)
+                    cln = db[itn+'.ifc', ise1, 1]
+                    cln.res(choose_outcar=0, show = 'fo')
+                    suf_acc = '.ifc'
             else:
+                suf_acc = ''
+
                 res_loop(itn, ise, 1, up = 'up1')
                 cln = db[itn, ise, 1]
+            
+            if hasattr(cln, 'e0'):
                 energies.append(cln.e0)
 
     for i, e in enumerate(energies):
         print(i, e)
 
-    if not add:
+    if not add and len(energies)>0:
         i_min = energies.index(min(energies))
         print('Minimum energy is for ', i_min, energies[i_min])
-        itn = cl.id[0]+suf+ str(i_min)
+        itn = cl.id[0]+suf+ str(i_min)+suf_acc
         db[itn, ise, 1].res()
 
         return db[itn, ise, 1]

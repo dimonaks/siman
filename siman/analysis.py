@@ -425,7 +425,15 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
 
     header.mpl.rc('font', **font)
 
-    print([f(xi) for xi in x] )
+    xi = [f(xi) for xi in x]
+    print(xi )
+
+    print('Full capacity is ', g(1)  )
+
+    for i in range(len(x)):
+        print('{:6.2f}, {:4.2f}, {:4.2f}'.format(x[i], float(xi[i]), es_inv[i]))
+
+
 
     fit_and_plot(ax = ax, first = first, last = last, power = fit_power,
         dE1 = {'x':x, 'x2_func':f, 'x2_func_inv':g, 
@@ -1429,12 +1437,15 @@ def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
 
     return gamma
 
-def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev_a = 0):
+def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev_a = 0, normal = 2, normalize_by = None):
     """Calculate surface energy
     cl1 - supercell with surface
     cl2 - comensurate bulk supercell
     the area is determined from r[0] and r[1];- i.e they lie in surface
     chem_pot (dic) - dictionary of chemical potentials for nonstoichiometric slabs
+
+    normal - normal to the surface 0 - along a, 1 - along b, 2 - along c
+    normalize_by - name of element to normalize number of atoms in bulk and slab, if None, transition elements are used
 
     return_diff_energy (bool) - in addtion to gamma return difference of energies 
     """
@@ -1449,15 +1460,41 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     natom1 = st1.get_natom()
     natom2 = st2.get_natom()
 
-    A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
-    # print(A)
+    if natom1%natom2:
+        printlog('Warning! Non-stoichiometric slab, atom1/natom2 is', natom1/natom2)
+
+
+    if normal == 0:
+        A = np.linalg.norm( np.cross(st1.rprimd[1] , st1.rprimd[2]) )
+
+    if normal == 1:
+        A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[2]) )
+
+    if normal == 2:
+        A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
+
+
+    print('Surface area is {:.2f} A^2, please check'.format(A))
     # get_reduced_formula
     # print(natom1, natom2)
 
 
-    tra1 = st1.get_transition_elements()
-    tra2 = st2.get_transition_elements()
+    if normalize_by:
+        ''
+        z = invert(normalize_by)
+        tra1 = st1.get_specific_elements([z])
+        tra2 = st2.get_specific_elements([z])
+
+    else:
+        tra1 = st1.get_transition_elements()
+        tra2 = st2.get_transition_elements()
+
+
+
     ntra1 = len(tra1)
+
+    # if ntra1 == 0:
+
     if ntra1 == 0: 
         ntra1 = natom1
     ntra2 = len(tra2)
@@ -1466,6 +1503,9 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     rat1 = natom1/ntra1
     rat2 = natom2/ntra2
     mul = ntra1/ntra2
+
+    # print(rat1, rat2, natom1, ntra1, natom2, ntra2,)
+    print('Number of bulk cells in slab is {:n}'.format(mul))
 
 
     if rat1 != rat2:
