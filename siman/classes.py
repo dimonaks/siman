@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import, print_function
-import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil
+import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil, random
 import re, io, json
 import pprint
 
@@ -2228,6 +2228,25 @@ class Structure():
         return st
 
 
+    def shake_atoms(self, amplitude = 0.1, el_list = None, ):
+        """
+        Randomly shake atoms around the lattice 
+        amplitude (float) - maximum shift in A it is multiplied by random vector
+        el_list (list of int) - shake only el atoms, None - shake all atoms
+        """
+        st = self.copy()
+
+        ru = random.uniform
+        for i, el in enumerate(st.get_elements()):
+            # print(el, el_list)
+            if el_list is None or el in el_list:
+                rand_vec = amplitude*np.array([ru(-1, 1),ru(-1, 1),ru(-1, 1)])
+                # print(rand_vec) 
+
+                st.xcart[i]+=rand_vec
+        st.update_xred()
+
+        return st
 
     def replic(self, *args, **kwargs):
 
@@ -6518,7 +6537,8 @@ class CalculationVasp(Calculation):
                 idd = None
                 for i in self.children:
                     # print(i, ise, i[1], i[1] == ise)
-                    if i[0] == self.id[0]+it_suffix and i[1] == ise:
+                    # print(i[0], self.id[0]+it_suffix)
+                    if self.id[0]+it_suffix in i[0] and i[1] == ise:
                         # print(i)
                         idd = i
                         # add = True
@@ -6540,12 +6560,17 @@ class CalculationVasp(Calculation):
 
                     cl_son.res(up = up, **res_params, **kwargs)
                     child = idd
+                    add = 0
                 else:
                     child = None
             
 
             vp = header.varset[ise].vasp_params
             ICHARG_or = 'impossible_value'
+
+            # print(add, len(self.children) )
+            # sys.exit()
+
             if add or len(self.children) == 0:
                 
 
