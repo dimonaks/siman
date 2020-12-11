@@ -1998,6 +1998,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 if neb_fit:
                     ''
+                    # up_res = 'un'
+
                     printlog('up key of res_loop = ', up_res)
                     # printlog('choose_outcar = ', choose_outcar)
                     # print(pd.get('show'))
@@ -2006,7 +2008,6 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     else:
                         show = pd['show']
                     # sys.exit()
-
 
                     res, _ = res_loop(idC[0],ise_new,range(1, images+3), up = up_res, show = show, readfiles = readfiles, 
                         choose_outcar = choose_outcar, 
