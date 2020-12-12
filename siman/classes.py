@@ -5387,8 +5387,8 @@ class Calculation(object):
         filetype (str) - 'CHG', 'CHGCAR', etc just the name of file in calculation folder
         nametype (str) - 'asoutcar' - update filetype to OUTCAR format
         up (str) - control flag 
-            'up1' - do not update
-            'up2' - update
+            '1' - do not update
+            '2' - update
 
         root - root calculation folder location of file
 
@@ -5434,7 +5434,7 @@ class Calculation(object):
         # print(self.project_path_cluster)
         # sys.exit()
 
-        if os.path.exists(path_to_file) and 'up2' not in up: 
+        if os.path.exists(path_to_file) and '2' not in up: 
             out = None
         else:
             # printlog('File', path_to_file, 'was not found. Trying to update from server')
