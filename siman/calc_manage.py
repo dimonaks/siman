@@ -2760,7 +2760,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
 def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'no', b_id = None, 
-    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fo', 
+    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fomag', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
     ortho = None, mat_proj_cell = None, ngkpt = None, it_suffix = None,

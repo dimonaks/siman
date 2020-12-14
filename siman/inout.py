@@ -1950,6 +1950,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                         self.sumAO[el+'-Fe'] = sumAO
 
 
+
+
+
+
     if 'en' in show:
         # energy - max force
 
@@ -1966,7 +1970,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # printlog('{:s}'.format([round(m) for m in self.mag_sum]), imp = 'Y' )
         printlog(np.array(self.mag_sum).round(2), imp = 'Y' )
 
-    if 'mag' in show or 'occ' in show:
+    chosen_ion = None
+    if 'maga' in show or 'occ' in show:
         from siman.analysis import around_alkali
         i_alk = self.end.get_specific_elements([3,11,19])
         numb, dist, chosen_ion = around_alkali(self.end, 4, i_alk[0])
@@ -1980,7 +1985,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
     if 'mag' in show and tot_mag_by_atoms:
-        print ('\n\n\n')
+        # print ('\n\n\n')
         # printlog
         # print 'Final mag moments for atoms:'
         # print np.arange(self.end.natom)[ifmaglist]+1
@@ -1993,10 +1998,16 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # for mag in tot_mag_by_atoms:
         #     print ('  -', mag[numb].round(3) )
 
-        # print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
-        mmm = tot_mag_by_atoms[-1][numb].round(3)
 
-        print ('atom:mag  = ', ', '.join('{}:{:4.2f}'.format(iat, m) for iat, m  in zip(  numb+1, mmm   )) )
+
+        # print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
+        # mmm = tot_mag_by_atoms[-1][numb].round(3)
+
+        # print ('atom:mag  = ', ', '.join('{}:{:4.2f}'.format(iat, m) for iat, m  in zip(  numb+1, mmm   )) )
+        self.gmt()
+        print ('\n')
+
+
         if 'a' in show:
             ''
             # print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )

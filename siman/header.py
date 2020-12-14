@@ -207,7 +207,7 @@ R = 8.3145 # J/mol/K
 
 
 
-TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 74]
+TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 74, 40]
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
 TM_MAG = {'NM':0.6,'Co2+hs':3, 'Co2+ls':1, 'Co3+hs':4, 'Co3+ls':0, 'Co4+hs':5, 'Co4+ls':1,
