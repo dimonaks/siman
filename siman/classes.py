@@ -4599,6 +4599,20 @@ class Calculation(object):
                 
                 rm_chg_wav - if True than CHGCAR and WAVECAR are removed
 
+                savefile (str) - key, which determines what files should be saved
+                    'o' - OUTCAR
+                    'i' - INCAR
+                    'v' - CHG
+                    'c' - CHGCAR
+                    'p' - PARCHG
+                    'l' - LOCPOT
+                    'd' - DOSCAR
+                    'a' - AECCAR0, AECCAR2
+                    'x' - vasprun.xml
+                    't' - XDATCAR
+                    'z' - OSZICAR
+                    'w' - WAVECAR
+
             """   
             printlog('The value of savefile is', savefile)
             
@@ -4663,6 +4677,10 @@ class Calculation(object):
 
                 if 't' in savefile:
                     f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
+
+                if 'z' in savefile:
+                    f.write("mv OSZICAR " + v + name_mod + ".OSZICAR\n")
+               
                
                
                 if 'w' in savefile:

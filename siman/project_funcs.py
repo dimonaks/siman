@@ -2163,7 +2163,12 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
     if pd:
         if 'ds' not in pd:
             pd['ds'] = 'None'
-        cathodes = [ [pd['id'][0], pd['id'][1], pd['ds'], '', pd['itfolder'], '', pd['main_set'], md(dic, pd) ], ]
+
+        if 'SC_set' not in pd or pd['SC_set'] is None:
+            pd['SC_set'] = pd['main_set']
+
+
+        cathodes = [ [pd['id'][0], pd['id'][1], pd['ds'], '', pd['itfolder'], '', pd['SC_set'], md(dic, pd) ], ]
         curver = pd['id'][2]
 
     else:
@@ -4390,7 +4395,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         pd = {'id':cl.id, 
         # 'el':el, 
         'ds':it_ds, 'itfolder':cl.sfolder, 
-        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
+        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'SC_set':p.get('SC_set'),
+        'del_pos':del_pos,
         'scale_region':scale_region, 'readfiles':readfiles, 'ortho':ortho,
         'end_pos_types_z':end_z,
         'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom'),

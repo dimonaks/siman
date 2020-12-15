@@ -138,7 +138,11 @@ vasp_other_keys = [
 'AEXX', 
 'AGGAX', 
 'AGGAC', 
-'ALDAC'
+'ALDAC',
+'LAMBDA',
+'M_CONSTR',
+'I_CONSTRAINED_M',
+'RWIGS',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -923,7 +927,7 @@ def init_default_sets(init = 0):
             'KSPACING'  : 0.2,
             'KGAMMA'    : ".TRUE.",
             'LREAL'     : "Auto",
-            'ISMEAR'    : 1,
+            'ISMEAR'    : 0,
             'SIGMA'     : 0.1,
             'LPLANE'    : ".TRUE.",
             'NPAR'      : 1,
