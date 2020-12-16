@@ -6496,9 +6496,9 @@ class CalculationVasp(Calculation):
             ise (str) - name of new set available in header.varset
 
             iopt (str) - inherit_option
-                'full_nomag'
-                'full'
-                'full_chg' - including chg file
+                'full_nomag' - full without magmom
+                'full' - full with magmom
+                'full_chg' - full with magmom and including chg file
             
             up (str) - update key transferred to add_loop and res_loop;
                 'up1' - create new calculation if not exist
@@ -6533,6 +6533,15 @@ class CalculationVasp(Calculation):
         if not iopt:
             iopt = 'full'
 
+        if iopt == 'full_nomag':
+            suffix = '.ifn'
+        if iopt == 'full':
+            suffix = '.if'
+        if iopt == 'full_chg':
+            suffix = '.ifc'
+
+
+
 
         if 'it_suffix' in kwargs:
             it_suffix = '.'+kwargs['it_suffix']
@@ -6556,7 +6565,7 @@ class CalculationVasp(Calculation):
                 for i in self.children:
                     # print(i, ise, i[1], i[1] == ise)
                     # print(i[0], self.id[0]+it_suffix)
-                    if self.id[0]+it_suffix in i[0] and i[1] == ise:
+                    if self.id[0]+suffix+it_suffix == i[0] and i[1] == ise:
                         # print(i)
                         idd = i
                         # add = True
