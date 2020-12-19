@@ -3635,6 +3635,12 @@ class Calculation(object):
             if hasattr(st, 'select') and len(st.select) > 0 and not None in st.select:
                 f.write("\nselect  ")
                 for v in st.select:
+                    print(v)
+                    for i in 0,1,2:
+                        if v[i] == 'T':
+                            v[i] = 1
+                        else:
+                            v[i] = 0
                     f.write("{:d} {:d} {:d}\n".format(v[0], v[1], v[2])  )
 
             if hasattr(st, 'vel') and len(st.vel) > 0:
