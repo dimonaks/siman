@@ -498,6 +498,7 @@ class Structure():
         print('The following TM are found:', keys)
 
         mag = list(np.array(self.magmom)[l])
+        magnetic = None
         magnetic_all = []
         for key in keys:
         
