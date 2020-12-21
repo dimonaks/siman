@@ -485,7 +485,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 fit_y1 = fit_func1(x_range); 
          
 
-                ax.plot(x_range, fit_y1, xyf[2][0]+'--', )
+                # ax.plot(x_range, fit_y1, xyf[2][0]+'--', )
+                ax.plot(x_range, fit_y1, '--', )
 
                 # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
                 # y_min  = fit_func2(x_min)

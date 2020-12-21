@@ -488,7 +488,7 @@ class Structure():
         return groups_size, groups_nums
 
 
-    def get_mag_tran(self, to_ox = None):
+    def get_mag_tran(self, to_ox = None, silent = 0):
         #show formatted mag moments of transition metals 
         #to_ox - convert to oxidation state, substract from to_ox
         # if to_ox is negative, then m-to_ox
@@ -512,11 +512,11 @@ class Structure():
             s0 = ' '.join(['{:5d} ']*len(magnetic))
 
             # print(*mag_numbers[key])
-
-            print('\n Znucl:  ', key)
-            # print(' '+s0.format(*mag_numbers[key]))
-            # print(magnetic)
-            print(' '+s.format(*magnetic))
+            if not silent:
+                print('\n Znucl:  ', key)
+                # print(' '+s0.format(*mag_numbers[key]))
+                # print(magnetic)
+                print(' '+s.format(*magnetic))
             magnetic_all += magnetic
             if to_ox:
                 if to_ox > 0:
@@ -524,8 +524,9 @@ class Structure():
                 else:
                     ox = [abs(m)+to_ox for m in magnetic]
                 s2 = ' '.join(['{:5.1f}+']*len(magnetic))
-                print(s2.format(*ox))
-                print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
+                if not silent:
+                    print(s2.format(*ox))
+                    print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
 
 
         return magnetic

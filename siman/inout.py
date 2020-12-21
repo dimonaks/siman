@@ -1766,6 +1766,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
     e_diff = (e_sig0_prev - e_sig0)*1000 #meV
     # print(e_diff)
+    self.e_diff = e_diff #convergence
     if abs(e_diff) > float(toldfe)*1000:
         toldfe_warning = '!'
         printlog("Attention!, SCF was not converged to desirable prec", 
@@ -1877,6 +1878,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
     
     outst_cathode = d.join([spg,etot, etot1, lens, vol,nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
+    if 'help' in show:
+        print('Name', 'Space group', 'Tot. energy, eV', 'Energy, eV/at', 'Vector lengths, A', 
+        'Volume, A^3', 'number of k-points', 'Stresses, MPa', 'Number of atoms', 'time, h', 'Number of ionic steps; Number of electronic states per MD; Total number of electronic steps',
+        'Number of warnings', 'Number of symmetry operations', 'U value', 'Electronic convergence, meV', 'Ionic steps convergence, meV' )
     # print self.end.xred[-1]
     #print outstring_kp_ec
     # print show
