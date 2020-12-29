@@ -917,7 +917,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     if not silent:
 
 
-        printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
+        printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,2), imp = 'y', end = '\n')
     
     # print(sc.rprimd)
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
