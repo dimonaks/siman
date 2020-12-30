@@ -603,7 +603,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
     elif is_list_like(xr_final) and not is_list_like(xr_start) or is_list_like(xr_start) and not is_list_like(xr_final):
-        printlog('Attention! only start of final position is provided, please check that everything is ok with start and final states!!!')
+        printlog('Attention! only start or final position is provided, please check that everything is ok with start and final states!!!')
 
 
 
@@ -759,10 +759,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         # st1, _, _ = st1.remove_close_lying()
         # st2, _, _ = st2.remove_close_lying()
-        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
+        print('Trying to find x_m', x_m)
+        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.45, )
 
         # sys.exit()
-        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
+        print('Trying to find x_del', x_del)
+
+        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.45, )
 
         if rep_moving_atom: #replace the moving atom by required
             st1 = st1.replace_atoms([i1], rep_moving_atom)
@@ -772,8 +775,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             st1 = st1.replace_atoms([i1], type_atom_to_move)
             st2 = st2.replace_atoms([i2], type_atom_to_move)
 
-        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3) # the positions were changed # check if this is correct
-        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
+        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.45) # the positions were changed # check if this is correct
+        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.45)
 
 
     cl.end = st1

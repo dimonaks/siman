@@ -2161,49 +2161,83 @@ class Structure():
         st = st.update_from_pymatgen(pm)
         return st
 
-    def find_atom_num_by_xcart(self, x_tar, prec = 1e-6):
+    def find_atom_num_by_xcart(self, x_tar, prec = 1e-6, search_by_xred = 1 ):
         """take into account periodic conditions
 
+        search_by_xred - use xred to search with PBC
+        prec - difference in atomic positions in A; transformed to reduced difference using the longest vector
+        
         TODO:
         make normal function that treats periodic boundary conditions normally!!!
+            done please test
+
         """
 
         [xr_tar] = xcart2xred([x_tar], self.rprimd)
         printlog('find_atom_num_by_xcart(): xr_tar = ', xr_tar)
         #PBC!!!
-        for i in [0,1,2]:
-            if xr_tar[i] < 0:
-                xr_tar[i]+= 1
-                
-            if xr_tar[i] >= 1:
-                xr_tar[i]-= 1
+        if 1:
+            for i in [0,1,2]:
+                if xr_tar[i] < 0:
+                    xr_tar[i]+= 1
+                    
+                if xr_tar[i] >= 1:
+                    xr_tar[i]-= 1
+        
         printlog('find_atom_num_by_xcart(): xr_tar after periodic = ', xr_tar)
 
         # print(xr_tar)
+        # print(self.rprimd)
         [x_tar] = xred2xcart([xr_tar], self.rprimd)
         
         printlog('find_atom_num_by_xcart(): x_tar after periodic = ', x_tar)
-
+        # sys.exit()
         # print(x_tar)
-        # self = self.return_atoms_to_cell() # please solve the problem, as neb not always works correctly!
+        self = self.return_atoms_to_cell() # please solve the problem, as neb not always works correctly!
 
-        for i, x in enumerate(self.xcart):
-            # print (np.linalg.norm(x-x_tar), prec)
-            if np.linalg.norm(x-x_tar) < prec:
-            # if all(x == x_tar):
-                printlog('Atom', i+1, 'corresponds to', x_tar)
+        # for i, x in enumerate(self.xcart): # xcart
+        #     if np.linalg.norm(x-x_tar) < prec:
+        #         printlog('Atom', i+1, 'corresponds to', x_tar)
+        #         return i
+        
+        vmax = max(self.vlength)
+        prec_xr = prec/vmax
+        print('Reduced precision is', prec_xr, '')
 
-                return i
-        else:
+        i_matched = None
+        d_min = 100
+
+        for i, x in enumerate(self.xred): # xred
+            # d = np.linalg.norm(x-xr_tar)
+            # print(d)
+            # if d >= 0.5:
+                # d = abs(d-1)
+            dv = []
+            for j in 0,1,2:
+                di = abs(x[j]-xr_tar[j])
+                if di >= 0.5:
+                    di=di-1
+                dv.append(di)
+            dvl = np.linalg.norm(dv)
+
+            # print(dvl)
+            if dvl < prec_xr:
+                print('Difference is ', dvl*vmax, 'A', 'for atom', i)
+                if dvl < d_min:
+                    i_matched = i
+                    d_min = dvl
+                    d_xc = np.linalg.norm(self.xcart[i]-x_tar)
+
+                    printlog('Atom', i, self.xcart[i], 'corresponds to the requested atom with difference', d_xc, 'A',  imp = 'Y')
+
+
+
+        if i_matched is None:
             printlog('Attention, atom ', x_tar, 'was not found' )
-        # print self.xcart.index(x_tar)
-        # return self.xcart.index(x_tar)
 
 
-        # print type(atoms_xcart)
 
-
-    # def 
+        return i_matched
 
 
 
