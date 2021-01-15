@@ -3834,7 +3834,7 @@ class Calculation(object):
         ''
 
 
-    def mag_diff(self, cl2, dm_skip = 0.5, el = 'NiCoVMnO', more = 0):
+    def mag_diff(self, cl2, dm_skip = 0.5, el = 'FeNiCoVMnO', more = 0):
 
         """
         rms difference of magmom, skippting large deviations, due to defects
@@ -3851,6 +3851,7 @@ class Calculation(object):
         
         ms = 0
         tot=0
+        maxdm = 0
         for i in range(len(m1)):
             if el1[i] != el2[i]:
                 print('Warinig! el1 is not equal el2 for i=', i, el1[i], el2[i])
@@ -3865,12 +3866,15 @@ class Calculation(object):
             if more:
                 print('For ', i, el1[i], el2[i], 'dm= {:0.3f} muB'.format(dm))
 
+            if dm > maxdm:
+                maxdm = dm
             ms+= (dm)**2
             tot+=1
         rms = (ms/tot)**0.5
 
         if el:
             print('For '+el+' atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
+            print('For '+el+' atoms max difference is {:0.3f} muB; dE is {:0.3f} eV'.format(maxdm, self.e0-cl2.e0))
 
         else:
             print('For rest atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
