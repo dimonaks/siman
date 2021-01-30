@@ -894,10 +894,11 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'u_ramping'    - realizes U ramping approach #Phys Rev B 82, 195128
             - 'afm_ordering' - 
             - 'uniform_scale' - creates uniformly scaled copies of the provided calculations
+			- 'c_scale' - scale across c axis
             - 'scale' - arbitrary scale according to mul_matrix
             using *scale_region*  and *n_scale_images* (see *scale_cell_uniformly()*)
             The copies are available as versions from 1 to *n_scale_images* and
-            suffix .su appended to *it* name
+            suffix .su, .sc, or .sm appended to *it* name
             Copies to cluster *fit* utility that finds volume corresp. to energy minimum, creates 100.POSCAR and continues run 
             - 'monte' - Monte-Carlo functionality
 
@@ -961,11 +962,11 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     no duplication of different input is realized in different places
 
     """
-
+    db = None
 
     def add_loop_prepare():
 
-        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params
+        nonlocal calc, db, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params
 
         if not params:
             params = {}
@@ -986,6 +987,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         if not calc:
             calc = header.calc
+            db = header.db
             varset = header.varset
 
 
@@ -1283,16 +1285,21 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         u_scale_flag = False
         fitted_v100_id = None
 
-
-        if calc_method and ('scale' in calc_method or 'uniform_scale' in calc_method):
-            # print('sdfsdf')
+        #print(calc_method)
+        #sys.exit()
+        if calc_method and ('c_scale' in calc_method or 'scale' in calc_method or 'uniform_scale' in calc_method):
+            #print('Scale')
+            #sys.exit()
             if 'uniform_scale' in calc_method:
                 u_scale_flag = True
 
-                it_new = it+'.su' #scale uniformly 
+                it_new = it+'.su' #scale uniformly  
+            elif 'c_scale' in calc_method:
+                it_new = it+'.sc' #scale along c
+                u_scale_flag = True
             else:
                 it_new = it+'.sm' #scale according to mul_matrix
-            
+                #may not work correctly 
 
             if it_suffix:
                 it_new = it_new+'.'+it_suffix
@@ -1369,7 +1376,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 if 'uniform_scale' in calc_method:
 
                     sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
-                
+                if 'c_scale' in calc_method:
+                    #print('scale_start')
+                    #sys.exit()
+                    sts = scale_cell_by_matrix(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname, mul_matrix = [[1,0,0],[0,1,0],[0,0,1.01]])
                 else:
                     sts = scale_cell_by_matrix(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname, mul_matrix = mul_matrix)
 
@@ -1377,7 +1387,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     inputset = ise_new
                     id_s = (it,inputset,v)
 
-                cl_temp = CalculationVasp(varset[inputset], id_s)
+                #cl_temp = db[id_s].copy()
+                #sys.exit()
+                try:
+                    cl_temp = db[id_s].copy()
+                except:
+                    cl_temp = CalculationVasp(varset[inputset], id_s)
 
                 for i, s in enumerate(sts):
                     ver_new = i+ 1 # start from 1; before it was v+i
@@ -1394,7 +1409,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
 
-                if 'uniform_scale' in calc_method:
+                if 'uniform_scale' in calc_method or 'c_scale' in calc_method:
+                    #print('Create 100')
+                    #sys.exit()
                     #make version 100
                     cl_temp.version = 100
                     cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'

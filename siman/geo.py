@@ -2175,19 +2175,19 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
 
 
 def two_cell_to_one(st1, st2):
-    # let to join two supercells
+    """Join two cells 
 
+	st1 - first cell 
+    st2 - second cell
+    """
     # xcart = []
     # sorts = []
 
     n_at = st1.natom + st2.natom
-    print(n_at, dir(st1), st2.typat)
-
+    #print(n_at, dir(st1), st2.typat)
+    els2 = st2.get_elements()
     for i in range(0, st2.natom):
-        if st2.typat[i] == 2:
-            st1 = st1.add_atom( xc = st2.xcart[i], element = 'Cu')
-        if st2.typat[i] == 1:
-            st1 = st1.add_atom( xc = st2.xcart[i], element = 'Al')
+       st1 = st1.add_atom( xc = st2.xcart[i], element = els2[i])
 
     # st1.update_xred()
 

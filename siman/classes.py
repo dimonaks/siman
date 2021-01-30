@@ -2241,9 +2241,10 @@ class Structure():
 
 
 
-    def shift_atoms(self, vector_red = None, vector_cart = None):
+    def shift_atoms(self, vector_red = None, vector_cart = None, return2cell = 1):
         """
-        Shift all atoms according to *vector_red*
+        Shift all atoms according to *vector_red* or *vector_cart*
+		Use *return2cell* if atoms coordinates should be inside cell
         """
         st = copy.deepcopy(self)
         if vector_cart is not None:
@@ -2259,8 +2260,8 @@ class Structure():
             st.xred2xcart()
 
         
-
-        st = st.return_atoms_to_cell()
+        if return2cell:
+            st = st.return_atoms_to_cell()
         return st
 
 
@@ -5135,7 +5136,7 @@ class Calculation(object):
 
             # print (calc[id].calc_method )
             # sys.exit()
-            if 'uniform_scale' in self.calc_method:
+            if 'uniform_scale' in self.calc_method or 'c_scale' in self.calc_method:
                 # print (input_geofile)
                 name_mod = set_mod
                 
@@ -6686,14 +6687,14 @@ class CalculationVasp(Calculation):
         if ise is None:
             if 'u' in self.id[1]:
                 ise = '4uis'
-        st = self.end
+        st = self.end.copy()
         it = self.id[0]
         child = (it+suf+'.su', ise, 100)
-
+        #st.printme()
         if not hasattr(self, 'children'):
             self.children = []
         if not up and child in self.children:
-            optimize(st, it+suf, ise = ise, fit = fit, ) # read results
+            optimize(st, it+suf, ise = ise, fit = fit, add_loop_dic = add_loop_dic,up_res = up_res) # read results
         else:
             #run
             optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic, up_res = up_res)

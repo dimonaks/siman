@@ -4150,11 +4150,18 @@ def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = No
     return
 
 
-def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, add_loop_dic = None, up_res = 'up1' ):
+def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, add_loop_dic = None, up_res = 'up1' ,):
 
     """
-
-    """
+    Wrapper for creating calculation sequence for optimization of cell using volume scan
+    add_loop_dic={}
+	    'calc_method':
+	      'uniform_scale'
+		  'c_scale'
+		  'scale'
+		'mul_matrix'
+	
+	"""
 
     # if not del_dic:
         
@@ -4164,12 +4171,21 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
     if add_loop_dic is None:
         add_loop_dic = {}
 
+    calc_method = add_loop_dic.get('calc_method') or 'uniform_scale'
+   
+    #print(calc_method, add_loop_dic)
+    if 'uniform_scale' in calc_method:
+        suf = '.su'
+    elif 'c_scale' in calc_method:
+        suf = '.sc'
+    if 'calc_method' in add_loop_dic: 
+        del add_loop_dic['calc_method']
     it_new = name
     if add: 
-        add_loop(it_new, ise, 1, up = 'up2', calc_method = 'uniform_scale', inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder, **add_loop_dic)
+        add_loop(it_new, ise, 1, up = 'up2', calc_method = calc_method, inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder, **add_loop_dic)
 
     else:
-        idd = (it_new+'.su', ise, 100)
+        idd = (it_new+suf, ise, 100)
         if fit:
             res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
 
