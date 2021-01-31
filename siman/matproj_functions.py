@@ -170,7 +170,7 @@ def write_MP_compound(compound_list, path, properties):
 #############################################
 
 
-def get_matproj_info2(criteria, properties, path = None, price = 0, element_price = None, only_stable = 0, exclude_list = []):
+def get_matproj_info2(criteria, properties, path = None, price = 0, element_price = None, only_stable = 0, exclude_list = [], all_phases = 0):
     """
     get data from  materials project server
 
@@ -225,8 +225,14 @@ def get_matproj_info2(criteria, properties, path = None, price = 0, element_pric
                         if st_name not in data.keys():         
                             data.update([(st_name, string_to_write)])
                         else:
-                            if string_to_write['e_above_hull'] < data[st_name]['e_above_hull']:
+                            if all_phases:
+                                n = list(data.keys()).count(st_name)
+                                st_name = st_name + '.' + str(n)
                                 data.update([(st_name, string_to_write)])
+                            else:
+
+                                if string_to_write['e_above_hull'] < data[st_name]['e_above_hull']:
+                                    data.update([(st_name, string_to_write)])
                     else:
                         try:
                             entries = m.get_entries_in_chemsys(string_to_write['elements'])
