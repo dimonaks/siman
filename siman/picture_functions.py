@@ -443,7 +443,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             con_other_args = copy.deepcopy(con)
             # print('con_copy', con_other_args)
             # sys.exit()
-            for k in ['x', 'y', 'fmt', 'annotates']:
+            for k in ['x', 'x2', 'x2label', 'y', 'fmt', 'annotates', 'x2_func', 'x2_func_inv']:
                 if k in con_other_args:
                     del con_other_args[k]
             if 'color' in con_other_args:
@@ -462,6 +462,15 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
             ax.plot(*xyf, alpha = alpha, **con_other_args)
 
+
+            #second x axis
+            if con.get('x2_func' ):
+                # ax2 = ax.twiny()
+                ax2 = ax.secondary_xaxis("top", functions=(con['x2_func'],con['x2_func_inv']))
+                # ax2.plot(con['x2'], con['x2'])
+                ax2.set_xlabel(con['x2label'])
+                # ax2.cla()
+
             if power:
                 coeffs1 = np.polyfit(xyf[0], xyf[1], power)        
                 
@@ -476,11 +485,13 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 fit_y1 = fit_func1(x_range); 
          
 
-                ax.plot(x_range, fit_y1, xyf[2][0], )
+                # ax.plot(x_range, fit_y1, xyf[2][0]+'--', )
+                ax.plot(x_range, fit_y1, '--', )
 
                 # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
                 # y_min  = fit_func2(x_min)
-                slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(xyf[0], xyf[1])
+                from scipy import stats
+                slope, intercept, r_value, p_value, std_err = stats.linregress(xyf[0], xyf[1])
                 print ('R^2 = {:5.2f} for {:s}'.format(r_value**2, key))
 
 

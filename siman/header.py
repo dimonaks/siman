@@ -168,7 +168,7 @@ corenum = 1
 check_job = 1 # check job by additional ssh requests
 reorganize = 0 # use this from time to time to optimize database file size
 verbose_log = 0 # in addition to normal log write verbose log in any case by openning the log_verbose each time
-
+cluster_address = ''
 override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
 
 pymatgen_flag = None
@@ -198,9 +198,16 @@ THz2eV = 0.00413566553853599
 kJ_mol2eV = 1.0364e-2
 J_mol_T2eV_T = 1.0364e-5
 J2eV = 6.242e+18
+h = 4.135668e-15 # eV/Hz
+F = 96485.3329 # sA/mol
 
 kB = 8.617e-5 # eV/K
+
 TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 40, 74]
+
+kB_SI = 1.380649e-23 # J/K
+R = 8.3145 # J/mol/K
+
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
 TM_MAG = {'NM':0.6,

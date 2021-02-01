@@ -1542,6 +1542,11 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 inherit_icalc('remove_atoms', itS, ver, idA0, calc, 
                     atoms_to_remove = ions, del_pos = del_pos, it_folder = cat[4], use_init = 1) 
         
+
+
+
+
+        
             return itS
 
 
@@ -1597,7 +1602,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # print(dic['scale_outcar.'+mode_id], up_res)
                 # print(up_res)
                 # sys.exit()
-                # print(id_res)
+                # print(id_res, it_suffix)
                 res_loop(*id_res, up = up_res, readfiles= readfiles, 
                     choose_outcar = choose_outcar, show = 'e', check_job = 0, it_suffix = it_suffix)
                 if show_fit:
@@ -1763,7 +1768,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
         """
         pd = cat[7]#param_dic
 
-        # print(atom_to_insert)
+        # print('atom_to_insert', atom_to_insert)
         # sys.exit()
 
 
@@ -1867,15 +1872,44 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     else:
                         search_type = 'vacancy_creation'
 
-                    # print('make_neb:', add_loop_dic)
+                    if pd.get('neb_end_points_from_step2_run'):
+                        skl = list(sup_key)
+                        if pd.get('step2_run_name') is None:
+                            printlog('Error! step2_run_name is None')
+
+                        sup_key = tuple([pd['step2_run_name']]+skl[1:]) #replace first item of sup_key tuple
+
+                        xr_start = calc[support_dict_key][sup_key, 'xr_m_ion_start']
+                        xr_final = calc[support_dict_key][sup_key, 'xr_m_ion_final']
+                        printlog('Using start and final positions from step 2', support_dict_key, sup_key, xr_start, xr_final, imp = 'Y')
+                        # sys.exit()
+                        search_type = 'vacancy_creation'
+                        atom_to_insert = pd['atom_to_move']
+                    else:
+                        xr_start = None
+                        xr_final = None
+
+                    # print(atom_to_insert)
+
+                    # print(other_param)
+                    # print('atom_to_insert', atom_to_insert)
+                    # sys.exit()
                     it = add_neb(clB, up = up_add_loop, ise_new = ise_new, images = images, 
+                        xr_start = xr_start,
+                        xr_final = xr_final,
                         i_void_start = pd['start_pos'], i_void_final = pd['end_pos'], 
                         atom_to_insert = atom_to_insert,
                         search_type = search_type, add_loop_dic = add_loop_dic, old_behaviour = old_behaviour, **other_param)                
                 
+
+
+
+
                 elif 'make_ds' in mode:
 
-                    # printlog('made_ds mode')
+                    # print('made_ds mode')
+                    # print(atom_to_insert)
+                    # sys.exit()
                     if 'neb_search_voids' in pd and pd['neb_search_voids'] == 1:
                         it = add_neb(clB, up = up_add_loop, ise_new = ise_new, images = images, 
                             i_void_start = pd['start_pos'], i_void_final = pd['end_pos'],
@@ -1883,6 +1917,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                             add_loop_dic = add_loop_dic, old_behaviour = old_behaviour, **other_param)                          
                     else:
                         # use the same positions as was used in normal
+                        
+                        # print(support_dict_key, sup_key)
+                        # sys.exit()
+
                         xr_start = calc[support_dict_key][sup_key, 'xr_m_ion_start']
                         xr_final = calc[support_dict_key][sup_key, 'xr_m_ion_final']
                         printlog('Using start and final positions from', support_dict_key, sup_key, xr_start, xr_final, imp = 'Y')
@@ -1892,7 +1930,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                             xr_final = xr_final,
                             i_void_start = pd['start_pos'], i_void_final = pd['end_pos'], #just for name
                             atom_to_insert = atom_to_insert, add_loop_dic = add_loop_dic,
-                            old_behaviour = old_behaviour)                
+                            old_behaviour = old_behaviour, **other_param)                
 
                 id_n = (it, ise_new, 1)
                 
@@ -1925,10 +1963,12 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 clB.neb_id[neb_unique_id] = (it, ise_new, 1)  # additional unique id and state, TODO: maybe move to add_neb 
                 # print(clB.id, clB.neb_id)
 
-                if 'normal' in mode:
+                if 'normal' in mode and not pd.get('no_save_neb_coordinates'):
                     calc[support_dict_key][sup_key, 'xr_m_ion_start'] = struct_des[it].xr_m_ion_start # xred coordinate of migrating ion in starting position
                     calc[support_dict_key][sup_key, 'xr_m_ion_final'] = struct_des[it].xr_m_ion_final # xred coordinate of migrating ion in final    position
                     # print (struct_des[it].x_m_ion_start, struct_des[it].x_m_ion_final)
+                    # sys.exit()
+                    # print(support_dict_key, sup_key)
                     # sys.exit()
 
 
@@ -1958,6 +1998,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
                 if neb_fit:
                     ''
+                    # up_res = 'un'
+
                     printlog('up key of res_loop = ', up_res)
                     # printlog('choose_outcar = ', choose_outcar)
                     # print(pd.get('show'))
@@ -1966,7 +2008,6 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     else:
                         show = pd['show']
                     # sys.exit()
-
 
                     res, _ = res_loop(idC[0],ise_new,range(1, images+3), up = up_res, show = show, readfiles = readfiles, 
                         choose_outcar = choose_outcar, 
@@ -2082,7 +2123,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
         scale_regions[new_ion] = (-4,4)
         
-        # print(new_ion)
+        # print('new_ion', new_ion)
         # sys.exit()
 
         
@@ -2122,7 +2163,12 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
     if pd:
         if 'ds' not in pd:
             pd['ds'] = 'None'
-        cathodes = [ [pd['id'][0], pd['id'][1], pd['ds'], '', pd['itfolder'], '', pd['main_set'], md(dic, pd) ], ]
+
+        if 'SC_set' not in pd or pd['SC_set'] is None:
+            pd['SC_set'] = pd['main_set']
+
+
+        cathodes = [ [pd['id'][0], pd['id'][1], pd['ds'], '', pd['itfolder'], '', pd['SC_set'], md(dic, pd) ], ]
         curver = pd['id'][2]
 
     else:
@@ -2268,6 +2314,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                                 dic['start_pos'] = mep[0]
                                 dic['end_pos']   = mep[1]
                                 make_neb(idB, new_ion, cat, updateC)
+                        
                         elif 'meps2' in dic: # (i_atom_to_move, end_pos)
                             for mep in dic['meps2']:
 
@@ -2276,6 +2323,9 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                                 make_neb(idB, new_ion, cat, updateC)
 
                         else:
+                            # print('new_ion', new_ion)
+                            # sys.exit()
+
                             make_neb(idB, new_ion, cat, updateC)
 
 
@@ -3909,7 +3959,7 @@ def neb_wrapper( param_dic = None, paths = None, run_neb = 0, read = 0, plot = 0
     substitute - manually substitute specific points of MEP
 
     """
-    from picture_functions import plot_mep
+    from siman.picture_functions import plot_mep
 
 
 
@@ -3937,6 +3987,9 @@ def neb_wrapper( param_dic = None, paths = None, run_neb = 0, read = 0, plot = 0
     mep = []
 
     el = param_dic['el']
+    # print(el, 'el')
+    # sys.exit()
+
     # if 'old_behaviour' in param_dic:
     #     old_behaviour = param_dic['old_behaviour']
     # else:
@@ -4097,11 +4150,18 @@ def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = No
     return
 
 
-def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, add_loop_dic = None ):
+def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, add_loop_dic = None, up_res = 'up1' ,):
 
     """
-
-    """
+    Wrapper for creating calculation sequence for optimization of cell using volume scan
+    add_loop_dic={}
+	    'calc_method':
+	      'uniform_scale'
+		  'c_scale'
+		  'scale'
+		'mul_matrix'
+	
+	"""
 
     # if not del_dic:
         
@@ -4111,17 +4171,26 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
     if add_loop_dic is None:
         add_loop_dic = {}
 
+    calc_method = add_loop_dic.get('calc_method') or 'uniform_scale'
+   
+    #print(calc_method, add_loop_dic)
+    if 'uniform_scale' in calc_method:
+        suf = '.su'
+    elif 'c_scale' in calc_method:
+        suf = '.sc'
+    if 'calc_method' in add_loop_dic: 
+        del add_loop_dic['calc_method']
     it_new = name
     if add: 
-        add_loop(it_new, ise, 1, up = 'up2', calc_method = 'uniform_scale', inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder, **add_loop_dic)
+        add_loop(it_new, ise, 1, up = 'up2', calc_method = calc_method, inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder, **add_loop_dic)
 
     else:
-        idd = (it_new+'.su', ise, 100)
+        idd = (it_new+suf, ise, 100)
         if fit:
             res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
 
         else:
-            res_loop(*idd, show = 'fo', up = 'up1')#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
+            res_loop(*idd, show = 'fo', up = up_res)#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
         # st = calc[idd].end
         # print(st.get_space_group_info())
         # alpha, beta, gamma = st.get_angles()
@@ -4175,7 +4244,12 @@ def get_alkali_ion(st, active_cation = None):
                 if el not in for_diffusion:
                     for_diffusion.append(el)
 
-        active_cation = for_diffusion[0]
+        if len(for_diffusion) > 0:
+            active_cation = for_diffusion[0]
+        else:
+            active_cation = 'Li'
+            printlog('Warning! Active cation was not found. I return default  = ', el)
+
         if len(for_diffusion) > 1:
             printlog('Warning! More than one candidate for NEB and removing was found, I use first', el)
 
@@ -4210,13 +4284,18 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
         active_cation - if more than one type of cations exists in structure choose required
         show_fit
         run_neb
+        neb_charged - -1 for vacancy (one electron is added to compensate oxidation) or +1 for interstitial (one electron
+        is remove to compensate reduction)
+
         up_SC
         up_res
         atom_to_move
         del_pos
         m_set
+        sg_ds - space group for deintercalated state for step 2
 
         exp_geometry - list of rows with exp geometry for table
+
 
         show - a number of control for neb, see analysis
 
@@ -4238,6 +4317,7 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     sc_set    = p.get('sc_set') or '4uis'
     sc_set_ds    = p.get('sc_set_ds') or sc_set
     n_set     = p.get('neb_set') or '1u'
+    neb_charged     = p.get('neb_charged')
     run_sc   = p.get('run_sc')
     run_neb   = p.get('run_neb')
     end_z   = p.get('end_z')
@@ -4260,16 +4340,25 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
 
     if update or 'res' not in db[pn]:
-        db[pn]['res'] = []
+        db[pn]['res'] = [] #results 
         db[pn]['latex'] = {}
         print('service_list was cleared')
+
+    # print(db[pn].keys())
+    # sys.exit()
+    if update or 'neb_data' not in db[pn]:
+        db[pn]['neb_data'] = {} # data related with neb to transfer coordinates
+        print('service_list neb_data was cleared')
+
 
     if 'latex' not in db[pn]:
         db[pn]['latex'] = {}
 
 
     service_list = db[pn]['res']
-    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum }
+
+
+    add_loop_dic = { 'check_job':1, 'cluster':clust, 'corenum':corenum, 'params':{'charge':neb_charged} }
     
     if it_suffix:
         add_loop_dic['it_suffix'] = it_suffix
@@ -4319,17 +4408,21 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         printlog('Name for DS is', it_ds)
 
-        pd = {'id':cl.id, 'el':el, 'ds':it_ds, 'itfolder':cl.sfolder, 
-        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'del_pos':del_pos,
+        pd = {'id':cl.id, 
+        # 'el':el, 
+        'ds':it_ds, 'itfolder':cl.sfolder, 
+        'images':5, 'neb_set':n_set, 'main_set':m_set, 'scaling_set':sc_set, 'SC_set':p.get('SC_set'),
+        'del_pos':del_pos,
         'scale_region':scale_region, 'readfiles':readfiles, 'ortho':ortho,
         'end_pos_types_z':end_z,
         'show':(p.get('show') or 'fo'), 'rep_moving_atom':p.get('rep_moving_atom'),
-        'center_on_moving':p.get('center_on_moving')
+        'center_on_moving':p.get('center_on_moving'),
+        'mep_shift_vector':p.get('mep_shift_vector'),
+        'project_data':db[pn], # info specific for this project
 
         }
-
-
         pd['atom_to_move'] = p.get('atom_to_move')
+
         path = p.get('path') or (1,1)
         # print(pd['atom_to_move'])
 
@@ -4340,20 +4433,17 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
 
         if step == 2:
             style_dic  = {'p':'bo', 'l':'-b', 'label':'IS'}
+
+
             a = calc_barriers('normal', up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), 
             param_dic = pd, add_loop_dic = add_loop_dic,
             fitplot_args = fitplot_args, style_dic = style_dic, 
             run_neb = run_neb, run_sc = run_sc, choose_outcar_global = p.get('choose_outcar_global') ) 
             
-            # print(a[0] not in service_list)
-            # service_list = []
-            # print(a[0])
-            # print(service_list)
-            # for ele in service_list:
-            #     print(ele == a[0])
-            #     if ele == a[0]:
-            #         break
-            # else:
+
+
+
+
             if a[0] not in service_list:
                 service_list.append(a[0])
             # db[pn]['B'] = [ a[0]['B'] ]
@@ -4419,10 +4509,15 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                 printlog('The following syms are found', syms, 'I check all of them', imp = 'y')
 
 
-                # sys.exit()
                 # print(syms)
+                # sys.exit()
+                sg_ds = p.get('sg_ds') # selected deintercalated set
                 for sg in syms:
                     # st_rem  =  remove_x(st, el, sg = sg, x = x_vac)
+                    if sg_ds:
+                        if sg != sg_ds:
+                            continue
+
                     if sg in sts_dic:
                         # print(sg, sts_dic)
                         st_rem  =  sts_dic[sg] # only the first one is used
@@ -4435,11 +4530,22 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
                     add_loop(*id_new, input_st = st_rem, it_folder = cl.sfolder+'/ds', up = up, **add_loop_dic)
                     
                     pd['id'] = id_new
-                    # print(run_sc)
+
+
+                    pd['no_save_neb_coordinates'] = 1
+                    pd['neb_end_points_from_step2_run'] = 1
+                    pd['step2_run_name'] = service_list[0]['name']
+
+                    # print(pd['atom_to_move'])
+                    # print(pd['atom_to_insert'])
                     # sys.exit()
-                    a = calc_barriers('normal', el, el, up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
+                    # el, el
+                    a = calc_barriers('normal',  up_res = up_res, run_sc = run_sc, show_fit = show_fit, up = up_scale, upA = up_SC, 
+                        upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                     fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
                     choose_outcar_global = p.get('choose_outcar_global')) 
+                    
+
                     info = a[0]
                     info['x'] = target_x
                     if info not in service_list:

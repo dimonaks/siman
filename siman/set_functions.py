@@ -135,7 +135,14 @@ vasp_other_keys = [
 'IVDW',
 'LVDW_EWALD',
 'NUPDOWN',
-
+'AEXX', 
+'AGGAX', 
+'AGGAC', 
+'ALDAC',
+'LAMBDA',
+'M_CONSTR',
+'I_CONSTRAINED_M',
+'RWIGS',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -367,6 +374,9 @@ class InputSet():
             elif key == 'kpoints_file':
                 if param[key]:
                     s.kpoints_file = True 
+                else:
+                    ''
+                    s.kpoints_file = False
 
             elif key == 'bfolder':
                 print_and_log( 'New blockfolder', param[key])
@@ -917,7 +927,7 @@ def init_default_sets(init = 0):
             'KSPACING'  : 0.2,
             'KGAMMA'    : ".TRUE.",
             'LREAL'     : "Auto",
-            'ISMEAR'    : 1,
+            'ISMEAR'    : 0,
             'SIGMA'     : 0.1,
             'LPLANE'    : ".TRUE.",
             'NPAR'      : 1,

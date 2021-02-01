@@ -42,10 +42,10 @@ def chg_at_point(chgfile, xred1, ):
 
 
 
-def cal_chg_diff(cl1, cl2, wcell, chg = 'CHGCAR'):
+def cal_chg_diff(cl1, cl2, cl3=None, wcell=0, chg = 'CHGCAR'):
     """1. Calculate differences of charge densities
     Works on local computer
-    wcell = 0 or 1 - which cell to use to show
+    wcell = 0 or 1 - which cell to use to show atom (cl1 or cl2)
     chg (str) - which file to use 
         CHGCAR - the name as outcar
             if not exist CHG is used
@@ -54,13 +54,19 @@ def cal_chg_diff(cl1, cl2, wcell, chg = 'CHGCAR'):
 
     TO DO:
     instead of paths to files, work with objects
-    d = d(cl1) - d(cl2)
+    if cl3 is None
+        d = d(cl1) - d(cl2)
+    else
+        d = d(cl1) - [d(cl2)+d(cl3)]
+
     d is calculated on server
 
 
     """
     files = []
-    for cl in cl1, cl2:
+    for cl in cl1, cl2, cl3:
+        if cl is None:
+            continue
         if chg == 'CHGCAR':
             file = cl.get_chg_file(nametype  = 'asoutcar')
             if not file:
@@ -88,8 +94,78 @@ def cal_chg_diff(cl1, cl2, wcell, chg = 'CHGCAR'):
 
     printlog('Diff =', file1, '-', file2)
     chgarith(file1, file2, '-', dendiff_filename, wcell)
-
+    
     printlog('Charge difference saved to', dendiff_filename, imp = 'Y')
+    if cl3:
+        printlog('cl3 is detected Diff =', dendiff_filename, '-', files[2], imp = 'Y')
+
+        chgarith(dendiff_filename, files[2], '-', dendiff_filename+'cl3', wcell=0)
+        printlog('Charge difference saved to', dendiff_filename+'cl3', imp = 'Y')
+
+
+    return dendiff_filename
+
+
+def cal_chg_diff_files(chg_file1, chg_file2, cl3=None, wcell=0, chg = 'CHGCAR'):
+    """1. Calculate differences of charge densities
+    Works on local computer
+    wcell = 0 or 1 - which cell to use to show atom (cl1 or cl2)
+    chg (str) - which file to use 
+        CHGCAR - the name as outcar
+            if not exist CHG is used
+        PARCHG - partial charge, the name without any additions
+    
+
+    TO DO:
+    instead of paths to files, work with objects
+    if cl3 is None
+        d = d(cl1) - d(cl2)
+    else
+        d = d(cl1) - [d(cl2)+d(cl3)]
+
+    d is calculated on server
+
+
+    """
+    files = []
+    for cl in cl1, cl2, cl3:
+        if cl is None:
+            continue
+        if chg == 'CHGCAR':
+            file = cl.get_chg_file(nametype  = 'asoutcar')
+            if not file:
+                printlog('No CHGCAR for cl',cl.id[0], 'trying CHG', imp = 'Y')
+                file = cl.get_chg_file('CHG', nametype  = 'asoutcar')
+        elif chg == 'PARCHG':
+            file = cl.get_file('PARCHG')
+
+
+        files.append(file)
+
+
+
+    file1 = files[0]
+    file2 = files[1]
+
+
+    if file1 == None or file2 == None:
+        printlog('Error!, chg not found for one cl:', file1, file2)
+
+
+    working_dir = cl1.dir
+
+    dendiff_filename = working_dir + (chg+'_'+str(cl1.id[0])+'-'+str(cl2.id[0])).replace('.', '_')
+
+    printlog('Diff =', file1, '-', file2)
+    chgarith(file1, file2, '-', dendiff_filename, wcell)
+    
+    printlog('Charge difference saved to', dendiff_filename, imp = 'Y')
+    if cl3:
+        printlog('cl3 is detected Diff =', dendiff_filename, '-', files[2], imp = 'Y')
+
+        chgarith(dendiff_filename, files[2], '-', dendiff_filename+'cl3', wcell=0)
+        printlog('Charge difference saved to', dendiff_filename+'cl3', imp = 'Y')
+
 
     return dendiff_filename
 

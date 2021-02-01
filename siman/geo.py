@@ -918,7 +918,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     if not silent:
 
 
-        printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,1), imp = 'y', end = '\n')
+        printlog('New vectors (rprimd) of supercell:\n',np.round(sc.rprimd,2), imp = 'y', end = '\n')
     
     # print(sc.rprimd)
     sc.vol = np.dot( sc.rprimd[0], np.cross(sc.rprimd[1], sc.rprimd[2])  )
@@ -2066,7 +2066,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
-def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6 ):
+def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6, mode = 'rep' ):
     """
     Generate all possible configurations by replacing x of element el1 by el2 from the structure.
     You should know which space group you want to get.
@@ -2079,6 +2079,10 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     x - replace x of atoms, for example 0.25 of atoms
     
     info_mode (bool) - print all possible configurations
+
+    mode 
+        - 'rep' - replace atoms 
+        - 'pol' - create polarons
 
     sg - number of required space group obtained with info_mode = 1
     return list of structures with sg space groups
@@ -2137,7 +2141,15 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     for order in orderings:
         atoms_to_replace = [req[i] for i, s in enumerate(order) if s < 0]
         printlog('Atoms to replace:', list(els[i] for i in atoms_to_replace), atoms_to_replace, imp = warn)
-        st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent, mag_new = mag)
+        
+        if 'rep' in mode:
+            st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent, mag_new = mag)
+        if 'pol' in mode:
+            # print(mag)
+            # sys.exit()
+            st_rep = st.make_polarons(atoms_to_replace, silent = silent, mag = mag)
+
+
         # printlog('magmom:', st_rep.magmom, imp = warn)
 
         nm = st_rep.sg(silent = silent)[1]
@@ -2163,23 +2175,20 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
 
 
 
-
 def two_cell_to_one(st1, st2):
-    # allows to join two supercells
-
+    """Join two cells 
+	st1 - first cell 
+    st2 - second cell
+    """
     # xcart = []
     # sorts = []
 
     n_at = st1.natom + st2.natom
-    # print(n_at, dir(st1), st2.typat)
 
+    #print(n_at, dir(st1), st2.typat)
+    els2 = st2.get_elements()
     for i in range(0, st2.natom):
-        if st2.typat[i] == 2:
-            st1 = st1.add_atom( xc = st2.xcart[i], element = st2.get_elements()[i])
-        if st2.typat[i] == 1:
-            st1 = st1.add_atom( xc = st2.xcart[i], element = st2.get_elements()[i])
-
-    # st1.update_xred()
+       st1 = st1.add_atom( xc = st2.xcart[i], element = els2[i])
 
 
     return st1
@@ -2434,7 +2443,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
 
-    if len(slabs) > 1:
+    if len(slabs) >= 1:
         # surface_i =0
         st = st.update_from_pymatgen(slabs[surface_i])
 

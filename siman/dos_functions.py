@@ -135,7 +135,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
     lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, 
-    efermi_origin = True, invert_spins  = 0, name_suffix = ''):
+    efermi_origin = True, efermi_shift = 0, invert_spins  = 0, name_suffix = '', image_name = None, color_dict = None):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -159,11 +159,15 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     xlim, ylim (tuple)- limits for plot
 
+    color_dict (dict) - custom dict of colors for orbitals. eg: {'s':'g', 'p':}
+
     plot_param - dict of parameters to fit_and_plot
         dashes - control of dahsed lines
 
     suf2 - additional suffix for label
     name_suffix - modify name
+
+    image_name - user image name
 
     # nsmooth = 15 # smooth of dos
     lts2 - style of lines for cl2
@@ -185,6 +189,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     efermi_origin 
         True - e-fermi is zero energy
         False - e-fermi is left, its value is shown
+    efermi_shift (float) - additional shift of fermi energy in case if smearing is too large
+
 
     invert_spins
         invert spin up and spin down, now only for partial d and p
@@ -238,6 +244,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     if 'legend' not in plot_param:
         plot_param['legend'] = 'best'
 
+    pm = plot_param
+    lw = pm.get('linewidth') or 0.8
+
 
     """1. Read dos"""
     printlog("------Start plot_dos()-----", imp = 'Y')
@@ -285,10 +294,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         ylabel = "DOS (states/eV)"
 
         if spin_pol:
-            dosplot = {'Tot up':{'x':dos[0].energy,    'y':smoother(dos[0].dos[0], 10), 'c':'b', 'ls':'-'}, 
-                        'Tot down':{'x':dos[0].energy, 'y':-smoother(dos[0].dos[1], 10),'c':'r', 'ls':'-'}}
+            dosplot = {'Tot up':{'x':dos[0].energy,    'y':smoother(dos[0].dos[0], nsmooth), 'c':'b', 'ls':'-'}, 
+                        'Tot down':{'x':dos[0].energy, 'y':-smoother(dos[0].dos[1], nsmooth),'c':'r', 'ls':'-'}}
         else:
-            dosplot = {'Total':{'x':dos[0].energy, 'y':smoother(dos[0].dos, 10), 'c':'b', 'ls':'-'}}
+            dosplot = {'Total':{'x':dos[0].energy, 'y':smoother(dos[0].dos, nsmooth), 'c':'b', 'ls':'-'}}
 
 
         # args[nam_down] = {'x':d.energy, 'y':-smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':None}
@@ -314,7 +323,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
             fit_and_plot(show = show, image_name = cl1.name+'--'+cl2.name+'.dosTotal_Diff', xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", hor = True,
                 **plot_param,
-                Diff_Total = (dos[0].energy, smoother(dosd, 15), 'b-'))
+                Diff_Total = (dos[0].energy, smoother(dosd, nsmooth), 'b-'))
         else:
             printlog('You provided only one calculation; could not use diff_total')
 
@@ -591,7 +600,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         else:
             i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
         # color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g', 'p6':'k'}
-        color = {'s':'k', 'p':'#FF0018', 'd':'#138BFF', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'#138BFF', 'eg':'#8E12FF', 'p6':'#FF0018', 'p_all':'r', 'd_all':'b'} #http://paletton.com/#uid=54-100kwi++bu++hX++++rd++kX
+        
+        if color_dict:
+            color = color_dict
+        else:
+            #default dict
+            color = {'s':'k', 'p':'#FF0018', 'd':'#138BFF', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'#138BFF', 'eg':'#8E12FF', 'p6':'#FF0018', 'p_all':'r', 'd_all':'b'} #http://paletton.com/#uid=54-100kwi++bu++hX++++rd++kX
+        
+
         # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
         j = 0
         for orb in orbitals:
@@ -713,6 +729,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                 else:
                     # args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
+                    # print(i_orb.keys(), color.keys())
+                    # sys.exit()
                     args[nam] = {'x':d.energy, 'y':smoother(d.site_dos(iat, i_orb[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
                     
                     if spin_pol:
@@ -724,8 +742,12 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         """Additional dos analysis; to be refined"""
         gc = None
-        if 'ver_lines' not in plot_param:
+        # print(plot_param['ver_lines'])
+        if 'ver_lines' not in plot_param or plot_param['ver_lines'] is None:
             plot_param['ver_lines'] = []
+
+        # print(plot_param['ver_lines'])
+
         if show_gravity:
             if show_gravity[0] == 1:
                 d = d1
@@ -761,15 +783,19 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             
             plot_param['ver_lines'].append({'x':gc, 'c':'k', 'ls':'--'})
 
-        if not efermi_origin:
-            #fermi levels
-            plot_param['ver_lines'].append({'x':cl1.efermi, 'c':'k', 'ls':'-'})
-            if cl2:
-                plot_param['ver_lines'].append({'x':cl2.efermi, 'c':'k', 'ls':'-'})
-            plot_param['ver'] = False
-        """Plot everything"""
+        if efermi_origin:
+            if plot_param['ver']:
+                plot_param['ver_lines'].append({'x':efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
 
-        image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))+name_suffix
+        else:
+            #fermi levels
+            plot_param['ver_lines'].append({'x':cl1.efermi + efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
+            if cl2:
+                plot_param['ver_lines'].append({'x':cl2.efermi + efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
+        plot_param['ver'] = False
+        """Plot everything"""
+        if image_name is None:
+            image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))+name_suffix
 
 
         if 'xlabel' not in plot_param:

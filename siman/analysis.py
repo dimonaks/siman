@@ -187,6 +187,8 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
         return
 
     energy_ref_dict = {3:-1.9,  11:-1.31,  19:-1.02, 37:-0.93}
+    #
+
     z_alk_ions = [3, 11, 19, 37]
 
 
@@ -332,13 +334,21 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
 
 
 
-def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4$F', 
-    ax = None, first = None, last = None, fmt = 'r-', label = None, color =None):
+def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4$F', ylabel = 'Voltage, V',
+    ax = None, first = 1, last = 1, fmt = 'k-', label = None, 
+    color =None, filename = 'voltage_curve', xlim = None, ylim = None, last_point = 1, exclude = None, 
+    formula = None, fit_power = 4):
     """
     objs - dict of objects with concentration of alkali (*invert* = 1) or vacancies (*invert* = 0) as a key
     xs - choose specific concentrations
     invert - 0 or 1 for concentration axis, see above
     ax - matplotlib object, if more profiles on one plot are needed
+
+    exclude - list of objects to skip
+
+    formula - chemical formula used to calculate capacity in mAh/g
+
+    fit_power - power of fit polynomial
     """
 
     if xs is None:
@@ -349,7 +359,15 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
     x_prev = None
     V_prev = None
 
-    for i in range(len(xs))[:-1] :
+    if exclude is None:
+        exclude = []
+    # if last_point:
+
+
+    for i in range(len(xs))[:-1] : 
+        if i in exclude:
+            continue
+
         x = xs[i]
         # process_cathode_material('KTiPO4F', step = 3, target_x = x, params = params , update = 0 ) #
         # es.append(obj.e0)
@@ -365,8 +383,9 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
         xs2.append(x)
         V_prev = V
 
-    xs2.append(1)
-    es2.append(V_prev)
+    if last_point:
+        xs2.append(1)
+        es2.append(V_prev)
 
     if invert:
         es_inv = list(reversed(es2))
@@ -374,14 +393,56 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
         es_inv = es2
     # xs_inv = list(reversed(xs2))
 
-    # print(es_inv)
-    # print(xs_inv)
-    fit_and_plot(ax = ax, first = first, last = last, 
-        dE1 = {'x':xs2, 'y':es_inv, 'fmt':fmt, 'label':label, 'color':color, }, 
-        ylim = (1.8, 5.7), 
+    # print( len(es_inv) )
+    # print( len(xs2) )
+
+
+    xf = [float(x) for x in xs2] #x float
+    # formula = 0
+    if formula:
+        from pymatgen.core.composition import Composition
+        # from 
+        comp = Composition(formula)
+
+
+        x = [x*header.F/comp.weight/3.6 for x in xf] # capacity in mA/g
+        g = lambda x: x*header.F/comp.weight/3.6
+        f = lambda x: x*comp.weight*3.6/header.F
+
+    else:
+        x = xf # just in concentration
+        xlim = (0,1.2)
+        f = None
+        g = None
+
+    x.insert(0, 0)
+    es_inv.insert(0, 2.75)
+
+
+    font = {'family' : 'Arial',
+            # 'weight' : 'boolld',
+            'size'   : 14}
+
+    header.mpl.rc('font', **font)
+
+    xi = [f(xi) for xi in x]
+    print(xi )
+
+    print('Full capacity is ', g(1)  )
+
+    for i in range(len(x)):
+        print('{:6.2f}, {:4.2f}, {:4.2f}'.format(x[i], float(xi[i]), es_inv[i]))
+
+
+
+    fit_and_plot(ax = ax, first = first, last = last, power = fit_power,
+        dE1 = {'x':x, 'x2_func':f, 'x2_func_inv':g, 
+        'x2label':'x in Li$_{x}$TiPO$_4$', 
+        'y':es_inv, 'fmt':fmt, 'label':label, 'color':color, },#'xticks':np.arange(0, 170, 20)}, 
+        ylim = ylim, xlim = xlim, 
         legend = 'best', ver=0, alpha = 1,
-        filename = 'figs/ktp_voltage_curve', fig_format = 'pdf',
-        ylabel = 'Voltage, V', xlabel = xlabel, linewidth = 2)
+        filename = 'figs/'+filename, fig_format = 'pdf',
+        ylabel = ylabel, xlabel = xlabel, linewidth = 2, fontsize = None)
     return
 
 
@@ -464,7 +525,8 @@ def form_en(sources, products, norm_el = None):
         norm = norm_el
     else:
         norm = 1
-    # print('Normalizing by ', norm_el, norm, 'atoms')
+
+    print('Normalizing by ', norm_el, norm, 'atoms')
 
     dE = (El[1]-El[0])/norm
     print('dE = {:4.2f} eV'.format(dE))
@@ -615,30 +677,37 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
         # import inspect
 
         # print (inspect.getfile(EquationOfState))
+        try:
+            v0, e0, B = eos.fit()
 
-        v0, e0, B = eos.fit()
-        #print "c = ", clist[2]
-        printlog( '''
-        v0 = {0} A^3
-        a0 = {1} A
-        E0 = {2} eV
-        B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
+            #print "c = ", clist[2]
+            printlog( '''
+            v0 = {0} A^3
+            a0 = {1} A
+            E0 = {2} eV
+            B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
 
-        savedpath = 'figs/'+cl.name+'.png'
-        makedir(savedpath)
+            savedpath = 'figs/'+cl.name+'.png'
+            makedir(savedpath)
 
 
-        cl.B = B*160.218
-        # plt.close()
-        # plt.clf()
-        # plt.close('all')
-        if 'fit' in show:
-            mpl.rcParams.update({'font.size': 14})
+            cl.B = B*160.218
+            # plt.close()
+            # plt.clf()
+            # plt.close('all')
+            if 'fit' in show:
+                mpl.rcParams.update({'font.size': 14})
 
-            eos.plot(savedpath, show = True)
-            printlog('fit results are saved in ',savedpath, imp = 'y')
-        else:
-            printlog('To use fitting install ase: pip install ase')
+                eos.plot(savedpath, show = True)
+                printlog('fit results are saved in ',savedpath, imp = 'y')
+        except:
+            printlog('Warning!, no minimum or something is wrong')
+            v0 = 0
+            e0 = 0
+            B = 0
+
+    else:
+        printlog('Warning! To use fitting, install ase: pip install ase')
     # plt.clf()
 
     if push2archive:
@@ -690,7 +759,7 @@ def around_alkali(st, nn, alkali_ion_number):
 
 
 
-def find_polaron(st, i_alk_ion, out_prec = 1):
+def find_polaron(st, i_alk_ion, out_prec = 1, nstd  =1.5):
     """
     Find TM atoms with outlying magnetic moments, which 
     is a good indication of being a small polaron
@@ -700,6 +769,8 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
     INPUT:
         i_alk_ion - number of ion from 0 to calculate distances to detected polarons
         out_prec (int) - precision of magmom output
+
+        nstd - number of standart deviations to detect polaron
 
     RETURN:
         pol (dict of int) - numbers of atoms, where polarons are detected for each TM element 
@@ -746,7 +817,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
         # p = np.where(dev>2)[0] # 2 standard deviations
         # print(dev>2)
         # print (type(numbs))
-        nstd = 1.5
+        # nstd = 1.5
         # nstd = 4
         i_pols = numbs[dev>nstd]
 
@@ -1001,15 +1072,16 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
                 st1 = copy.deepcopy(st)
 
-
-                vec = st.center_on(atom_num)
-                # vec = np.asarray([0.,0.,0.])
-
+                if params.get('center_on_moving'):
+                    vec = st.center_on(atom_num)
+                    printlog('Centering by shifting the cell by ', vec, imp = 'y')
+                else:
+                    vec = np.asarray([0.,0.,0.])
+                
             
-                if params is not None and 'mep_shift_vector' in params:
-                    # vec += np.array([0.11,0.11,0]) # path4
+                if params.get('mep_shift_vector'):
+                    vec += np.array(params['mep_shift_vector']) # 
                     # print(params['mep_shift_vector'])
-                    vec += np.array(params['mep_shift_vector']) # path4
 
             # print(vec)
             st_loc = st_loc.shift_atoms(vec)
@@ -1365,12 +1437,15 @@ def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
 
     return gamma
 
-def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev_a = 0):
+def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev_a = 0, normal = 2, normalize_by = None):
     """Calculate surface energy
     cl1 - supercell with surface
     cl2 - comensurate bulk supercell
     the area is determined from r[0] and r[1];- i.e they lie in surface
     chem_pot (dic) - dictionary of chemical potentials for nonstoichiometric slabs
+
+    normal - normal to the surface 0 - along a, 1 - along b, 2 - along c
+    normalize_by - name of element to normalize number of atoms in bulk and slab, if None, transition elements are used
 
     return_diff_energy (bool) - in addtion to gamma return difference of energies 
     """
@@ -1385,15 +1460,41 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     natom1 = st1.get_natom()
     natom2 = st2.get_natom()
 
-    A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
-    # print(A)
+    if natom1%natom2:
+        printlog('Warning! Non-stoichiometric slab, atom1/natom2 is', natom1/natom2)
+
+
+    if normal == 0:
+        A = np.linalg.norm( np.cross(st1.rprimd[1] , st1.rprimd[2]) )
+
+    if normal == 1:
+        A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[2]) )
+
+    if normal == 2:
+        A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
+
+
+    print('Surface area is {:.2f} A^2, please check'.format(A))
     # get_reduced_formula
     # print(natom1, natom2)
 
 
-    tra1 = st1.get_transition_elements()
-    tra2 = st2.get_transition_elements()
+    if normalize_by:
+        ''
+        z = invert(normalize_by)
+        tra1 = st1.get_specific_elements([z])
+        tra2 = st2.get_specific_elements([z])
+
+    else:
+        tra1 = st1.get_transition_elements()
+        tra2 = st2.get_transition_elements()
+
+
+
     ntra1 = len(tra1)
+
+    # if ntra1 == 0:
+
     if ntra1 == 0: 
         ntra1 = natom1
     ntra2 = len(tra2)
@@ -1402,6 +1503,9 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     rat1 = natom1/ntra1
     rat2 = natom2/ntra2
     mul = ntra1/ntra2
+
+    # print(rat1, rat2, natom1, ntra1, natom2, ntra2,)
+    print('Number of bulk cells in slab is {:n}'.format(mul))
 
 
     if rat1 != rat2:

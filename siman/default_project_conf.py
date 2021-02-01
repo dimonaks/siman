@@ -8,13 +8,13 @@ from __future__ import division, unicode_literals, absolute_import
 
 """Cluster constants"""
 CLUSTERS = {}
-DEFAULT_CLUSTER = 'default'
+DEFAULT_CLUSTER = 'slurm'
 PATH2PROJECT = '' # path to project on cluster relative to home folder
 PATH2ARCHIVE = '' # path to archive; if no files are found at home folder, siman will check here; relative paths should be same
 
 
-CLUSTERS['default'] = {
-'address':'aksenov@10.30.16.62', # command for ssh
+CLUSTERS['slurm'] = {
+'address':'man@10.30.16.62', # command for ssh
 # 'homepath':'/home/aksenov/',  # deprecated, determined automatically
 'schedule':'SLURM',
 'corenum':16,
@@ -23,8 +23,8 @@ CLUSTERS['default'] = {
 'modules':'module add prun/1.0; module add intel/16.0.2.181; module add impi/5.1.3.181\n'
 }
 
-CLUSTERS['pardus'] = {
-'address':'Dmitry.Aksenov@10.30.17.10',
+CLUSTERS['pbs'] = {
+'address':'man@10.30.17.10',
 # 'homepath':'/home/Dmitry.Aksenov/',
 'schedule':'PBS',
 'corenum':16,
@@ -32,7 +32,7 @@ CLUSTERS['pardus'] = {
 
 }
 
-CLUSTERS['ut1'] = {'address':'ut1',
+CLUSTERS['sge'] = {'address':'ut1',
 'schedule':'SGE',
 'vasp_com':'mpirun  -n $NSLOTS vasp',
 'pe':'mpi24',
@@ -42,18 +42,18 @@ CLUSTERS['ut1'] = {'address':'ut1',
 
 
 """Local constants"""
-PATH2POTENTIALS = '~/potcars/'
+PATH2POTENTIALS = './potcars/'
 PATH2NEBMAKE = 'nebmaker.pl'
 PATH2JMOL = 'jmol'
 PATH2PHONOPY = 'phonopy'
-pmgkey = "AWqKPyV8EmTRlf1t" #MAPI_KEY
+pmgkey = "" #PMG_MAPI_KEY
 
-path_to_paper        = '/home/aksenov/Research/CEStorage/aksenov_report/'
-PATH2DATABASE        = '/home/aksenov/Data/CEStorage/_aksenov'
+path_to_paper        = './'
+PATH2DATABASE        = './'
 
 cluster_tools = 'tools'
 geo_folder           = './'
-path_to_images       = path_to_paper+'/fig/'
+path_to_images       = './'
 path_to_wrapper      = '~/Simulation_wrapper/'
 show_head = None # show header for res_loop()
 

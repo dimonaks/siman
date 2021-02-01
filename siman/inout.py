@@ -1,6 +1,8 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
 import os, io, re, math
+from csv import reader
+
 import numpy  as np
 try:
     import pandas as pd 
@@ -20,6 +22,17 @@ from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
 from siman.small_classes import empty_struct
 from siman.geo import local_surrounding, replic
+
+
+
+def read_csv(filename, delimiter =','):
+    with open(filename, 'r') as read_obj:
+        # pass the file object to reader() to get the reader object
+        csv_reader = reader(read_obj, delimiter = delimiter)
+        # Pass reader object to list() to get a list of lists
+        list_of_rows = list(csv_reader)
+        # print(list_of_rows)
+    return list_of_rows
 
 
 def read_xyz(st, filename, rprimd = None):
@@ -1753,6 +1766,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
     e_diff = (e_sig0_prev - e_sig0)*1000 #meV
     # print(e_diff)
+    self.e_diff = e_diff #convergence
     if abs(e_diff) > float(toldfe)*1000:
         toldfe_warning = '!'
         printlog("Attention!, SCF was not converged to desirable prec", 
@@ -1864,6 +1878,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
     
     outst_cathode = d.join([spg,etot, etot1, lens, vol,nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
+    if 'help' in show:
+        print('Name', 'Space group', 'Tot. energy, eV', 'Energy, eV/at', 'Vector lengths, A', 
+        'Volume, A^3', 'number of k-points', 'Stresses, MPa', 'Number of atoms', 'time, h', 'Number of ionic steps; Number of electronic states per MD; Total number of electronic steps',
+        'Number of warnings', 'Number of symmetry operations', 'U value', 'Electronic convergence, meV', 'Ionic steps convergence, meV' )
     # print self.end.xred[-1]
     #print outstring_kp_ec
     # print show
@@ -1937,6 +1955,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                         self.sumAO[el+'-Fe'] = sumAO
 
 
+
+
+
+
     if 'en' in show:
         # energy - max force
 
@@ -1953,7 +1975,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # printlog('{:s}'.format([round(m) for m in self.mag_sum]), imp = 'Y' )
         printlog(np.array(self.mag_sum).round(2), imp = 'Y' )
 
-    if 'mag' in show or 'occ' in show:
+    chosen_ion = None
+    if 'maga' in show or 'occ' in show:
         from siman.analysis import around_alkali
         i_alk = self.end.get_specific_elements([3,11,19])
         numb, dist, chosen_ion = around_alkali(self.end, 4, i_alk[0])
@@ -1967,7 +1990,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
     if 'mag' in show and tot_mag_by_atoms:
-        print ('\n\n\n')
+        # print ('\n\n\n')
         # printlog
         # print 'Final mag moments for atoms:'
         # print np.arange(self.end.natom)[ifmaglist]+1
@@ -1980,10 +2003,16 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # for mag in tot_mag_by_atoms:
         #     print ('  -', mag[numb].round(3) )
 
-        # print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
-        mmm = tot_mag_by_atoms[-1][numb].round(3)
 
-        print ('atom:mag  = ', ', '.join('{}:{:4.2f}'.format(iat, m) for iat, m  in zip(  numb+1, mmm   )) )
+
+        # print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
+        # mmm = tot_mag_by_atoms[-1][numb].round(3)
+
+        # print ('atom:mag  = ', ', '.join('{}:{:4.2f}'.format(iat, m) for iat, m  in zip(  numb+1, mmm   )) )
+        self.gmt()
+        print ('\n')
+
+
         if 'a' in show:
             ''
             # print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
@@ -2127,10 +2156,13 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     elif 'ts' in out_type   : outst = outst_ts
     
     elif not header.siman_run:
-        outst_simple = '|'.join([etot, lens, strs, Nmd])
+        # if not hasattr(cl, 'name'):
+            # cl.name = 'noname'
+
+        outst_simple = '|'.join([cl.name, etot, lens, strs, Nmd])
         # print("Bi2Se3.static.1               |  -20.1543  |    10.27;10.27;10.27    | -680,-680,-657 |   1,13, 13   |    ")
-        if header.show_head:
-            printlog("name                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
+        if header.show_head :
+            printlog("                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
             header.show_head = False
         
         outst = outst_simple

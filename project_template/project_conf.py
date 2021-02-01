@@ -5,9 +5,9 @@ Control of project
 from __future__ import division, unicode_literals, absolute_import 
 
 """General parameters"""
-PATH2POTENTIALS = '/home/aksenov/scientific_projects/PAW_PBE_VASP'
-pmgkey = "AWqKPyV8EmTRlf1t" # please get your own key from materials project for pymatgen
-PATH2DATABASE        = '/home/aksenov/Data/CEStorage/'
+PATH2POTENTIALS = '~/PAW_PBE_VASP'
+pmgkey = "" # please get your own key from materials project for pymatgen
+PATH2DATABASE        = './database'
 PATH2JMOL     = 'jmol'
 PATH2PHONOPY  = 'phonopy'
 PATH2NEBMAKE = '~/Simulation_wrapper/vts/nebmake.pl' # http://theory.cm.utexas.edu/vasp/scripts.html

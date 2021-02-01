@@ -84,6 +84,8 @@ for filename in sys.argv[1:]:
 	# print xcart
 energies = [st.energy_sigma0  for st in sts]
 volumes  = [st.vol            for st in sts]
+vectors1 = [np.linalg.norm(st.rprimd[0]) for st in sts]
+vectors2 = [np.linalg.norm(st.rprimd[1]) for st in sts]
 power    = 3
 
 coeffs   = np.polyfit(volumes, energies, power)        
@@ -120,7 +122,11 @@ st = sts[i_tar]
 scale = (v_min/st.vol)**(1./3)
 # print scale
 # print st.vol
-for i in (0,1,2):
+if np.std(vectors1)+np.std(vectors2) < 1e-5: # Vectors 1 and 2 do not change
+    i_scale_list = [2] #only third vector is scaled - c_scale regime
+else:
+    i_scale_list = [0,1,2] # uniform_scale regime
+for i in i_scale_list:
     st.rprimd[i]*=scale 
 
 print ('diff between new volume and target volume', np.dot( st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])  ) - v_min)

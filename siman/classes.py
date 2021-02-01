@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import, print_function
-import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil
+import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil, random
 import re, io, json
 import pprint
 
@@ -393,7 +393,7 @@ class Structure():
     def el_diff(self, st2, mul = 1, silent = 0):
         """
         Determine difference in number of atoms between two structures
-        mul (int) - allows to compare supercells
+        mul (int) - allows to compare supercells; self.natom = mul * st2.natom
 
         RETURN:
         dict[key], where key is element and the value is difference in number of atoms of this element
@@ -409,7 +409,7 @@ class Structure():
             if not float(dif).is_integer():
                 printlog('Error! difference of atom numbers is not integer for element ', el, 'something is wrong')
             if abs(dif) > 0:
-                el_dif[el] = int(dif) 
+                el_dif[el] = int(dif) / mul
 
         if not silent:
             print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')
@@ -465,7 +465,30 @@ class Structure():
 
         return 
 
-    def get_mag_tran(self, to_ox = None):
+    def group_magmom(self, tol = 0.3):
+        """"""
+        st = self
+        lengths = list(np.around(st.magmom, 2))
+        unique = []
+        unique.append(lengths[0])
+        groups_size = {}
+        groups_nums = {}
+        for l in lengths[1:]:
+            if min(np.abs(unique-l)) > tol:
+                unique.append(l)
+        # print('lengths', lengths)
+        # print('unique bonds are', unique)
+        for u in unique:
+            groups_size[u] = 0
+            groups_nums[u] = []
+            for i, l in enumerate(lengths):
+                if abs(l-u) < tol:
+                    groups_size[u] += 1
+                    groups_nums[u].append(i)
+        return groups_size, groups_nums
+
+
+    def get_mag_tran(self, to_ox = None, silent = 0):
         #show formatted mag moments of transition metals 
         #to_ox - convert to oxidation state, substract from to_ox
         # if to_ox is negative, then m-to_ox
@@ -475,6 +498,7 @@ class Structure():
         print('The following TM are found:', keys)
 
         mag = list(np.array(self.magmom)[l])
+        magnetic = None
         magnetic_all = []
         for key in keys:
         
@@ -488,11 +512,11 @@ class Structure():
             s0 = ' '.join(['{:5d} ']*len(magnetic))
 
             # print(*mag_numbers[key])
-
-            print('\n Znucl:  ', key)
-            # print(' '+s0.format(*mag_numbers[key]))
-            # print(magnetic)
-            print(' '+s.format(*magnetic))
+            if not silent:
+                print('\n Znucl:  ', key)
+                # print(' '+s0.format(*mag_numbers[key]))
+                # print(magnetic)
+                print(' '+s.format(*magnetic))
             magnetic_all += magnetic
             if to_ox:
                 if to_ox > 0:
@@ -500,8 +524,9 @@ class Structure():
                 else:
                     ox = [abs(m)+to_ox for m in magnetic]
                 s2 = ' '.join(['{:5.1f}+']*len(magnetic))
-                print(s2.format(*ox))
-                print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
+                if not silent:
+                    print(s2.format(*ox))
+                    print('Average {:5.1f}+'.format(sum(ox)/len(ox)))
 
 
         return magnetic_all
@@ -636,7 +661,10 @@ class Structure():
 
         if oxi and not oxidation:
             # print(oxi)
-            pm.add_oxidation_state_by_site(oxi)
+            try:
+                pm.add_oxidation_state_by_site(oxi)
+            except:
+                printlog('Warning! oxidation states were not added')
 
 
 
@@ -851,6 +879,16 @@ class Structure():
         st.update_xred()
         st = st.return_atoms_to_cell()
         return st
+    def invert_xred(self, axis):
+        #invert xred coordinates along one vector axis
+        st = copy.deepcopy(self)
+
+        for i in range(st.natom):
+            st.xred[i][axis] = 1 - st.xred[i][axis]
+        st.update_xcart()
+        # st = st.return_atoms_to_cell()
+        return st
+
     def mirror(self, axis):
         #mirror along vector
         j = axis
@@ -1201,6 +1239,7 @@ class Structure():
             'z'
             'n' - numbers of atoms
             'x' - xcart
+            'xr' - xred
         
 
 
@@ -1221,12 +1260,14 @@ class Structure():
                 return True
 
         xcart = []
+        xred = []
         for i, e, xc, xr in zip( range(self.natom), el, self.xcart, self.xred ):
             Z = invert(e)
             if Z in required_elements and additional_condition(xr[2]):
                 tra.append(e)
                 ns.append(i)
                 xcart.append(xc)
+                xred.append(xr)
         
         if fmt == 'z':
             tra = [invert(t) for t in tra]
@@ -1234,6 +1275,8 @@ class Structure():
             tra = ns
         elif fmt == 'x':
             tra = xcart
+        elif fmt == 'xr':
+            tra = xred
 
         return tra
 
@@ -1291,6 +1334,11 @@ class Structure():
 
 
         st.natom+=natom_to_add
+
+        # print(element)
+        # sys.exit()
+        if type(element) is not str:
+            printlog('Error! element is', element, 'but should be element name')
 
         el_z_to_add = element_name_inv(element)
 
@@ -1393,6 +1441,7 @@ class Structure():
         allows to add one atom using reduced coordinates or cartesian
         xr - reduced
         xc - cartesian
+        element - element name
         """
 
         if xr is not None:
@@ -1571,18 +1620,31 @@ class Structure():
         """
         Permutate atom numbers of self according to st
         Structures should have the same amount of atoms and be quite similar
+        the self can have one extra type of atoms
+
+        #TODO: now extra atom types could be only in self structure
 
         """
 
         st = self.copy()
-        els = st_ref.get_elements()
+        els = st.get_elements()
+        els_ref = st_ref.get_elements()
+        # print(els, els_ref)
+        extra = list(set(els)-set(els_ref))[0] # only one is implemented currently
         new_order = []
-        for el1, x1 in zip(els, st_ref.xcart):
+        for el1, x1 in zip(els_ref, st_ref.xcart):
             i,s,d = st.find_closest_atom(x1)
             # print(el1, st.get_elements()[i])
             new_order.append(i)
         
-        if len(new_order) != self.natom:
+        for i in st.get_specific_elements([1]):
+            # print(i, els[i])
+            new_order.append(i)
+
+        # sys.exit()
+
+
+        if len(new_order) != st.natom:
             printlog('Error! something is wrong with number of atoms')
 
         # print('ref ', st_ref.get_elements())
@@ -2029,6 +2091,66 @@ class Structure():
         return st
 
 
+
+
+
+    def combine(self, st_list, only_numbers = None):
+        """
+        Combine several structures into one
+        using reduced coordinates
+        """
+        st_b = self.copy()
+
+        if only_numbers is None:
+            only_numbers = []
+
+        for i, st in enumerate(st_list):
+            # print(i)
+
+            for j, xr, el in zip(list(range(st.natom)), st.xred, st.get_elements() ):
+                if j in only_numbers:
+                    st_b = st_b.add_atom(xr, el)
+
+
+        return st_b
+
+
+
+
+    def combine_atoms(self, d = 0.1):
+        """
+        Combine close-lying atoms into one
+        d (float) - all atoms with d less then d are combined into one in Angstrom
+        """
+        st = self
+        # copy()
+        remove_list = []
+        for i, x1 in enumerate(st.xcart):
+            for ii, x2 in enumerate(st.xcart[i+1:]):
+                j = ii+i+1
+                dx = st.distance(x1=x1, x2=x2)
+                xlist = []
+                if dx < d:
+                    xlist.append(x2)
+                    remove_list.append(i)
+                    # print(dx)
+            if xlist:
+                x_new = sum(xlist)/len(xlist)
+                # print(x_new)
+                st.xcart[i] = x_new
+                print('Atom i= {:n}, {:s} replaced with average position'.format(i, st.get_elements()[i]) )
+
+        st = st.remove_atoms(remove_list)
+
+
+
+        return st
+
+
+
+
+
+
     def perturb(self, d=0.1):
         """
         d is distance
@@ -2039,54 +2161,90 @@ class Structure():
         st = st.update_from_pymatgen(pm)
         return st
 
-    def find_atom_num_by_xcart(self, x_tar, prec = 1e-6):
+    def find_atom_num_by_xcart(self, x_tar, prec = 1e-6, search_by_xred = 1 ):
         """take into account periodic conditions
 
+        search_by_xred - use xred to search with PBC
+        prec - difference in atomic positions in A; transformed to reduced difference using the longest vector
+        
         TODO:
         make normal function that treats periodic boundary conditions normally!!!
+            done please test
+
         """
 
         [xr_tar] = xcart2xred([x_tar], self.rprimd)
         printlog('find_atom_num_by_xcart(): xr_tar = ', xr_tar)
         #PBC!!!
-        for i in [0,1,2]:
-            if xr_tar[i] < 0:
-                xr_tar[i]+= 1
-                
-            if xr_tar[i] >= 1:
-                xr_tar[i]-= 1
+        if 1:
+            for i in [0,1,2]:
+                if xr_tar[i] < 0:
+                    xr_tar[i]+= 1
+                    
+                if xr_tar[i] >= 1:
+                    xr_tar[i]-= 1
+        
         printlog('find_atom_num_by_xcart(): xr_tar after periodic = ', xr_tar)
 
         # print(xr_tar)
+        # print(self.rprimd)
         [x_tar] = xred2xcart([xr_tar], self.rprimd)
         
         printlog('find_atom_num_by_xcart(): x_tar after periodic = ', x_tar)
-
+        # sys.exit()
         # print(x_tar)
-        self = self.return_atoms_to_cell()
+        self = self.return_atoms_to_cell() # please solve the problem, as neb not always works correctly!
 
-        for i, x in enumerate(self.xcart):
-            if np.linalg.norm(x-x_tar) < prec:
-            # if all(x == x_tar):
-                printlog('Atom', i+1, 'corresponds to', x_tar)
+        # for i, x in enumerate(self.xcart): # xcart
+        #     if np.linalg.norm(x-x_tar) < prec:
+        #         printlog('Atom', i+1, 'corresponds to', x_tar)
+        #         return i
+        
+        vmax = max(self.vlength)
+        prec_xr = prec/vmax
+        print('Reduced precision is', prec_xr, '')
 
-                return i
-        else:
+        i_matched = None
+        d_min = 100
+
+        for i, x in enumerate(self.xred): # xred
+            # d = np.linalg.norm(x-xr_tar)
+            # print(d)
+            # if d >= 0.5:
+                # d = abs(d-1)
+            dv = []
+            for j in 0,1,2:
+                di = abs(x[j]-xr_tar[j])
+                if di >= 0.5:
+                    di=di-1
+                dv.append(di)
+            dvl = np.linalg.norm(dv)
+
+            # print(dvl)
+            if dvl < prec_xr:
+                print('Difference is ', dvl*vmax, 'A', 'for atom', i)
+                if dvl < d_min:
+                    i_matched = i
+                    d_min = dvl
+                    d_xc = np.linalg.norm(self.xcart[i]-x_tar)
+
+                    printlog('Atom', i, self.xcart[i], 'corresponds to the requested atom with difference', d_xc, 'A',  imp = 'Y')
+
+
+
+        if i_matched is None:
             printlog('Attention, atom ', x_tar, 'was not found' )
-        # print self.xcart.index(x_tar)
-        # return self.xcart.index(x_tar)
-
-
-        # print type(atoms_xcart)
-
-
-    # def 
 
 
 
-    def shift_atoms(self, vector_red = None, vector_cart = None):
+        return i_matched
+
+
+
+    def shift_atoms(self, vector_red = None, vector_cart = None, return2cell = 1):
         """
-        Shift all atoms according to *vector_red*
+        Shift all atoms according to *vector_red* or *vector_cart*
+		Use *return2cell* if atoms coordinates should be inside cell
         """
         st = copy.deepcopy(self)
         if vector_cart is not None:
@@ -2095,18 +2253,37 @@ class Structure():
                 xc+=vec_cart
             st.update_xred()
             
-        else:
+        elif vector_red is not None:
             vec = np.array(vector_red)
             for xr in st.xred:
                 xr+=vec
             st.xred2xcart()
 
         
-
-        st = st.return_atoms_to_cell()
+        if return2cell:
+            st = st.return_atoms_to_cell()
         return st
 
 
+    def shake_atoms(self, amplitude = 0.1, el_list = None, ):
+        """
+        Randomly shake atoms around the lattice 
+        amplitude (float) - maximum shift in A it is multiplied by random vector
+        el_list (list of int) - shake only el atoms, None - shake all atoms
+        """
+        st = self.copy()
+
+        ru = random.uniform
+        for i, el in enumerate(st.get_elements()):
+            # print(el, el_list)
+            if el_list is None or el in el_list:
+                rand_vec = amplitude*np.array([ru(-1, 1),ru(-1, 1),ru(-1, 1)])
+                # print(rand_vec) 
+
+                st.xcart[i]+=rand_vec
+        st.update_xred()
+
+        return st
 
     def replic(self, *args, **kwargs):
 
@@ -2511,14 +2688,17 @@ class Structure():
 
     def center_on(self, i):
         #calc vector which alows to make particular atom in the center 
-        x_r = self.xred[i]
-        center = np.sum(self.xred, 0)/self.natom
-        # print(center)
-        # sys.exit()
-        # print(x_r)
-        dv = center - x_r
-        # print(dv)
-        # print(dv+x_r)
+        if i and i < len(self.xred):
+            x_r = self.xred[i]
+            center = np.sum(self.xred, 0)/self.natom
+            # print(center)
+            # sys.exit()
+            # print(x_r)
+            dv = center - x_r
+            # print(dv)
+            # print(dv+x_r)
+        else:
+            dv = None
         return dv
 
 
@@ -2531,7 +2711,7 @@ class Structure():
         """
         Localize small polaron at transition metal by adjusting TM-O distances
         i - number of transition atom, from 0
-        d - shift in angstrom; positive increase TM-O, negative reduce TM-O
+        d - shift in angstrom; positive increase TM-O, negative reduce TM-O distance
         nn - number of neigbours
 
         """
@@ -2732,11 +2912,17 @@ class Structure():
         return st
 
 
+    def make_polarons(self, atoms, pol_type = 'hole', mag = None, silent = 1):
+        """
+        create polarons
+        """
+        st = self.copy()
+        for i in atoms:
+            st = st.localize_polaron(i, d=-0.1, nn = 6)
+            st.magmom[i] = mag
 
 
-
-
-
+        return st
 
     def ewald(self, ox_st = None, site = None):
         # ox_st 
@@ -2926,7 +3112,7 @@ class Structure():
             if hasattr(self, 'tmap'):
                 f.write('tmap=[{:s}] ; '.format(list2string(st.tmap).replace(' ', ',') ))
 
-
+            # print(self.name)
             f.write(self.name)
 
 
@@ -3195,8 +3381,10 @@ class Calculation(object):
             self.id = iid
             self.name = str(iid[0])+'.'+str(iid[1])+'.'+str(iid[2])
         else:
-            self.id = ('0','0',0)
-    
+            self.id = (output,'0', 1)
+        header.db[self.id] = self
+        self.cluster_address = ''
+        self.project_path_cluster = ''
     def get_path(self,):
         path = os.path.dirname(os.getcwd()+'/'+self.path['output'])
         print( path)
@@ -3495,6 +3683,12 @@ class Calculation(object):
             if hasattr(st, 'select') and len(st.select) > 0 and not None in st.select:
                 f.write("\nselect  ")
                 for v in st.select:
+                    print(v)
+                    for i in 0,1,2:
+                        if v[i] == 'T':
+                            v[i] = 1
+                        else:
+                            v[i] = 0
                     f.write("{:d} {:d} {:d}\n".format(v[0], v[1], v[2])  )
 
             if hasattr(st, 'vel') and len(st.vel) > 0:
@@ -3639,6 +3833,7 @@ class Calculation(object):
         self.end.jmol(*args, **kwargs)
     def poscar(self):
         self.end.write_poscar()
+
     def me(self):
         self.end.printme()
     def gmt(self, *args, **kwargs):
@@ -3651,7 +3846,7 @@ class Calculation(object):
         ''
 
 
-    def mag_diff(self, cl2, dm_skip = 0.5, el = 'NiCoVMnO', more = 0):
+    def mag_diff(self, cl2, dm_skip = 0.5, el = 'FeNiCoVMnO', more = 0):
 
         """
         rms difference of magmom, skippting large deviations, due to defects
@@ -3668,6 +3863,7 @@ class Calculation(object):
         
         ms = 0
         tot=0
+        maxdm = 0
         for i in range(len(m1)):
             if el1[i] != el2[i]:
                 print('Warinig! el1 is not equal el2 for i=', i, el1[i], el2[i])
@@ -3682,12 +3878,15 @@ class Calculation(object):
             if more:
                 print('For ', i, el1[i], el2[i], 'dm= {:0.3f} muB'.format(dm))
 
+            if dm > maxdm:
+                maxdm = dm
             ms+= (dm)**2
             tot+=1
         rms = (ms/tot)**0.5
 
         if el:
             print('For '+el+' atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
+            print('For '+el+' atoms max difference is {:0.3f} muB; dE is {:0.3f} eV'.format(maxdm, self.e0-cl2.e0))
 
         else:
             print('For rest atoms RMS difference is {:0.3f} muB; dE is {:0.3f} eV'.format(rms, self.e0-cl2.e0))
@@ -3772,23 +3971,46 @@ class Calculation(object):
 
 
 
-    def dos(self, isym, *args, **kwargs):
+    def dos(self, isym = None, el = None, i_at = None, iatoms = None,  *args, **kwargs):
         """
         Plot dos either for self or for children with dos
-        isym (int) - choose symmetry position to plot DOS
-        
+        isym (int) - choose symmetry position to plot DOS,
+        otherwise use 
+        i_at - number of atom from 0
+        iatoms - list of atom numbers (from 0) to make one plot with several dos
+        el - element for isym, otherwise first TM is used
+        orbitals
 
         """
         from siman.header import db
         from siman.dos_functions import plot_dos
         # print(self.children)
-        
+
 
         pm = kwargs
         x_nbins = pm.get('x_nbins')
         ylim = pm.get('ylim') or (-6,7)
+        xlim = pm.get('xlim') or (-8,6)
         fontsize = pm.get('fontsize') or 13
         ver_lines = pm.get('ver_lines')
+        corner_letter = pm.get('corner_letter')
+        orbitals = pm.get('orbitals')
+        efermi_origin = pm.get('efermi_origin')
+        nsmooth = pm.get('nsmooth') or 0.0001
+        linewidth = pm.get('linewidth') or 0.8
+        efermi_shift = pm.get('efermi_shift') or 0
+        labels = pm.get('labels')
+        image_name = pm.get('image_name')
+        fig_format = pm.get('fig_format') or 'pdf'
+
+        if efermi_origin is None:
+            efermi_origin = 1
+
+
+        if corner_letter is None:
+            corner_letter = 1
+        # print(corner_letter)
+        # sys.exit()
 
         ifdos = False
         if hasattr(self, 'children'):
@@ -3809,30 +4031,132 @@ class Calculation(object):
         cl = db[id]
 
         cl.res()
-        st = cl.end
-        n = st.get_transition_elements(fmt = 'n')
-        iTM = n[0]
-        el = st.get_elements()[iTM]
-        pos = determine_symmetry_positions(st, el)
-        iTM = pos[isym][0]
-        print('Choosing ', isym, 'atom ',iTM)
 
-        plot_dos(cl,  iatom = iTM+1,  efermi_origin = 1,
-        dostype = 'partial', orbitals = ['d', 'p6'], 
-        # labels = ['Ti1', 'Ti2'], 
-        nsmooth = 1, 
-        # invert_spins = invert_spins,
-        show = 0,  plot_param = {
-        'figsize': (6,3), 
-        'linewidth':0.8, 
-        'fontsize':8,
-        'ylim':ylim, 'ver':1, 'fill':1,
-        # 'ylim':(-1,1), 
-        'ver_lines':ver_lines,
-        'xlim':(-8,6), 
-        'x_nbins':x_nbins,
-        # 'xlim':(-0.5,0.1), 
-        'dashes':(5,1), 'fig_format':'pdf', 'fontsize':fontsize})
+        if orbitals is None:
+            orbitals = ['d', 'p6']
+
+        st = cl.end
+        if isym is not None:
+
+            if el:
+                n = st.get_specific_elements(required_elements = [invert(el)], fmt = 'n')
+            else:
+                n = st.get_transition_elements(fmt = 'n')
+
+            iTM = n[0]
+            el = st.get_elements()[iTM]
+            pos = determine_symmetry_positions(st, el)
+            iTM = pos[isym][0]
+            print('Choosing ', isym, 'atom ',iTM)
+        else:
+            iTM = i_at
+
+        if not iatoms:
+            #just one plot
+            plot_dos(cl,  iatom = iTM+1,  
+            dostype = 'partial', orbitals = orbitals, 
+            labels = labels, 
+            nsmooth = nsmooth, 
+            image_name = image_name, 
+            # invert_spins = invert_spins,
+            efermi_origin = efermi_origin,
+            efermi_shift = efermi_shift,
+            show = 0,  plot_param = {
+            'figsize': (6,3), 
+            'linewidth':linewidth, 
+            'fontsize':fontsize,
+            'ylim':ylim, 'ver':1, 'fill':1,
+            # 'ylim':(-1,1), 
+            'ver_lines':ver_lines,
+            'xlim':xlim, 
+            'x_nbins':x_nbins,
+            # 'xlim':(-0.5,0.1), 
+            'dashes':(5,1), 'fig_format':fig_format, 'fontsize':fontsize})
+
+        if iatoms:
+
+
+            if fontsize:
+                # header.mpl.rcParams.update({'font.size': fontsize+4})
+                # fontsize = 2
+                SMALL_SIZE = fontsize
+                MEDIUM_SIZE = fontsize
+                BIGGER_SIZE = fontsize
+
+                header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
+                header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+                header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+                header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+                header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+                header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+                header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
+            color_dicts = [None, {'s':'k', 'p':'r', 'p6':'#FF0018', 'd':'g'}]
+
+            total = len(iatoms)*1
+            # letters = ['(a)', '(b)', '(c)', '(d)']*10
+            letters = [str(i) for i in iatoms]
+            font = 8
+            fig, axs = plt.subplots(total,1,figsize=(6,total*3))    
+            fig.text(0.03, 0.5, 'PDOS (states/atom/eV)', size = font*1.8, ha='center', va='center', rotation='vertical')
+        
+            i = 0
+            first = 0
+            last = 0
+            hide_xlabels = 1
+            xlabel = None
+            ylabel = None
+            # i_last = 1
+
+            for iat in iatoms:
+            # for cl, iat in zip([RbVsd, KVsd, Vsd], [13, 61, 53]):
+
+                ax = axs[i]
+
+                if corner_letter:
+                    letter = letters[i]
+                else:
+                    letter = None
+                
+                # print(letter)
+                # sys.exit()
+                if i == 0:
+                    first = True
+                    last = False
+                if i == total-1:
+                    last = True
+                    hide_xlabels = 0
+                    xlabel = "Energy (eV)"
+                plot_dos(cl,  iatom = iat+1,  efermi_origin = efermi_origin,
+                dostype = 'partial', orbitals = orbitals, 
+                labels = ['', ''], 
+                nsmooth = 1, 
+                color_dict = color_dicts[i%2],
+                image_name = image_name, 
+
+                # invert_spins = invert_spins,
+                show_gravity = (1, 'p6', (-10, 10)), 
+                show = 0,  plot_param = {
+                # 'figsize': (6,3), 
+                'linewidth':linewidth, 
+                'fontsize':fontsize, 'legend_fontsize':font+3,
+                'first':first, 'last':last, 'ax':ax, 'pad':1, 'hide_xlabels':hide_xlabels,
+                'xlabel':xlabel, 'ylabel':ylabel,
+                'corner_letter':letter,
+                'ylim':ylim, 'ver':1, 'fill':1,
+                # 'ylim':(-1,1), 
+                'ver_lines':ver_lines,
+                'xlim':xlim, 
+                'x_nbins':x_nbins,
+                # 'xlim':(-0.5,0.1), 
+                'dashes':(5,1), 'fig_format':fig_format})
+
+                i+=1
+
+
+
+        return 
 
 
     def plot_locpot(self, filename = None):
@@ -4333,6 +4657,20 @@ class Calculation(object):
                 
                 rm_chg_wav - if True than CHGCAR and WAVECAR are removed
 
+                savefile (str) - key, which determines what files should be saved
+                    'o' - OUTCAR
+                    'i' - INCAR
+                    'v' - CHG
+                    'c' - CHGCAR
+                    'p' - PARCHG
+                    'l' - LOCPOT
+                    'd' - DOSCAR
+                    'a' - AECCAR0, AECCAR2
+                    'x' - vasprun.xml
+                    't' - XDATCAR
+                    'z' - OSZICAR
+                    'w' - WAVECAR
+
             """   
             printlog('The value of savefile is', savefile)
             
@@ -4369,6 +4707,13 @@ class Calculation(object):
                     f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
                     f.write('gzip -f '+parchg+'\n') 
 
+                if 'l' in savefile: # 
+                    fln = 'LOCPOT'
+                    locpot  = pre +'.'+fln
+                    f.write('cp '+fln+' '+locpot+'\n') #use cp, cause it may be needed for other calcs in run
+                    f.write('gzip -f '+locpot+'\n') 
+
+
                 # else:
                 #     f.write("rm CHG \n") #file can be used only for visualization
 
@@ -4390,6 +4735,10 @@ class Calculation(object):
 
                 if 't' in savefile:
                     f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
+
+                if 'z' in savefile:
+                    f.write("mv OSZICAR " + v + name_mod + ".OSZICAR\n")
+               
                
                
                 if 'w' in savefile:
@@ -4798,7 +5147,7 @@ class Calculation(object):
 
             # print (calc[id].calc_method )
             # sys.exit()
-            if 'uniform_scale' in self.calc_method:
+            if 'uniform_scale' in self.calc_method or 'c_scale' in self.calc_method:
                 # print (input_geofile)
                 name_mod = set_mod
                 
@@ -4841,7 +5190,7 @@ class Calculation(object):
             #clean at the end
             if final_analysis_flag: 
                 if header.final_vasp_clean:
-                    f.write('rm PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+                    f.write('rm LOCPOT CHGCAR CHG PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
                 f.write('rm RUNNING\n')
 
 
@@ -5114,8 +5463,8 @@ class Calculation(object):
         filetype (str) - 'CHG', 'CHGCAR', etc just the name of file in calculation folder
         nametype (str) - 'asoutcar' - update filetype to OUTCAR format
         up (str) - control flag 
-            'up1' - do not update
-            'up2' - update
+            '1' - do not update
+            '2' - update
 
         root - root calculation folder location of file
 
@@ -5161,9 +5510,10 @@ class Calculation(object):
         # print(self.project_path_cluster)
         # sys.exit()
 
-        if os.path.exists(path_to_file) and 'up2' not in up: 
+        if os.path.exists(path_to_file) and '2' not in up: 
             out = None
         else:
+            # printlog('File', path_to_file, 'was not found. Trying to update from server')
             out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = address)
 
 
@@ -6204,9 +6554,9 @@ class CalculationVasp(Calculation):
             ise (str) - name of new set available in header.varset
 
             iopt (str) - inherit_option
-                'full_nomag'
-                'full'
-                'full_chg' - including chg file
+                'full_nomag' - full without magmom
+                'full' - full with magmom
+                'full_chg' - full with magmom and including chg file
             
             up (str) - update key transferred to add_loop and res_loop;
                 'up1' - create new calculation if not exist
@@ -6220,7 +6570,7 @@ class CalculationVasp(Calculation):
             add (bool) - 
                 1 - overwrite existing children
 
-            it_suffix_del (bool) - needed to achive compatibility with old behaviour; should be improved
+            it_suffix_del (bool) - needed to be false to use it_suffix with run. Provides compatibility with old behaviour; should be improved
 
 
         RETURN:
@@ -6233,10 +6583,22 @@ class CalculationVasp(Calculation):
         """
 
         add_flag  = add
+        if add:
+            up = 'up2'
+
         from siman.calc_manage import add_loop
 
         if not iopt:
             iopt = 'full'
+
+        if iopt == 'full_nomag':
+            suffix = '.ifn'
+        if iopt == 'full':
+            suffix = '.if'
+        if iopt == 'full_chg':
+            suffix = '.ifc'
+
+
 
 
         if 'it_suffix' in kwargs:
@@ -6260,7 +6622,8 @@ class CalculationVasp(Calculation):
                 idd = None
                 for i in self.children:
                     # print(i, ise, i[1], i[1] == ise)
-                    if i[0] == self.id[0]+it_suffix and i[1] == ise:
+                    # print(i[0], self.id[0]+it_suffix)
+                    if self.id[0]+suffix+it_suffix == i[0] and i[1] == ise:
                         # print(i)
                         idd = i
                         # add = True
@@ -6282,12 +6645,17 @@ class CalculationVasp(Calculation):
 
                     cl_son.res(up = up, **res_params, **kwargs)
                     child = idd
+                    add = 0
                 else:
                     child = None
             
 
             vp = header.varset[ise].vasp_params
             ICHARG_or = 'impossible_value'
+
+            # print(add, len(self.children) )
+            # sys.exit()
+
             if add or len(self.children) == 0:
                 
 
@@ -6318,27 +6686,29 @@ class CalculationVasp(Calculation):
         return header.calc[child]
 
 
-    def full(self, ise = None, up = 0, fit = 1):
+    def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None, up_res = 'up1'):
         """
         Wrapper for full optimization
         ise (str) - optimization set; if None then choosen from dict
         up (int) - 0 read results if exist, 1 - update
-        fig (int) - 1 or 0
+        fit (int) - 1 or 0
+        suf - additional suffix
         """
         from siman.project_funcs import optimize
         if ise is None:
             if 'u' in self.id[1]:
                 ise = '4uis'
-        st = self.end
+        st = self.end.copy()
         it = self.id[0]
-        child = (it+'.su', ise, 100)
-
+        child = (it+suf+'.su', ise, 100)
+        #st.printme()
         if not hasattr(self, 'children'):
             self.children = []
         if not up and child in self.children:
-            optimize(st, self.id[0], ise = ise, fit = fit)
+            optimize(st, it+suf, ise = ise, fit = fit, add_loop_dic = add_loop_dic,up_res = up_res) # read results
         else:
-            optimize(st, self.id[0], ise = ise, add = 1)
+            #run
+            optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic, up_res = up_res)
             self.children.append(child)
 
         return
