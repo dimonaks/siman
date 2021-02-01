@@ -216,8 +216,9 @@ def calc_kspacings(ngkpt, rprimd):
     recip = calc_recip_vectors(rprimd)
 
     for i in 0, 1, 2:
-        a = np.linalg.norm( recip[i] ) / ngkpt[i]
-        kspacing.append(red_prec(a))
+        if ngkpt[i] != 0:
+            a = np.linalg.norm( recip[i] ) / ngkpt[i]
+            kspacing.append(red_prec(a))
 
     return  kspacing
 
@@ -1687,7 +1688,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
 create_antisite_defect = create_antisite_defect3
 
 
-def calc_k_point_mesh(rprimd, kspacing):
+def calc_k_point_mesh(rprimd, kspacing, silent = 0):
     """
     rprimd (list of lists 3x3 of floats) - vectors of cell (Angstroms)
     kspacing (float) - required spacing between k-points in reciprocal space (A-1); paramter KSPACING in VASP
@@ -1713,14 +1714,14 @@ def calc_k_point_mesh(rprimd, kspacing):
     N_opt = N_options[i_min] # k-mesh with smallest error
 
 
+    if not silent:
+        printlog('I recommend k-point mesh:', N_opt, 'with k-spacings:', np.array( calc_kspacings(N_opt, rprimd) ).round(2), end = '\n', imp = 'y' )
+        printlog('Other options are:', end = '\n', imp = 'y' )
+        printlog('{:13s} |    {:20s}'.format('Mesh', 'k-spacings'), end = '\n', imp = 'y'  )
 
-    printlog('I recommend k-point mesh:', N_opt, 'with k-spacings:', np.array( calc_kspacings(N_opt, rprimd) ).round(2), end = '\n', imp = 'y' )
-    printlog('Other options are:', end = '\n', imp = 'y' )
-    printlog('{:13s} |    {:20s}'.format('Mesh', 'k-spacings'), end = '\n', imp = 'y'  )
-
-    for ngkpt in itertools.product( *[(n-1, n, n+1) for n in N_opt] ):
-        
-        printlog('{:13s} |    {:26s}'.format(str(ngkpt), str(np.array(calc_kspacings(ngkpt, rprimd) ).round(2))), end = '\n', imp = 'y'  )
+        for ngkpt in itertools.product( *[(n-1, n, n+1) for n in N_opt] ):
+            
+            printlog('{:13s} |    {:26s}'.format(str(ngkpt), str(np.array(calc_kspacings(ngkpt, rprimd) ).round(2))), end = '\n', imp = 'y'  )
 
 
     return N_opt
@@ -2294,6 +2295,61 @@ def stoichiometry_criteria(st1,st2):
     else:
         return 0
 
+def stoichiometry_criteria2(st1,st2, silent = 1):
+    atoms1 = st1.get_elements()
+    atoms2 = st2.get_elements()
+
+    from collections import Counter
+    el_dict1 = Counter(atoms1)
+    el_dict2 = Counter(atoms2)
+    el1 = list(el_dict1.keys())[0]
+    el2 = list(el_dict1.keys())[1]
+    # print(el_dict1)
+    # print(el_dict2)
+    ratio1 = el_dict1[el1]/el_dict1[el2]
+    ratio2 = el_dict2[el1]/el_dict2[el2]
+
+    if ratio1 == ratio2:
+        if not silent:
+            print('Stoichiometric')
+        return 1
+    else:
+        if not silent:
+            print('Non-stoichiometric')
+            print(round(ratio1,2), round(ratio2,2))
+        return 0
+
+def symmetry_criteria(st):
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    st = st.convert2pymatgen()
+    sym_criteria = SpacegroupAnalyzer(st).is_laue()
+    if sym_criteria == True:
+        print('Symmetric')
+        return 1
+    else:
+        print('Non-symmetric')
+        return 0
+
+def symmetry_criteria_at(st):
+    from collections import Counter
+    
+    els = Counter(st.get_elements())
+    sym_criteria = 0
+    for el in els:
+        suf_at1 = st.get_surface_atoms(el, surface = 0, surface_width=1.5)
+        suf_at2 = st.get_surface_atoms(el, surface = 1, surface_width=1.5)
+        print(el, suf_at1, suf_at2)
+        if len(suf_at1) == len(suf_at2):
+            sym_criteria += 0
+        else:
+            sym_criteria += 1
+
+    if sym_criteria == 0:
+        print('Symmetric')
+        return 1
+    else:
+        print('Non-symmetric')
+        return 0
 
 def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
     primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1, lll_reduce  = 0 ):
@@ -2356,7 +2412,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
     # print(min_vacuum_size)
     # sys.exit()
-    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size,   primitive = primitive, lll_reduce = lll_reduce )
+    slabgen = SlabGenerator(pm, miller_index, min_slab_size, min_vacuum_size, primitive = primitive, lll_reduce = lll_reduce )
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
@@ -2368,18 +2424,18 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
             stoi = 'Non-stoichiometric slab'
         
 
-        # printlog(stoi, 
+        # printlog( 
         #     ';Polar:',       slab.is_polar(),
         #     ';Eqvuivalent:', slab.have_equivalent_surfaces(), 
-        #     ';symmetric:',   slab.is_symmetric(), imp = 'y')
+        #     ';symmetric:',   slab.is_symmetric(), imp = 'n')
 
         
 
         
     printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
 
-    if len(slabs) == 1:
-        surface_i =0
+    if len(slabs) > 1:
+        # surface_i =0
         st = st.update_from_pymatgen(slabs[surface_i])
 
     if write_poscar:
@@ -2557,7 +2613,7 @@ def rhombo2hex(h,k,l):
 
 
 
-def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, fix_xc_range = None, under_atom = 1):
+def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, fix_xc_range = None, under_atom = 0):
     """
     The function uses special module AdsorbateSiteFinder  from pymatgen
 
@@ -2951,9 +3007,11 @@ def hkl_slab(st, st_host, hkl, i_suf = None):
     # else:
     f.close()
     return misf, slabs2
+
+
 def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0, 
     seek_mode = 0, seek_range = [0,2], check_shift = None, 
-    hkl_lio = None, i_suf_lio = None, size = [5,5]):
+    hkl_lio = None, i_suf_lio = None, size = [5,5], ads_pos = None):
 
 
     st1_init = st_host.copy()
@@ -2961,11 +3019,13 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
     
     if suf_host:
         sc1 = st1_init.get_conventional_cell()#.replic([2,2,1])
-        slabs1 = create_surface2(sc1, suf_host, shift = None, min_slab_size = 10, min_vacuum_size = 15, surface_i = 0, oxidation = None, suf = '', 
-                 symmetrize = 1, cut_thickness = None, return_one = 0, lll_reduce = 1, primitive = 1)
+        slabs1 = create_surface2(sc1, suf_host, shift = None, min_slab_size = 10, min_vacuum_size = 15, 
+                 surface_i = 0, oxidation = None, suf = '', 
+                 symmetrize = 1, cut_thickness = 0, return_one = 0, lll_reduce = 1, primitive = 1)
         slab1 = sc1.update_from_pymatgen(slabs1[i_suf_host])
+        # slab1 = slabs1
         mul_matrix = ortho_vec(slab1.rprimd, [5,5,15], silent = 1) # matrix which allows to obtain supercell close to 10x10x10 A cube 
-        st1 = create_supercell(slab1, mul_matrix,silent = 1)
+        st1 = create_supercell(slab1, mul_matrix, silent = 1)
     else:
         st1 = st_host
 
@@ -2987,16 +3047,17 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
                             sl_misfit(st1, slab_2, silent = 0)
     else:
 
-        slabs2 = create_surface2(st2_init, hkl_lio, shift = None, min_slab_size = 10, min_vacuum_size = 15, surface_i = 0, oxidation = None, suf = '', 
-                primitive = 1, symmetrize = 1, cut_thickness = None, return_one = 0, write_poscar = 0, lll_reduce  = 1)
+        slabs2 = create_surface2(st2_init, hkl_lio, shift = 0, min_slab_size = 10, min_vacuum_size = 15, surface_i = i_suf_lio, oxidation = None, suf = '', 
+                primitive = 1, symmetrize = 0, cut_thickness = 0, return_one = 0, write_poscar = 0, lll_reduce  = 1)
         st2 = st2_init.update_from_pymatgen(slabs2[i_suf_lio])
-        slab_2 = fit2host(st1, st2).add_z(15)
-        # slab_2.jmol()
+        # st2 = slabs2
+        slab_2 = fit2host(st1, st2)
+        st2_init = slab_2
 
         from siman.impurity import make_interface
         z_max1 = 0
         z_max2 = 50
-        # st1.jmol()
+        st1 = st1.add_vacuum(2,15)
         for r in st1.xcart:
             if r[2] > z_max1:
                 z_max1 = r[2]
@@ -3004,30 +3065,108 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
             if r[2] < z_max2:
                 z_max2 = r[2]
         
-        mat2, pas_scaled2 = make_interface(st1, [0, 4, z_max1+1.5], slab_2, [0, 0.626, z_max2],)
-        mat2.write_poscar()
-        # mat2.jmol(r=2)
-        return mat2
 
-        if check_shift:
-            elements1 = list(set(st1_init.get_elements()))
-            elements2 = list(set(st2_init.get_elements()))
-            print(elements1)
-            # mat2.jmol(r=2)
+        if 0:
+            elements1 = list(set(st1.get_elements()))
+            elements2 = list(set(slab_2.get_elements()))
+            # st1.jmol()
+            suf_ats1 = []
+            suf_ats2 = []
             for el in elements1:
-                suf_ats1 = st1.get_surface_atoms(el, surface = 0, surface_width=1.5)
-                print(suf_ats1)
+                try:
+                    suf_ats1.extend(st1.get_surface_atoms(el, surface = 1, surface_width=1.5))
+                    print(el, suf_ats1)
+                except TypeError:
+                    None
             for el in elements2:
-                suf_ats2 = st2.get_surface_atoms(el, surface = 1, surface_width=1.5)
-                print(suf_ats2)
+                try:
+                    suf_ats2.extend(slab_2.get_surface_atoms(el, surface = 0, surface_width=1.5))
+                    print(el, suf_ats2)
+                except TypeError:
+                    None
 
-            xc1 = st1.xcart[20]
-            xc2 = st2.xcart[6]
-            xc2[2] += -2
-            mat0, pas_scaled2 = make_interface(st1, xc1, slab_2, xc2)
 
-            mat0 = mat0.add_z(15)
-            mat0.jmol(r=2)
+            for el1 in suf_ats1[0:1]:
+                for el2 in suf_ats2[1:3]:
+                    print('\n\nStarting configuration with {} and {} atoms\n'.format(el1, el2))
+                    # xc1 = st1.xcart[23]
+                    # xc2 = slab_2.xcart[8]
+                    xc1 = st1.xcart[el1]
+                    xc2 = slab_2.xcart[el2]
+                    xc2[2] -= 1.8
+                    # print(xc1, xc2)
+                    mat0, pas_scaled2 = make_interface(st1, xc1, slab_2, xc2)
+                    # mat0.replic([2,2,1]).jmol(r=2)
+                    
+                    interface_z_position = min([m[2] for m in mat0.xcart])/2 + max([m[2] for m in mat0.xcart])/2
+                    print(interface_z_position)
+                    av_pack = []
+                    
+                    for st in [st1, slab_2, mat0]:
+                        av_dist = 0
+                        n_atoms_i = 0
+                        for i in range(0,st.natom):
+                            if st == mat0: 
+                                if (interface_z_position - 4) < st.xcart[i][2]< (interface_z_position+4):
+                                    n_atoms_i += 1
+                                    # print('ok')
+                                    xxx = st.nn(i, n = 6, ndict = None, silent = 1, 
+                                    from_one = 0, more_info = 0, oxi_state = 0, print_average = 0)
+                                    d = 0
+                                    for n in xxx['dist']:
+                                        d+=n
+                                    d = d/6
+                                    av_dist += d
+                                    # print(d, n_atoms_i)
+                            else:
+                                n_atoms_i = st.natom
+                                xxx = st.nn(i, n = 6, ndict = None, silent = 1, 
+                                from_one = 0, more_info = 0, oxi_state = 0, print_average = 0)
+                                d = 0
+                                for n in xxx['dist']:
+                                    d+=n
+                                d = d/6
+                                av_dist += d
+
+                        try:
+                            av = round(av_dist/n_atoms_i,2)
+                        except ZeroDivisionError:
+                            av = 999
+                        av_pack.append(av)
+                        print('Average bond lengths is {} A'.format(av))
+
+                    mat0.replic([2,2,1]).jmol()
+                    print(av_pack)
+                    if abs(av_pack[2] - av_pack[0]) < 0.03:
+                        print('\nGood interface!\n\n')
+
+
+
+        if ads_pos:
+            interface_list = []
+            suf_ats2 = (slab_2.get_surface_atoms('O', surface = 0, surface_width=0.5))
+            print(suf_ats2)
+            xc1 = ads_pos
+            for at in suf_ats2[0:]:
+                xc2 = slab_2.xcart[at]
+                mat0, pas_scaled2 = make_interface(st1, xc1, slab_2, xc2)
+                # mat0.jmol(rep=[3,3,1])
+                interface_list.append(mat0)
+            return interface_list
+
+
+
+
+
+
+
+        mat2, pas_scaled2 = make_interface(st1, [0, 4, z_max1+1.5], slab_2, [0, 0.626, z_max2],)
+        st_wide = st1.add_vacuum(2,15)
+        mat3, pas_scaled3 = make_interface(st_wide, [0, 4, z_max1+10.5], slab_2, [0, 0.626, z_max2],)
+        # mat3.jmol()
+        return [mat2, mat3]
+
+
 
 
 

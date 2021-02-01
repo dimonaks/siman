@@ -196,7 +196,7 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH -n "+str(number_cores)+"\n")
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
-            # f.write("#SBATCH --mem-per-cpu=7675\n")
+            f.write("#SBATCH --mem-per-cpu=7675\n")
             
             # print(header.cluster)
             # sys.exit()

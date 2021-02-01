@@ -1440,7 +1440,7 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     diff  = cl1.e0 - (cl2.e0 * mul + E_nonst)
     gamma = diff / 2 / A * header.eV_A_to_J_m
     gamma_ev = diff / 2 / A 
-    print(A)
+    # print(A)
 
     if not silent:
         print('Surface energy = {:3.2f} J/m2   | {:} | {:} '.format(gamma, cl1.id, cl2.id))
@@ -1540,7 +1540,7 @@ def ads_en(cl_slab_ads, cl_slab, ads_at = 'O'):
     return e_ads
 
 
-def wulff(st, miller_list = None, e_surf_list = None):
+def wulff(st, miller_list = None, e_surf_list = None, show = 0):
 
     from pymatgen.core.structure import Structure
     stpm = st.convert2pymatgen()
@@ -1558,5 +1558,8 @@ def wulff(st, miller_list = None, e_surf_list = None):
     from pymatgen.analysis.wulff import WulffShape
     WS = WulffShape(lat, miller_list, e_surf_list)
     # print(dir(WS))
-    WS.show()
-    return
+    anisotropy = WS.anisotropy
+    weighted_surface_energy = WS.weighted_surface_energy
+    if show:
+        WS.show()
+    return anisotropy, weighted_surface_energy
