@@ -6,12 +6,15 @@ import numpy as np
 
 from siman import header
 
-def H2O(T, c2ev = 0):
+def H2O(T, c2ev = 0, ref0K = 0):
     # enthalpy, entropy for ideal gas water!
     #https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Units=SI&Mask=1#Thermo-Gas
     # though the interval is given as 500-1700 it works quite well for for T = 300, 400 compared with original tables 
     #of Chase1998  
     #c2ev - convert to eV
+    #T in K
+
+    # ref0K - if one, then from OK, if 0 than from 298.15K
 
     #return in kJ/mol entalpy and Gibss and J/mol/K for entropy or in eV and eV/K
     #return G, H, S
@@ -32,6 +35,8 @@ def H2O(T, c2ev = 0):
 
     dH = A*t + B*t**2/2 + C*t**3/3 + D*t**4/4 - E/t + F - H # H° − H°298.15
     S  = A*np.log(t) + B*t + C*t**2/2 + D*t**3/3 - E/(2*t**2) + G
+    if ref0K:
+        dH += 9.904 # Chase1998 - adding enthalpy due to 298.15 K contribution
 
     G = dH - (T * S)/1000
 
@@ -43,14 +48,17 @@ def H2O(T, c2ev = 0):
     return G, dH, S
 
 
-def O2(T, c2ev = 0):
-    # enthalpy, entropy for gas oxygen
-    #https://webbook.nist.gov/cgi/cbook.cgi?ID=C7782447&Units=SI&Mask=1#Thermo-Gas
-    #c2ev - convert to eV
+def O2(T, c2ev = 0, P = 1):
+    """ 
+    Enthalpy, entropy for gas oxygen relative to H°298.15 and at 1 bar pressure
+    https://webbook.nist.gov/cgi/cbook.cgi?ID=C7782447&Units=SI&Mask=1#Thermo-Gas
+    T - temperature in K
+    c2ev - convert to eV
+    P - pressure in bar
 
-    #return in kJ/mol entalpy and Gibss and J/mol/K for entropy or in eV and eV/K
-    #return G, H, S
-    
+    return in kJ/mol entalpy and Gibss and J/mol/K for entropy or in eV and eV/K
+    return G, H, S
+    """
 
     t  = T / 1000
 
@@ -78,11 +86,22 @@ def O2(T, c2ev = 0):
     S  = A*np.log(t) + B*t + C*t**2/2 + D*t**3/3 - E/(2*t**2) + G
 
 
-    G = dH - (T * S)/1000
+    #influence of pressure
+    S_P = -header.R * np.log(P) # P is assumed in bar
+    # print(P, np.log(P))
+    # print('S_P is {:.3f} J/mol/K compared to S at 1 Bar = {:.3f} J/mol/K'.format(S_P, S) )
+    S +=S_P
+
+
+    G = dH - (T * S)/1000 # convert to kj/mol from j/mol
 
     if c2ev:
+        #convert to eV
         S  = header.J_mol_T2eV_T * S
         dH = header.kJ_mol2eV * dH
         G = header.kJ_mol2eV * G
         # print(G, dH - T*S )
     return G, dH, S
+
+
+

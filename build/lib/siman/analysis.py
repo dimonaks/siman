@@ -5,6 +5,15 @@ import os, copy, shutil, sys
 import numpy as np
 
 try:
+    import scipy
+    from scipy import interpolate
+    # from scipy.interpolate import spline 
+    # print (scipy.__version__)
+    # print (dir(interpolate))
+except:
+    print('analysis.py: scipy is not avail')
+
+try:
     # sys.path.append('/home/aksenov/Simulation_wrapper/ase') #path to ase library
     from ase.eos import EquationOfState
     ase_flag = True
@@ -14,6 +23,7 @@ except:
 
 try:
     from pymatgen.analysis.wulff import WulffShape
+    from pymatgen.analysis.ewald import EwaldSummation
 
 except:
     print('pymatgen is not avail; run   pip install pymatgen')
@@ -29,6 +39,39 @@ from siman.small_functions import is_list_like, makedir
 from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.calcul import site_repulsive_e
 
+
+def set_oxidation_states_guess(st):
+    # set from guess
+    pm = st.convert2pymatgen()
+    pm.add_oxidation_state_by_guess()
+    st = st.update_from_pymatgen(pm)
+    # print(pm)
+    return st
+
+
+def calc_oxidation_states(cl = None, st = None, silent = 1):
+
+    #only use if charges are full charges from bader 
+    if cl:
+        st = cl.end
+        ch = cl.charges
+    # if st:
+    #     ch  = st.charges
+    
+    # print(st.get_elements() )
+    # print(ch)
+
+    z_vals = []
+    for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
+        ox = z_val - ch[j]
+
+        z_vals.append(ox)
+        if not silent:
+            ''
+            print(el, '{:3.1f}'.format(ox))
+    # print(list(zip(z_vals, self.end.get_elements())))
+    # print(z_vals)
+    return z_vals
 
 
 
@@ -115,7 +158,8 @@ def determine_barrier(positions = None, energies = None):
 
 
 
-def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
+def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, mode = None, 
+    scale = 1, config_entropy = None, x_vac1 = None, x_vac2 = None):
     """
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
@@ -123,6 +167,17 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
     energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
     
     temp(float) - potential at temperature, self.F is expected from phonopy calculations
+    
+    mode (str) - special 
+        electrostatic_only - use Ewald summation to obtain electrostatic energy
+        ewald_vasp
+
+    scale - experimental 
+    
+    config_entropy - cacluculate configuration entropy change and add to redox potential
+        x_vac - vacancy concentration - should be provided
+
+    return dic {'redox_pot', 'vol_red', ...}
     """
     if cl1 is None or cl2 is None:
         printlog('Warning! cl1 or cl2 is none; return')
@@ -132,6 +187,8 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
         return
 
     energy_ref_dict = {3:-1.9,  11:-1.31,  19:-1.02, 37:-0.93}
+    #
+
     z_alk_ions = [3, 11, 19, 37]
 
 
@@ -187,9 +244,47 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
     # print(energy_ref)
     # print(cl1.energy_sigma0, cl2.energy_sigma0, mul)
-    
-    e1 = cl1.energy_sigma0 
-    e2 = cl2.energy_sigma0
+
+
+    if mode == 'electrostatic_only':
+        # st1 = cl1.end.copy()
+        # st2 = cl2.end.copy()
+        st1 = cl1.end
+        st2 = cl2.end      
+        # st1 = set_oxidation_states(st1)
+        # st2 = set_oxidation_states(st2)
+
+        # st1 = st1.remove_atoms(['Ti'])
+        st1.charges = cl1.charges
+        st2.charges = cl2.charges
+        # sys.exit()
+        stpm1 = st1.convert2pymatgen(chg_type = 'ox')
+        stpm2 = st2.convert2pymatgen(chg_type = 'ox')
+        ew1 = EwaldSummation(stpm1)
+        ew2 = EwaldSummation(stpm2)
+
+        e1 = ew1.total_energy
+        e2 = ew2.total_energy
+        # print(ew1.get_site_energy(0), ew1.get_site_energy(4), ew2.get_site_energy(9) )
+        
+
+
+
+    elif mode == 'ewald_vasp':
+        e1 = cl1.energy.ewald
+        e2 = cl2.energy.ewald
+
+
+    else:    
+        e1 = cl1.e0 
+        e2 = cl2.e0
+
+    # print(e1,e2)
+
+
+
+
+
     if temp != None:
         #temperature corrections
         e1 += cl1.F(temp)
@@ -200,9 +295,15 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
 
     if abs(mul) > 0:
-        redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  )
+        redox = -(  ( e1 / n1 -  e2 / n2 ) / mul  -  energy_ref  ) / scale
     else:
         redox = 0
+
+
+    if config_entropy:
+        ''
+
+
 
     # print(n1, n2)
 
@@ -228,6 +329,143 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0):
 
 
     return results_dic
+
+
+
+
+
+def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4$F', ylabel = 'Voltage, V',
+    ax = None, first = 1, last = 1, fmt = 'k-', label = None, 
+    color =None, filename = 'voltage_curve', xlim = None, ylim = None, last_point = 1, exclude = None, 
+    formula = None, fit_power = 4):
+    """
+    objs - dict of objects with concentration of alkali (*invert* = 1) or vacancies (*invert* = 0) as a key
+    xs - choose specific concentrations
+    invert - 0 or 1 for concentration axis, see above
+    ax - matplotlib object, if more profiles on one plot are needed
+
+    exclude - list of objects to skip
+
+    formula - chemical formula used to calculate capacity in mAh/g
+
+    fit_power - power of fit polynomial
+    """
+
+    if xs is None:
+        xs = sorted(objs.keys())
+
+    es2 = []
+    xs2 = []
+    x_prev = None
+    V_prev = None
+
+    if exclude is None:
+        exclude = []
+    # if last_point:
+
+
+    for i in range(len(xs))[:-1] : 
+        if i in exclude:
+            continue
+
+        x = xs[i]
+        # process_cathode_material('KTiPO4F', step = 3, target_x = x, params = params , update = 0 ) #
+        # es.append(obj.e0)
+        # objs[xs[i]].res()
+        # objs[xs[i]].run('1uTU32r', add = 0, up = 'up1')
+
+        V = calc_redox(objs[xs[i+1]], objs[xs[i]])['redox_pot']
+        # print(V)
+        if V_prev is not None:
+            es2.append(V_prev)
+            xs2.append(x)
+        es2.append(V)
+        xs2.append(x)
+        V_prev = V
+
+    if last_point:
+        xs2.append(1)
+        es2.append(V_prev)
+
+    if invert:
+        es_inv = list(reversed(es2))
+    else:
+        es_inv = es2
+    # xs_inv = list(reversed(xs2))
+
+    # print( len(es_inv) )
+    # print( len(xs2) )
+
+
+    xf = [float(x) for x in xs2] #x float
+    # formula = 0
+    if formula:
+        from pymatgen.core.composition import Composition
+        # from 
+        comp = Composition(formula)
+
+
+        x = [x*header.F/comp.weight/3.6 for x in xf] # capacity in mA/g
+        g = lambda x: x*header.F/comp.weight/3.6
+        f = lambda x: x*comp.weight*3.6/header.F
+
+    else:
+        x = xf # just in concentration
+        xlim = (0,1.2)
+        f = None
+        g = None
+
+    x.insert(0, 0)
+    es_inv.insert(0, 2.75)
+
+
+    font = {'family' : 'Arial',
+            # 'weight' : 'boolld',
+            'size'   : 14}
+
+    header.mpl.rc('font', **font)
+
+    xi = [f(xi) for xi in x]
+    print(xi )
+
+    print('Full capacity is ', g(1)  )
+
+    for i in range(len(x)):
+        print('{:6.2f}, {:4.2f}, {:4.2f}'.format(x[i], float(xi[i]), es_inv[i]))
+
+
+
+    fit_and_plot(ax = ax, first = first, last = last, power = fit_power,
+        dE1 = {'x':x, 'x2_func':f, 'x2_func_inv':g, 
+        'x2label':'x in Li$_{x}$TiPO$_4$', 
+        'y':es_inv, 'fmt':fmt, 'label':label, 'color':color, },#'xticks':np.arange(0, 170, 20)}, 
+        ylim = ylim, xlim = xlim, 
+        legend = 'best', ver=0, alpha = 1,
+        filename = 'figs/'+filename, fig_format = 'pdf',
+        ylabel = ylabel, xlabel = xlabel, linewidth = 2, fontsize = None)
+    return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -287,7 +525,8 @@ def form_en(sources, products, norm_el = None):
         norm = norm_el
     else:
         norm = 1
-    # print('Normalizing by ', norm_el, norm, 'atoms')
+
+    print('Normalizing by ', norm_el, norm, 'atoms')
 
     dE = (El[1]-El[0])/norm
     print('dE = {:4.2f} eV'.format(dE))
@@ -438,30 +677,37 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
         # import inspect
 
         # print (inspect.getfile(EquationOfState))
+        try:
+            v0, e0, B = eos.fit()
 
-        v0, e0, B = eos.fit()
-        #print "c = ", clist[2]
-        printlog( '''
-        v0 = {0} A^3
-        a0 = {1} A
-        E0 = {2} eV
-        B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
+            #print "c = ", clist[2]
+            printlog( '''
+            v0 = {0} A^3
+            a0 = {1} A
+            E0 = {2} eV
+            B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
 
-        savedpath = 'figs/'+cl.name+'.png'
-        makedir(savedpath)
+            savedpath = 'figs/'+cl.name+'.png'
+            makedir(savedpath)
 
 
-        cl.B = B*160.218
-        # plt.close()
-        # plt.clf()
-        # plt.close('all')
-        if 'fit' in show:
-            mpl.rcParams.update({'font.size': 14})
+            cl.B = B*160.218
+            # plt.close()
+            # plt.clf()
+            # plt.close('all')
+            if 'fit' in show:
+                mpl.rcParams.update({'font.size': 14})
 
-            eos.plot(savedpath, show = True)
-            printlog('fit results are saved in ',savedpath, imp = 'y')
-        else:
-            printlog('To use fitting install ase: pip install ase')
+                eos.plot(savedpath, show = True)
+                printlog('fit results are saved in ',savedpath, imp = 'y')
+        except:
+            printlog('Warning!, no minimum or something is wrong')
+            v0 = 0
+            e0 = 0
+            B = 0
+
+    else:
+        printlog('Warning! To use fitting, install ase: pip install ase')
     # plt.clf()
 
     if push2archive:
@@ -476,6 +722,8 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
 
 def around_alkali(st, nn, alkali_ion_number):
     #return numbers and distances to 
+    #alkali_ion_number - number of interesting cation from 0
+    #nn - number of neighbours
 
     n_neighbours = nn
     alkali_ions = []
@@ -489,7 +737,7 @@ def around_alkali(st, nn, alkali_ion_number):
 
     if len(alkali_ions) > 0:
         if alkali_ion_number:
-            kk = alkali_ion_number-1
+            kk = alkali_ion_number
 
             chosen_ion = (kk, st.znucl[st.typat[kk]-1], st.xcart[kk])
         else:
@@ -511,24 +759,30 @@ def around_alkali(st, nn, alkali_ion_number):
 
 
 
-def find_polaron(st, i_alk_ion, out_prec = 1):
+def find_polaron(st, i_alk_ion, out_prec = 1, nstd  =1.5):
     """
-    #using magmom, find the transition atoms that have different magnetic moments
-    #i_alk_ion - number of ion from 0 to calculate distances to transition metals
-    out_prec (int) - precision of magmom output
+    Find TM atoms with outlying magnetic moments, which 
+    is a good indication of being a small polaron
+
+    Can be problems with charged-ordered materials
+
+    INPUT:
+        i_alk_ion - number of ion from 0 to calculate distances to detected polarons
+        out_prec (int) - precision of magmom output
+
+        nstd - number of standart deviations to detect polaron
+
+    RETURN:
+        pol (dict of int) - numbers of atoms, where polarons are detected for each TM element 
+        magmom_tm (list of float) - just magmom for TM
 
 
-    # maglist = cli.end.get_maglist()
-    # magm = np.array(cli.end.magmom)
+    TODO:
+        1. Add analysis of bond lengths to distinguish small polarons
+            Janh-Teller
+        2. Add treatment of charged-ordered
 
-    # n_tm = len(magm[maglist])
-    # # print(len(maglist))
-    # numb, dist, chosen_ion = around_alkali(cli.end, n_tm, atom_num)
-    # # print(magm[numb][1:]) 
-    # mtm = magm[numb][1:] # the first is alkali
 
-    # m_av = sum(mtm)/len(mtm)
-    # print(mtm-m_av)
     """
 
 
@@ -551,9 +805,9 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
 
     # sys.exit()
     magmom_tm = None
-    for key in mag_numbers:
-        printlog('Looking at polarons on transition atoms: ',invert(key) )
-        numbs = np.array(mag_numbers[key])
+    for z in mag_numbers:
+        printlog('Looking at polarons on transition atoms: ',invert(z) )
+        numbs = np.array(mag_numbers[z])
         # print(numbs)
         # print(magmom)
         magmom_tm = magmom[numbs]
@@ -563,7 +817,7 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
         # p = np.where(dev>2)[0] # 2 standard deviations
         # print(dev>2)
         # print (type(numbs))
-        nstd = 1.5
+        # nstd = 1.5
         # nstd = 4
         i_pols = numbs[dev>nstd]
 
@@ -574,39 +828,18 @@ def find_polaron(st, i_alk_ion, out_prec = 1):
                 x2 = st.xcart[j]
                 d, _ = st.image_distance(x1, x2, st.rprimd)
                 d_to_pols.append(d)
-            print('polarons are detected on atoms', [i+1 for i in i_pols], 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
+            print('polarons are detected on atoms', [i for i in i_pols], 'with magnetic moments:', magmom[i_pols], 'and distances: '+', '.join('{:2.2f}'.format(d) for d in d_to_pols), 'A'  )
             print('mag moments on trans. atoms:', magmom_tm.round(out_prec))
             
-            pol[key] = i_pols
+            pol[z] = i_pols
         else:
             print('no polarons is detected with nstd', nstd)
             print('mag moments on trans. atoms:', magmom_tm.round(out_prec))
             # print(' deviations                :', dev.round(1))
-            pol[key] = None
+            pol[z] = None
     return pol, magmom_tm
 
 
-
-def calc_oxidation_states(cl = None, st = None, silent = 1):
-
-    if cl:
-        st = cl.end
-        ch = cl.charges
-    if st:
-        ch  = st.charges
-    
-
-    z_vals = []
-    for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
-        ox = z_val - ch[j]
-
-        z_vals.append(ox)
-        if not silent:
-            ''
-            print(el, '{:3.1f}'.format(ox))
-    # print(list(zip(z_vals, self.end.get_elements())))
-    # print(z_vals)
-    return z_vals
 
 
 
@@ -757,6 +990,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
     cl1 = calc[cl.id[0], cl.id[1], 1]
+
     cl2 = calc[cl.id[0], cl.id[1], 2]
     
 
@@ -787,6 +1021,9 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
     for v in vlist:
         cli = calc[cl.id[0], cl.id[1], v]
+        # if v == 1:
+        #     cli = db['NaVP2O7_a.su.s101015v100.n5Na1v1ms.ifn.1mls.1']
+
         # print(cl.id[0], cl.id[1], v, cli.state)
         if '4' not in cli.state and 'un' not in up:
             printlog('Attention! res_loop(): analys_type == neb, Calc',cli.id,'is not finished; return')
@@ -835,15 +1072,16 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
                 st1 = copy.deepcopy(st)
 
-
-                vec = st.center_on(atom_num)
-                # vec = np.asarray([0.,0.,0.])
-
+                if params.get('center_on_moving'):
+                    vec = st.center_on(atom_num)
+                    printlog('Centering by shifting the cell by ', vec, imp = 'y')
+                else:
+                    vec = np.asarray([0.,0.,0.])
+                
             
-                if params is not None and 'mep_shift_vector' in params:
-                    # vec += np.array([0.11,0.11,0]) # path4
+                if params.get('mep_shift_vector'):
+                    vec += np.array(params['mep_shift_vector']) # 
                     # print(params['mep_shift_vector'])
-                    vec += np.array(params['mep_shift_vector']) # path4
 
             # print(vec)
             st_loc = st_loc.shift_atoms(vec)
@@ -910,6 +1148,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
         st1.name +='_all'
         # st1.write_cif('xyz/'+st1.name)
         st1.write_xyz()
+        st1.write_poscar()
 
 
     if dAO2: # find maximum change of distance during migration
@@ -946,6 +1185,8 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     for x in atom_pos:
 
         x2 = atom_pos[jj+1]
+        # x = np.array(x)
+        # x2 = np.array(x2)
         r = cl.end.rprimd
         d1, _ = image_distance(x, x2, r, order = 1) #minimal distance
         x2_gen = (x2 + (r[0] * i  +  r[1] * j  +  r[2] * k) for i in nbc for j in nbc for k in nbc) #generator over PBC images
@@ -977,8 +1218,11 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
     cl2.barrier = diff_barrier
 
 
-    results_dic['atom_pos'] = atom_pos
+    results_dic['atom_pos'] = [list(pos) for pos in atom_pos]
     results_dic['mep_energies'] = mep_energies
+
+    cl1.atom_pos = results_dic['atom_pos']
+    cl1.mep_energies = results_dic['mep_energies']
 
 
     if 'mep' in show:
@@ -1024,7 +1268,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
 
 
 
-def polaron_analysis(cl, ):
+def polaron_analysis(cl, readfiles):
     """
     Plot MEP for polaron migration
     """
@@ -1033,7 +1277,7 @@ def polaron_analysis(cl, ):
     itise = cl.id[0]+'.'+cl.id[1]
     # print(cl.ldauu)
     # sys.exit()
-    name_without_ext = 'mep.'+itise+'.U'+str(max(cl.ldauu))
+    name_without_ext = 'polmep.'+itise+'.U'+str(max(cl.ldauu))
 
     cl = db[cl.id[0], cl.id[1], 1]
     cl2 = db[cl.id[0], cl.id[1], 2]
@@ -1041,7 +1285,7 @@ def polaron_analysis(cl, ):
     iat1 = cl.params['polaron']['istart']
     iat2 = cl.params['polaron']['iend']
     mode = cl.params['polaron'].get('mode') or 'inherit'
-    cl2.res()
+    cl2.res(readfiles = readfiles)
     d = cl.end.distance(iat1, iat2)
 
     if mode == 'inherit':
@@ -1062,17 +1306,79 @@ def polaron_analysis(cl, ):
     # print(verlist)
     for i, v in enumerate(verlist1):
         cl = db[cl.id[0], cl.id[1], v]
-        cl.res()
-        mep_energies1.append( cl.e0 )
+        cl.res(readfiles = readfiles)
+        if '4' in cl.state:
+            mep_energies1.append( cl.list_e_sigma0[0] )
+        else:
+            mep_energies1.append(0)
     for i, v in enumerate(verlist2):
         cl = db[cl.id[0], cl.id[1], v]
-        cl.res()
-        mep_energies2.append( cl.e0 )
+        cl.res(readfiles = readfiles)
+        if '4' in cl.state:
+
+            mep_energies2.append( cl.list_e_sigma0[0] )
+        else:
+            mep_energies2.append(0)
 
     # print(len(atom_pos), len(mep_energies))
-    n = 6
-    fit_and_plot(a1 = (atom_pos1[0:n], mep_energies1[0:n], '-or'), b1 = (atom_pos2[0:n], mep_energies2[0:n], '-og'), 
-        power = 2, params = {'xlim_power':(0, 4), 'y0':1}, ylim = (-0.02, 0.2))
+
+    if 1: 
+        #plot simple
+        n = 6
+        pos1 = atom_pos1[0:n]
+        e1   = mep_energies1[0:n]
+        pos2 = atom_pos2[0:n]
+        e2 = mep_energies2[0:n]
+
+        # fit_and_plot(a1 = (pos1, e1, '-or'), b1 = (pos2, e2, '-og'), 
+        #     # power = 2, 
+        #     params = {'xlim_power':(0, 4), 'y0':1}, 
+        #     ylim = (-0.02, 0.2)
+        #     )
+
+        pos1_fine = list(np.linspace(min(pos1), max(pos1), 1000))
+        spl1 = scipy.interpolate.PchipInterpolator(pos1, e1)
+        e1_fine = list(spl1(pos1_fine))
+
+        pos2_fine = list(np.linspace(max(pos2), min(pos2) , 1000))
+        pos2_fine_rev = list(reversed(pos2_fine))
+        spl2_rev = scipy.interpolate.PchipInterpolator(list(reversed(pos2)), list(reversed(e2)) )
+        e2_fine_rev = list(spl2_rev(pos2_fine_rev))
+        e2_fine = list(reversed(e2_fine_rev))
+
+        #combine 
+
+        pos_fine = []
+        e_fine = []
+        for i, p2 in enumerate(pos2_fine_rev):
+            j = int(1000*p2/max(pos1_fine))
+            e2 = e2_fine_rev[i]
+            if j < 1000:
+                # print(j, e1_fine[j])
+                e1 = e1_fine[j]
+                if e2 < e1:
+                    # e_fine.append()
+                    e1_fine[j] = e2
+            else:
+                e1_fine.append(e2)
+                pos1_fine.append(p2)
+
+            # e = e1_fine
+
+        fit_and_plot(
+        # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
+            a1 = (pos1_fine, e1_fine, '-or'),
+            # power = 2, 
+            params = {'xlim_power':(0, 4), 'y0':1}, 
+            ylim = (-0.02, 0.2), ver = False,
+            xlim = (-0.02, 0.02+max(pos1_fine)),
+            filename = 'figs/'+name_without_ext,
+            xlabel = 'Position, (${\AA}$)',
+            ylabel = 'Energy, eV'
+            )
+
+
+
 
 
     # _, diff_barrier = plot_mep(atom_pos, mep_energies, image_name = 'figs/'+name_without_ext+'_my.eps', show = 0, 
@@ -1081,21 +1387,65 @@ def polaron_analysis(cl, ):
 
     return
 
-def set_oxidation_states(st):
-    pm = st.convert2pymatgen()
-    pm.add_oxidation_state_by_guess()
-    st = st.update_from_pymatgen(pm)
-    # print(pm)
-    return st
+
+
+def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
+    """
+    Calculate surface energy
+    cl - slab or cell with interface
+    cl1 - slab or cell with phase 1
+    cl2 - slab or cell with phase 2
+    mul1, mul2, - multiply cells
+
+    n_intefaces - number of similar  interfaces in the system
+
+    Interface is assumed to be normal to R3!
+
+    """
+    st = cl.end
+    st1 = cl1.end
+    st2 = cl2.end
+    natom = st.natom
+    natom1 = st1.natom
+    natom2 = st2.natom
+
+
+    A = np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
+    A1 = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )*mul1
+    A2 = np.linalg.norm( np.cross(st2.rprimd[0] , st2.rprimd[1]) )*mul2
+
+
+    print('Surface areas:', A,A1,A2)
 
 
 
-def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
+    mul = natom/(natom1*mul1+natom2*mul2) # natom1 and natom2 should be scaled equally
+
+
+
+
+    # print(mul)
+    if natom != (natom1*mul1+natom2*mul2)*mul:
+        printlog('Error! Number of atoms are different:', st.natom, st1.natom, st2.natom)
+
+    diff  = cl.e0 - (cl1.e0*mul1 + cl2.e0*mul2)* mul  
+    gamma = diff / A * header.eV_A_to_J_m / n_intefaces# inteface
+
+    if not silent:
+        print('Interface energy = {:3.2f} J/m2   | {:} eV '.format(gamma, diff))
+    
+
+    return gamma
+
+def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev_a = 0, normal = 2, normalize_by = None):
     """Calculate surface energy
     cl1 - supercell with surface
     cl2 - comensurate bulk supercell
     the area is determined from r[0] and r[1];- i.e they lie in surface
     chem_pot (dic) - dictionary of chemical potentials for nonstoichiometric slabs
+
+    normal - normal to the surface 0 - along a, 1 - along b, 2 - along c
+    normalize_by - name of element to normalize number of atoms in bulk and slab, if None, transition elements are used
 
     return_diff_energy (bool) - in addtion to gamma return difference of energies 
     """
@@ -1110,19 +1460,52 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
     natom1 = st1.get_natom()
     natom2 = st2.get_natom()
 
-    A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
-    # print(A)
+    if natom1%natom2:
+        printlog('Warning! Non-stoichiometric slab, atom1/natom2 is', natom1/natom2)
+
+
+    if normal == 0:
+        A = np.linalg.norm( np.cross(st1.rprimd[1] , st1.rprimd[2]) )
+
+    if normal == 1:
+        A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[2]) )
+
+    if normal == 2:
+        A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
+
+
+    print('Surface area is {:.2f} A^2, please check'.format(A))
     # get_reduced_formula
     # print(natom1, natom2)
 
 
-    tra1 = st1.get_transition_elements()
-    tra2 = st2.get_transition_elements()
+    if normalize_by:
+        ''
+        z = invert(normalize_by)
+        tra1 = st1.get_specific_elements([z])
+        tra2 = st2.get_specific_elements([z])
+
+    else:
+        tra1 = st1.get_transition_elements()
+        tra2 = st2.get_transition_elements()
+
+
+
     ntra1 = len(tra1)
+
+    # if ntra1 == 0:
+
+    if ntra1 == 0: 
+        ntra1 = natom1
     ntra2 = len(tra2)
+    if ntra2 == 0: 
+        ntra2 = natom2
     rat1 = natom1/ntra1
     rat2 = natom2/ntra2
     mul = ntra1/ntra2
+
+    # print(rat1, rat2, natom1, ntra1, natom2, ntra2,)
+    print('Number of bulk cells in slab is {:n}'.format(mul))
 
 
     if rat1 != rat2:
@@ -1160,9 +1543,12 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False):
 
     diff  = cl1.e0 - (cl2.e0 * mul + E_nonst)
     gamma = diff / 2 / A * header.eV_A_to_J_m
+    gamma_ev = diff / 2 / A 
 
     if not silent:
         print('Surface energy = {:3.2f} J/m2   | {:} | {:} '.format(gamma, cl1.id, cl2.id))
+        if ev_a:
+            print('Surface energy = {:3.2f} eV/A2   | {:} | {:} '.format(gamma_ev, cl1.id, cl2.id))
     
     if return_diff_energy:
         return gamma, diff
@@ -1259,5 +1645,8 @@ def wulff(st, miller_list = None, e_surf_list = None):
     print(dire.get_space_group_info())
     print(recp.get_space_group_info())
     # print(lat)
-    # from 
-    # WS = WulffShape(lat)
+    from pymatgen.analysis.wulff import WulffShape
+    WS = WulffShape(lat, miller_list, e_surf_list)
+    # print(dir(WS))
+    WS.show()
+    return

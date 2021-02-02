@@ -20,7 +20,7 @@ except:
 import siman
 from siman import header
 from siman.header import print_and_log, runBash, mpl, plt
-from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt
+from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt, setting_sshpass
 from siman.classes import Calculation, CalculationVasp, Description, CalculationAims, Structure
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import write_xyz, read_xyz, write_occmatrix
@@ -49,7 +49,7 @@ def log_func_exec():
 
 
 def write_batch_header(batch_script_filename = None,
-    schedule_system = None, path_to_job = None, job_name = 'SuperJob', number_cores = 1  ):
+    schedule_system = None, path_to_job = None, job_name = 'SuperJob', number_cores = 1):
     """
     self-explanatory)
     path_to_job (str) - absolute path to job folder 
@@ -86,6 +86,8 @@ def write_batch_header(batch_script_filename = None,
 
 
         if schedule_system == 'PBS':
+
+            prefix = '#PBS'
             f.write("#!/bin/bash   \n")
             f.write("#PBS -N "+job_name+"\n")
             
@@ -97,33 +99,54 @@ def write_batch_header(batch_script_filename = None,
             
 
             # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
-            if header.PBS_PROCS:
+            nodes = 1
+            if 'nodes' in header.cluster:
+                nodes = header.cluster['nodes']
+
+
+
+            if header.PBS_PROCS or nodes == 0: # parameter in header
                 f.write("#PBS -l procs="+str(number_cores)+"\n")
-            else: # 1 node option 
-                f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            else: #  node option 
+
+                if type(nodes) is str:
+                    f.write("#PBS -l nodes="+nodes+"\n")
+                else:
+                    f.write("#PBS -l nodes="+str(nodes)+":ppn="+str(number_cores)+"\n")
+            
+
+
+            if 'queue' in header.cluster:
+                f.write("#PBS -q "+str(header.cluster['queue'])+'\n')
+
+
             
             if 'procmemgb' in header.cluster:
                 f.write("#PBS -l pmem="+str(header.cluster['procmemgb'])+'gb\n')
 
-            # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
-            
+            if 'feature' in header.cluster:
+                f.write("#PBS -l feature="+header.cluster['feature']+"\n")
+
+
+
             f.write("#PBS -r n\n")
             f.write("#PBS -j eo\n")
             f.write("#PBS -m bea\n")
-            # f.write("#PBS -M dimonaks@gmail.com\n")
-            
+
+            if 'any_commands' in header.cluster:
+                lines = header.cluster['any_commands']
+                if not is_list_like(lines):
+                    printlog('Error! Please use list for sbatch key in cluster description')
+                for line in lines:
+                    f.write(prefix+' '+line+'\n')
+
+
+
             f.write("cd $PBS_O_WORKDIR\n")
             
 
-            # f.write("PATH=/share/apps/vasp/bin:/home/aleksenov_d/mpi/openmpi-1.6.3/installed/bin:/usr/bin:$PATH \n")
-            # f.write("LD_LIBRARY_PATH=/home/aleksenov_d/lib64:$LD_LIBRARY_PATH \n")
             if 'modules' in header.cluster:
                 f.write(header.cluster['modules']+'\n')
-
-            # f.write("module load Compilers/Intel/psxe_2015.6\n")
-            # f.write("module load MPI/intel/5.1.3.258/intel \n")
-            # f.write("module load QCh/VASP/5.4.1p1/psxe2015.6\n")
-            # f.write("module load ScriptLang/python/2.7\n\n")
 
 
 
@@ -148,22 +171,45 @@ def write_batch_header(batch_script_filename = None,
 
 
 
-
+        if schedule_system == 'none':
+            f.write("#!/bin/bash   \n")
+            if 'modules' in header.cluster:
+                f.write(header.cluster['modules']+'\n')
 
 
 
         if schedule_system == 'SLURM':
+            
+            hc = header.cluster
             if '~' in path_to_job:
                 print_and_log('Error! For slurm std err and out you need full paths')
 
             f.write("#!/bin/bash   \n")
             f.write("#SBATCH -J "+job_name+"\n")
-            f.write("#SBATCH -t 250:00:00 \n")
+            if 'walltime' in header.cluster:
+                f.write("#SBATCH -t "+str(header.cluster['walltime'])+'\n')
+            else:
+                ''
+                # f.write("#SBATCH -t 250:00:00 \n")
+
             f.write("#SBATCH -N 1\n")
             f.write("#SBATCH -n "+str(number_cores)+"\n")
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
-            f.write("#SBATCH --mem-per-cpu=7675\n")
+            # f.write("#SBATCH --mem-per-cpu=7675\n")
+            
+            # print(header.cluster)
+            # sys.exit()
+            if 'partition' in hc:
+                f.write('#SBATCH -p '+hc['partition']+'\n')
+
+            if 'any_commands' in header.cluster:
+                lines = header.cluster['any_commands']
+                if not is_list_like(lines):
+                    printlog('Error! Please use list for sbatch key in cluster description')
+                for line in lines:
+                    f.write('#SBATCH '+line+'\n')
+
             # f.write("#SBATCH -I other=avx\n") # AVX2 instructions for new node to improve speed by 18% 
 
             # f.write("#SBATCH --nodelist=node-amg03\n")
@@ -173,7 +219,7 @@ def write_batch_header(batch_script_filename = None,
                 # f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
                 # f.write("#SBATCH --mail-type=END\n")
             f.write("cd "+path_to_job+"\n")
-            f.write("export OMP_NUM_THREADS=1\n")
+            # f.write("export OMP_NUM_THREADS=1\n")
 
             if 'modules' in header.cluster:
                 f.write(header.cluster['modules']+'\n')
@@ -184,8 +230,8 @@ def write_batch_header(batch_script_filename = None,
             # if header.siman_run: #only for me
             lib64 = header.cluster['homepath'] + '/tools/lib64'
             atlas = header.cluster['homepath'] + '/tools/atlas'
-            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
-            f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
+            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
+            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
             
             f.write("export PATH=$PATH:"+header.cluster['homepath'] +"/tools/\n")
             
@@ -246,7 +292,7 @@ def prepare_run():
                 # f.write(header.cluster['modules']+'\n')
             # f.write("module load sge\n")
             # f.write("module load vasp/parallel/5.2.12\n")
-        elif schedule_system in ('PBS', 'PBS_bsu' 'SLURM'):
+        elif schedule_system in ('PBS', 'PBS_bsu', 'SLURM', 'none'):
             f.write("#!/bin/bash\n")
         else:
             ''
@@ -269,7 +315,8 @@ def complete_run(close_run = True):
                 f.write("squeue\n")
             elif header.schedule_system == "SGE":
                 f.write("qstat\n")
-
+            elif header.schedule_system == "none":
+                f.write("\n")
             f.write("mv run last_run\n")
 
 
@@ -391,6 +438,7 @@ def cif2poscar(cif_file, poscar_file):
 
 
     if pymatgen_flag:
+        # print(cif_file)
         parser = CifParser(cif_file)
         # s = parser.get_structures(primitive = True)[0]
         s = parser.get_structures(primitive = 0)[0]
@@ -430,7 +478,7 @@ def determine_file_format(input_geo_file):
 
     supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif', 'xyz':'.xyz'} #format name:format specifier
 
-    if 'POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file:
+    if ('POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file) and not '.geo' in input_geo_file:
         input_geo_format = 'vasp'
     elif '.vasp' in input_geo_file:
         input_geo_format = 'vasp'
@@ -478,7 +526,9 @@ def get_file_by_version(geofilelist, version):
 
         elif input_geo_format == 'vasp': #from filename
             if '-' in input_geofile:
+                # print('create calculation for structure',input_geofile)
                 curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+                # print('create calculation for structure with version',curv)
             # try: 
             #     curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
             # except:
@@ -495,6 +545,7 @@ def get_file_by_version(geofilelist, version):
             curv = None
 
         if curv == version:
+            # print('curv = ',curv,' version = ',version)
             printlog('match', curv, version)
             matched_files.append(input_geofile)
 
@@ -527,7 +578,7 @@ def smart_structure_read(filename = None, curver = 1, calcul = None, input_folde
     returns Structure()
     """
 
-    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'cif':'*.cif'}
+    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'vasp-phonopy': 'POSCAR*', 'cif':'*.cif'}
 
     if filename:
         input_geo_file = filename
@@ -656,9 +707,10 @@ def inherit_ngkpt(it_to, it_from, inputset):
     return
 
 
-def choose_cluster(cluster_name, cluster_home, corenum):
+def choose_cluster(cluster_name, cluster_home, corenum, nodes):
     """
     *cluster_name* should be in header.project_conf.CLUSTERS dict
+    nodes - number of nodes
     """
 
     if cluster_name in header.CLUSTERS:
@@ -678,14 +730,15 @@ def choose_cluster(cluster_name, cluster_home, corenum):
     
 
 
+    # print(clust)
+    setting_sshpass(clust = clust)
+    # if 'sshpass' in clust and clust['sshpass']:
+    #     printlog('setting sshpass to True', imp = '')
+    #     # sys.exit()
 
-    if 'sshpass' in clust and clust['sshpass']:
-        printlog('setting sshpass to True', imp = '')
-        # sys.exit()
-
-        header.sshpass = clust['sshpass']
-    else:
-        header.sshpass = None
+    #     header.sshpass = clust['sshpass']
+    # else:
+    #     header.sshpass = None
 
 
 
@@ -722,6 +775,10 @@ def choose_cluster(cluster_name, cluster_home, corenum):
 
     else:
         header.corenum    = clust['corenum']
+
+    if nodes is not None:
+        clust['nodes'] = nodes
+
 
     header.project_path_cluster = header.cluster_home +'/'+ header.PATH2PROJECT
 
@@ -822,6 +879,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         
         - ise_new (str) - name of new set for inherited calculation  ('uniform_scale')
 
+        - it_suffix (str) - additional suffix to modify the it part of name
+
         - occ_atom_coressp (dict) see inherit_icalc()
         
         - ortho, mul_matrix - transfered to inherit_icalc
@@ -835,10 +894,11 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'u_ramping'    - realizes U ramping approach #Phys Rev B 82, 195128
             - 'afm_ordering' - 
             - 'uniform_scale' - creates uniformly scaled copies of the provided calculations
+			- 'c_scale' - scale across c axis
             - 'scale' - arbitrary scale according to mul_matrix
             using *scale_region*  and *n_scale_images* (see *scale_cell_uniformly()*)
             The copies are available as versions from 1 to *n_scale_images* and
-            suffix .su appended to *it* name
+            suffix .su, .sc, or .sm appended to *it* name
             Copies to cluster *fit* utility that finds volume corresp. to energy minimum, creates 100.POSCAR and continues run 
             - 'monte' - Monte-Carlo functionality
 
@@ -872,11 +932,15 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 - 'mcsteps' - number of Monte-Carlo steps
                 - 'temp'    - temperature (K) for Metropolis Algorithm
                 - 'normal'  - vector normal to surface
-            - 'charge' - charge of the system, +1, -1
+            - 'charge' - charge of the system, +1 - electrons are removed, -1 - electrons are added
 
 
             - 'polaron'
                 - 'polaron_status' (str) 'new' (default) or 'existing'
+
+            - 'res_params' - dictionary with parameters transfered to res_loop()
+
+            - 'nodes' - number of nodes for sqedule system, currently works only for PBS
 
     Comments:
         
@@ -898,12 +962,11 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     no duplication of different input is realized in different places
 
     """
-
-
+    db = None
 
     def add_loop_prepare():
 
-        nonlocal calc, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params
+        nonlocal calc, db, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params
 
         if not params:
             params = {}
@@ -911,7 +974,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         params['show'] = show
         # if header.copy_to_cluster_flag:
-        choose_cluster(cluster, cluster_home, corenum)
+        # print(params["nodes"])
+        choose_cluster(cluster, cluster_home, corenum, params.get("nodes"))
         
         if run:
             prepare_run()
@@ -923,6 +987,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         if not calc:
             calc = header.calc
+            db = header.db
             varset = header.varset
 
 
@@ -1015,8 +1080,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
 
-            if it_suffix: # override default behaviour
-                it_new = it+'.'+it_suffix
+            if it_suffix: # add to default behaviour; make additional key, which can allow to override default behavior
+                it_new = it_new+'.'+it_suffix
                 it_suffix = None
 
 
@@ -1099,6 +1164,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             if pm.get('st1'):
                 st1 = pm['st1']
                 st2 = pm['st2']
+                st1.magmom = [None]
 
             elif existing:
                 st1 = copy.deepcopy(input_st)
@@ -1195,6 +1261,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             exclude_new = []
             exclude = params['atat'].get('exclude_atoms_n')
 
+            subatom = params['atat'].get('subatom') or None
             # print(exclude)
             # sys.exit()
             if exclude:
@@ -1206,6 +1273,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             params['update_set_dic']={'add_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
             'MAGATOM':list2string(input_st.magmom), 
             'MAGMOM':None,
+            'SUBATOM':subatom,
             'DOSTATIC':''}
 
 
@@ -1217,19 +1285,24 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         u_scale_flag = False
         fitted_v100_id = None
 
-
-        if calc_method and ('scale' in calc_method or 'uniform_scale' in calc_method):
-            # print('sdfsdf')
+        #print(calc_method)
+        #sys.exit()
+        if calc_method and ('c_scale' in calc_method or 'scale' in calc_method or 'uniform_scale' in calc_method):
+            #print('Scale')
+            #sys.exit()
             if 'uniform_scale' in calc_method:
                 u_scale_flag = True
 
-                it_new = it+'.su' #scale uniformly 
+                it_new = it+'.su' #scale uniformly  
+            elif 'c_scale' in calc_method:
+                it_new = it+'.sc' #scale along c
+                u_scale_flag = True
             else:
                 it_new = it+'.sm' #scale according to mul_matrix
-            
+                #may not work correctly 
 
             if it_suffix:
-                it_new = it+'.'+it_suffix
+                it_new = it_new+'.'+it_suffix
                 it_suffix = None
 
 
@@ -1303,7 +1376,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 if 'uniform_scale' in calc_method:
 
                     sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
-                
+                if 'c_scale' in calc_method:
+                    #print('scale_start')
+                    #sys.exit()
+                    sts = scale_cell_by_matrix(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname, mul_matrix = [[1,0,0],[0,1,0],[0,0,1.01]])
                 else:
                     sts = scale_cell_by_matrix(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname, mul_matrix = mul_matrix)
 
@@ -1311,7 +1387,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     inputset = ise_new
                     id_s = (it,inputset,v)
 
-                cl_temp = CalculationVasp(varset[inputset], id_s)
+                #cl_temp = db[id_s].copy()
+                #sys.exit()
+                try:
+                    cl_temp = db[id_s].copy()
+                except:
+                    cl_temp = CalculationVasp(varset[inputset], id_s)
 
                 for i, s in enumerate(sts):
                     ver_new = i+ 1 # start from 1; before it was v+i
@@ -1325,8 +1406,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                         description = s.des, override = True)
                     write_xyz(s)
                     verlist_new.append(ver_new)
-                
-                if 'uniform_scale' in calc_method:
+
+
+
+                if 'uniform_scale' in calc_method or 'c_scale' in calc_method:
+                    #print('Create 100')
+                    #sys.exit()
                     #make version 100
                     cl_temp.version = 100
                     cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
@@ -1341,6 +1426,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     cl_temp.cluster_address      = header.cluster_address
                     cl_temp.project_path_cluster = header.project_path_cluster
                     calc[cl_temp.id] = cl_temp
+                    printlog(cl_temp.id, 'was created in database')
+                    # sys.exit()
+
                     # cl_temp.init = None
                     fitted_v100_id = cl_temp.id
 
@@ -1637,6 +1725,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         for v in verlist:
             id = (it,inputset,v)
+
             
            
             blockdir = header.struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
@@ -1679,7 +1768,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None):
     """
 
-    schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
+    schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 'none'
 
     prevcalcver - version of previous calculation in verlist
 
@@ -1734,26 +1823,58 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 # f.write("\n")
             f.write(' 1 0 0\n 0 1 0\n 0 0 1\n')
 
-            active_atoms = params['atat']['active_atoms']
-            exclude = params['atat']['exclude_atoms_n'] or []
+            active_atoms = params['atat']['active_atoms'] #dict
+            
+            exclude = params['atat'].get('exclude_atoms_n') or []
+            
             subs = []
 
-            # print(active_atoms)
+            active_numbers = []
+            subs_dict    = {}
+            active_elements = []
+            for el in set(st.get_elements()):
+                for elan in active_atoms:
+                    
+                    if el not in elan:
+                        continue
+
+
+                    # print(elan)
+                    active_elements.append(el)
+                    elann = re.split('(\d+)',elan)
+                    print('Exctracting symmetry position of Na ', elann)
+                    if len(elann) > 2:
+                        ela = elann[0]
+                        isym   = int(elann[1])
+                    else:
+                        ela = elann[0]
+                        isym = None
+                    if isym:
+                        natoms = st.determine_symmetry_positions(el)
+                        a_numbers = natoms[isym-1]
+                    else:
+                        a_numbers = st.get_numbers(el)
+            
+                    for i in a_numbers:
+                        subs_dict[i] = active_atoms[elan]
+                    
+                    active_numbers.extend(a_numbers)
+            # print(active_numbers)
             # sys.exit()
-            # for el in set(st.get_elements()):
-                # st.determine_symmetry_positions(el)
+
 
             # st.printme()
             # sys.exit()
 
 
             for i, el in enumerate(st.get_elements()):
-                if el in active_atoms and i not in exclude:
+                if i not in exclude and i in active_numbers:
                     # print(el, i, st.xred[i])
-                    subs.append(active_atoms[el])
+                    subs.append(subs_dict[i])
                 else:
                     subs.append(None)
 
+            print(subs)
             # print(st.magmom)
 
             if None in st.magmom:
@@ -1763,12 +1884,24 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             # print(magmom)
             for x, el, sub, m in zip(st.xred, st.get_elements(), subs, magmom):
-                if el == 'O':
+                # if el == 'O':
+                #     m = 0
+                # print(m)
+                if abs(m) < 0.1:
                     m = 0
+                # print(m, '{:+.0f}'.format(m))
                 f.write('{:10.6f} {:10.6f} {:10.6f} {:s}{:+.0f}'.format(*x, el, m))
+                
                 if sub:
                     f.write(','+sub)
                 f.write("\n")
+
+        #highlight active atoms
+        st_h = st.replace_atoms(active_numbers, 'Pu')
+        st_h.write_poscar()
+        printlog('Check active atoms', imp = 'y')
+
+
 
         return file
 
@@ -1798,16 +1931,20 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         # print(cl.state)
 
+
         if check_job:
+            res_params = params.get('res_params') or {}
+            # print(res_params)
+            # sys.exit()
             if '2' in cl.state or '5' in cl.state:
                 status = "ready"
                 if up != 'up2':
-                    cl.res(check_job = check_job, show = params['show']) 
+                    cl.res(check_job = check_job, show = params['show'], **res_params) 
                     return
 
             if "3" in cl.state: #attention, should be protected from running the same calculation once again
                 status = "running"
-                cl.res(check_job = check_job, show = params['show'])
+                cl.res(check_job = check_job, show = params['show'], **res_params)
                 # print(check_job)
                 # sys.exit()
                 if '3' in cl.state and check_job: 
@@ -1817,7 +1954,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 status = "compl"
                 if up == 'up2':
                     cl.init.select = None
-                cl.res(check_job = check_job, show = params['show']) 
+                cl.res(check_job = check_job, show = params['show'], **res_params) 
                 # sys.exit()
 
                 if up != 'up2':
@@ -1858,7 +1995,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         calc[id] = cl
 
         cl.id = id 
-        cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2])
+        cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2]) # 
         cl.dir = blockdir+'/'+ str(id[0]) +'.'+ str(id[1])+'/'
         
 
@@ -1953,7 +2090,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 dir_2 = cl.dir
                 # sys.exit()
 
-        if 'OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1: #copy occfile
+        if 'occmatrix' in params or ('OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1): #copy occfile
             if 'occmatrix' in params:
                 shutil.copyfile(params['occmatrix'], cl.dir+'/OCCMATRIX' ) # file is provided explicitly
 
@@ -2640,10 +2777,10 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
 def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'no', b_id = None, 
-    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fo', 
+    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fomag', 
     comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
     calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
-    ortho = None, mat_proj_cell = None, ngkpt = None,
+    ortho = None, mat_proj_cell = None, ngkpt = None, it_suffix = None,
     it_folder = None, choose_outcar = None, choose_image = None, 
     cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
@@ -2663,6 +2800,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             'redox_pot' - calculate redox potential relative to b_id() (deintercalated cathode) and energy_ref ( energy per one ion atom Li, Na in metallic state or in graphite)
             'neb' - make neb path. The start and final configurations 
             should be versions 1 and 2, the intermidiate images are starting from 3 to 3+nimages
+
+            'xcarts'
             )
         
         voronoi - True of False - allows to calculate voronoi volume of impurities and provide them in output. only if lammps is installed
@@ -2696,7 +2835,16 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             - polaron - determine polaron positon, write local surroundin
             - mig_path - write migration path xyz
             - pickle - download all pickle and convert to CONTCAR (for Monte-Carlo regime)
-
+            - out - open OUTCAR, sublime text should be installed, not tested on windows
+            - op  - open containing folder
+            - qlog - log
+            - term  - terminal at folder
+            - freq - frequencies
+            - conv - convergence
+            - sur  - surround atoms
+            - efav - energy average force 
+            - est - energy per step
+            - time - time per electronic iteration is seconds
 
         energy_ref - energy in eV; substracted from energy diffs
         
@@ -2723,13 +2871,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         - ise_new - dummy
         - inherit_option - dummy
         - savefile - dummy
-        - cluster - dummy
+        - cluster - used to override cluster name
         - override - dummy
         
         - params - dictionary of additional parameters to control internal, many arguments could me moved here 
             
-            mep_shift_vector - visualization of mep in xyz format
-
+            'mep_shift_vector' - visualization of mep in xyz format
+            'charge' (int) - charge of cell, +1 removes one electron
     RETURN:
         
         (results_dic,    result_list)
@@ -2740,6 +2888,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         results_dic - should be used in current version! actually once was used as list, now should be used as dict
 
     TODO:
+    
         
         Make possible update of b_id and r_id with up = 'up2' flag; now only id works correctly
 
@@ -2748,7 +2897,6 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
     """Setup"""
-
 
 
 
@@ -2761,17 +2909,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
     if not calc:
         calc = header.calc
+        db = header.db
 
-    def setting_sshpass(cl):
-        if hasattr(cl , 'cluster'):
-            # print(cl.cluster)
-            # clust = header.CLUSTERS[cl.cluster]
-            if 'sshpass' in cl.cluster and cl.cluster['sshpass']:
-                printlog('setting sshpass to True', imp = '')
-                # sys.exit()
-                header.sshpass = cl.cluster['sshpass']
-            else:
-                header.sshpass = None
 
 
     def override_cluster_address(cl):
@@ -2782,12 +2921,16 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             cl.cluster = {}
             cl.cluster['address'] = cl.cluster_address
             # cluster = cl.cluster 
-
         if header.override_cluster_address:
+            
+            # if cluster_name:
             if not cluster_name:
                 cluster_name = cl.cluster.get('name')
             if not cluster_name:
                 cluster_name = header.DEFAULT_CLUSTER
+
+            cl.cluster['name'] = cluster_name
+
 
             if cl.cluster['address'] != header.CLUSTERS[cluster_name]['address']:
                 cl.cluster['address'] = header.CLUSTERS[cluster_name]['address']
@@ -2824,7 +2967,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     result_list = []
     energies = []
 
-
+    # print(choose_outcar)
+    # sys.exit()
 
     emin = 0
     if b_id:
@@ -2833,6 +2977,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 # print "Start to read ", b_id
                 # if '4' not in calc[b_id].state:
                 if readfiles:
+                    # print(choose_outcar)
+                    # sys.exit()
                     calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
                 
                 e_b = 1e10; v_b = 1e10
@@ -2860,20 +3006,72 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         # print e1_r
 
 
+    """Amendmend required before main loop """
+    if analys_type == 'atat' and choose_outcar is not None:
+        
+
+        i = choose_outcar
+        v = verlist[0]
+        ise = setlist[0]
+        idd = (it, ise, v)
+        cl = db[idd]
+        fit = cl.get_file('fit.out', root = 1, up = up)
+        fit = cl.get_file('predstr.out', root = 1, up = up)
+        fit = cl.get_file('gs.out', root = 1, up = up)
+        
+        # print(fit)
+        fit_i_e = {} # dic, where concentration is a key
+        with open(fit, 'r') as f:
+            # lines = f.readlines()
+            for line in f:
+                # print(line)
+                x = float(line.split()[0])
+                k = int(line.split()[-1])
+                e = float(line.split()[1]) # dft energy
+                # print(x)
+                if x not in fit_i_e:
+                    fit_i_e[x] = []
+                fit_i_e[x].append( (k, e) )
+        # print(fit_i_e)
+        fit_i_min = {}
+        for key in fit_i_e:
+            i_e = sorted(fit_i_e[key], key=lambda tup: tup[1]) 
+            # print(i_e)
+            fit_i_min[key] = i_e[0][0]
+
+        # print(fit_i_min)
+        xs = sorted(fit_i_min.keys())
+        print("I read lowest energy configurations for the following concentration of vacancies", xs)
+        verlist = []
+        choose_outcar = None
+        for x in xs:
+            i = fit_i_min[x]
+            idd_new = (it, ise, i)
+            if i != v:
+                db[idd_new] = cl.copy(idd_new)
+                db[idd_new].update_name()
+            db[idd_new].path['output'] = db[idd_new].dir+'/'+str(i)+'/OUTCAR.static'
+            # print(db[idd_new].path['output'])
+            verlist.append(i)
+            # print(db[idd_new].id)
 
 
     """Main loop"""
+    if it_suffix:
+        it_suffix = '.'+it_suffix
+    else:
+        it_suffix = ''
     final_outstring = 'no calculation found'
     for inputset in setlist:
         for v in verlist:
-            id = (it,inputset,v)
+            id = (it+it_suffix,inputset,v)
             # print(id)
             if id not in calc:
                 printlog('Key', id,  'not found in calc!', imp = 'Y')
                 continue #pass non existing calculations
             cl = calc[id]
-            
-            setting_sshpass(cl) # checking if special download commands are needed
+            # print(cl.id, cl.path['output'])
+            # setting_sshpass(cl) # checking if special download commands are needed - moved to get_file()
             
 
             override_cluster_address(cl)
@@ -2887,6 +3085,25 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if 'path' in show:
                 printlog(os.getcwd()+'/'+cl.path['output'], imp = 'Y')
                 # sys.exit()
+                return
+            
+            if 'log' == show:
+
+                path = cl.project_path_cluster +'/'+ cl.dir
+                out = cl.run_on_server('ls '+path+'/*log', cl.cluster_address)
+                # print(out)
+                # sys.exit()
+                files = out.splitlines()
+                file = files[-1] #use last 
+                name = os.path.basename(file)
+                cl.get_file(name, )
+                runBash('subl '+cl.dir+'/'+name)
+                return
+
+            if 'term' == show:
+                #only fo linux
+                header.open_terminal = True 
+                cl.run_on_server('cd '+cl.dir)
                 return
 
             if 'jmol' in show:
@@ -2902,10 +3119,33 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if 'out' in show:
                 runBash('subl '+cl.path['output'])
 
+            if 'op' in show:
+                import webbrowser
+                webbrowser.open('file:///' + os.getcwd()+'/'+cl.dir)
+                # runBash('nautilus '+cl.dir)
 
             if 'pos' in show:
                 cl.end.write_poscar()
                 return
+
+            if 'qlog' in show:
+
+                path = cl.project_path_cluster +'/'+ cl.dir
+                out = cl.run_on_server('ls '+path+'/*.e*', cl.cluster_address)
+                # print(out)
+                # sys.exit()
+                files = out.splitlines()
+                file = files[-1] #use last
+                name = os.path.basename(file)
+                i = name.split('-')[0]
+                if not os.path.exists(cl.dir+'/'+name):
+                    cl.get_file(name, )
+                nodes_conf = None
+                with open(cl.dir+'/'+name, 'r') as f:
+                    for lll in f:
+                        if 'Node(s):' in lll:
+                            nodes_conf = lll
+                print(nodes_conf)
 
             if 'pickle' in show:
                 sys.modules['classes'] = siman.classes # temporary migration solution
@@ -3280,10 +3520,12 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         if analys_type == 'polaron':
             # print(cl.id)
-            results_dic = polaron_analysis(cl)
+            results_dic = polaron_analysis(cl, readfiles = readfiles)
 
 
-
+        if analys_type == 'atat':
+            ''
+            # atat_analysis(cl) / placeholder
 
 
 
@@ -3318,7 +3560,7 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10],dim = [1, 1, 1], f
         filename = path+'/mesh.conf'
 
     with open(filename, 'w', newline = '') as f:
-        f.write("DIM = \n")
+        f.write("DIM = ")
         f.write(" ".join(map(str, dim)))
         f.write("\n")
         f.write("ATOM_NAME = ")
@@ -3334,7 +3576,7 @@ def create_phonopy_conf_file(st, path = '', mp = [10, 10, 10],dim = [1, 1, 1], f
         # f.write("SIGMA = 0.1\n")
         if filetype == 'mesh':
 
-            f.write("MP = {:}\n".format( mpstr ))
+            f.write("MP = {:}".format( mpstr ))
         
         if filetype == 'band':
             f.write("BAND = {:}\n".format( '0.5 0.5 0.5  0.0 0.0 0.0  0.5 0.5 0.0  0.0 0.5 0.0' ))
@@ -3423,9 +3665,10 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
     if calctype == 'create':
-        work_path = 'geo/'+struct_des[new_id[0]].sfolder+'/'+new_id[0]
+        work_path = header.struct_des[new_id[0]].sfolder+'/'+new_id[0]
+        print(work_path)
     
-        log_history(  "{:}    #on {:}".format( traceback.extract_stack(None, 2)[0][3],   datetime.date.today() )  )
+        # log_history(  "{:}    #on {:}".format( traceback.extract_stack(None, 2)[0][3],   datetime.date.today() )  )
 
         # print type(from_id)
         if type(from_id) == str:
@@ -3459,21 +3702,22 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
          
         #run phonopy
         print_and_log(
-            runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; rm POSCAR-*; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+            runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; rm POSCAR-*;'+header.path_to_phonopy 
             +confname+' -c '+posname+' -d --tolerance=0.01'), imp = 'y' )
 
         ndis = len( glob.glob('POSCAR-*') )
-        print_and_log( ndis, ' displacement files was created', )
+        print( ndis, ' displacement files was created\n\n\n\n', )
 
         os.chdir(savedPath)
 
 
         #add
-        add_loop(new_id[0],   new_id[1], range(1,ndis+1), up = 'up1', input_geo_format = 'vasp', savefile = 'ocdx')
+        # add_loop(new_id[0],   new_id[1], range(1,ndis+1), up = 'up1', savefile = 'ocdx')
+        add_loop(new_id[0],   new_id[1], range(1,ndis+1), up = 'up1', input_geo_format = 'vasp-phonopy', savefile = 'ocdx')
 
         #copy SPOSCAR - an ideal cell
-        src =  'geo/'+struct_des[new_id[0]].sfolder+'/'+new_id[0]
-        dst = struct_des[new_id[0]].sfolder+'/'+new_id[0]+'.'+new_id[1]+'/'
+        src =  header.struct_des[new_id[0]].sfolder+'/'+new_id[0]
+        dst = header.struct_des[new_id[0]].sfolder+'/'+new_id[0]+'.'+new_id[1]+'/'
         shutil.copy(src+'/SPOSCAR', dst)
         shutil.copy(src+'/disp.yaml', dst)
 
@@ -3482,26 +3726,26 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
         if type(new_id) == tuple:
             new_cl = header.calc[new_id]
 
-            work_path = struct_des[new_id[0]].sfolder+'/'+new_id[0]+'.'+new_id[1]
-            work_path_geo = 'geo/'+struct_des[new_id[0]].sfolder+'/'+new_id[0]
+            work_path = header.struct_des[new_id[0]].sfolder+'/'+new_id[0]+'.'+new_id[1]
+            work_path_geo = header.struct_des[new_id[0]].sfolder+'/'+new_id[0]
 
 
 
             npos = len( glob.glob(work_path+'/*.POSCAR') )
-            # print range(1,npos+1), 'range'
+            print(range(1,npos+1), 'range')
             if not os.path.exists(work_path+"/1.POSCAR"):
                 res_loop(new_id[0],   new_id[1], range(1,npos+1), up = 'up1', input_geo_format = 'vasp', )
 
             if additional:
                 for name in additional:
-                    npos_new = len( glob.glob(struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/*.POSCAR') )
+                    npos_new = len( glob.glob(header.struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/*.POSCAR') )
 
                     if not os.path.exists(struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/'+str(npos+1)+".POSCAR"):
                         res_loop(name,   new_id[1], range(npos+1, npos+npos_new+1), up = 'up1', input_geo_format = 'vasp', )
                     
                     npos = npos+npos_new
 
-                    runBash("rsync "+struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/*.vasprun.xml '+work_path)
+                    runBash("rsync "+header.struct_des[new_id[0]].sfolder+'/'+name+'.'+new_id[1]+'/*.vasprun.xml '+work_path)
                     # print 'Additional vasprun.xml files were copied to ', work_path
 
             savedPath = os.getcwd()
@@ -3513,6 +3757,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
             with open(confname, 'w', newline = '') as f:
                 f.write("DIM = 1 1 1\n")
                 f.write("ATOM_NAME = ")
+                print(new_cl.name)
                 for z in new_cl.end.znucl:
                     el = element_name_inv(z)
                     f.write(el+' ')
@@ -3524,7 +3769,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
                 #run phonopy; read forces
                 ndis = len( glob.glob('*.vasprun.xml') )
                 print_and_log( ndis, ' displacement files was Found')
-                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; '+header.path_to_phonopy 
                     +'  -f {1..'+str(ndis)+'}.vasprun.xml --tolerance=0.01'), imp = 'Y' )
 
             #calculate thermal prop
@@ -3532,7 +3777,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
             if not os.path.exists(result):
 
                 posname = 'SPOSCAR'
-                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; /home/dim/installed/phonopy-1.9.5/bin/phonopy '
+                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; '+header.path_to_phonopy 
                     +confname+' -c '+posname+' -t -p -s --tolerance=0.01'), imp = 'y' )
 
                 shutil.copyfile('thermal_properties.yaml', result)
@@ -3548,7 +3793,8 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
 
 
-    return T_range, fit_func
+    # return T_range, fit_func
+    return
 
 
 

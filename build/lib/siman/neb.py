@@ -145,7 +145,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             '261018' - after this moment new namig convention applied if end_pos_types_z is used
 
         - add_loop_dic - standart parameters of add()
-        - params (dic) - provide additional parameters to add()
+        - params (dic) - provide additional parameters to add() # should be removed
 
     ###RETURN:
         None
@@ -164,7 +164,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         naming_conventions209 = False #
 
 
-    # print(atom_to_insert)
+    # print('atom_to_insert', atom_to_insert)
     # sys.exit()
 
     calc = header.calc
@@ -273,6 +273,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         if is_list_like(xr_start):
             x_start = xred2xcart([xr_start], st.rprimd)[0]
+            # print('atom_to_insert', atom_to_insert)
+            # sys.exit()
+
             st1, i_m = st.add_atoms([x_start], atom_to_insert, return_ins = 1)
             x_m = x_start
             # i_m = st1.find_atom_num_by_xcart(x_start)
@@ -395,6 +398,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
                 i_m = st.natom-1
                 x_m = st.xcart[i_m]
+
 
                 search_type = 'existing_voids'
                 type_atom_to_move = atom_to_insert
@@ -599,7 +603,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
     elif is_list_like(xr_final) and not is_list_like(xr_start) or is_list_like(xr_start) and not is_list_like(xr_final):
-        printlog('Attention! only start of final position is provided, please check that everything is ok with start and final states!!!')
+        printlog('Attention! only start or final position is provided, please check that everything is ok with start and final states!!!')
 
 
 
@@ -755,8 +759,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         # st1, _, _ = st1.remove_close_lying()
         # st2, _, _ = st2.remove_close_lying()
-        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3)
-        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
+        print('Trying to find x_m', x_m)
+        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.45, )
+
+        # sys.exit()
+        print('Trying to find x_del', x_del)
+
+        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.45, )
 
         if rep_moving_atom: #replace the moving atom by required
             st1 = st1.replace_atoms([i1], rep_moving_atom)
@@ -766,8 +775,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             st1 = st1.replace_atoms([i1], type_atom_to_move)
             st2 = st2.replace_atoms([i2], type_atom_to_move)
 
-        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.3) # the positions were changed # check if this is correct
-        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.3)
+        i1 = st1.find_atom_num_by_xcart(x_m, prec = 0.45) # the positions were changed # check if this is correct
+        i2 = st2.find_atom_num_by_xcart(x_del, prec = 0.45)
 
 
     cl.end = st1
@@ -802,6 +811,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         st2s = copy.deepcopy(st2)
     
     if center_on_moving and search_type is not None:
+
         vec = st1.center_on(i1)
         st1s = st1s.shift_atoms(vec)
         st2s = st2s.shift_atoms(vec)
@@ -816,7 +826,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     
     with cd('xyz'):
         a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
-        
+        print(a)
         dst = it_new+'_all'
         makedir(dst+'/any')
         for f in ['00', '01', '02', '03', '04']:
@@ -858,7 +868,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         add_loop_dic['run'] = run
 
     add_loop_dic['corenum'] = corenum
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, params=params, **add_loop_dic  )
+    # print(add_loop_dic)
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, 
+        # params=params, 
+        **add_loop_dic  )
     
 
     if upload_vts:

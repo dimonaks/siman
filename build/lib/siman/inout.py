@@ -1,14 +1,38 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
 import os, io, re, math
+from csv import reader
+
 import numpy  as np
+try:
+    import pandas as pd 
+except:
+    print('inout.py: Cant import pandas')
+
+try:
+    from tabulate import tabulate 
+except:
+    print('inout.py: Cant import tabulate')
+
+
 
 from siman import header
-from siman.header import printlog, runBash
-from siman.functions import element_name_inv, unique_elements
+from siman.header import printlog, runBash, plt
+from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
 from siman.small_classes import empty_struct
 from siman.geo import local_surrounding, replic
+
+
+
+def read_csv(filename, delimiter =','):
+    with open(filename, 'r') as read_obj:
+        # pass the file object to reader() to get the reader object
+        csv_reader = reader(read_obj, delimiter = delimiter)
+        # Pass reader object to list() to get a list of lists
+        list_of_rows = list(csv_reader)
+        # print(list_of_rows)
+    return list_of_rows
 
 
 def read_xyz(st, filename, rprimd = None):
@@ -62,7 +86,7 @@ def read_xyz(st, filename, rprimd = None):
 
 
     # print(st.rprimd)
-    if rprimd == None or None in rprimd or 0 in rprimd or len(rprimd) != 3:
+    if rprimd is None or any(x is None for x in rprimd) or len(rprimd) != 3:
         printlog('None detected in *rprimd*, I use vectors from xyz file')
         if len(st.rprimd) != 3:
             printlog('Only these primitive vectors were found in xyz :\n', np.round(st.rprimd, 3), '\nI take rest from *rprimd*', imp ='y')
@@ -218,6 +242,39 @@ def read_poscar(st, filename, new = True):
                             flagset[fi] = False
                     # print(flagset)
                     select.append(flagset)
+
+
+        velocities = []
+        newline = f.readline() # if velocities are available - they are separated by one new line
+        vel1 = f.readline()
+        # print(vel1)
+        if vel1:
+            #usually vasp return zero velocities, which are not needed, skip them
+            vec = vel1.split()
+            vel_vec = np.asarray([float(vec[0]), float(vec[1]), float(vec[2])])
+            vellen = abs(np.linalg.norm(vel_vec))
+            # print(vellen)
+        if vel1 and vellen > 1e-12:
+            vec = vel1.split()
+            velocities.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
+            printlog('Reading velocities from POS/CONT-CAR', imp = 'y')
+            for i in range(len(coordinates)-1): # vel for first atom is already read
+                vec = f.readline().split()
+                velocities.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
+            st.vel = velocities
+
+            newline = f.readline() # new empty line between blocks
+            start = f.readline() # something appears after velocity
+            if start:
+                printlog('Reading predictor-corrector from POS/CONT-CAR', imp = 'y')
+                predictor = start+f.read()
+                # print(predictor)
+                # sys.exit()
+                st.predictor = predictor
+
+
+
+
 
         st.select = select
 
@@ -423,7 +480,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
     printlog( runBash('convert '+pngfile+' -trim '+pngfile)  ) # trim background
     printlog('png file by Jmol',pngfile, 'was written', imp = 'y' )
     # print(header.PATH2JMOL)
-    return
+    return pngfile
 
 
 def write_xyz(st = None, path = None, filename = None, file_name = None,
@@ -460,7 +517,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
     include_vectors (bool) - write primitive vectors to xyz
 
     jmol - 1,0 -  use jmol to produce png picture
-    jmol_args - see write_jmol()
+    jmol_args (dict) - arguments to write_jmol see write_jmol()
     mcif - write magnetic cif for jmol
 
 
@@ -481,15 +538,15 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         st = replic(st, mul = replications, inv = 1 )
   
     def update_var(st):
-        if st.natom != len(st.xred) != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
+        if st.natom != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
             printlog( "Error! write_xyz: check your arrays.\n\n"    )
 
-        if st.xcart == [] or len(st.xcart) != len(st.xred):
+        if st.xcart is [None] :
             printlog( "Warining! write_xyz: len(xcart) != len(xred) making xcart from xred.\n")
             st.xcart = xred2xcart(st.xred, st.rprimd)
             #print xcart[1]
 
-        return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xred)
+        return st.rprimd, st.xcart, st.xred, st.typat, st.znucl, len(st.xcart)
 
     
     st = st.copy()
@@ -535,7 +592,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
 
 
     if analysis == 'imp_surrounding':
-        printlog('analysis = imp_surrounding', imp = 'y')
+        printlog('analysis == imp_surrounding', imp = '')
 
         if show_around == 0:
             printlog('Error! number of atom *show_around* should start from 1')
@@ -574,7 +631,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
                     # ltypat.append(t)
                     # print x, ' x'
                     x_t = local_surrounding(x, st, nnumber, control = 'atoms', periodic = True, only_elements = only_elements)
-                    print (x_t)
+                    # print (x_t)
                     lxcart+=x_t[0]
                     ltypat+=x_t[1]
                 i+=1
@@ -656,6 +713,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
                 f.write( "%s %.5f %.5f %.5f \n"%( el[3], el[0], el[1], el[2] ) )
                 # print 'composite -pointsize 60 label:{0:d} -geometry +{1:d}+{2:d} 1.png 2.png'.format(i, el[0], el[1])
 
+        # print(range(natom))
 
         for i in range(natom):
             typ = typat[i] - 1
@@ -945,10 +1003,13 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     # self.end.update_xred()
 
     if contcar_exist:
-        # try:
-        self.end = read_poscar(self.end, path_to_contcar, new = False) # read from CONTCAR
-        # except:
-        contcar_read = True
+        try:
+            self.end = read_poscar(self.end, path_to_contcar, new = False) # read from CONTCAR
+            contcar_read = True
+        except:
+            contcar_read = False
+            printlog('Attention!, error in CONTCAR:', path_to_contcar, '. I use data from outcar')
+
     else:
         printlog('Attention!, No CONTCAR:', path_to_contcar, '. I use data from outcar')
         contcar_read = False
@@ -968,10 +1029,12 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 runBash("sed '"+str(nw-11)+","+str(nw+8)+"d' "+path_to_outcar+">"+tmp+";mv "+tmp+" "+path_to_outcar)
 
 
-        with open(path_to_outcar, 'r') as outcar:
+        with open(path_to_outcar, 'rb') as outcar:
             
             printlog("Start reading from "+ path_to_outcar, imp = 'n')
-            outcarlines = outcar.readlines()
+            # outcarlines = outcar.readlines()
+            text = outcar.read().decode(errors='replace')
+            outcarlines = str(text).split('\n')
 
 
 
@@ -1008,9 +1071,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         self.end.name = self.name+'.end'
         self.end.list_xcart = []
         self.energy = empty_struct()
-
+        self.end.zval = []
         de_each_md = 0 # to control convergence each md step
         de_each_md_list = []
+
 
 
         nsgroup = None
@@ -1026,8 +1090,31 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         e_sig0 = 0 #energy sigma 0 every scf iteration
         occ_matrices = {} # the number of atom is the key
 
+        #dipole corrections
+        self.dipole_min_pos = []  
+        self.e_dipol_quadrupol_cor = []
+        self.e_added_field_ion = []
+
+
+        #detect neb, improve this 
+        if hasattr(self.set, 'vasp_params'):
+            images = self.set.vasp_params.get('IMAGES') or 1
+        else:
+            images = 1
         #which kind of forces to use
-        if ' CHAIN + TOTAL  (eV/Angst)\n' in outcarlines:
+         # CHAIN + TOTAL  (eV/Angst)
+        neb_flag = 0
+        l = 0
+        for line in outcarlines:
+            # l+=1
+            if 'energy of chain is' in line:
+                neb_flag = 1
+            if 'LOOP+' in line:
+                break
+        # print(l)
+
+        if neb_flag:
+
             force_keyword = 'CHAIN + TOTAL  (eV/Angst)'
             ff  = (0, 1, 2)
             force_prefix = ' chain+tot '
@@ -1036,12 +1123,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             force_keyword = 'TOTAL-FORCE'
             ff  = (3, 4, 5)
             force_prefix = ' tot '
+        # print(force_keyword)
 
-        #detect neb, improve this 
-        if hasattr(self.set, 'vasp_params'):
-            images = self.set.vasp_params.get('IMAGES') or 1
-        else:
-            images = 1
 
 
 
@@ -1055,6 +1138,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
         self.potcar_lines = []
         self.stress = None
+        self.extpress = 0
+
         self.intstress = None
         spin_polarized = None
         for line in outcarlines:
@@ -1081,6 +1166,12 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if 'NELECT' in line:
                 self.nelect = int(float(line.split()[2]))
+
+            if '   ZVAL' in line:
+                # zval  = line.split('')
+                # print(line)
+                self.end.zval = [int(float(n)) for n in line.split()[2:]]
+                # print(self.end.zval)
 
 
             if 'ions per type =' in line:
@@ -1118,7 +1209,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
             if "TOO FEW BANDS" in line:
-                print_and_log("Warning! TOO FEW BANDS!!!\n\n\nWarning! TOO FEW BANDS!!!\n")
+                printlog("Warning! TOO FEW BANDS!!!\n\n\nWarning! TOO FEW BANDS!!!\n")
 
 
 
@@ -1146,9 +1237,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
                 if any(v > 1e-3 for v in low+high):
-                    print_and_log("W(q)/X(q) are too high, check output!\n", 'Y')
-                    print_and_log('Low + high = ', low+high, imp = 'Y' )
-                    print_and_log([v > 1e-3 for v in low+high], imp = 'Y' )
+                    printlog("W(q)/X(q) are too high, check output!\n", 'Y')
+                    printlog('Low + high = ', low+high, imp = 'Y' )
+                    printlog([v > 1e-3 for v in low+high], imp = 'Y' )
             
             if "direct lattice vectors" in line:
                 if not contcar_read:
@@ -1248,7 +1339,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 #print line
                 tdrift = [float(d) for d in line.split()[2:5]]
                 #if any(d > 0.001 and d > max(magnitudes) for d in tdrift):
-                    #print_and_log("Total drift is too high = "+str(tdrift)+", check output!\n")
+                    #printlog("Total drift is too high = "+str(tdrift)+", check output!\n")
                     #pass
 
 
@@ -1261,7 +1352,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 try:                     
                     self.end.vol = float(line.split()[4])
                 except ValueError: 
-                    print_and_log("Warning! Cant read volume in calc "+self.name+"\n")
+                    printlog("Warning! Cant read volume in calc "+self.name+"\n")
                 #print self.vol      
 
             if "generate k-points for:" in line: 
@@ -1290,7 +1381,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 self.energy.pawdc1 = float(line.split()[-2]) #
                 self.energy.pawdc2 = float(line.split()[-1]) #
             if  "eigenvalues    EBANDS" in line:
-                self.energy.bands = float(line.split()[-1]) # - Kohn Sham eigenvalues - include kinetic energy , but not exactly
+                try:
+                    self.energy.bands = float(line.split()[-1]) # - Kohn Sham eigenvalues - include kinetic energy , but not exactly
+                except:
+                    self.energy.bands = 0
             if  "atomic energy  EATOM" in line:
                 self.energy.atomic = float(line.split()[-1]) #energy of atoms in the box
 
@@ -1329,13 +1423,20 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 #print self.vlength
             if "in kB" in line:
                 # print(line)
+                # try:
                 line = line.replace('-', ' -')
                 # print(line)
-                if '*' in line:
-                    self.stress = [0,0,0] # problem with stresses
-                    printlog('Warning! Some problem with *in kB* line of OUTCAR')
-                else:
-                    self.stress = [float(i)*100 for i in line.split()[2:]]  # in MPa 
+                lines_str = line.split()[2:]
+                try:
+                    self.stress = [float(i)*100 for i in lines_str]  # in MPa 
+                except:
+                    printlog('Warning! Some problem with *in kB* line of OUTCAR', imp = 'y')
+                    printlog(line, imp = 'y')
+                    self.stress = [0,0,0]
+                # if '*' in line:
+                    # self.stress = [0,0,0] # problem with stresses
+                # else:
+                # except:
             if "Total  " in line:
                 # print(line)
                 line = line.replace('-', ' -')
@@ -1360,7 +1461,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             
             if "Maximum memory used (kb):" in line:
                 ''
-                # self.memory_max = float(line.split()[-1]) * self.corenum / 1024 / 1024 
+                if hasattr(self, 'corenum'):
+                    self.memory_max = float(line.split()[-1]) * self.corenum / 1024 / 1024 
+                else:
+                    self.memory_max = 0
             
             if "total amount of memory" in line:
                 ''
@@ -1395,21 +1499,21 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             if 'number of electron ' in line:
                 # print (line)
                 try:
-                    self.mag_sum.append( [float(line.split()[5]), 0])
+                    self.mag_sum.append( [float(line.split()[5]), 0]) # magnetization at each relaxation step
                 except:
                     pass
 
             if 'augmentation part' in line:
                 # print (line)
                 try:
-                    self.mag_sum[-1][1]= float(line.split()[4])
+                    self.mag_sum[-1][1]= float(line.split()[-1])
                 except:
                     pass
 
             if 'total charge ' in line:
                 chg = []
                 for j in range(self.end.natom):
-                    chg.append( float(outcarlines[i_line+j+4].split()[4]) )
+                    chg.append( float(outcarlines[i_line+j+4].split()[-1]) )
                 
                 tot_chg_by_atoms.append(np.array(chg))#[ifmaglist])                    
 
@@ -1418,7 +1522,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 # print(line)
                 mags = []
                 for j in range(self.end.natom):
-                    mags.append( float(outcarlines[i_line+j+4].split()[4]) )
+                    mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
                 
                 tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
                 # print(ifmaglist)
@@ -1442,21 +1546,21 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 spin2 = []
                 nm = 2*l_at+1
                 for i in range(nm):
-                    line = outcarlines[i_line+4+i]
                     try:
+                        line = outcarlines[i_line+4+i]
                         spin1.append( np.array(line.split()).astype(float) )
                     except:
-                        print_and_log('Warning! Somthing wrong with occ matrix:', line)
+                        printlog('Warning! Somthing wrong with occ matrix:', line)
                 if spin_polarized:
                     for i in range(nm):
-                        # try:
-                        line = outcarlines[i_line+7+nm+i]
-                        # print(line)
-                        line = line.replace('-', ' -')
-                        spin2.append( np.array(line.split()).astype(float) )
-                        # except:
-                        #     printlog('Attention! Could not read spin2, probably no spaces')
-                        #     spin2.append(0)        
+                        try:
+                            line = outcarlines[i_line+7+nm+i]
+                            # print(line)
+                            line = line.replace('-', ' -')
+                            spin2.append( np.array(line.split()).astype(float) )
+                        except:
+                            printlog('Attention! Could not read spin2, probably not finishied')
+                            spin2.append(0)        
 
                 occ_matrices[i_at-1] = spin1+spin2
                 # print (np.array(spin1) )
@@ -1480,12 +1584,16 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 eltensor = []
                 for i in range(9):
                     line = outcarlines[i_line+i]
-                    print(line.strip())
+                    # print(line.strip())
                     if i > 2:
-                        eltensor.append([float(c)/10 for c in line.split()[1:]])
+                        eltensor.append([float(c)/10 for c in line.split()[1:]]) #GPa
 
                 eltensor = np.asarray(eltensor)
-                # print(eltensor)
+
+                printlog('Elastic tensor, GPa:', imp = 'y')
+
+                np.set_printoptions(formatter={'float_kind':"{:6.1f}".format})
+                print(eltensor)
                 w, v = np.linalg.eig(eltensor)
                 printlog('Eigenvalues are:', w, imp = 'y')
                         # eltensor
@@ -1508,6 +1616,23 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 dipol = line.split()[1:4]
                 self.dipol = [float(d) for d in dipol]
                 # print(line)
+
+
+            if 'min pos' in line:
+                dipole_min_pos = line.split()[-1][:-1]
+                self.dipole_min_pos.append(int(dipole_min_pos))
+
+            if 'dipol+quadrupol energy correction' in line:
+                e_dq_cor = line.split()[3]
+                # print(line)
+                self.e_dipol_quadrupol_cor.append(float(e_dq_cor))
+            
+            if 'added-field ion interaction' in line:
+                e_af_ii = line.split()[3]
+                self.e_added_field_ion.append(float(e_af_ii))
+
+                # print(line)
+
 
                 # for i in range(1,4):
                 #     line = outcarlines[i_line+i]
@@ -1538,12 +1663,23 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
 
+    if len(magnitudes) > 0:
+        max_magnitude = max(magnitudes)
+    else:
+        max_magnitude = 0
+    
+    try:
+        max_tdrift    = max(tdrift)
+    except:
+        max_tdrift = 0
 
-    max_magnitude = max(magnitudes)
-    max_tdrift    = max(tdrift)
     self.maxforce_list = maxforce
     self.average_list = average
-    self.maxforce = maxforce[-1][1]
+
+    try:
+        self.maxforce = maxforce[-1][1]
+    except:
+        self.maxforce = 0
     # if max_magnitude < self.set.toldff/10: max_magnitude = self.set.toldff
     # print 'magn', magnitudes
     # print 'totdr', tdrift
@@ -1568,6 +1704,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     """update xred"""
     self.end.update_xred()
 
+    # print(self.init.zval)
+    # self.end.zval = self.init.zval
 
 
 
@@ -1594,8 +1732,11 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     self.gbpos = self.init.gbpos #for compatability
     if self.gbpos:
         if any( np.cross( yznormal, np.array([1,0,0]) ) ) != 0: 
-            print_and_log("Warning! The normal to yz is not parallel to x. Take care of gb area\n")
+            printlog("Warning! The normal to yz is not parallel to x. Take care of gb area\n")
     self.end.yzarea = np.linalg.norm( yznormal )  #It is assumed, that boundary is perpendicular to x
+
+
+
 
 
     """Calculate voronoi volume"""
@@ -1624,8 +1765,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         e_diff_md = (self.list_e_sigma0[-1] - self.list_e_sigma0[-2])*1000 #meV
 
     e_diff = (e_sig0_prev - e_sig0)*1000 #meV
-
-    if abs(e_diff) > toldfe*1000:
+    # print(e_diff)
+    self.e_diff = e_diff #convergence
+    if abs(e_diff) > float(toldfe)*1000:
         toldfe_warning = '!'
         printlog("Attention!, SCF was not converged to desirable prec", 
             round(e_diff,3), '>', toldfe*1000, 'meV', imp = 'y')
@@ -1702,7 +1844,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         ecut = ''
 
     # lens = ("%.2f;%.2f;%.2f" % (v[0],v[1],v[2] ) ).center(j[19])
-    lens = "{:4.2f};{:4.2f};{:4.2f}".format(v[0],v[1],v[2] ) 
+    lens = "{:4.2f}, {:4.2f}, {:4.2f}".format(v[0],v[1],v[2] ) 
     r1 = ("%.2f" % ( v[0] ) ).center(j[19])            
     vol = ("%.1f" % ( self.end.vol ) ).center(j[20])
     nat = ("%i" % ( self.end.natom ) ).center(j[21])
@@ -1736,6 +1878,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     outst_imp = voro+etot+d+a+d+c+d+lens+d+vol+d+kspacing+d+       eprs+d+nat+d+time+d+Nmd+d+War+d+totd+d+nsg+"\\\\" # For comparing impurity energies
     
     outst_cathode = d.join([spg,etot, etot1, lens, vol,nkpt, strs, nat, time, Nmd, War, nsg, Uhu, ed, edg ])
+    if 'help' in show:
+        print('Name', 'Space group', 'Tot. energy, eV', 'Energy, eV/at', 'Vector lengths, A', 
+        'Volume, A^3', 'number of k-points', 'Stresses, MPa', 'Number of atoms', 'time, h', 'Number of ionic steps; Number of electronic states per MD; Total number of electronic steps',
+        'Number of warnings', 'Number of symmetry operations', 'U value', 'Electronic convergence, meV', 'Ionic steps convergence, meV' )
     # print self.end.xred[-1]
     #print outstring_kp_ec
     # print show
@@ -1749,6 +1895,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         np.set_printoptions(precision=0, linewidth=150, )
         printlog('Conv each step, de/toldfe (toldfe = {:.0g} eV) =  \n{:};'.format(toldfe, np.array([de/toldfe for de in de_each_md_list ])), imp = 'Y')
     
+    if 'time' in show:
+        print('Time is {:.1f} s'.format(self.time))
+        print('Time is {:.1f} s/it'.format(self.time/1./iterat))
 
 
 
@@ -1806,6 +1955,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                         self.sumAO[el+'-Fe'] = sumAO
 
 
+
+
+
+
     if 'en' in show:
         # energy - max force
 
@@ -1822,9 +1975,11 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # printlog('{:s}'.format([round(m) for m in self.mag_sum]), imp = 'Y' )
         printlog(np.array(self.mag_sum).round(2), imp = 'Y' )
 
-    if 'mag' in show or 'occ' in show:
+    chosen_ion = None
+    if 'maga' in show or 'occ' in show:
         from siman.analysis import around_alkali
-        numb, dist, chosen_ion = around_alkali(self.end, 4, alkali_ion_number)
+        i_alk = self.end.get_specific_elements([3,11,19])
+        numb, dist, chosen_ion = around_alkali(self.end, 4, i_alk[0])
         
         #probably not used anymore
         # dist_dic = {}
@@ -1835,8 +1990,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
     if 'mag' in show and tot_mag_by_atoms:
-        print ('\n\n\n')
-        # print_and_log
+        # print ('\n\n\n')
+        # printlog
         # print 'Final mag moments for atoms:'
         # print np.arange(self.end.natom)[ifmaglist]+1
         # print np.array(tot_mag_by_atoms)
@@ -1848,10 +2003,16 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # for mag in tot_mag_by_atoms:
         #     print ('  -', mag[numb].round(3) )
 
-        # print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
-        mmm = tot_mag_by_atoms[-1][numb].round(3)
 
-        print ('atom:mag  = ', ', '.join('{}:{:4.2f}'.format(iat, m) for iat, m  in zip(  numb+1, mmm   )) )
+
+        # print ('last  step ', tot_mag_by_atoms[-1][numb].round(3), tot_chg_by_atoms[-1][numb].round(3) )
+        # mmm = tot_mag_by_atoms[-1][numb].round(3)
+
+        # print ('atom:mag  = ', ', '.join('{}:{:4.2f}'.format(iat, m) for iat, m  in zip(  numb+1, mmm   )) )
+        self.gmt()
+        print ('\n')
+
+
         if 'a' in show:
             ''
             # print ('last  step all', tot_mag_by_atoms[-1][ifmaglist].round(3) )
@@ -1889,34 +2050,35 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # print (matrices)
         # print (df)
         if chosen_ion:
-            print_and_log('Distances (A) from alkali ion #',chosen_ion[0]+1,' to transition atoms:', 
+            printlog('Distances (A) from alkali ion #',chosen_ion[0]+1,' to transition atoms:', 
                 ',  '.join([ '({:}<->{:}): {:.2f}'.format(chosen_ion[0]+1, iat, d) for d, iat in zip(  dist, numb+1  )  ]), imp = 'Y'  )
         
         show_occ_for_atoms = [int(n) for n in re.findall(r'\d+', show)]
         # print (show_occ_for_atom)
         # sys.exit()
         if show_occ_for_atoms:
-            iat = show_occ_for_atoms[0]-1
+            iat = show_occ_for_atoms[0]
             # dist_toi = dist_dic[iat]
             i_mag_at = iat
         else:
             i = 0
             # dist_toi = dist[i]
-            i_mag_at = numb[i]
+            i_mag_at = numb[1:][i]
         # print (st.znucl[st.typat[i_mag_at]-1] )
+        # print(numb, i_mag_at)
         l05 = len(occ_matrices[i_mag_at])//2
 
         df = pd.DataFrame(occ_matrices[i_mag_at]).round(5)
-
-        print_and_log( 'Occ. matrix for atom ', i_mag_at+1, end = '\n', imp = 'Y'  )
+        els  = self.end.get_elements()
+        printlog( 'Occ. matrix for atom ', i_mag_at, els[i_mag_at], end = '\n', imp = 'Y'  )
             # ':  ; dist to alk ion is ',  dist_toi, 'A', end = '\n' )
-        print_and_log('Spin 1:',end = '\n', imp = 'Y'  )
-        print_and_log(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".1f", tablefmt='psql'),end = '\n', imp = 'Y'  )
+        printlog('Spin 1:',end = '\n', imp = 'Y'  )
+        printlog(tabulate(df[0:l05], headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".1f", tablefmt='psql'),end = '\n', imp = 'Y'  )
         # print(' & '.join(['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}']))
-        # print_and_log(tabulate(occ_matrices[i_mag_at][l05:], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".1f", tablefmt='latex'),end = '\n' )
+        # printlog(tabulate(occ_matrices[i_mag_at][l05:], headers = ['d_{xy}', 'd_{yz}', 'd_{z^2}', 'd_{xz}', 'd_{x^2-y^2}'], floatfmt=".1f", tablefmt='latex'),end = '\n' )
         # print(tabulate(a, tablefmt="latex", floatfmt=".2f"))
-        print_and_log('Spin 2:',end = '\n', imp = 'Y'  )
-        print_and_log(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql'), imp = 'Y'  )
+        printlog('Spin 2:',end = '\n', imp = 'Y'  )
+        printlog(tabulate(df[l05:], floatfmt=".1f", tablefmt='psql'), imp = 'Y'  )
     self.occ_matrices = occ_matrices
     
 
@@ -1938,7 +2100,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         for f in freq:
             # print(f)
             i = int( np.round( (f-fmin)/ fw * 999 ,0) )
-            dos[i] = 1
+            dos[i] += 1
             # print(i, finefreq[i], f)
         
 
@@ -1953,15 +2115,22 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             y = lfilter(b, a, data)
             return y
 
-        order = 6
-        fs = 30.0       # sample rate, Hz
-        cutoff = 3.667  # desired cutoff frequency of the filter, Hz
+        order = 1
+        fs = 500.0       # sample rate, Hz
+        cutoff = 5  # desired cutoff frequency of the filter, Hz
 
-        y = butter_lowpass_filter(finefreq, cutoff, fs, order)
+        y = butter_lowpass_filter(dos, cutoff, fs, order)
 
-        plt.plot(finefreq, smoother(smoother(dos,50), 50), '-') 
-        plt.savefig('figs/'+str(self.id)+'.eps')
-        # plt.show()
+        # plt.plot(finefreq, smoother(smoother(dos,10), 10), '-') 
+        plt.plot(finefreq, y, '-') 
+        # plt.plot(finefreq, dos, '-')
+        plt.xlabel('Frequency, THz')
+        plt.ylabel('DOS' )
+        # plt.plot(finefreq, y, '-') 
+        filename = 'figs/'+str(self.id)+'.pdf'
+        plt.savefig(filename)
+        printlog('Freq file saved to ', filename, imp = 'y')
+        plt.show()
         plt.clf()
 
     # sys.exit()
@@ -1987,17 +2156,20 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     elif 'ts' in out_type   : outst = outst_ts
     
     elif not header.siman_run:
-        outst_simple = '|'.join([etot, lens, strs, Nmd])
+        # if not hasattr(cl, 'name'):
+            # cl.name = 'noname'
+
+        outst_simple = '|'.join([cl.name, etot, lens, strs, Nmd])
         # print("Bi2Se3.static.1               |  -20.1543  |    10.27;10.27;10.27    | -680,-680,-657 |   1,13, 13   |    ")
-        if header.show_head:
-            printlog("name                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
+        if header.show_head :
+            printlog("                          |  energy(eV)|    Vector lenghts (A)   | Stresses (MPa)     | N MD, N SCF   ", end = '\n', imp = 'Y')
             header.show_head = False
         
         outst = outst_simple
     else: 
         printlog('Output type: outst_cathode')
         outst = outst_cathode
-    #else: print_and_log("Uknown type of outstring\n")
+    #else: printlog("Uknown type of outstring\n")
 
 
     #save cif file
@@ -2031,3 +2203,49 @@ def read_aims_out(cl, load = '', out_type = '', show = ''):
     outstr = '|'.join([etot, time, itrt])
 
     return outstr
+
+
+def read_atat_fit_out(filename, filter_names = None, i_energy = 1):
+    """
+    read fit.out of atat
+    filter_names - do not read name numbers greater than filter_name
+    i_energy - 1 for fit.out, 2 for predstr.out
+    return - concentration list, energy list
+    """
+    X, E, nam = [] ,[], []
+    count = 0
+    with open(filename, 'r') as f:
+        for line in f:
+
+
+                # continue
+
+            vals = line.split()
+            
+                # name = int(vals[-1])
+
+            try:
+                name = int(vals[-1])
+            except:
+                name = 0
+            if filter_names and name > filter_names:
+                continue
+
+            e = round(float(vals[i_energy]),4)
+            x = float(vals[0])
+            # print(e)
+            # if e in E:
+            #     if X[E.index(e)] == x:
+            #         continue
+            
+            # if E and abs(min(np.array(E)-e)) < 0.01:
+            #     print('skipping point, too often')
+            #     continue
+            # if count > 10:
+            #     count = 0
+            X.append(x) # concentrations
+            E.append(e) # formation energies
+            nam.append(name) # names of structures
+            count+=1
+        # print(a)
+    return X, E

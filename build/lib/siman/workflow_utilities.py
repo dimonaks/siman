@@ -95,6 +95,7 @@ def make_defect(cl, el, st_type = 'end', option = 'vac', pos = None, ise = None,
     TODO: rename to ?_point_defects()
     """
 
+    from siman.project_funcs import e_bind
 
 
 
@@ -386,12 +387,14 @@ def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = 
         st = cl.end
 
 
-
+    # print(st.xcart)
+    if len(st.xcart) == 0:
+        print('Warning!, xcart is empty', cl.id, )
     for i, x in enumerate(st.xcart):
         z_cur = st.znucl[st.typat[i]-1]
         print ('z_cur', z_cur)
         if z_cur == znucl_sub:
-            print_and_log('Skipping znucl_sub atom\n')
+            printlog('Skipping znucl_sub atom\n')
             continue
         if abs(x[0] - gbpos)< dist_gb:
             print('adding possible seg position')
@@ -401,7 +404,7 @@ def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = 
     """2. Substitue"""
     el_sub    = invert(znucl_sub)
     base_name = it
-    main_path = struct_des[it].sfolder
+    main_path = header.struct_des[it].sfolder
     based_on = it+'.'+ise
     des_list = []
     add_list = []
@@ -410,6 +413,7 @@ def create_segregation_cases(it, ise, verlist, dist_gb, gbpos = None, ise_new = 
     sumr_list = []
 
     i = 0
+    # print(seg_pos_list)
     for j, replace_atom in enumerate(seg_pos_list): #
 
         v = verlist[0] # the first version from list is used
@@ -525,6 +529,13 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
 
     params - pass to add_loop
 
+
+    if add == 0:
+        read results
+
+    RETURN
+    cl with lowest energy
+
     """
     
     if params is None:
@@ -538,27 +549,47 @@ def run_wrapper(sts, ise = None, add = 0, cl = None, suf = 'w',  it_folder = Non
 
     if cls is None:
         cls = [cl]*len(sts)
+    energies = []
+    for i, st, cl_i in zip(range(len(sts)),sts,cls) : 
 
-    for i, st, cl in zip(range(len(sts)),sts,cls) : 
-
-        itn = cl.id[0]+suf+ str(i)
+        itn = cl_i.id[0]+suf+ str(i)
         # del header.struct_des[itn]
         # continue
         if add:
-            add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', **params ) #
+            # add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder+'/'+folder+'/', **params ) #
+            add_loop(itn, ise, 1, show = 'fo', up = 'up2', input_st = st,  ngkpt = ngkpt, it_folder = cl.sfolder, **params ) #
         
         else:
             ''
             
             if acc:
                 if acc2:
-                    db[itn+'.ifc', ise1, 1].run(ise2, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up2', ngkpt = ngkpt)
+                    db[itn+'.ifc', ise1, 1].run(ise2, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up1', ngkpt = ngkpt)
+                    cln = db[itn+'.ifc.ifc', ise2, 1]
 
                 else:
-                    db[itn, ise, 1].run(ise1, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up2', ngkpt = ngkpt)
+                    # db[itn, ise, 1].run(ise1, show = 'fo', iopt = 'full_chg', add  = 0, up = 'up1', ngkpt = ngkpt)
+                    cln = db[itn+'.ifc', ise1, 1]
+                    cln.res(choose_outcar=0, show = 'fo')
+                    suf_acc = '.ifc'
             else:
-                res_loop(itn, ise, 1, up = 'up2')
+                suf_acc = ''
 
+                res_loop(itn, ise, 1, up = 'up1')
+                cln = db[itn, ise, 1]
+            
+            if hasattr(cln, 'e0'):
+                energies.append(cln.e0)
 
+    for i, e in enumerate(energies):
+        print(i, e)
 
-    return
+    if not add and len(energies)>0:
+        i_min = energies.index(min(energies))
+        print('Minimum energy is for ', i_min, energies[i_min])
+        itn = cl.id[0]+suf+ str(i_min)+suf_acc
+        db[itn, ise, 1].res()
+
+        return db[itn, ise, 1]
+    else:
+        return None

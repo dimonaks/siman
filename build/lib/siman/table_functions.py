@@ -11,15 +11,22 @@ import sys, os, re
 # from dos.functions import plot_dos
 
 # from ase.utils.eos import EquationOfState
-import scipy
-from scipy import interpolate
-from scipy.interpolate import spline 
+
 # print (scipy.__version__)
 # print (dir(interpolate))
 try:
+    import scipy
+    from scipy import interpolate
+    # print (scipy.__version__)
+    # print (dir(interpolate))
+except:
+    print('table_functions.py: scipy is not avail')
+try:
+    # from scipy.interpolate import spline 
+
     from scipy.interpolate import  CubicSpline
 except:
-    print('scipy.interpolate.CubicSpline is not avail')
+    print('table_functions.py: scipy.interpolate.CubicSpline is not avail')
 
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
@@ -53,6 +60,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         available: 
         'tabular'
         'tabularx'
+        'ruled' - phys rev format
     width (float) - in units of textwidth
 
 
@@ -117,12 +125,19 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
     if tab_type == 'tabular':
         # tabular = 
         myprint('\\begin{tabular}{l'+ n*'c'+'r}')
+        myprint('\\hline')
+    
     elif tab_type == 'tabularx':
         myprint('\\begin{tabularx}{'+str(width)+'\\textwidth}{X'+ n*'X'+'X}')
+        myprint('\\hline')
+    elif tab_type == 'ruled':
+        myprint('\\begin{ruledtabular}')
+        myprint('\\begin{tabular}{l'+ n*'c'+'r}')
+
+
     else:
         printlog('Error! Unknown type of tabular env!')
 
-    myprint('\\hline')
 
     if header0:
         myprint(header0+'\\\\')
@@ -139,6 +154,7 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
     myprint('\\hline')
     for r in table[tabbeg:] :
+        # print(r)
         if '&-' in r:
             r = r.replace('-','--')
         else:
@@ -146,6 +162,10 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
         r+=' '
         if '-- ' in r:
             r = r.replace('-- ',' - ')
+        
+        if '_' in r:
+            r = r.replace('_','\\_')
+
         if replace:
             for rep in replace:
                 # if rep[0] in r:
@@ -161,21 +181,29 @@ def latex_table(table, caption, label, header = None, fullpage = '', filename = 
 
 
 
-
-    myprint('\\hline')
-    myprint('\\end{'+tab_type+'}')
+    if 'ruled' in tab_type:
+        myprint('\\end{tabular}')
+        myprint('\\end{ruledtabular}')
+    else:
+        myprint('\\hline')
+        myprint('\\end{'+tab_type+'}')
+    
     myprint('\\end{table'+fullpage+'}')
 
     if filename:
         f.close()
     return table_string
 
-def geo_table_row(cl = None, st = None, name = '', show_angle = 0, mnpo4_hack = False):
+def geo_table_row(cl = None, st = None, name = '', show_angle = 0, mnpo4_hack = False, param_order = None):
     #return list of geo data for cl, which can be used for table
     """
     mnpo4_hack (bool) - if true exchange a and c for mnpo4 phase
-    """
 
+    param_order - default [0,1,2]
+    """
+    po = param_order
+    if po is None:
+        po = [0,1,2]
 
     if cl:
         st = cl.end
@@ -233,23 +261,35 @@ def geo_table_row(cl = None, st = None, name = '', show_angle = 0, mnpo4_hack = 
     if mnpo4_hack and 'MnPO' in name:
         c, b, a = v
 
+    ps = [a,b,c]
 
-    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT+U',  a, 
-        b, c)+angle+'& {:5.1f} & {:s}'.format(st.vol, spg)
+    p = []
+    # print(ps)
+    # print(po)
+    for o in po:
+        p.append(ps[o])
+    # print(p)
+    # sys.exit()
+
+    return '{:15s} &{:s} & {:5.2f} & {:5.2f} & {:5.2f} '.format(name, 'DFT+U',  p[0], 
+        p[1], p[2])+angle+'& {:5.1f} & {:s}'.format(st.vol, spg)
 
 
 
 
-def table_geometry(st_list, show_angle = None, exp = None):
+def table_geometry(st_list = None, cl_list = None, show_angle = None, exp = None, param_order = None):
     """
     Produce standart table with lattice constants
     # print(row)
     exp (list) - list of strings with exp data with '& & &' format
     """
+    if st_list is None:
+        st_list = [cl.end for cl in cl_list]
+
     rows = []
     for st in st_list:
         # st.printme()
-        row = geo_table_row(st = st, show_angle = show_angle)
+        row = geo_table_row(st = st, show_angle = show_angle, param_order = param_order)
         rows.append(row)
     if exp:
         rows.extend(exp)

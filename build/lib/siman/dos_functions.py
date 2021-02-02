@@ -133,8 +133,9 @@ def det_gravity(dos, Erange = (-100, 0)):
 
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
-    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', fontsize = 8, nsmooth = 12,
-    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None,):
+    path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
+    lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, 
+    efermi_origin = True, efermi_shift = 0, invert_spins  = 0, name_suffix = '', image_name = None, color_dict = None):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -158,10 +159,15 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     xlim, ylim (tuple)- limits for plot
 
+    color_dict (dict) - custom dict of colors for orbitals. eg: {'s':'g', 'p':}
+
     plot_param - dict of parameters to fit_and_plot
         dashes - control of dahsed lines
 
-    suf2 - additional suffix
+    suf2 - additional suffix for label
+    name_suffix - modify name
+
+    image_name - user image name
 
     # nsmooth = 15 # smooth of dos
     lts2 - style of lines for cl2
@@ -180,14 +186,20 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             'p'
 
 
+    efermi_origin 
+        True - e-fermi is zero energy
+        False - e-fermi is left, its value is shown
+    efermi_shift (float) - additional shift of fermi energy in case if smearing is too large
+
+
+    invert_spins
+        invert spin up and spin down, now only for partial d and p
+
+
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
     #In all cases, the units of the l- and site projected DOS are states/atom/energy.
 
     """
-    if fontsize:
-        header.mpl.rcParams.update({'font.size': fontsize+4})
-        header.mpl.rc('legend', fontsize= fontsize) 
-
 
 
     if dostype == 'partial'  :
@@ -201,7 +213,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         if not iatom:
             printlog('Warning! Please choose atom number *iatom* from the following list:\n')
-            printlog(eld)
+            print(eld1)
             sys.exit()
         else:
             printlog('cl1: Atom', iatom, 'of type', eld1[iatom], 'is choosen', imp = 'y')
@@ -232,6 +244,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     if 'legend' not in plot_param:
         plot_param['legend'] = 'best'
 
+    pm = plot_param
+    lw = pm.get('linewidth') or 0.8
+
 
     """1. Read dos"""
     printlog("------Start plot_dos()-----", imp = 'Y')
@@ -251,8 +266,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
      
         DOSCAR = cl.get_file('DOSCAR', nametype = 'asoutcar'); 
         printlog('DOSCAR file is ', DOSCAR)
+        if efermi_origin:
+            dos.append( VaspDos(DOSCAR, cl.efermi) )
+        else:
+            dos.append( VaspDos(DOSCAR, 0) )
 
-        dos.append( VaspDos(DOSCAR, cl.efermi) )
     
 
     #determine number of zero energy    
@@ -276,10 +294,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         ylabel = "DOS (states/eV)"
 
         if spin_pol:
-            dosplot = {'Tot up':{'x':dos[0].energy,    'y':smoother(dos[0].dos[0], 10), 'c':'b', 'ls':'-'}, 
-                        'Tot down':{'x':dos[0].energy, 'y':-smoother(dos[0].dos[1], 10),'c':'r', 'ls':'-'}}
+            dosplot = {'Tot up':{'x':dos[0].energy,    'y':smoother(dos[0].dos[0], nsmooth), 'c':'b', 'ls':'-'}, 
+                        'Tot down':{'x':dos[0].energy, 'y':-smoother(dos[0].dos[1], nsmooth),'c':'r', 'ls':'-'}}
         else:
-            dosplot = {'Total':{'x':dos[0].energy, 'y':smoother(dos[0].dos, 10), 'c':'b', 'ls':'-'}}
+            dosplot = {'Total':{'x':dos[0].energy, 'y':smoother(dos[0].dos, nsmooth), 'c':'b', 'ls':'-'}}
 
 
         # args[nam_down] = {'x':d.energy, 'y':-smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':None}
@@ -305,7 +323,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
             fit_and_plot(show = show, image_name = cl1.name+'--'+cl2.name+'.dosTotal_Diff', xlabel = "Energy (eV)", ylabel = "DOS (states/eV)", hor = True,
                 **plot_param,
-                Diff_Total = (dos[0].energy, smoother(dosd, 15), 'b-'))
+                Diff_Total = (dos[0].energy, smoother(dosd, nsmooth), 'b-'))
         else:
             printlog('You provided only one calculation; could not use diff_total')
 
@@ -563,6 +581,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         else:
             dashes=(5, 1)
 
+        dds = [(None,None), dashes, (None,None), dashes] # loop over orbitals and atoms
+        # print(dds)
+        # sys.exit()
+        if invert_spins:
+            mul = -1
+        else:
+            mul = 1
+
 
 
         energy1 = dos[0].energy
@@ -574,15 +600,22 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         else:
             i_orb = {'s':0, 'py':1, 'pz':2, 'px':3, 'dxy':4, 'dyz':5, 'dz2':6, 'dxz':7, 'dx2':8}
         # color = {'s':'k', 'p':'#F14343', 'd':'#289191', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'b', 'eg':'g', 'p6':'k'}
-        color = {'s':'k', 'p':'#FF0018', 'd':'#138BFF', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'#138BFF', 'eg':'#8E12FF', 'p6':'#FF0018', 'p_all':'r', 'd_all':'b'} #http://paletton.com/#uid=54-100kwi++bu++hX++++rd++kX
-        # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
+        
+        if color_dict:
+            color = color_dict
+        else:
+            #default dict
+            color = {'s':'k', 'p':'#FF0018', 'd':'#138BFF', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'k', 'dxz':'r', 'dx2':'g', 't2g':'#138BFF', 'eg':'#8E12FF', 'p6':'#FF0018', 'p_all':'r', 'd_all':'b'} #http://paletton.com/#uid=54-100kwi++bu++hX++++rd++kX
+        
 
+        # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
+        j = 0
         for orb in orbitals:
             i = 0
             for n, l, iat, el, d in zip(names, lts, atoms,els, ds):
-                if el in ['Fe', 'Co', 'V', 'Mn', 'Ni'] and orb in[ 'p', 's']:
+                if el in ['Ti','Fe', 'Co', 'V', 'Mn', 'Ni'] and orb in ['p', 's', 'p_all']:
                     continue
-                if el == 'O' and orb in ('d', 't2g', 'eg', 'dxy', 'dyz', 'dxz', 'dz2', 'dx2'):
+                if el == 'O' and orb in ('d', 't2g', 'eg', 'dxy', 'dyz', 'dxz', 'dz2', 'dx2', 'd_all'):
                     continue
                 nam = orb
                 nam_down = nam+'_down'
@@ -593,9 +626,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 else:
                     formula = latex_chem(n.split('.')[0])
 
-
-
+                dashes = dds[j]
+                # print('dashes ',dashes,j,'\n\n\n\n\n\n\n\n')
                 i+=1
+                j+=1
                 if spin_pol:
                     nam+=''
                 suf = '; '+n
@@ -604,14 +638,15 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
 
-
+                # print(nsmooth)
+                # sys.exit()
                 if orb == 'p':
 
 
                     if plot_spin_pol:
-                        args[nam] = {'x':d.energy, 'y':smoother(d.p_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
+                        args[nam] = {'x':d.energy, 'y':mul*smoother(d.p_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
 
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
+                        args[nam_down] = {'x':d.energy, 'y':mul*-smoother(d.p_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
                         color[orb] = 'c'
 
                     else:
@@ -634,12 +669,12 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 elif orb == 'd':
                     
                     if plot_spin_pol:
-                        args[nam] = {'x':d.energy, 'y':smoother(d.d_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.d_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
+                        args[nam] = {'x':d.energy, 'y':mul*smoother(d.d_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
+                        args[nam_down] = {'x':d.energy, 'y':mul*-smoother(d.d_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
                         color[orb] = 'm'
 
                     else:
-                        args[nam] = {'x':d.energy, 'y':smoother(d.d[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                        args[nam] = {'x':d.energy, 'y':smoother(d.d[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
 
 
 
@@ -649,9 +684,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                     elif split_type == 'tetra':
                         orb_name = 't2'
 
-                    args[nam] = {'x':d.energy, 'y':smoother(d.t2g_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb_name}
+                    args[nam] = {'x':d.energy, 'y':smoother(d.t2g_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb_name, 'dashes':dashes}
                     if spin_pol:
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.t2g_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.t2g_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
                 
                 elif orb == 'eg':
                     if split_type == 'octa':
@@ -660,32 +695,32 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                         orb_name = 'e'
 
 
-                    args[nam] = {'x':d.energy, 'y':smoother(d.eg_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb_name}
+                    args[nam] = {'x':d.energy, 'y':smoother(d.eg_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb_name, 'dashes':dashes}
                     if spin_pol:
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.eg_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None}
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.eg_down[0], nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
 
 
                 elif orb == 'p_all':
                     
                     if plot_spin_pol:
-                        args[nam] = {'x':d.energy, 'y':smoother(d.p_all_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_all_down, nsmooth), 'c':color[orb], 'ls':l, 'label':None}
+                        args[nam] = {'x':d.energy, 'y':smoother(d.p_all_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+suf2+' '+orb, 'dashes':dashes}
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.p_all_down, nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
                         # color[orb] = 'm'
 
                     else:
-                        args[nam] = {'x':d.energy, 'y':smoother(d.p_all, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                        args[nam] = {'x':d.energy, 'y':smoother(d.p_all, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+suf2+' '+orb, 'dashes':dashes}
 
 
 
                 elif orb == 'd_all':
                     
                     if plot_spin_pol:
-                        args[nam] = {'x':d.energy, 'y':smoother(d.d_all_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.d_all_down, nsmooth), 'c':color[orb], 'ls':l, 'label':None}
+                        args[nam] = {'x':d.energy, 'y':smoother(d.d_all_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+suf2+' '+orb, 'dashes':dashes}
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.d_all_down, nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
                         # color[orb] = 'm'
 
                     else:
-                        args[nam] = {'x':d.energy, 'y':smoother(d.d_all, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                        args[nam] = {'x':d.energy, 'y':smoother(d.d_all, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+suf2+' '+orb, 'dashes':dashes}
 
 
 
@@ -694,10 +729,12 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                 else:
                     # args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
-                    args[nam] = {'x':d.energy, 'y':smoother(d.site_dos(iat, i_orb[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb}
+                    # print(i_orb.keys(), color.keys())
+                    # sys.exit()
+                    args[nam] = {'x':d.energy, 'y':smoother(d.site_dos(iat, i_orb[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
                     
                     if spin_pol:
-                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':None}
+                        args[nam_down] = {'x':d.energy, 'y':-smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
 
                         # args[nam_down] = (d.energy, -smoother(d.site_dos(iat, i_orb_down[orb]), nsmooth), color[orb]+l)
 
@@ -705,6 +742,12 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         """Additional dos analysis; to be refined"""
         gc = None
+        # print(plot_param['ver_lines'])
+        if 'ver_lines' not in plot_param or plot_param['ver_lines'] is None:
+            plot_param['ver_lines'] = []
+
+        # print(plot_param['ver_lines'])
+
         if show_gravity:
             if show_gravity[0] == 1:
                 d = d1
@@ -738,11 +781,21 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
             
-            plot_param['ver_lines'] = [{'x':gc, 'c':'k', 'ls':'--'}]
+            plot_param['ver_lines'].append({'x':gc, 'c':'k', 'ls':'--'})
 
+        if efermi_origin:
+            if plot_param['ver']:
+                plot_param['ver_lines'].append({'x':efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
+
+        else:
+            #fermi levels
+            plot_param['ver_lines'].append({'x':cl1.efermi + efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
+            if cl2:
+                plot_param['ver_lines'].append({'x':cl2.efermi + efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
+        plot_param['ver'] = False
         """Plot everything"""
-
-        image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))
+        if image_name is None:
+            image_name = os.path.join(path, '_'.join(names)+'.'+''.join(orbitals)+'.'+el+str(iat+1))+name_suffix
 
 
         if 'xlabel' not in plot_param:

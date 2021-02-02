@@ -13,7 +13,7 @@ except:
 
 from siman import header
 from siman.header import print_and_log, printlog, runBash, eV_A_to_J_m
-from siman.small_functions import is_list_like, is_string_like, gunzip_file, makedir, grep_file
+from siman.small_functions import is_list_like, is_string_like, gunzip_file, makedir, grep_file, setting_sshpass
 
 
 def unique_elements(seq, idfun=None): 
@@ -35,10 +35,17 @@ def unique_elements(seq, idfun=None):
 
 
 def smoother(x, n, mul = 1, align = 1):
-    #mul - additionally multiplies values
+    """
+    mul - additionally multiplies values
     #align - find first non-zero point and return it to zero
-
+    #n - smooth value, 
+        if algo = 'gaus' than it is sigma
+        use something like 0.8 
+        if algo = 'my'
+            n of 10-15 is good
+    """
     algo = 'gaus'
+    # algo = 'my'
 
     if algo == 'my':
         x_smooth = []
@@ -60,7 +67,8 @@ def smoother(x, n, mul = 1, align = 1):
     elif algo == 'gaus':
         x_smooth =x
         # x_smooth = scipy.ndimage.filters.median_filter(x,size =4)
-        x_smooth = scipy.ndimage.filters.gaussian_filter1d(x_smooth, 4, order =0)
+        # print('sigma is ', n)
+        x_smooth = scipy.ndimage.filters.gaussian_filter1d(x_smooth, n, order =0)
         # x_smooth = scipy.ndimage.interpolation.spline_filter1d(x, 4)
 
     else:
@@ -95,11 +103,12 @@ def run_on_server(command, addr = None):
     if header.ssh_object:
         # printlog('Using paramiko ...', imp = 'y')
         # if 'ne' in header.warnings:
+        # sys.exit()
 
         out = header.ssh_object.run(command, noerror = True, printout = 'ne' in header.warnings)
 
     elif header.sshpass and header.sshpass == 'proxy':
-        com = 'ssh -tt sdv sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'
+        com = 'ssh -tt sdv sshpass -f '+ header.path2pass +' ssh '+addr+' "'+command+'"'
         # print(com)
         # sys.exit()
 
@@ -109,7 +118,7 @@ def run_on_server(command, addr = None):
         # sys.exit()
 
     elif header.sshpass:
-        com = 'sshpass -f /home/aksenov/.ssh/p ssh '+addr+' "'+command+'"'
+        com = 'sshpass -f '+header.path2pass+' ssh '+addr+' "'+command+'"'
         # print(com)
         # sys.exit()
         
@@ -120,6 +129,7 @@ def run_on_server(command, addr = None):
     else:
         bash_comm = 'ssh '+addr+' "'+command+'"'
         # print(bash_comm)
+        # sys.exit()
         out = runBash(bash_comm)    
     
     out = out.split('#')[-1].strip()
@@ -175,7 +185,9 @@ def push_to_server(files = None, to = None,  addr = None):
         # print(l)
         # user = l[0]
         # ad   = l[1]
-        com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+files_str+ ' '+addr+':'+to
+        # com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+files_str+ ' '+addr+':'+to
+        com = 'rsync --rsh='+"'sshpass -f "+header.path2pass+" ssh' "  +' -uaz  '+files_str+ ' '+addr+':'+to
+
         # print(com)
         # sys.exit()
         out = runBash(com)
@@ -245,10 +257,12 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
 
     """
     # print(addr)
+    # sys.exit()
 
 
     def download(file, to_file):
 
+        # print(header.sshpass)
         if header.ssh_object:
 
             exist = file_exists_on_server(file, addr)
@@ -264,14 +278,17 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
         elif header.sshpass and header.sshpass == 'proxy':
             # com = 'ssh sdv "sshpass -f ~/.ssh/p ssh ' + addr + ' \\"tar zcf - '+ file +'\\"" | tar zxf - '+to_file # does not work?
             com = 'ssh sdv "sshpass -f ~/.ssh/p ssh ' + addr + ' \\"tar cf - '+ file +'\\"" > '+to_file
-            # print(com)
+            # print('sshpass',com)
             # sys.exit()
             out = runBash(com)
 
         elif header.sshpass:
-            com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
-            out = runBash(com)
+            #com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
+            com = 'rsync --rsh='+"'sshpass -f "+header.path2pass+" ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
 
+            out = runBash(com)
+            # print(addr)
+            # sys.exit()
 
         else:
             # print(addr,file,to_file)
@@ -336,14 +353,30 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
         if out and trygz:
 
             printlog('File', file, 'does not exist, trying gz', imp = 'n')
-            file+='.gz'
-            to_file_l+='.gz'
-            out = download(file, to_file_l)
+            # run_on_server
+            files = run_on_server(' ls '+file+'*', addr)
+            file = files.split()[-1]
+            # print(file)
+            nz = file.count('gz')
+            ext = '.gz'*nz
 
-            if out:
-                printlog('    No gz either!', imp = 'n')
+            # file+='.gz'
+            to_file_l+=ext
+
+            if file:
+                out = download(file, to_file_l)
+                printlog('    gz found with multiplicity', ext, imp = 'n')
+
+                for i in range(nz):
+                    printlog('unzipping', to_file_l)
+                    gunzip_file(to_file_l)
+                    to_file_l = to_file_l[:-3]
             else:
-                gunzip_file(to_file_l)
+                printlog('    No gz either!', imp = 'n')
+
+            # if '5247' in file:
+            #     sys.exit()
+
 
 
     return out
@@ -734,6 +767,18 @@ def read_vectors(token, number_of_vectors, list_of_words, type_func = None, list
     return out
 
 
+def read_string(token, length, string):
+    sh = len(token)+1
+    i = string.find(token)+sh
+    # print('length', i, i+length)
+    # sys.exit()
+    if i is -1:
+        return ''
+    else:
+        return string[i:i+length]
+
+
+
 def read_list(token, number_of_elements, ttype, list_of_words):
     """Input is token to find, number of elements to read, type of elements and list of words, 
     where to search
@@ -874,6 +919,7 @@ def wrapper_cp_on_server(file, to, new_filename = None):
 
 
     return
+
 
 
 

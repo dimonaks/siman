@@ -30,13 +30,13 @@ history_key    = 'history'
 struct_des_key = 'struct_des'
 
 
-def read_database(scratch = False):
+def read_database(scratch = False, init_sets = 0):
     """
     Read database of calculations
 
     INPUT:
         scratch - not used
-    
+        init_sets - required to reinit defaults sets in init_default_sets function
     RETURN:
         calc   - dict, contains all calculations of the project
         conv   - dict, convergence sequences
@@ -92,7 +92,7 @@ def read_database(scratch = False):
             printlog( "There is no struct_des in database. The dict is in header module "); 
 
     #print history
-    init_default_sets()
+    init_default_sets(init_sets)
 
 
     return header.conv, header.varset, sys.getsizeof(d)
@@ -162,7 +162,7 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
     else: #python3 
         import dbm
 
-        d = shelve.Shelf(dbm.open(databasefile3, 'n'), protocol = 3) #Write dbm database for python3
+        d = shelve.Shelf(dbm.open(databasefile3, 'c'), protocol = 3) #Write dbm database for python3 / it was n key, now c, working on new python
         d[conv_key]       = header.conv
         d[varset_key]     = header.varset
         d[history_key]    = header.history

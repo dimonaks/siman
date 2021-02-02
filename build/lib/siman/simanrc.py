@@ -31,6 +31,7 @@ CLUSTERS['pardus'] = {
 
 
 """Local constants"""
+PATH2NEBMAKE = '/hdd/home/aksenov/Simulation_wrapper/vts/nebmake.pl'
 PATH2POTENTIALS = '~/potcars/'
 PATH2JMOL = 'jmol'
 PATH2PHONOPY = 'phonopy'

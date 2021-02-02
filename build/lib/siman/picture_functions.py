@@ -8,12 +8,13 @@ import numpy as np
 try:
     import scipy
     from scipy import interpolate
-    from scipy.interpolate import spline 
     # print (scipy.__version__)
     # print (dir(interpolate))
 except:
-    print('scipy is not avail')
+    print('picture_functions.py: scipy is not avail')
+# from scipy.interpolate import spline 
 try:
+    ''
     from scipy.interpolate import  CubicSpline
 except:
     print('scipy.interpolate.CubicSpline is not avail')
@@ -33,12 +34,12 @@ except:
 
 
 from siman import header
-from siman.header import calc, print_and_log, printlog
+from siman.header import calc, printlog, printlog
 from siman.inout import write_xyz
 from siman.small_functions import makedir, is_list_like
 from siman.geo import replic
 
-from siman.chg.chg_func import chg_at_point, cal_chg_diff
+# from siman.chg.chg_func import chg_at_point, cal_chg_diff
 # from dos.functions import plot_dos
 # from ase.utils.eos import EquationOfState
 
@@ -67,6 +68,9 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     #Create
     if not style_dic:
         style_dic = {'p':'ro', 'l':'b-', 'label':None}
+
+    if 'p' not in style_dic:
+        style_dic['p']='ro'
 
     if not fitplot_args:
         fitplot_args = {}
@@ -121,14 +125,12 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
 
     spl = scipy.interpolate.PchipInterpolator(mep_pos, eners)
-
-
     ynew = spl(xnew)
 
     diff_barrier = determine_barrier(mep_pos, eners)
 
 
-    print_and_log('plot_mep(): Diffusion barrier =',round(diff_barrier, 2),' eV', imp = 'y')
+    printlog('plot_mep(): Diffusion barrier =',round(diff_barrier, 2),' eV', imp = 'y')
     # sys.exit()
     # print()
 
@@ -201,7 +203,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     legend = False, ncol = 1, 
     fontsize = None, legend_fontsize=None, markersize = None,  
     linewidth = None, hor = False, ver = True, fig_format = 'eps', dpi = 300,
-    ver_lines = None, xy_line = None, x_nbins = None,
+    ver_lines = None, hor_lines = None, xy_line = None, x_nbins = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
     convex = None, dashes = None,
@@ -240,6 +242,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
     ver_lines - list of dic args for  vertical lines {'x':, 'c', 'lw':, 'ls':}
+    hor_lines
     ver - vertical line at 0
     hor - horizontal line at 0
 
@@ -263,6 +266,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     params - dictionary with parameters 
         - 'xlim_power' - xlim for power
         - 'y0' - move plot to have y = 0
+        - 'xnbins' - number of bins x
 
     TODO:
     remove some arguments that can be provided in data dict
@@ -270,18 +274,51 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     """
 
+    # sys.exit()
+
     if image_name == None:
         image_name  = filename
 
+    # print(ver_lines)
+    # sys.exit()
+    # fontsize = 1
     # print(fontsize)
     # sys.exit()
     if fontsize:
-        header.mpl.rcParams.update({'font.size': fontsize+4})
+        # header.mpl.rcParams.update({'font.size': fontsize+4})
+        # fontsize = 2
+        SMALL_SIZE = fontsize
+        MEDIUM_SIZE = fontsize
+        BIGGER_SIZE = fontsize
+
+        header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
+        header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+        header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+        header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+        header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
+        # font = {'family' : 'normal',
+        #         'weight' : 'bold',
+        #         'size'   : fontsize}
+
+        # header.mpl.rc('font', **font)
+
+
         if legend_fontsize is None:
             legend_fontsize = fontsize
+    
+
+
+
     if legend_fontsize:
+        ''
         header.mpl.rc('legend', fontsize= legend_fontsize) 
 
+
+    # print('fontsize', fontsize, legend_fontsize)
 
 
     if hasattr(header, 'first'):
@@ -328,6 +365,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     if corner_letter:
         # print(corner_letter)
+        ''
         sz = header.mpl.rcParams['font.size']
         ax.text(0.05, 0.85, corner_letter, size = sz*1.5, transform=ax.transAxes) # transform = None - by default in data coordinates!
 
@@ -349,7 +387,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         else:
 
             con = data[key]
-            # print(con)
+            # print('keys', keys)
+            # print('con type', type(con))
             # sys.exit()
             if type(con) == list or type(con) == tuple:
                 try:
@@ -365,7 +404,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
                 xyf = [con[0], con[1], fmt]
                 con = {'label':label} #fmt -color style
-
+                # print('con1', con)
             elif type(con) == dict:
                 if 'fmt' not in con:
                     con['fmt'] = ''
@@ -387,7 +426,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             if linewidth:
                 con['lw'] = linewidth
 
-            # print(con)
+            # print('con2', con)
             # sys.exit()
                 
             if markersize:
@@ -402,13 +441,15 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
             con_other_args = copy.deepcopy(con)
-            for k in ['x', 'y', 'fmt', 'annotates']:
+            # print('con_copy', con_other_args)
+            # sys.exit()
+            for k in ['x', 'x2', 'x2label', 'y', 'fmt', 'annotates', 'x2_func', 'x2_func_inv']:
                 if k in con_other_args:
                     del con_other_args[k]
             if 'color' in con_other_args:
                 if con_other_args['color'] is None:
                     del con_other_args['color']
-            # print(con_other_args)
+            # print('con', con_other_args)
             # sys.exit()
             
             if params.get('y0'):
@@ -420,6 +461,15 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
             ax.plot(*xyf, alpha = alpha, **con_other_args)
+
+
+            #second x axis
+            if con.get('x2_func' ):
+                # ax2 = ax.twiny()
+                ax2 = ax.secondary_xaxis("top", functions=(con['x2_func'],con['x2_func_inv']))
+                # ax2.plot(con['x2'], con['x2'])
+                ax2.set_xlabel(con['x2label'])
+                # ax2.cla()
 
             if power:
                 coeffs1 = np.polyfit(xyf[0], xyf[1], power)        
@@ -435,11 +485,13 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 fit_y1 = fit_func1(x_range); 
          
 
-                ax.plot(x_range, fit_y1, xyf[2][0], )
+                # ax.plot(x_range, fit_y1, xyf[2][0]+'--', )
+                ax.plot(x_range, fit_y1, '--', )
 
                 # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
                 # y_min  = fit_func2(x_min)
-                slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(xyf[0], xyf[1])
+                from scipy import stats
+                slope, intercept, r_value, p_value, std_err = stats.linregress(xyf[0], xyf[1])
                 print ('R^2 = {:5.2f} for {:s}'.format(r_value**2, key))
 
 
@@ -469,7 +521,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 else:
                     for name, x, y in zip(con['annotates'], con['x'], con['y']):
                         ax.annotate(name, xy=(x, y),
-                            xytext=(-20, 20), fontsize = 9,
+                            xytext=(-20, 20), fontsize = fontsize,
                         textcoords='offset points', ha='center', va='bottom',
                         # bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                         arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5', 
@@ -496,22 +548,37 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
 
+    if not linewidth:
+        linewidth = 1
     if hor: 
-        ax.axhline(color = 'k') #horizontal line
+        ax.axhline(color = 'k', lw = linewidth, alpha = 0.6, ls = '-') #horizontal line
 
     if ver:
-        ax.axvline(color='k') # vertical line at 0 always 
+
+        ax.axvline(color='k', lw = linewidth, alpha = 0.6, ls = '-') # vertical line at 0 always 
 
     if ver_lines:
         for line in ver_lines:
             ax.axvline(**line)
 
+    if hor_lines:
+        for line in hor_lines:
+            ax.axhline(**line)
+
+
     if xy_line:
+        xlim = ax.get_xlim()
         ylim = ax.get_ylim()
         # print(ylim)
-        x = np.linspace(*ylim)
+        x = np.linspace(*xlim)
+        y = np.linspace(*ylim)
+
         # print(x)
-        ax.plot(x,x)
+        if abs(x[0]-x[-1])>abs(y[0]-y[-1]):
+            da = x
+        else:
+            da = y
+        ax.plot(da,da, color = 'k', alpha = 0.6, ls = '-', lw = linewidth)
 
     if x_nbins:
         ax.locator_params(nbins=x_nbins, axis='x')
@@ -551,6 +618,17 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     # plt.tight_layout(pad = 2, h_pad = 0.5)
 
 
+    if params.get('xnbins'):
+        # print(params.get('xnbins'))
+        ax.locator_params(tight=True, axis='x', nbins=params['xnbins'])
+        # plt.locator_params(axis='x', numticks=params['xnbins'])
+
+    if params.get('xticks_step'):
+
+        start, end = ax.get_xlim()
+        ax.xaxis.set_ticks(np.arange(start+params.get('step_shift'), end+params.get('step_shift'), params.get('xticks_step')))
+
+
 
     plt.tight_layout()
     if pad:
@@ -574,12 +652,12 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             plt.savefig(path2saved, dpi = dpi, format=fig_format)
             plt.savefig(path2saved_png, dpi = 300)
             
-            print_and_log("Image saved to ", path2saved, imp = 'y')
+            printlog("Image saved to ", path2saved, imp = 'y')
 
 
         elif show is None:
             show = True
-        # print_and_log(show)
+        # printlog(show)
         if show:
             plt.show()
         plt.clf()
@@ -770,7 +848,7 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
     # elif data1: gs.tight_layout(fig)
 
     if image_name:
-        print_and_log( "Saving image ...", str(image_name), imp = 'y')
+        printlog( "Saving image ...", str(image_name), imp = 'y')
         plt.savefig(str(image_name)+'.png', dpi = 200, format='png')
     else:
         plt.show()
@@ -1028,7 +1106,7 @@ def plot_conv(list_of_calculations = None, calc = None,
             #plt.savefig('images/'+image_name)
             file = header.path_to_images+'/'+str(image_name)+'.png'
             makedir(file)
-            print_and_log( 'Saving file ...',file, imp = 'y' )
+            printlog( 'Saving file ...',file, imp = 'y' )
             plt.savefig(file,format='png', dpi = 300)
         return fit_func2  
 
@@ -1203,7 +1281,7 @@ def plot_conv(list_of_calculations = None, calc = None,
             name, "Sigma xx (MPa)", "Grain boundary energy (mJ/m$^2$)", 
             image_name+"_sxe")
         sxe_min = fit_sxe.deriv().r[power-2] #sigma xx at the minimum of energy
-        print_and_log( "sigma xx at the minimum of energy is", sxe_min," MPa")
+        printlog( "sigma xx at the minimum of energy is", sxe_min," MPa")
 
 
         fit1 = fit_and_plot(pressures_init, gb_volumes,  pressures, gb_volumes, 1,
@@ -1213,7 +1291,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         pulay = - calc[id].bulk_extpress
         #print " At external pressure of %.0f MPa; Pulay correction is %.0f MPa." % (ext_p_min+pulay, pulay)       
         #print " Egb = %.1f mJ m-2; Vgb = %.0f mA;"%(fit(ext_p_min), fit1(ext_p_min)  )
-        print_and_log ("%s.fit.pe_pv & %.0f & %.0f & %0.f & %0.f \\\\" %
+        printlog ("%s.fit.pe_pv & %.0f & %.0f & %0.f & %0.f \\\\" %
             (n[0]+'.'+n[1], fit(ext_p_min), fit1(ext_p_min),ext_p_min, ext_p_min+pulay   ))
 
 
@@ -1295,7 +1373,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         #print atP
         #print at_zeroP
 
-        print_and_log( "Compare V at -pulay and V for energy minimum", fit_pv(-pulay), Vmin)
+        printlog( "Compare V at -pulay and V for energy minimum", fit_pv(-pulay), Vmin, imp = 'y')
 
         return fit_pe(-pulay), fit_pv(-pulay), Emin, Vmin
 
@@ -1399,7 +1477,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         eos = EquationOfState(clist,Z[2])
         v0, e0, B = eos.fit()
         #print "a = ", alist[2]
-        print_and_log( '''
+        printlog( '''
         v0 = {0} A^3
         E0 = {1} eV
         B  = {2} eV/A^3'''.format(v0, e0, B) )
@@ -1408,7 +1486,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         eos = EquationOfState(alist,Zinv[2])
         v0, e0, B = eos.fit()
         #print "c = ", clist[2]
-        print_and_log( '''
+        printlog( '''
         v0 = {0} A^3
         E0 = {1} eV
         B  = {2} eV/A^3'''.format(v0, e0, B) )

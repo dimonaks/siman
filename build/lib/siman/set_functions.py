@@ -21,7 +21,7 @@ ngkpt_dict_for_kspacings - when ngkpt is used could be problems, please test.
 
 from siman import header
 from siman.header import print_and_log, printlog;
-from siman.small_functions import is_list_like
+from siman.small_functions import is_list_like, red_prec
 from siman.functions import invert
 
 #Vasp keys
@@ -127,6 +127,22 @@ vasp_other_keys = [
 'DOSTATIC',
 'USEPOT',
 'KPPRA',
+'SUBATOM',
+'NWRITE',
+'NBLOCK',
+'KBLOCK',
+'LELF',
+'IVDW',
+'LVDW_EWALD',
+'NUPDOWN',
+'AEXX', 
+'AGGAX', 
+'AGGAC', 
+'ALDAC',
+'LAMBDA',
+'M_CONSTR',
+'I_CONSTRAINED_M',
+'RWIGS',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -355,6 +371,12 @@ class InputSet():
             elif key == 'ngkpt':
                 s.set_ngkpt(param[key])
 
+            elif key == 'kpoints_file':
+                if param[key]:
+                    s.kpoints_file = True 
+                else:
+                    ''
+                    s.kpoints_file = False
 
             elif key == 'bfolder':
                 print_and_log( 'New blockfolder', param[key])
@@ -366,7 +388,7 @@ class InputSet():
                 s.set_vaspp(key, param[key] )
             
             else:
-                print_and_log('Error! Uknown key: '+key)
+                print_and_log('Error! Unknown key: '+key)
                 raise RuntimeError
          
 
@@ -551,7 +573,7 @@ class InputSet():
             return
         self.history += " "+name+"  was changed from "+str(old)+" to "+str(arg) + "\n"
         print_and_log(" "+name+"  was changed from "+str(old)+" to "+str(arg) + " in set "+self.ise+" \n")
-        return
+        return #ISTAR
 
     def set_ngkpt(self,arg):
         if not is_list_like(arg):
@@ -626,6 +648,122 @@ class InputSet():
 
 
 
+    def toabinit(self, st):
+        """
+        Convert from VASP (add more codes in the future) to Abinit
+        """
+
+        def special_convert(vasp_param, vasp_dic, abi_dic):
+            ''
+
+            return dic
+
+        special = {'EDIFFG', 'IBRION', 'ISIF', 'KSPACING', 'KGAMMA', 'ISMEAR', 'LDAU', 'LDAUL','LDAUU','LDAUJ',}
+        
+        skip = {'PREC', 'ALGO', 'POTIM'}
+
+        VASP2Abi = {
+        'ENCUT':'ecut',
+        # 'ENAUG':'pawecutdg',
+        'EDIFF':'toldfe', 
+        'EDIFFG':'tolmxf',
+        'NELM':'nstep', 
+        'NSW':'ntime',
+        # 'IBRION':'ionmov',
+        # 'ISIF':'optcell',
+        # 'PREC':['ngfft', 'boxcutmin',
+        # 'ALGO':'iscf',
+        # 'KSPACING':'ngkpt',
+        # 'KGAMMA':'shiftk', #nshiftk
+        'LREAL':None,
+        'ISMEAR':'occopt',
+        'SIGMA':'tsmear',
+        'LPLANE':None,
+        # 'POTIM':'dtion',
+        'LORBIT':None,
+        'ISPIN':'nsppol',
+        'LDAU':'usepawu',
+        'LDAUTYPE':None,
+        'LDAUL':'lpawu',
+        'LDAUU':'upawu',
+        'LDAUJ':'jpawu',
+        'LASPH':None,
+        'LMAXMIX':None,
+        }
+
+
+        abi_dic = {}
+        vp = self.vasp_params
+        en = 1/header.to_eV
+        fo = 1/header.Ha_Bohr_to_eV_A
+        le = 1/header.to_ang
+        for p in vp:
+            ''
+            if p in skip or p not in VASP2Abi:
+                continue
+            if VASP2Abi[p] is None:
+                continue
+
+            v = vp[p]
+            abinam = VASP2Abi[p]
+
+            if p == 'EDIFFG':
+                aval = red_prec(v*-1*fo)
+            elif p in ['ENCUT', 'EDIFF', 'ENAUG', 'SIGMA']:
+                aval = red_prec(v*en )
+            elif p in ['LDAU']:
+                if 'T' in v:
+                    aval = 1
+                else:
+                    aval = 0 
+            elif p == 'LDAUL':
+                aval = 2 # d metals
+
+
+            elif p == 'ISMEAR':
+                if v == 0:
+                    #Gaussian
+                    aval =7
+                elif v == -5:
+                    aval = 7 # still gauss !
+            else:
+                aval = vp[p]
+            
+
+            abi_dic[abinam] = aval
+
+        for p in abi_dic:
+            print(p, abi_dic[p])
+        print('autoparal 1')
+        print('boxcutmin 1.5') # prec normal
+        print('pawecutdg', abi_dic['ecut']*2) # fine mesh
+        print('ngkpt ','put here' )
+        from textwrap import wrap
+        import numpy as np 
+        mag_str = '0 0 '+' 0 0  '.join(np.array(st.magmom).astype(str))
+
+        print('spinat', '\n'.join(wrap(mag_str)) )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -640,7 +778,7 @@ def inherit_iset(ise_new, ise_from, varset, override = False, newblockfolder = N
     ise_from = ise_from.strip()
 
     if ise_from not in varset:
-        print_and_log( "\nError! Set "+ise_from+" does not exist. I return new empty set\n")
+        printlog( "\nWarning! Set "+ise_from+" does not exist. I return new empty set\n")
         return InputSet(ise_new)
 
     old = varset[ise_from]
@@ -735,13 +873,13 @@ def init_default_sets(init = 0):
     """
     varset = header.varset
 
-    setname = 'static'
+    setname = 'aks'
     if init or setname not in varset: #init only once
         s = InputSet(setname) #default starting set without relaxation
         s.kpoints_file = True
         s.add_nbands = 1.25
         s.vasp_params = {
-            'NELM'      : 100,
+            'NELM'      : 50,
             'IBRION'    : 1,
             'KGAMMA'    : ".TRUE.",
             'ENCUT'     : 441.0,
@@ -769,6 +907,37 @@ def init_default_sets(init = 0):
         s.update()
         header.varset[setname] = copy.deepcopy(s)
     
+    setname = 'static'
+    if init or setname not in varset: #init only once
+        s = InputSet(setname) #default starting set without relaxation
+        s.kpoints_file = True
+        s.add_nbands = 1.5
+        s.vasp_params = {
+            'ISTART'    : 0,
+            'NELM'      : 50,
+            'EDIFF'     : 1e-05,
+            'NSW'       : 0,
+            'EDIFFG'    : 0,
+            'IBRION'    : 1,
+            'ISIF'      : 2,
+            'PREC'      : "Normal",
+            'ALGO'      : "Normal",
+            'ENCUT'     : 400,
+            'ENAUG'     : 400*1.75,
+            'KSPACING'  : 0.2,
+            'KGAMMA'    : ".TRUE.",
+            'LREAL'     : "Auto",
+            'ISMEAR'    : 0,
+            'SIGMA'     : 0.1,
+            'LPLANE'    : ".TRUE.",
+            'NPAR'      : 1,
+            }
+        s.potdir = copy.deepcopy(header.nu_dict)
+
+        s.update()
+        header.varset[setname] = copy.deepcopy(s)
+    
+
 
 
     setname = 'opt'
@@ -776,11 +945,11 @@ def init_default_sets(init = 0):
         # sys.exit()
         s = InputSet(setname) 
         s.kpoints_file = True
-        s.add_nbands = 1.25
+        s.add_nbands = 1.5
         s.vasp_params = {
             'IBRION'    : 1,
             'ENCUT'     : 150,
-            'EDIFFG'    : -0.01,
+            'EDIFFG'    : -0.05,
             'SIGMA'     : 0.2,
             'ISIF'      : 2,
             'EDIFF'     : 1e-05,

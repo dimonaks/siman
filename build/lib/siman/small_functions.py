@@ -16,7 +16,7 @@ except:
     except NameError:
         string_types = str # for python 3
 
-
+from siman import header
 from siman.header import printlog
 
 
@@ -30,11 +30,16 @@ class TracePrints(object):
 
 
 def angle(v1, v2):
-  return math.acos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))) / math.pi * 180
+    #in degrees
+    return math.acos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))) / math.pi * 180
 
+def normal(v1, v2):
+    #normal to two vectors
+    return np.cross(v1, v2)
 
 
 def red_prec(value, precision = 100.):
+    #
     a = value * precision
     return round(a)/1./precision
 
@@ -75,12 +80,19 @@ def cat_files(files, output_file):
 def grep_file(string, file, reverse = False):
     #reverse(bool) - read file in reversed order - require upload to memory
     out = ''
-    with open(file, 'r') as f:
-        
+    lines = []
+    with open(file, 'rb') as f:
+        text = f.read().decode(errors='replace')
+        # lines = f.readlines()
+        lines = str(text).split('\n')
+        # for line in text:
+        # print(text)
+        # print(lines)
         if reverse:
-            f = reversed(f.readlines())
+            f = reversed(lines)
 
         for line in f:
+            # print(line)
             if string in line:
                 out = line
                 
@@ -89,7 +101,7 @@ def grep_file(string, file, reverse = False):
 
 def gunzip_file(filename):
     printlog('unzipping file', filename)
-    with open(filename.replace('.gz', ''), 'wb') as f_out:
+    with open(filename[:-3], 'wb') as f_out:
         with gzip.open(filename, 'rb') as f_in:
             shutil.copyfileobj(f_in, f_out)
 
@@ -181,6 +193,28 @@ def calc_ngkpt(recip, kspacing):
         N_from_kspacing.append( math.ceil( (np.linalg.norm(recip[i]) / to_ang_local) / kspacing) )
 
     return N_from_kspacing
+
+
+def setting_sshpass(cl = None, clust = None):
+    """
+    Creates some variables for sshpass mode
+    cl (Caluculation) - object, should contain cluster dict, has higher priority
+    clust (dict) - cluster dicts
+    """
+
+    if cl and hasattr(cl , 'cluster'):
+        clust = cl.cluster
+
+    # print(clust.get('sshpass'))
+    if clust and clust.get('sshpass') is True:
+        printlog('setting sshpass to True', imp = '')
+        header.sshpass = clust['sshpass']
+        header.path2pass = clust.get('path2pass')
+    else:
+        header.sshpass = None
+        header.path2pass = None
+
+
 
 # def format_str():
 
