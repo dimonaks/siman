@@ -4187,7 +4187,7 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
     else:
         idd = (it_new+suf, ise, 100)
         if fit:
-            res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
+            res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = up_res)
 
         else:
             res_loop(*idd, show = 'fo', up = up_res)#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
