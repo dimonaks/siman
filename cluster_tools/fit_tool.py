@@ -119,12 +119,15 @@ for i, st in enumerate(sts):
 st = sts[i_tar]
 # st = sts[7]
 #use i_tar
-scale = (v_min/st.vol)**(1./3)
 # print scale
 # print st.vol
 if np.std(vectors1)+np.std(vectors2) < 1e-5: # Vectors 1 and 2 do not change
+    scale = (v_min/st.vol)
+    
     i_scale_list = [2] #only third vector is scaled - c_scale regime
 else:
+    scale = (v_min/st.vol)**(1./3)
+
     i_scale_list = [0,1,2] # uniform_scale regime
 for i in i_scale_list:
     st.rprimd[i]*=scale 
