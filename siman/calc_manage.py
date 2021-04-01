@@ -966,7 +966,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     def add_loop_prepare():
 
-        nonlocal calc, db, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params
+        nonlocal calc, db, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params, scale_region
 
         if not params:
             params = {}
@@ -1281,7 +1281,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     def add_loop_scale():
 
         struct_des = header.struct_des
-        nonlocal it, verlist, setlist, input_st,it_suffix
+        nonlocal it, verlist, setlist, input_st, it_suffix, scale_region
         u_scale_flag = False
         fitted_v100_id = None
 
@@ -1371,12 +1371,19 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 st.magmom = [None] # added on 24.06.2017
 
                 write_xyz(st, file_name = st.name+'_used_for_scaling')
+                # print(scale_region)
+                # sys.exit()
+                if scale_region is None:
+                    scale_region = (-4,4)
+
                 printlog('Scale_region is', scale_region, imp = 'y')
                 
+                # printlog('Calc_method', calc_method, 'uniform_scale' in calc_method, imp = 'y')
+
                 if 'uniform_scale' in calc_method:
 
                     sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
-                if 'c_scale' in calc_method:
+                elif 'c_scale' in calc_method:
                     #print('scale_start')
                     #sys.exit()
                     sts = scale_cell_by_matrix(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname, mul_matrix = [[1,0,0],[0,1,0],[0,0,1.01]])
@@ -2438,7 +2445,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
                 printlog('Error! end structure of', new.id, 'is empty! Use either init or finish calculation, check *use_init* flag!')
 
-    # print(st.typat)
+    # print(st.select)
+    # sys.exit()
 
 
     #path to new calc
@@ -2738,6 +2746,11 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     #print(len(new.end.xred))
     # print (id_base_st_type)
     new.init = st
+    # print(new.init.select)
+    # sys.exit()
+
+
+
     new.write_geometry('init', des, override = override)
     
 

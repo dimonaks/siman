@@ -77,7 +77,7 @@ def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = 
         return d[0], d[1] # old behaviour
 
 
-def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_calc_name = None, ):
+def scale_cell_uniformly(st, scale_region = None, n_scale_images = 7, parent_calc_name = None, ):
     """
     Scale uniformly rprimd and xcart of structure() object *st* from *scale_region[0]* to *scale_region[1]*  (%) using *n_scale_images* images.
     *parent_calc_name* is added to st.des
@@ -87,6 +87,9 @@ def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_c
     TODO: Take care of vol, recip and so on - the best is to create some method st.actual() that update all information 
     """
     # print scale_region
+
+
+
     scales = np.linspace(scale_region[0], scale_region[1], n_scale_images)
     printlog('Scales are', scales, imp = 'y')
 
@@ -108,7 +111,7 @@ def scale_cell_uniformly(st, scale_region = (-4,4), n_scale_images = 7, parent_c
     # plt.show()
     return scaled_sts
 
-def scale_cell_by_matrix(st, scale_region = (-4,4), n_scale_images = 7, parent_calc_name = None, mul_matrix = None ):
+def scale_cell_by_matrix(st, scale_region = None, n_scale_images = 7, parent_calc_name = None, mul_matrix = None ):
     """
     Scale  rprimd and xcart of structure() object *st* from *scale_region[0]* to *scale_region[1]*  (%) using *n_scale_images* images
     and mul_matrix.
@@ -122,7 +125,7 @@ def scale_cell_by_matrix(st, scale_region = (-4,4), n_scale_images = 7, parent_c
 
     printlog('Scales are', scales, imp = 'y')
     # print(np.asarray(st.rprimd))
-
+    # print(mul_matrix)
     scaled_sts = []
     for j, s in enumerate(scales):
         st_s = copy.deepcopy(st)
@@ -862,7 +865,7 @@ def ortho_vec(rprim, ortho_sizes = None, silent = 0):
     return mul_matrix
 
 
-def find_mul_mat(rprimd1, rprimd2,silent = 0):
+def find_mul_mat(rprimd1, rprimd2, silent = 0):
     #find mul_matrix to convert from rprimd1 to rprimd2
 
     mul_matrix_float = np.dot( rprimd2,  np.linalg.inv(rprimd1) )
@@ -2307,7 +2310,7 @@ def stoichiometry_criteria(st1,st2):
 
 
 def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacuum_size = 10, surface_i = 0, oxidation = None, suf = '', 
-    primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1, lll_reduce  = 0 ):
+    primitive = None, symmetrize = False, cut_thickness = None, return_one = False, write_poscar = 1, lll_reduce  = 0, silent = 0 ):
     """
     INPUT:
         st (Structure) - Initial input structure. Note that to
@@ -2386,8 +2389,8 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
         
 
-        
-    printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
+    if not silent:
+        printlog(len(slabs), 'surfaces were generated, choose required surface using *surface_i* argument', imp = 'y')
 
     if len(slabs) >= 1:
         # surface_i =0
