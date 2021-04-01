@@ -203,7 +203,7 @@ F = 96485.3329 # sA/mol
 
 kB = 8.617e-5 # eV/K
 
-TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 40, 74]
+TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 40, 44, 74]
 
 kB_SI = 1.380649e-23 # J/K
 R = 8.3145 # J/mol/K

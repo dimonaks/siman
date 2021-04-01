@@ -1376,7 +1376,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 if 'uniform_scale' in calc_method:
 
                     sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
-                if 'c_scale' in calc_method:
+                elif 'c_scale' in calc_method:
                     #print('scale_start')
                     #sys.exit()
                     sts = scale_cell_by_matrix(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname, mul_matrix = [[1,0,0],[0,1,0],[0,0,1.01]])

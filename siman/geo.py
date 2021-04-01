@@ -2622,7 +2622,8 @@ def rhombo2hex(h,k,l):
 
 
 
-def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, fix_xc_range = None, under_atom = 0):
+def create_ads_molecule(st, molecule = ['O'], mol_xc = [[0,0,0]], conf_i = [0], fix_layers = False, fix_xc_range = None, 
+    under_atom = 0, find_args = {'distance':0.5, 'positions' : ['ontop']}):
     """
     The function uses special module AdsorbateSiteFinder  from pymatgen
 
@@ -2655,14 +2656,23 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, 
     from pymatgen.io.vasp.inputs import Poscar
 
     pm = st.convert2pymatgen()
+    # pm = st
     asf_pm = AdsorbateSiteFinder(pm)
+    st_ads_pack = []
+
 
     ads_sites = asf_pm.find_adsorption_sites()
-    
+    # print(dir(ads_sites))
+    # print(dir(asf_pm))
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+    sym_criteria = SpacegroupAnalyzer(pm).is_laue()
+    # print(sym_criteria)
+
+
 
     adsorbate = Molecule(molecule, mol_xc)
-    ads_structs = asf_pm.generate_adsorption_structures(adsorbate,repeat=[1, 1, 1])
-    print('\nI found ',len(ads_structs), ' configurations with ', molecule, ' on the surface\n')
+    ads_structs = asf_pm.generate_adsorption_structures(adsorbate,repeat=None, min_lw=8.0,  find_args=find_args)
+    print('\nI\'ve found ',len(ads_structs), ' configurations for ', molecule, ' on the surface\n')
 
     st_ads_pack = []
     st_ads_pack_under = {'me': None, 'nme': None}
@@ -2978,13 +2988,13 @@ def fit2host(st_host, st_oxide):
     replic = [1,1,1]
     misf = sl_misfit(st_host,st_oxide, silent = 1)
     for m in (0,1):
-        if 60 < abs(misf[m]) < 140:
+        if 60 < abs(misf[m]) < 150:
             replic[m] +=1
-        elif 160 < abs(misf[m]) < 240:
+        elif 150 < abs(misf[m]) < 250:
             replic[m] +=2
-        elif 260 < abs(misf[m]) < 340:
+        elif 250 < abs(misf[m]) < 350:
             replic[m] +=3
-        elif 360 < abs(misf[m]) < 440:
+        elif 350 < abs(misf[m]) < 450:
             replic[m] +=3
     st_oxide = st_oxide.replic(replic)
 
@@ -3020,7 +3030,7 @@ def hkl_slab(st, st_host, hkl, i_suf = None):
 
 def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0, 
     seek_mode = 0, seek_range = [0,2], check_shift = None, 
-    hkl_lio = None, i_suf_lio = None, size = [5,5], ads_pos = None):
+    hkl_lio = None, i_suf_lio = None, size = [5,5], ads_pos = None, z_shift = 1.5, lio_thick = 8):
 
 
     st1_init = st_host.copy()
@@ -3048,7 +3058,7 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
 
                     if hkl != [0,0,0]:
                         slabs2 = create_surface2(st2_init, hkl, shift = None, min_slab_size = 10, min_vacuum_size = 25, surface_i = 0, oxidation = None, suf = '', 
-                        primitive = 1, symmetrize = 1, cut_thickness = None, return_one = 0, write_poscar = 0, lll_reduce  = 1)
+                        primitive = 1, symmetrize = 0, cut_thickness = None, return_one = 0, write_poscar = 0, lll_reduce  = 1)
                         for sl in range(0,len(slabs2)):
                             print(hkl, sl)
                             st2 = st2_init.update_from_pymatgen(slabs2[sl])
@@ -3056,17 +3066,18 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
                             sl_misfit(st1, slab_2, silent = 0)
     else:
 
-        slabs2 = create_surface2(st2_init, hkl_lio, shift = 0, min_slab_size = 10, min_vacuum_size = 15, surface_i = i_suf_lio, oxidation = None, suf = '', 
-                primitive = 1, symmetrize = 0, cut_thickness = 0, return_one = 0, write_poscar = 0, lll_reduce  = 1)
-        st2 = st2_init.update_from_pymatgen(slabs2[i_suf_lio])
-        # st2 = slabs2
+        slabs2 = create_surface2(st2_init, hkl_lio, shift = 0, min_slab_size = lio_thick, min_vacuum_size = 15, surface_i = i_suf_lio, oxidation = None, suf = '', 
+                primitive = 0, symmetrize = 0, cut_thickness = 0, return_one = 1, write_poscar = 0, lll_reduce  = 1)
+        # st2 = st2_init.update_from_pymatgen(slabs2[i_suf_lio])
+        st2 = slabs2
+        # st2.jmol()
         slab_2 = fit2host(st1, st2)
         st2_init = slab_2
 
         from siman.impurity import make_interface
         z_max1 = 0
         z_max2 = 50
-        st1 = st1.add_vacuum(2,15)
+        st1 = st1.add_vacuum(2,40)
         for r in st1.xcart:
             if r[2] > z_max1:
                 z_max1 = r[2]
@@ -3144,13 +3155,13 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
                         av_pack.append(av)
                         print('Average bond lengths is {} A'.format(av))
 
-                    mat0.replic([2,2,1]).jmol()
+                    # mat0.replic([2,2,1]).jmol()
                     print(av_pack)
                     if abs(av_pack[2] - av_pack[0]) < 0.03:
                         print('\nGood interface!\n\n')
 
 
-
+        print('\n\n\n', st1.rprimd, slab_2.rprimd, '\n\n\n',st1.get_angles(), slab_2.get_angles(),)
         if ads_pos:
             interface_list = []
             suf_ats2 = (slab_2.get_surface_atoms('O', surface = 0, surface_width=0.5))
@@ -3161,6 +3172,7 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
                 mat0, pas_scaled2 = make_interface(st1, xc1, slab_2, xc2)
                 # mat0.jmol(rep=[3,3,1])
                 interface_list.append(mat0)
+                interface_list.append(pas_scaled2)
             return interface_list
 
 
@@ -3169,11 +3181,11 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
 
 
 
-        mat2, pas_scaled2 = make_interface(st1, [0, 4, z_max1+1.5], slab_2, [0, 0.626, z_max2],)
-        st_wide = st1.add_vacuum(2,15)
-        mat3, pas_scaled3 = make_interface(st_wide, [0, 4, z_max1+10.5], slab_2, [0, 0.626, z_max2],)
-        # mat3.jmol()
-        return [mat2, mat3]
+        mat2, pas_scaled2 = make_interface(st1, [0, 4, z_max1+z_shift], slab_2, [0, 0.626, z_max2],)
+       
+        # st_wide = st1.add_vacuum(2,15)
+        # mat3, pas_scaled3 = make_interface(st_wide, [0, 4, z_max1+10.5], slab_2, [0, 0.626, z_max2],)
+        return [mat2, pas_scaled2]
 
 
 

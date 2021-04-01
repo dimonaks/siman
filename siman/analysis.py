@@ -1473,8 +1473,8 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     if normal == 2:
         A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
 
-
-    print('Surface area is {:.2f} A^2, please check'.format(A))
+    if not silent:
+        print('Surface area is {:.2f} A^2, please check'.format(A))
     # get_reduced_formula
     # print(natom1, natom2)
 
@@ -1505,7 +1505,8 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     mul = ntra1/ntra2
 
     # print(rat1, rat2, natom1, ntra1, natom2, ntra2,)
-    print('Number of bulk cells in slab is {:n}'.format(mul))
+    if not silent:
+        print('Number of bulk cells in slab is {:n}'.format(mul))
 
 
     if rat1 != rat2:
