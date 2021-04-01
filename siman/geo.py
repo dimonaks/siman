@@ -2179,7 +2179,6 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
 
 def two_cell_to_one(st1, st2):
     """Join two cells 
-
 	st1 - first cell 
     st2 - second cell
     """
@@ -2187,12 +2186,11 @@ def two_cell_to_one(st1, st2):
     # sorts = []
 
     n_at = st1.natom + st2.natom
+
     #print(n_at, dir(st1), st2.typat)
     els2 = st2.get_elements()
     for i in range(0, st2.natom):
        st1 = st1.add_atom( xc = st2.xcart[i], element = els2[i])
-
-    # st1.update_xred()
 
 
     return st1
@@ -2571,7 +2569,7 @@ def rhombo2hex(h,k,l):
 
 
 
-def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, fix_xc_range = None):
+def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, fix_xc_range = None, under_atom = 1):
     """
     The function uses special module AdsorbateSiteFinder  from pymatgen
 
@@ -2591,6 +2589,9 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, 
     molecule -  'H', 'CO' ...
     mol_xc - list with xcart of atoms in molecule: [[0,0,0]], [[0,0,0],[0,0,1.23]]
     return structure with adsorbed molecule on the surface
+    conf_i - [0,1,2] - list of ads configuration numbers
+            key 'all' means all constructed configurations
+    under_atom return configuration with ads atom strongly under me and neme atoms in surface
     """
 
 
@@ -2611,6 +2612,13 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, 
     print('\nI found ',len(ads_structs), ' configurations with ', molecule, ' on the surface\n')
 
     st_ads_pack = []
+    st_ads_pack_under = {'me': None, 'nme': None}
+    closest_neighbor = {'me': None, 'nme': None}
+
+
+    if conf_i == 'all':
+        conf_i = np.arange(len(ads_structs))
+        print(conf_i)
 
     for i in conf_i:
         p = st.update_from_pymatgen(ads_structs[i])
@@ -2620,12 +2628,55 @@ def create_ads_molecule(st, molecule, mol_xc, conf_i = [0], fix_layers = False, 
 
         st_ads_pack.append(p)
 
-    if len(st_ads_pack) == 1:
-        st_ads = st_ads_pack[0]
+        # find closest atom for ads atom
+        if under_atom:
+            i_close, dist_close, delta_close = p.find_closest_neighbor(p.natom-1)
+            neighbor_el = p.get_elements()[i_close]
+            # print(p.find_closest_neighbor(p.natom-1))
 
-        return st_ads
+            if neighbor_el in header.nme_list:
+                neighbor_type = 'nme'
+            else:
+                neighbor_type = 'me'
+
+            try:
+                if dist_close < closest_neighbor[neighbor_type][1] and abs(delta_close[0]) < 0.25 and  abs(delta_close[1]) < 0.25:
+
+                    closest_neighbor[neighbor_type] = [i, dist_close]
+            except (KeyError, TypeError):
+                closest_neighbor[neighbor_type] = [i, dist_close]
+
+
+
+
+    if under_atom:
+        print(closest_neighbor)
+
+        if closest_neighbor['me']:
+            i_m = closest_neighbor['me'][0]
+            st_ads_pack_under['me'] = st_ads_pack[i_m]
+        else:
+            st_ads_pack_under['me'] = None
+
+        if closest_neighbor['nme']:
+            i_nm = closest_neighbor['nme'][0]
+            st_ads_pack_under['nme'] = st_ads_pack[i_nm]
+        else:
+            st_ads_pack_under['nme'] = None
+
+
+        # st_ads_pack_f = [st_ads_pack[i_m], st_ads_pack[i_nm]]
+
+        return st_ads_pack_under
+         
     else:
-        return st_ads_pack
+        if len(st_ads_pack) == 1:
+            st_ads = st_ads_pack[0]
+
+            return st_ads
+        else:
+            return st_ads_pack
+
 
 
 def best_miller(hkl):
@@ -2858,4 +2909,137 @@ def triangle_area_points(v1, v2, v3):
 
 
     return a
+
+
+def sl_misfit(st1,st2, silent = 0):
+    size1 = st1.rprimd_len()
+    size2 = st2.rprimd_len()
+    misfit = [(j-i)*100/j for i,j in zip(size1,size2)]
+    # print('\n\nSize 1: {},{},{} A'.format(round(size1[0],2),round(size1[1],2),round(size1[2],2)))
+    # print('Size 2: {},{},{} A'.format(round(size2[0],2),round(size2[1],2),round(size2[2],2)))
+    if silent == 0:
+        print('Misfit: {},{} % \n\n'.format(round(misfit[0],2),round(misfit[1],2)))
+    return misfit
+
+def fit2host(st_host, st_oxide):
+    replic = [1,1,1]
+    misf = sl_misfit(st_host,st_oxide, silent = 1)
+    for m in (0,1):
+        if 60 < abs(misf[m]) < 140:
+            replic[m] +=1
+        elif 160 < abs(misf[m]) < 240:
+            replic[m] +=2
+        elif 260 < abs(misf[m]) < 340:
+            replic[m] +=3
+        elif 360 < abs(misf[m]) < 440:
+            replic[m] +=3
+    st_oxide = st_oxide.replic(replic)
+
+    return st_oxide
+
+
+def hkl_slab(st, st_host, hkl, i_suf = None):
+
+    os.remove('/home/anton/media/vasp/log_best1')
+    f = open('/home/anton/media/vasp/log_best1', 'a')
+    if slabs2:
+        if not i_suf:
+            for sl_i in range(0,len(slabs2)):
+                # print(hkl)
+                st2_new = st.update_from_pymatgen(slabs2[sl_i])
+                misf = sl_misfit(st_host,st2_new, silent = 0)
+
+                replic = [1,1,1]
+                for m in (0,1):
+                    if 80 < abs(misf[m]) < 110:
+                        replic[m] +=1
+                st2_new = st2_new.replic(replic)
+                # print(replic)
+                misf = sl_misfit(st_host,st2_new, silent = 1)
+                print(hkl, sl_i)
+                string = str(hkl) + ' ' + str(sl_i) + '  Misfit: {},{} % \n\n'.format(round(misf[0],2),round(misf[1],2))
+                if abs(misf[0]) < 20 and abs(misf[1])<20:
+                    f.write(string)
+    # else:
+    f.close()
+    return misf, slabs2
+def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0, 
+    seek_mode = 0, seek_range = [0,2], check_shift = None, 
+    hkl_lio = None, i_suf_lio = None, size = [5,5]):
+
+
+    st1_init = st_host.copy()
+    st2_init = st_oxide.copy()
+    
+    if suf_host:
+        sc1 = st1_init.get_conventional_cell()#.replic([2,2,1])
+        slabs1 = create_surface2(sc1, suf_host, shift = None, min_slab_size = 10, min_vacuum_size = 15, surface_i = 0, oxidation = None, suf = '', 
+                 symmetrize = 1, cut_thickness = None, return_one = 0, lll_reduce = 1, primitive = 1)
+        slab1 = sc1.update_from_pymatgen(slabs1[i_suf_host])
+        mul_matrix = ortho_vec(slab1.rprimd, [5,5,15], silent = 1) # matrix which allows to obtain supercell close to 10x10x10 A cube 
+        st1 = create_supercell(slab1, mul_matrix,silent = 1)
+    else:
+        st1 = st_host
+
+
+    
+    if seek_mode:
+        for h in range(seek_range[0],seek_range[1]):
+            for k in range(seek_range[0],seek_range[1]):
+                for l in range(seek_range[0],seek_range[1]):
+                    hkl = [h,k,l]
+
+                    if hkl != [0,0,0]:
+                        slabs2 = create_surface2(st2_init, hkl, shift = None, min_slab_size = 10, min_vacuum_size = 25, surface_i = 0, oxidation = None, suf = '', 
+                        primitive = 1, symmetrize = 1, cut_thickness = None, return_one = 0, write_poscar = 0, lll_reduce  = 1)
+                        for sl in range(0,len(slabs2)):
+                            print(hkl, sl)
+                            st2 = st2_init.update_from_pymatgen(slabs2[sl])
+                            slab_2 = fit2host(st1, st2)
+                            sl_misfit(st1, slab_2, silent = 0)
+    else:
+
+        slabs2 = create_surface2(st2_init, hkl_lio, shift = None, min_slab_size = 10, min_vacuum_size = 15, surface_i = 0, oxidation = None, suf = '', 
+                primitive = 1, symmetrize = 1, cut_thickness = None, return_one = 0, write_poscar = 0, lll_reduce  = 1)
+        st2 = st2_init.update_from_pymatgen(slabs2[i_suf_lio])
+        slab_2 = fit2host(st1, st2).add_z(15)
+        # slab_2.jmol()
+
+        from siman.impurity import make_interface
+        z_max1 = 0
+        z_max2 = 50
+        # st1.jmol()
+        for r in st1.xcart:
+            if r[2] > z_max1:
+                z_max1 = r[2]
+        for r in slab_2.xcart:
+            if r[2] < z_max2:
+                z_max2 = r[2]
+        
+        mat2, pas_scaled2 = make_interface(st1, [0, 4, z_max1+1.5], slab_2, [0, 0.626, z_max2],)
+        mat2.write_poscar()
+        # mat2.jmol(r=2)
+        return mat2
+
+        if check_shift:
+            elements1 = list(set(st1_init.get_elements()))
+            elements2 = list(set(st2_init.get_elements()))
+            print(elements1)
+            # mat2.jmol(r=2)
+            for el in elements1:
+                suf_ats1 = st1.get_surface_atoms(el, surface = 0, surface_width=1.5)
+                print(suf_ats1)
+            for el in elements2:
+                suf_ats2 = st2.get_surface_atoms(el, surface = 1, surface_width=1.5)
+                print(suf_ats2)
+
+            xc1 = st1.xcart[20]
+            xc2 = st2.xcart[6]
+            xc2[2] += -2
+            mat0, pas_scaled2 = make_interface(st1, xc1, slab_2, xc2)
+
+            mat0 = mat0.add_z(15)
+            mat0.jmol(r=2)
+
+
 

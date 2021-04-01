@@ -2677,7 +2677,6 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
         confs = [conf]  )
 
 
-
     for st in sts:
         st.write_poscar()
         # print(st.magmom)
@@ -2717,6 +2716,7 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
         st_as.name+=suf
         if jmol:
             st_as.jmol(r=2, shift = shift)
+        st_as.get_mag_tran()
         add_loop(it+'.'+suf, c['set'], 1, 
             input_st = st_as, it_folder = header.struct_des[it_base].sfolder+'/as', up = up, 
             params = {'res_params':{'up':up_res}, 'charge':charge}, 
@@ -4692,3 +4692,116 @@ def run_OMC( cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = 
 
 
     return
+
+
+
+
+def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = None, suf = '', up = 0, gmt = 0, soluted_atom = None, e_s = None):
+    """
+    
+    Optionally for each defect atom an occupation matrix can be provided
+
+    cl_defect - calculation for cell with defect
+    cl_ideal - calculation for commensurate reference cell
+    defect_atoms - list of atoms in cl_defect which are considered defective
+    defect_occ - list of occupation matrices corresponding to defect_atoms
+    ise - set with occupation matrix parameters
+    suf - additional suffix 
+    up - update
+    gmt - show mag moments on transition metals
+
+    TODO: Now, the version of cl_defect is not conserved and changed to 1.
+
+    """
+    if defect_atoms is None:
+        defect_atoms = []
+
+    cl_defect_init = cl_defect.copy()
+    if not ise:
+        ise = cl_defect.id[1]
+    id_new = (cl_defect.id[0]+'.occ'+suf, ise, 1)
+        
+
+    if up or id_new not in db:
+        print('Check defect atoms magmom:')
+        for i in defect_atoms:
+            print(i, cl_defect.end.magmom[i])
+
+
+        if soluted_atom:
+            tran_el_id = []
+            sol = []
+
+            for i_at in cl_ideal.end.get_transition_elements('n'):
+                if i_at not in soluted_atom:
+                    tran_el_id.append(i_at)
+                else:
+                    sol.append(i_at)
+            tran_el_id.extend(sol)
+            
+
+
+
+        # print(cl_defect.end.get_transition_elements('n'))
+        # print(cl_ideal.end.get_transition_elements('n'))
+        print(tran_el_id)
+
+
+
+
+        n_te = len(cl_defect.end.get_transition_elements('n'))
+        for i in range(0,n_te):
+            i_at_id = tran_el_id[i]
+            i_at_def = cl_defect.end.get_transition_elements('n')[i]
+            
+
+            if i_at_def not in defect_atoms and cl_ideal.get_occ_mat(i_at_id) : # replace all occs for atoms except those related to defect
+                occ_bulk = cl_ideal.get_occ_mat(i_at_id)
+                cl_defect = cl_defect.set_occ_mat(i_at_def, occ_bulk)
+
+
+        if defect_occ:
+            for j, i in enumerate(defect_atoms):
+                print('Additionally applying provided occ matrix for i=',i_at_def )
+                cl_defect = cl_defect.set_occ_mat(i_at_def, defect_occ[j])
+
+
+
+        #test
+        cl_defect.occ_diff(cl_ideal)
+
+
+
+        occfile = cl_defect.write_occmatrix()
+
+
+        #'update_set_dic':{'OCCEXT':1 }
+        add(*id_new, input_st = cl_defect.end, it_folder = cl_defect.sfolder+'/occ',
+            params = {'occmatrix':occfile, }, cluster = 'cee-omc')
+    else:
+
+        db[id_new].res(choose_outcar = 1, up = 'up1', show = 'for')
+        e_OMC = db[id_new].e0
+        if gmt:
+            db[id_new].gmt()
+
+        # db[id_new].end.write_poscar()
+
+        db[id_new].res(show = 'fo', )
+        db[id_new].end.name+='SP'
+        db[id_new].gmt()
+
+        if (soluted_atom and e_s == None) or (not soluted_atom):
+            print('Warning! Solution energy is not included')
+            e_s = 0
+
+        print('Edef (init) = {:.2f} eV'.format(cl_defect.e0-cl_ideal.e0-e_s))
+        print('Edef (OMC)  = {:.2f} eV'.format(e_OMC-cl_ideal.e0-e_s)) #just OMC
+        print('Edef (OMCr) = {:.2f} eV'.format(db[id_new].e0-cl_ideal.e0-e_s)) #OMC electronic relaxed
+
+
+
+    return
+
+
+
