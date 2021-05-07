@@ -300,6 +300,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
         header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
+
         # font = {'family' : 'normal',
         #         'weight' : 'bold',
         #         'size'   : fontsize}
