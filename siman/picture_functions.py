@@ -207,7 +207,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
     convex = None, dashes = None,
-    corner_letter = None, hide_ylabels = None, hide_xlabels= None, annotate = None,
+    corner_letter = None, corner_letter_pos = [0.05,0.8], hide_ylabels = None, hide_xlabels= None, annotate = None,
     params = None,
     **data):
     """
@@ -252,6 +252,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     ncol - number of legend columns
 
     corner_letter - letter in the corner of the plot
+    corner_letter_pos - list with [x,y] corner position, default left upper corner is set
 
     pad - additional padding, if dict than the same keys as in plt.subplots_adjust() are used
 
@@ -298,7 +299,6 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
         header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
         header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
-
 
         # font = {'family' : 'normal',
         #         'weight' : 'bold',
@@ -367,7 +367,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         # print(corner_letter)
         ''
         sz = header.mpl.rcParams['font.size']
-        ax.text(0.05, 0.85, corner_letter, size = sz*1.5, transform=ax.transAxes) # transform = None - by default in data coordinates!
+        ax.text(corner_letter_pos[0],corner_letter_pos[1], corner_letter, size = sz*1.5, transform=ax.transAxes) # transform = None - by default in data coordinates!
 
         # text(x, y, s, bbox=dict(facecolor='red', alpha=0.5))
 
@@ -649,7 +649,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
             path2saved, path2saved_png = process_fig_filename(image_name, fig_format)
 
-            plt.savefig(path2saved, dpi = dpi, format=fig_format)
+            plt.savefig(path2saved, dpi = dpi, format=fig_format,bbox_inches = "tight")
             plt.savefig(path2saved_png, dpi = 300)
             
             printlog("Image saved to ", path2saved, imp = 'y')

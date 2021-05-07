@@ -170,7 +170,7 @@ def write_MP_compound(compound_list, path, properties):
 #############################################
 
 
-def get_matproj_info2(criteria, properties, path = None, price = 0, element_price = None, only_stable = 0, exclude_list = [], all_phases = 0):
+def get_matproj_info(criteria, properties, path = None, price = 0, element_price = None, only_stable = 0, exclude_list = [], all_phases = 0):
     """
     get data from  materials project server
 
@@ -283,7 +283,7 @@ def get_matproj_chem_pot(atom_list =None):
 
 
 
-    data_mp = get_matproj_info2(criteria_string, properties, name = 0, price = 0)  #list of pure elements
+    data_mp = get_matproj_info(criteria_string, properties, name = 0, price = 0)  #list of pure elements
 
     for i in data_mp.keys():
 

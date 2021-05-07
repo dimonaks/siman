@@ -392,9 +392,9 @@ class Structure():
 
     def el_diff(self, st2, mul = 1, silent = 0):
         """
-        Determine difference in number of atoms between two structures
+        Determine difference in number of atoms between two structures self and st2
         mul (int) - allows to compare supercells; self.natom = mul * st2.natom
-
+        
         RETURN:
         dict[key], where key is element and the value is difference in number of atoms of this element
         """
@@ -466,7 +466,11 @@ class Structure():
         return 
 
     def group_magmom(self, tol = 0.3):
-        """"""
+        """
+        Group magmom according to values 
+        tol - tolerance according to which the magmom are grouped
+
+        """
         st = self
         lengths = list(np.around(st.magmom, 2))
         unique = []
@@ -915,6 +919,16 @@ class Structure():
         n = np.linalg.norm
         return n(r[0]), n(r[1]), n(r[2])
 
+    def pvec(self):
+        """
+        print primitive vectors in formatted way
+        """
+        with np.printoptions(precision=3, suppress=True):
+            print( np.array(self.rprimd) )
+
+        return
+
+
     def add_z(self, z):
         # method appends additional height to the cell
         # negative value of z appends to remove vacuum layer
@@ -1064,11 +1078,16 @@ class Structure():
         return st
 
     def get_surface_pos(self, reduced = False):
-        #allows to return positions of top and bottom surfaces (edge atoms) in cartesian
-        #assumed normal to R3
-        #small number is added or subtracted to/from edge atom to overcome further numericall errors
-        # reduced - reduced coordinations
+        """
+        Allows to return positions of top and bottom surfaces (edge atoms) in cartesian
+        assumed normal to R3
+        small number is added or subtracted to/from edge atom to overcome further numericall errors
+            
+            reduced - reduced coordinates
 
+        returns list z coordinates 
+        
+        """
         st = self
 
         z1 = 100
@@ -1095,14 +1114,17 @@ class Structure():
         return z
 
 
-    def get_surface_atoms(self, element, surface = 0, surface_width = 0.5 ):
-        #return numbers of surface atoms
-        #elememt (str) - which element is interesting? can be CoO to take two elements
-        #surface_width - which atoms to consider as surface 
-        #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
-        #TODO - 
-        #now only along third vector, make more general
-        #PBC may work incorrect
+    def get_surface_atoms(self, element = None, surface = 0, surface_width = 0.5 ):
+        """
+        return numbers of surface atoms
+            elememt (str) - which element is interesting? can be CoO to take two elements; if None than all elements are takes
+            surface_width - which atoms to consider as surface 
+            surface (int) - 0 or 1 - one of two surfaces; surface 1 has smaller z coordinate
+            TODO - 
+            now only along third vector, make more general
+            PBC may work incorrect
+        """
+
         st = self
         surface_atoms = [[],[]]
         
@@ -1117,7 +1139,7 @@ class Structure():
         for i, x in enumerate(st.xred):
             el = els[i]
 
-            if el in element or element is None:
+            if element is None or el in element:
                 # print(x[2])
                 if z[0] <= x[2] < z[0]+suf_width_red:
                     surface_atoms[0].append(i)
@@ -1129,9 +1151,39 @@ class Structure():
         return surface_atoms[surface]
 
 
+    def cover_surface(self, el, d = 1):
+        """
+        Covers both surfaces of the slab with element el, 
+        each surface atoms on top positions
+        
+        the third vector should be parallel to z axis
+
+        el - element name 
+        d - distance in A
+
+        """
+
+
+        suf0_at = self.get_surface_atoms(surface = 0)
+        suf1_at = self.get_surface_atoms(surface = 1)
+        # print(suf_at)
+        st = self.copy()
+
+        coords = []
+        for i in suf0_at:
+            coords.append(st.xcart[i]-np.array([0,0,d]))
+        for i in suf1_at:
+            coords.append(st.xcart[i]+np.array([0,0,d]))
+
+        st = self.add_atoms(coords, element = el)
+
+        return st 
+
+
     def  if_surface_atom(self, i):
         """
-        Based on reduced coordinates
+        Based on reduced coordinates, 
+            i - number of atom from zero 
         """
         st = self
         suf = st.get_surface_pos(reduced = 1)
@@ -1142,7 +1194,9 @@ class Structure():
 
 
     def get_surface_area(self):
-        #currently should be normal to rprim[0] and rprim[1]
+        """
+        currently should be normal to rprim[0] and rprim[1]
+        """
         st = self
         # print()
         return np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
@@ -1887,7 +1941,23 @@ class Structure():
         return st
 
 
+    def remove_at_in_zrange(self, z_range, del_range = 0):
+        # z_range - at 2 remove
+        # del_range: if true  - remove atoms in z_range, if false - remove atoms out of given z_range
 
+        st = copy.deepcopy(self)
+        at2remove = []
+        
+        for i in range(0, st.natom):
+
+            if (z_range[1]<st.xcart[i][2] or st.xcart[i][2]<z_range[0]) and not del_range:
+                at2remove.append(i)
+
+            if z_range[0]<=st.xcart[i][2]<=z_range[1]  and del_range:
+                at2remove.append(i)
+
+        st_new = st.remove_atoms(at2remove)
+        return st_new  
 
 
 
@@ -3683,14 +3753,15 @@ class Calculation(object):
             if hasattr(st, 'select') and len(st.select) > 0 and not None in st.select:
                 f.write("\nselect  ")
                 for v in st.select:
-                    print(v)
+                    # print(type(v[0]))
+                    # sys.exit()
                     for i in 0,1,2:
-                        if v[i] == 'T':
+                        if v[i] == 'T' or v[i] is True:
                             v[i] = 1
                         else:
                             v[i] = 0
                     f.write("{:d} {:d} {:d}\n".format(v[0], v[1], v[2])  )
-
+                    print(v)
             if hasattr(st, 'vel') and len(st.vel) > 0:
                 f.write("\nvel ")
                 for v in st.vel:
@@ -3917,26 +3988,43 @@ class Calculation(object):
 
 
 
-    def occ_diff(self, cl2, i_at = 0):
+    def occ_diff(self, cl2, li_at1 = None, li_at2 = None):
         """
-        difference bettween occupation matricies
+        difference bettween occupation matricies for atoms li_at1 from self and li_at2 from cl2
+
+        li_at1  -  list of atom numbers from self
+        li_at2  -  list of atom numbers from cl2
+        both lists should have the same length and the differences are taken between items at the same positions in lists
+
+
+        otherwise
+
+        self and cl2 should be commensurate, ideally having completly the same order of atoms
         first five for spin up
         then five for spin down
 
+
+
         """
-        TM = self.end.get_transition_elements(fmt = 'n')
+        if li_at1 or li_at2:
+            TM1 = li_at1
+            TM2 = li_at2
+
+        else:
+            TM1 = self.end.get_transition_elements(fmt = 'n')
+            TM2 = self.end.get_transition_elements(fmt = 'n')
         # print(TM)
         max_diff = 0.01
         nodiff  = True
-        for i_at in TM:
-            occ1 = self.occ_matrices.get(i_at)
-            occ2 = cl2.occ_matrices.get(i_at)
+        for i_at1, i_at2 in zip(TM1, TM2):
+            occ1 = self.occ_matrices.get(i_at1)
+            occ2 = cl2.occ_matrices.get(i_at2)
 
             if not occ1:
-                print('Warning! no', i_at, 'in self, skipping')
+                print('Warning! no', i_at1, 'in self, skipping')
                 continue
             if not occ2:
-                print('Warning! no', i_at, 'in cl2, skipping')
+                print('Warning! no', i_at2, 'in cl2, skipping')
                 continue
 
             occ1 = np.array(occ1)
@@ -3957,7 +4045,7 @@ class Calculation(object):
             if abs(m1) > max_diff:
                 nodiff = False
                 printlog('max diff larger than ', max_diff, 'was detected', imp = 'y')
-                printlog('For atom ', i_at, 'max diff is ', '{:0.2f}'.format(m1), imp = 'y')
+                printlog('For atom ', i_at1, 'and atom', i_at2,  'max diff is ', '{:0.2f}'.format(m1), imp = 'y')
                 printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
         if nodiff:
             printlog('No diffs larger than', max_diff, '; Last matrix:', imp = 'y')

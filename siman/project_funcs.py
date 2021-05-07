@@ -4182,12 +4182,14 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
         del add_loop_dic['calc_method']
     it_new = name
     if add: 
+
+        printlog('Calc_method', calc_method, imp = 'y')
         add_loop(it_new, ise, 1, up = 'up2', calc_method = calc_method, inherit_option = 'inherit_xred', input_st = st, it_folder = it_folder, **add_loop_dic)
 
     else:
         idd = (it_new+suf, ise, 100)
         if fit:
-            res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
+            res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = up_res)
 
         else:
             res_loop(*idd, show = 'fo', up = up_res)#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
