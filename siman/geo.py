@@ -222,6 +222,8 @@ def calc_kspacings(ngkpt, rprimd):
         if ngkpt[i] != 0:
             a = np.linalg.norm( recip[i] ) / ngkpt[i]
             kspacing.append(red_prec(a))
+        else:
+            printlog('Warning! ngkpt = 0 in geo.calc_kspacings', imp='y')
 
     return  kspacing
 

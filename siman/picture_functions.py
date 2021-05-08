@@ -207,7 +207,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
     convex = None, dashes = None,
-    corner_letter = None, corner_letter_pos = [0.05,0.8], hide_ylabels = None, hide_xlabels= None, annotate = None,
+    corner_letter = None, corner_letter_pos = None, hide_ylabels = None, hide_xlabels= None, annotate = None,
     params = None,
     **data):
     """
@@ -252,7 +252,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     ncol - number of legend columns
 
     corner_letter - letter in the corner of the plot
-    corner_letter_pos - list with [x,y] corner position, default left upper corner is set
+    corner_letter_pos (list*2 float) - list with [x,y] corner position, default left upper corner is set
 
     pad - additional padding, if dict than the same keys as in plt.subplots_adjust() are used
 
@@ -318,7 +318,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         ''
         header.mpl.rc('legend', fontsize= legend_fontsize) 
 
-
+    if corner_letter_pos is None:
+        corner_letter_pos = [0.05,0.8]
     # print('fontsize', fontsize, legend_fontsize)
 
 
