@@ -3110,7 +3110,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 file = files[-1] #use last 
                 name = os.path.basename(file)
                 cl.get_file(name, )
-                runBash('subl '+cl.dir+'/'+name)
+                
+                try:
+                    header.PATH2EDITOR
+                except:
+                    print('Error! PATH2EDITOR parameter is not set. Please provide it in .simanrc or project_conf.py')
+
+                runBash(header.PATH2EDITOR+' '+cl.dir+'/'+name)
                 return
 
             if 'term' == show:
@@ -3130,7 +3136,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 return
 
             if 'out' in show:
-                runBash('subl '+cl.path['output'])
+                runBash(header.PATH2EDITOR+' '+cl.path['output'])
 
             if 'op' in show:
                 import webbrowser

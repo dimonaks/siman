@@ -163,10 +163,15 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
         import dbm
 
         d = shelve.Shelf(dbm.open(databasefile3, 'c'), protocol = 3) #Write dbm database for python3 / it was n key, now c, working on new python
+        
+        # print(header.varset['test'])
         d[conv_key]       = header.conv
         d[varset_key]     = header.varset
         d[history_key]    = header.history
         d[struct_des_key] = header.struct_des 
+        # print(d[struct_des_key]['test'])
+
+
         d.close()   
 
         if 0: #please run me from time to time to reduce the size of the database file, calc

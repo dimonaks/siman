@@ -1393,8 +1393,8 @@ def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
     """
     Calculate surface energy
     cl - slab or cell with interface
-    cl1 - slab or cell with phase 1
-    cl2 - slab or cell with phase 2
+    cl1 - slab or cell with phase 1, usually substrate
+    cl2 - slab or cell with phase 2, usually film
     mul1, mul2, - multiply cells
 
     n_intefaces - number of similar  interfaces in the system
@@ -1410,12 +1410,14 @@ def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
     natom2 = st2.natom
 
 
-    A = np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
-    A1 = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )*mul1
-    A2 = np.linalg.norm( np.cross(st2.rprimd[0] , st2.rprimd[1]) )*mul2
+    A = np.linalg.norm( np.cross(st.rprimd[0], st.rprimd[1]) )
+    A1 = np.linalg.norm( np.cross(st1.rprimd[0], st1.rprimd[1]) )*mul1
+    A2 = np.linalg.norm( np.cross(st2.rprimd[0], st2.rprimd[1]) )*mul2
 
 
-    print('Surface areas:', A,A1,A2)
+    print('Sets are {:} {:} {:}'.format(cl.id[1], cl1.id[1], cl2.id[1]))
+    print('Max forces are {:.1f} {:.1f} {:.1f} meV/A'.format(cl.maxforce, cl1.maxforce, cl2.maxforce))
+    print('Surface areas: {:.1f} {:.1f} {:.1f} A^2'.format(A, A1, A2))
 
 
 
@@ -1432,7 +1434,7 @@ def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
     gamma = diff / A * header.eV_A_to_J_m / n_intefaces# inteface
 
     if not silent:
-        print('Interface energy = {:3.2f} J/m2   | {:} eV '.format(gamma, diff))
+        print('Interface energy = {:3.2f} J/m2   | {:3.2f} eV '.format(gamma, diff))
     
 
     return gamma
