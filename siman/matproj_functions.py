@@ -172,17 +172,27 @@ def write_MP_compound(compound_list, path, properties):
 
 def get_matproj_info(criteria, properties, filename = None, price = 0, element_price = None, only_stable = 0, exclude_list = [], all_phases = 0):
     """
-    get data from  materials project server
+    Retrieve a list of structures with information from materials project database (MatProj) according to a set of constraints
+
+    INPUT:
+        criteria (dict)   - dictionary with conditions for query method to choose required structures
+                            see examples for detailed description of this dict
+        properties (list) - list of retrieved properties (MatProj keys) for each structure; e.g. m.get_data('mp-12957') 
+        filename (str)    - name of file with retrieved structures and info
+        price (bool)      - use prices as one of the constraints
+        element_price (dict) - dictionary with prices of elements {element: price per kg}
+        only_stable (bool)   - retrievely only experimentally stable compounds from MatProj database (highlighted with green in web interface)
+        exclude_list (list)  - list of compound pretty formulas, which won't be included into the final list of structures
+        all_phases (bool)    - let to write down all the polymorphs for each composition (in test)
+    
+
+    SIDE:
+        writes file *filename*.cvs
+
+    RETURN:
+        data (dict) - dictionaly with retrieved structures
 
 
-    criteria (dict) - string with condition for query method to choice some structures from MatProj
-    properties (list) - list of MatProj structure keys in  m.get_data('mp-12957') to write
-    filename (str) - name of cvs database file
-    price (bool) - logical 
-    element_price (dict) - dictionary {element: price per kg}
-    only_stable (bool) - consider only stable compounds from Mat Proj database (highlighted in green)
-    exclude_list (list) - list of compound pretty formulas, which won't be included into final list
-    all_phases (bool) - let to write down all the polymorphs of compound (testing mode)
     """
 
     import pymatgen
@@ -213,7 +223,7 @@ def get_matproj_info(criteria, properties, filename = None, price = 0, element_p
                                 # print(element_price[p])
                                 cost+= element_price[p]/1000
                             else:
-                                print('Warning! Element price not found')
+                                print('Warning! Element',p, 'price was not found')
                                 cost = 'No data'
                                 break
 
@@ -253,8 +263,8 @@ def get_matproj_info(criteria, properties, filename = None, price = 0, element_p
                             data.update([(st_name, string_to_write)])
 
     # write data in csv file
-    if path:
-        write_matproj_info(data, path, properties)
+    if filename:
+        write_matproj_info(data, filename, properties)
         
 
     return data
