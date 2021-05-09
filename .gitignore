@@ -14,3 +14,4 @@ POTCAR
 *vasprun*
 dist/
 siman.egg-info/
+siman/libfindpores.so
