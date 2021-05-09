@@ -1986,7 +1986,23 @@ class Structure():
         return st
 
 
+    def remove_at_in_zrange(self, z_range, del_range = 0):
+        # z_range - at 2 remove
+        # del_range: if true  - remove atoms in z_range, if false - remove atoms out of given z_range
 
+        st = copy.deepcopy(self)
+        at2remove = []
+        
+        for i in range(0, st.natom):
+
+            if (z_range[1]<st.xcart[i][2] or st.xcart[i][2]<z_range[0]) and not del_range:
+                at2remove.append(i)
+
+            if z_range[0]<=st.xcart[i][2]<=z_range[1]  and del_range:
+                at2remove.append(i)
+
+        st_new = st.remove_atoms(at2remove)
+        return st_new  
 
 
 
@@ -7152,179 +7168,20 @@ class MP_Compound():
                     print(name_scale, '\tUnfinished calculation!!!\n\n')
 
 
-    def calc_suf(self, ise = '9sm', bulk_cl_name = None,  it_folder = 'bulk/', status = 'create', suf_list = None, 
-            min_slab_size = 12, only_stoich = 1, symmetrize = True, corenum = 4, cluster = 'cee', conv = 1, create = 1, reset_old = 0):
-        from siman.header import db
-        from siman.geo import create_surface2, stoichiometry_criteria
-        from siman.calc_manage   import add_loop, res_loop
+    def calc_suf(self, **argv):
+        from siman.matproj_functions import calc_suf_mat
+        calc_suf_mat(self, **argv)
 
+    def calc_suf_stoich(self, **argv):
+        from siman.matproj_functions import calc_suf_stoich_mat
+        calc_suf_stoich_mat(self, **argv)
 
-        if not bulk_cl_name:
-            bulk_cl_name = ['it','ise', '1']
-            
-        if not suf_list:
-            suf_list = [[1,1,0], [1,1,1]]
-
-
-        st_bulk = db[self.bulk_cl_scale].end
-
-        if conv:
-            st_bulk = st_bulk.get_conventional_cell()
-
-        st_name = '.'.join([self.pretty_formula, self.sg_crystal_str, self.sg_symbol])
-        st_name = st_name.replace('/','_')
-        # st_bulk.printme()
-        try:
-            # print(self.suf)
-            self.suf.keys()
-        except AttributeError:
-            self.suf = {}
-            self.suf_status = {}
-
-        try:
-            self.suf_cl.keys()
-        except AttributeError:
-            self.suf_cl = {}
-
-        try:
-            self.suf_en.keys()
-        except AttributeError:
-            self.suf_en = {}
-
-        if reset_old:
-            self.suf = {}
-            self.suf_status = {}
-            self.suf_cl = {}
-            self.suf_en = {}
-
-
-
-
-        ##################### create slab
-        if status == 'create':
-
-
-            try:
-                for surface in suf_list:
-                    print(surface)
-
-                    if self.suf == {} or ''.join([str(surface[0]),str(surface[1]),str(surface[2])]) not in self.suf.keys():
-
-                        slabs = create_surface2(st_bulk, miller_index = surface,  min_slab_size = min_slab_size, min_vacuum_size = 15, surface_i = 0,
-                          symmetrize = symmetrize, lll_reduce = 1, primitive = 1)
-                        
-                        s_i = 0
-                        if create:
-                            if len(slabs):
-                                for sl_i in slabs:
-                                    st = st_bulk
-                                    sl = st.update_from_pymatgen(sl_i)
-                                    suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(s_i)
-
-                                    if self.suf_status == 'Zero slabs constructed':
-                                        self.suf_status = {}
-
-                                    self.suf[suf_name] = sl
-                                    self.suf_status[suf_name] = 'created'
-                                    print(st_name + '\n', surface, s_i+1, ' from ', len(slabs), ' slabs\n', sl.natom, ' atoms'  )
-
-                                    s_i+=1
-
-                            else:
-                                self.suf_status = 'Zero slabs constructed'
-                                print('\nWarning!  Zero slabs constructed!\n')
-
-            except AttributeError:
-                self.suf_status = 'Bulk calculation has some problems'
-                print('\nWarning!  Bulk calculation of {} has some problems!!\n'.format(st_name)) 
-
-
-
-        ##################### add slab calc
-
-        if status == 'add':
-            # for surface in suf_list:
-                for suf_name in self.suf_status.keys():
-                    if self.suf_status[suf_name] in ['created']:
-                        sl = self.suf[suf_name]
-                        
-                        if only_stoich:
-
-                            if stoichiometry_criteria(sl, st_bulk):
-                                    # print(st_name+'.sl.'+ suf_name, ise, 1, suf_name)
-
-                                    add_loop(st_name+'.sl.'+ suf_name, ise, 1 , 
-                                        input_st = sl,  it_folder = 'slabs_new/'+st_name, up = 'up2', cluster = cluster, corenum = corenum)
-                                    self.suf_status[suf_name] = 'added'
-                                    self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
-
-                            else:
-                                print('Non-stoichiometric slab')
-
-                        else:
-                            None
-                    else:
-                        print('\nThis slab hasn\'t been created yet!\n')
-                        print(self.suf_status[suf_name])
-    
-        
-
-
-
-        ##################### res slab calc
-
-        if status == 'res':
-            # print('1111')
-            print(self.suf.keys(), self.suf_status)
-            for suf_name in self.suf.keys():
-                s_hkl = suf_name.split('.')[0]
-                # print(s_hkl)
-                key = []
-                delta = 0
-                for i in range(0,3):
-                    i+=delta
-                    if s_hkl[i] != '-':
-                        key.append(int(s_hkl[i]))
-                    else:
-                        key.append(-int(s_hkl[i+1]))
-                        delta = 1
-                # hkl = [int(s_hkl[0]), int(s_hkl[1]), int(s_hkl[2])]
-                hkl = key
-                if self.suf_status[suf_name] in ['added', 'calculated'] and hkl in suf_list:
-
-                    try:
-                        try:
-                            res_loop(st_name+'.sl.'+ suf_name, ise, 1 , up = 'up2')
-                        except ValueError:
-                            self.suf_status[suf_name] = 'Error'
-                            self.suf_en[suf_name] = 'Error'
-                            break
-                    except KeyError:
-                        break
-
-                    self.suf_status[suf_name] = 'calculated'
-
-                    from siman.analysis import suf_en 
-
-                    try:
-                        print(self.suf_cl[suf_name])
-                    except KeyError:
-                        self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
-
-                    try:
-                        e = '-'
-                        e = suf_en(db[self.suf_cl[suf_name]],db[self.bulk_cl_scale])
-                        # self.suf_en = {}
-                        self.suf_en[suf_name] = e
-                    except AttributeError:
-                        self.suf_en[suf_name] = 'Error'
-
-            if self.suf_status == 'Zero slabs constructed':
-                self.suf_en = 'Zero slabs constructed'
-                        
-
-
-
+    def add_relax(self, **argv):
+        from siman.matproj_functions import add_relax_mat
+        add_relax_mat(self, **argv)
+    def move_suf_en(self, **argv):
+        from siman.matproj_functions import move_suf_en_mat
+        move_suf_en_mat(self, **argv)
 
 
     def get_st(self, folder = 'geo/'):
@@ -7339,6 +7196,8 @@ class MP_Compound():
         
         
         name = self.material_id+'.POSCAR'
+        # st = get_structure_from_matproj(mat_proj_id = self.material_id, it_folder = folder)
+
         if name not in os.listdir(folder):
             os.chdir(folder)
             st = get_structure_from_matproj(mat_proj_id = self.material_id, it_folder = folder)
@@ -7422,6 +7281,4 @@ class MP_Compound():
         
 
 
-
-
-
+    

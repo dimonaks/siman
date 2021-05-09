@@ -170,15 +170,19 @@ def write_MP_compound(compound_list, path, properties):
 #############################################
 
 
-def get_matproj_info2(criteria, properties, path = None, price = 0, element_price = None, only_stable = 0, exclude_list = [], all_phases = 0):
+def get_matproj_info(criteria, properties, filename = None, price = 0, element_price = None, only_stable = 0, exclude_list = [], all_phases = 0):
     """
     get data from  materials project server
 
 
-    criteria - string with condition for query method to choice some structures from MatProj
-    properties - list of MatProj structure keys in  m.get_data('mp-12957') to write
-    price - logical 
-    element_price - dict {element: price per kg}
+    criteria (dict) - string with condition for query method to choice some structures from MatProj
+    properties (list) - list of MatProj structure keys in  m.get_data('mp-12957') to write
+    filename (str) - name of cvs database file
+    price (bool) - logical 
+    element_price (dict) - dictionary {element: price per kg}
+    only_stable (bool) - consider only stable compounds from Mat Proj database (highlighted in green)
+    exclude_list (list) - list of compound pretty formulas, which won't be included into final list
+    all_phases (bool) - let to write down all the polymorphs of compound (testing mode)
     """
 
     import pymatgen
@@ -283,7 +287,7 @@ def get_matproj_chem_pot(atom_list =None):
 
 
 
-    data_mp = get_matproj_info2(criteria_string, properties, name = 0, price = 0)  #list of pure elements
+    data_mp = get_matproj_info(criteria_string, properties, name = 0, price = 0)  #list of pure elements
 
     for i in data_mp.keys():
 
@@ -617,3 +621,643 @@ def energy_list(data_list, sg_symbol = None, suf_en = 0, coh_en = 0, ise_bulk = 
     out['coh_en'] = coh_en_f
     out['suf_en'] = suf_en_f
     return out
+
+
+
+
+
+#############################################################################################
+#############################################################################################
+#############################################################################################
+#############################################################################################
+#############################################################################################
+#############################################################################################
+#############################################################################################
+#############################################################################################
+
+def calc_suf_mat(self, ise = '9sm', bulk_cl_name = None,  it_folder = 'bulk/', status = 'create', suf_list = None, 
+            min_slab_size = 12, only_stoich = 1, symmetrize = True, corenum = 4, cluster = 'cee', conv = 1, 
+            create = 1, reset_old = 0, suffix = None): 
+    '''
+    '''
+    from siman.header import db
+    from siman.geo import create_surface2, stoichiometry_criteria,stoichiometry_criteria2
+    from siman.calc_manage   import add_loop, res_loop
+
+
+    if not bulk_cl_name:
+        bulk_cl_name = ['it','ise', '1']
+        
+    if not suf_list:
+        suf_list = [[1,1,0], [1,1,1]]
+
+
+    st_bulk = db[self.bulk_cl_scale].end
+
+    if conv:
+        st_bulk = st_bulk.get_conventional_cell()
+
+    st_name = '.'.join([self.pretty_formula, self.sg_crystal_str, self.sg_symbol])
+    st_name = st_name.replace('/','_')
+    # st_bulk.printme()
+    try:
+        # print(self.suf)
+        self.suf.keys()
+    except AttributeError:
+        self.suf = {}
+        self.suf_status = {}
+
+    try:
+        self.suf_cl.keys()
+    except AttributeError:
+        self.suf_cl = {}
+
+    try:
+        self.suf_en.keys()
+    except AttributeError:
+        self.suf_en = {}
+
+    if reset_old:
+        self.suf = {}
+        self.suf_status = {}
+        self.suf_cl = {}
+        self.suf_en = {}
+
+
+
+
+    ##################### create slab
+    if status == 'create':
+
+
+        try:
+            for surface in suf_list:
+                print(surface)
+
+                if self.suf == {} or ''.join([str(surface[0]),str(surface[1]),str(surface[2])]) not in self.suf.keys():
+
+                    slabs = create_surface2(st_bulk, miller_index = surface,  min_slab_size = min_slab_size, min_vacuum_size = 15, surface_i = 0,
+                      symmetrize = symmetrize, lll_reduce = 1, primitive = 1)
+                    for sl_i in slabs:
+                                st = st_bulk
+                                sl = st.update_from_pymatgen(sl_i)
+                                stoichiometry_criteria2(st,sl)
+                    s_i = 0
+                    if create:
+                        if len(slabs):
+                            for sl_i in slabs:
+                                st = st_bulk
+                                sl = st.update_from_pymatgen(sl_i)
+                                stoichiometry_criteria2(st,sl)
+                                suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(s_i)
+
+                                if self.suf_status == 'Zero slabs constructed':
+                                    self.suf_status = {}
+
+                                self.suf[suf_name] = sl
+                                self.suf_status[suf_name] = 'created'
+                                print(st_name + '\n', surface, s_i+1, ' from ', len(slabs), ' slabs\n', sl.natom, ' atoms'  )
+
+                                s_i+=1
+
+                        else:
+                            self.suf_status = 'Zero slabs constructed'
+                            print('\nWarning!  Zero slabs constructed!\n')
+
+        except AttributeError:
+            self.suf_status = 'Bulk calculation has some problems'
+            print('\nWarning!  Bulk calculation of {} has some problems!!\n'.format(st_name)) 
+
+
+
+    ##################### add slab calc
+
+    if status == 'add':
+        # for surface in suf_list:
+            for suf_name in self.suf_status.keys():
+                if self.suf_status[suf_name] in ['created']:
+                    sl = self.suf[suf_name]
+                    
+                    if only_stoich:
+
+                        if stoichiometry_criteria2(sl, st_bulk):
+                                # print(st_name+'.sl.'+ suf_name, ise, 1, suf_name)
+
+                                add_loop(st_name+'.sl.'+ suf_name+suffix, ise, 1 , 
+                                    input_st = sl,  it_folder = 'slabs_new/'+st_name, up = 'up2', cluster = cluster, corenum = corenum)
+                                self.suf_status[suf_name] = 'added'
+                                self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
+
+                        else:
+                            print('Non-stoichiometric slab')
+
+                    else:
+                        None
+                else:
+                    print('\nThis slab hasn\'t been created yet!\n')
+                    print(self.suf_status[suf_name])
+
+    
+
+
+
+    ##################### res slab calc
+
+    if status == 'res':
+        # print('1111')
+        print(self.suf.keys(), self.suf_status)
+        for suf_name in self.suf.keys():
+            s_hkl = suf_name.split('.')[0]
+            # print(s_hkl)
+            key = []
+            delta = 0
+            for i in range(0,3):
+                i+=delta
+                if s_hkl[i] != '-':
+                    key.append(int(s_hkl[i]))
+                else:
+                    key.append(-int(s_hkl[i+1]))
+                    delta = 1
+            # hkl = [int(s_hkl[0]), int(s_hkl[1]), int(s_hkl[2])]
+            hkl = key
+            if self.suf_status[suf_name] in ['added', 'calculated'] and hkl in suf_list:
+
+                try:
+                    try:
+                        res_loop(st_name+'.sl.'+ suf_name+suffix, ise, 1 , up = 'up2')
+                    except ValueError:
+                        self.suf_status[suf_name] = 'Error'
+                        self.suf_en[suf_name] = 'Error'
+                        break
+                except KeyError:
+                    break
+
+                self.suf_status[suf_name] = 'calculated'
+
+                from siman.analysis import suf_en 
+
+                try:
+                    print(self.suf_cl[suf_name])
+                except KeyError:
+                    self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
+
+                try:
+                    e = '-'
+                    if self.suf_cl[suf_name] in db.keys():
+                        e = suf_en(db[self.suf_cl[suf_name]],db[self.bulk_cl_scale])
+                    # self.suf_en = {}
+                    self.suf_en[suf_name] = e
+                except AttributeError:
+                    self.suf_en[suf_name] = 'Error'
+
+        if self.suf_status == 'Zero slabs constructed':
+            self.suf_en = 'Zero slabs constructed'
+
+    return
+
+
+def calc_suf_stoich_mat(self, ise = '9sm', bulk_cl_name = None,  it_folder = 'bulk/', status = 'create', suf_list = None, 
+        min_slab_size = 12, only_stoich = 1, corenum = 4, cluster = 'cee', conv = 1, create = 1, reset_old_polar = 0, 
+        reset_old_nonpolar = 0, suffix = None, polar = 1, nonpolar = 1): 
+    from siman.header import db
+    from siman.geo import create_surface2, stoichiometry_criteria,stoichiometry_criteria2, symmetry_criteria, calc_k_point_mesh
+    from siman.calc_manage   import add_loop, res_loop
+
+
+    if not bulk_cl_name:
+        bulk_cl_name = ['it','ise', '1']
+        
+    if not suf_list:
+        suf_list = [[1,1,0], [1,1,1]]
+
+
+    st_bulk = db[self.bulk_cl_scale].end.get_conventional_cell()
+
+    # if conv:
+    #     st_bulk = st_bulk.get_conventional_cell()
+
+    st_name = '.'.join([self.pretty_formula, self.sg_crystal_str, self.sg_symbol])
+    st_name = st_name.replace('/','_')
+    # st_bulk.printme()
+
+
+
+    try:
+        # print(self.suf)
+        self.suf_pol.keys()
+    except AttributeError:
+        self.suf_pol = {}
+        self.suf_pol_status = {}
+    try:
+        # print(self.suf)
+        self.suf_nonpol.keys()
+    except AttributeError:
+        self.suf_nonpol = {}
+        self.suf_nonpol_status = {}
+
+    try:
+        self.suf_pol_cl.keys()
+    except AttributeError:
+        self.suf_pol_cl = {}
+    try:
+        self.suf_nonpol_cl.keys()
+    except AttributeError:
+        self.suf_nonpol_cl = {}
+
+    try:
+        self.suf_en_pol.keys()
+    except AttributeError:
+        self.suf_en_pol = {}
+    try:
+        self.suf_en_nonpol.keys()
+    except AttributeError:
+        self.suf_en_nonpol = {}
+
+    if reset_old_polar:
+        self.suf_pol = {}
+        self.suf_pol_status = {}
+        self.suf_pol_cl = {}
+        self.suf_en_pol = {}
+
+    if reset_old_nonpolar:
+        self.suf_nonpol = {}
+        self.suf_nonpol_status = {}
+        self.suf_nonpol_cl = {}
+        self.suf_en_nonpol = {}
+
+
+
+
+    ##################### create slab
+    if status == 'create':
+
+
+        try:
+            for surface in suf_list:
+                print(surface)
+
+                if self.suf_pol == {} or ''.join([str(surface[0]),str(surface[1]),str(surface[2])]) not in self.suf_pol.keys():
+
+                    ###############polar
+                    if polar:
+                        print('Polar_suf')
+                        slabs_polar = create_surface2(st_bulk, miller_index = surface,  min_slab_size = min_slab_size, min_vacuum_size = 15, surface_i = 0,
+                          symmetrize = 0, lll_reduce = 1, primitive = 1)
+                        for sl_i in slabs_polar:
+                                    st = st_bulk
+                                    sl = st.update_from_pymatgen(sl_i)
+                                    print(' Stoichoimetry:',stoichiometry_criteria2(st,sl), ' Eqvuivalent:', sl_i.have_equivalent_surfaces())
+                                    
+                    ############nonpolar
+                    if nonpolar:
+                        print('Nonpolar_suf')
+                        slabs_nonpolar = create_surface2(st_bulk, miller_index = surface,  min_slab_size = min_slab_size, min_vacuum_size = 15, surface_i = 0,
+                          symmetrize = 1, lll_reduce = 1, primitive = 1)
+                        for sl_i in slabs_nonpolar:
+                                    st = st_bulk
+                                    sl = st.update_from_pymatgen(sl_i)
+                                    
+                                    print(' Stoichoimetry:',stoichiometry_criteria2(st,sl), ' Eqvuivalent:', sl_i.have_equivalent_surfaces())
+                    
+                    if create:
+
+                        ###############polar
+                        if polar:
+                            if len(slabs_polar):
+                                s_i = 0
+                                n = 0
+                                for sl_i in slabs_polar:
+                                    st = st_bulk
+                                    sl = st.update_from_pymatgen(sl_i)
+                                    if stoichiometry_criteria2(st,sl) and sl_i.have_equivalent_surfaces() == False:
+                                        # if sl.natom < 31:
+                                            suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(s_i)
+
+                                            # if self.suf_pol_status == 'Zero slabs constructed':
+                                            #     self.suf_pol_status = {}
+
+                                            self.suf_pol[suf_name] = sl
+                                            self.suf_pol_status[suf_name] = 'created'
+                                            n+=1
+
+                                    s_i+=1
+                                print(st_name + ' Polar\n', surface, n, ' from ', len(slabs_polar), ' slabs\n', sl.natom, ' atoms\n'  )
+
+                            else:
+                                suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(0)
+                                self.suf_pol_status[suf_name] = 'Zero slabs constructed'
+                                print('\nWarning!  Zero slabs constructed!\n')
+
+                        ###############nonpolar
+                        if nonpolar: 
+                            if len(slabs_nonpolar):
+                                s_i = 0
+                                n=0
+                                for sl_i in slabs_nonpolar:
+                                    st = st_bulk
+                                    sl = st.update_from_pymatgen(sl_i)
+                                    if stoichiometry_criteria2(st,sl) and sl_i.have_equivalent_surfaces() == True:
+                                    
+
+                                        # if sl.natom < 31:
+                                            suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(s_i)
+
+                                            # if self.suf_nonpol_status == 'Zero slabs constructed':
+                                            #     self.suf_nonpol_status = {}
+
+                                            self.suf_nonpol[suf_name] = sl
+                                            self.suf_nonpol_status[suf_name] = 'created'
+
+                                            n+=1
+                                    s_i+=1
+                                print(st_name + ' Nonolar\n', surface, n, ' from ', len(slabs_nonpolar), ' slabs\n', sl.natom, ' atoms\n'  )
+
+                            else:
+                                suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(0)
+
+                                self.suf_nonpol_status[suf_name] = 'Zero slabs constructed'
+                                print('\nWarning!  Zero slabs constructed!\n')
+
+        except AttributeError:
+            self.suf_pol_status = 'Bulk calculation has some problems'
+            self.suf_nonpol_status = 'Bulk calculation has some problems'
+            print('\nWarning!  Bulk calculation of {} has some problems!!\n'.format(st_name)) 
+
+
+
+    ##################### add slab calc
+
+    if status == 'add':
+        for suf_name in self.suf_pol_status.keys():
+            if self.suf_pol_status[suf_name] != 'Zero slabs constructed':
+                suffix = '.polar'
+
+                if self.suf_pol_status[suf_name] in ['created']:
+                    sl = self.suf_pol[suf_name]
+                    
+                    if only_stoich:
+
+                        if stoichiometry_criteria2(sl, st_bulk):
+                                print(sl.rprimd)
+                                ngkpt=calc_k_point_mesh(sl.rprimd, kspacing = 0.2)
+                                ngkpt=ngkpt[:2]+(1,)
+                                add_loop(st_name+'.sl.'+ suf_name+suffix, ise, 1 , ngkpt = ngkpt,
+                                    input_st = sl,  it_folder = 'slabs_new/'+st_name, up = 'up2', cluster = cluster, corenum = corenum)
+                                self.suf_pol_status[suf_name] = 'added'
+                                self.suf_pol_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name+suffix, ise, '1'])
+
+                        else:
+                            print('Non-stoichiometric slab')
+
+                    else:
+                        None
+                else:
+                    print('\nThis slab hasn\'t been created yet!\n')
+                    print(self.suf_pol_status[suf_name])
+
+        
+            print(self.suf_nonpol_status)
+        for suf_name in self.suf_nonpol_status.keys():
+            if self.suf_nonpol_status[suf_name] != 'Zero slabs constructed':
+                suffix = '.nonpolar'
+
+                if self.suf_nonpol_status[suf_name] in ['created']:
+                    sl = self.suf_nonpol[suf_name]
+                    
+                    if only_stoich:
+
+                        if stoichiometry_criteria2(sl, st_bulk):
+                                # print(st_name+'.sl.'+ suf_name, ise, 1, suf_name)
+                                ngkpt=calc_k_point_mesh(sl.rprimd, kspacing = 0.2)
+                                ngkpt=ngkpt[:2]+(1,)
+                                add_loop(st_name+'.sl.'+ suf_name+suffix, ise, 1 , ngkpt = ngkpt,
+                                    input_st = sl,  it_folder = 'slabs_new/'+st_name, up = 'up2', cluster = cluster, corenum = corenum)
+                                self.suf_nonpol_status[suf_name] = 'added'
+                                self.suf_nonpol_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name+suffix, ise, '1'])
+
+                        else:
+                            print('Non-stoichiometric slab')
+
+                    else:
+                        None
+                else:
+                    print('\nThis slab hasn\'t been created yet!\n')
+                    print(self.suf_nonpol_status[suf_name])
+
+
+    ##################### res slab calc
+
+    if status == 'res':
+    #     # print('1111')
+        print(self.suf_pol.keys(), self.suf_pol_status)
+        suffix = '.polar'
+        for suf_name in self.suf_pol.keys():
+            s_hkl = suf_name.split('.')[0]
+    #         # print(s_hkl)
+            key = []
+            delta = 0
+            for i in range(0,3):
+                i+=delta
+                if s_hkl[i] != '-':
+                    key.append(int(s_hkl[i]))
+                else:
+                    key.append(-int(s_hkl[i+1]))
+                    delta = 1
+            # hkl = [int(s_hkl[0]), int(s_hkl[1]), int(s_hkl[2])]
+            hkl = key
+            if self.suf_pol_status[suf_name] in ['added', 'calculated'] and hkl in suf_list:
+
+                try:
+                    try:
+
+                        res_loop(st_name+'.sl.'+ suf_name+suffix, ise, 1 , up = 'up2')
+                    except ValueError:
+                        self.suf_pol_status[suf_name] = 'Error'
+                        self.suf_en_pol[suf_name] = 'Error'
+                        break
+                except KeyError:
+                    break
+
+                self.suf_pol_status[suf_name] = 'calculated'
+
+                from siman.analysis import suf_en 
+
+                try:
+                    print(self.suf_pol_cl[suf_name])
+                except KeyError:
+                    self.suf_pol_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
+
+                try:
+                    e = '-'
+                    if db[self.suf_pol_cl[suf_name]]:# in db.keys():
+                        e = suf_en(db[self.suf_pol_cl[suf_name]],db[self.bulk_cl_scale])
+                    # self.suf_en = {}
+                    try:
+                        self.suf_en_pol[suf_name] = round(float(e),3)
+
+                    except ValueError:
+                        self.suf_en_pol[suf_name] = e
+                except AttributeError:
+                    self.suf_en_pol[suf_name] = 'Error'
+
+        if self.suf_pol_status == 'Zero slabs constructed':
+            self.suf_en_pol = 'Zero slabs constructed'
+                    
+
+        print(self.suf_nonpol.keys(), self.suf_nonpol_status)
+        suffix = '.nonpolar'
+        for suf_name in self.suf_nonpol.keys():
+            s_hkl = suf_name.split('.')[0]
+    #         # print(s_hkl)
+            key = []
+            delta = 0
+            for i in range(0,3):
+                i+=delta
+                if s_hkl[i] != '-':
+                    key.append(int(s_hkl[i]))
+                else:
+                    key.append(-int(s_hkl[i+1]))
+                    delta = 1
+            # hkl = [int(s_hkl[0]), int(s_hkl[1]), int(s_hkl[2])]
+            hkl = key
+            if self.suf_nonpol_status[suf_name] in ['added', 'calculated'] and hkl in suf_list:
+
+                try:
+                    try:
+
+                        res_loop(st_name+'.sl.'+ suf_name+suffix, ise, 1 , up = 'up2')
+                    except ValueError:
+                        self.suf_nonpol_status[suf_name] = 'Error'
+                        self.suf_en_nonpol[suf_name] = 'Error'
+                        break
+                except KeyError:
+                    break
+
+                self.suf_nonpol_status[suf_name] = 'calculated'
+
+                from siman.analysis import suf_en 
+
+                try:
+                    print(self.suf_nonpol_cl[suf_name])
+                except KeyError:
+                    self.suf_nonpol_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
+
+                try:
+                    e = '-'
+                    if db[self.suf_nonpol_cl[suf_name]]:# in db.keys():
+                        e = suf_en(db[self.suf_nonpol_cl[suf_name]],db[self.bulk_cl_scale])
+                    # self.suf_en = {}
+                    try:
+                        self.suf_en_nonpol[suf_name] = round(float(e),3)
+
+                    except ValueError:
+                        self.suf_en_nonpol[suf_name] = e
+
+
+                except AttributeError:
+                    self.suf_en_nonpol[suf_name] = 'Error'
+
+        if self.suf_nonpol_status == 'Zero slabs constructed':
+            self.suf_en_nonpol = 'Zero slabs constructed'
+
+def add_relax_mat(self, ise, status = 0):
+    from siman.header import db
+    from siman.analysis import suf_en
+    from siman.geo import  calc_k_point_mesh
+
+    if status == 'add':
+        try:
+            self.suf_pol_cl_new.keys()
+        except AttributeError:
+            self.suf_pol_cl_new = {}
+        try:
+            self.suf_nonpol_cl_new.keys()
+        except AttributeError:
+            self.suf_nonpol_cl_new = {}
+
+        for suf in self.suf_pol_cl.keys():
+            # for cl_name in self.suf_pol_cl[suf]:
+                cl_name = self.suf_pol_cl[suf]
+                try:
+                    db[cl_name].e0
+                    ngkpt=calc_k_point_mesh(db[cl_name].end.rprimd, kspacing = 0.2)
+                    ngkpt=ngkpt[:2]+(1,)
+                    db[cl_name].run(ise, ngkpt = ngkpt)
+                    name = cl_name.split('.')[:-2]
+                    name.extend(['ifn',ise, '1'])
+                    name = '.'.join(name)
+                    # print(name)
+                    self.suf_pol_cl_new[suf] = name
+                except AttributeError:
+                    None
+
+        for suf in self.suf_nonpol_cl.keys():
+            # for cl_name in self.suf_nonpol_cl[suf]:
+                cl_name = self.suf_nonpol_cl[suf]
+                try:
+                    db[cl_name].e0
+                    ngkpt=calc_k_point_mesh(db[cl_name].end.rprimd, kspacing = 0.2)
+                    ngkpt=ngkpt[:2]+(1,)
+                    db[cl_name].run(ise, ngkpt = ngkpt)
+                    name = cl_name.split('.')[:-2]
+                    name.extend(['ifn',ise, '1'])
+                    name = '.'.join(name)
+                    # print(name)
+                    self.suf_nonpol_cl_new[suf] = name
+                except AttributeError:
+                    None
+
+    if status == 'res':
+        bulk_new_name = self.bulk_cl_scale.split('.')[:-2]
+        bulk_new_name.extend(['ifn','8newm', '100'])
+        bulk_new_name = '.'.join(bulk_new_name)
+        self.bulk_cl_scale_new = bulk_new_name
+
+        for suf in self.suf_pol_cl_new.keys():
+            try:
+                db[self.suf_pol_cl_new[suf]].res()
+                suf_en(db[self.suf_pol_cl_new[suf]], db[self.bulk_cl_scale_new])
+            except AttributeError:
+                None
+        for suf in self.suf_nonpol_cl_new.keys():
+            try:
+                db[self.suf_nonpol_cl_new[suf]].res()
+                suf_en(db[self.suf_nonpol_cl_new[suf]], db[self.bulk_cl_scale_new])
+            except AttributeError:
+                None
+def move_suf_en_mat(self, only_show = 1):
+    from siman.header import db
+    from siman.geo import stoichiometry_criteria2, symmetry_criteria
+    print('\n\n',self.pretty_formula)
+    # print(self.suf_en)
+    st_bulk = db[self.bulk_cl_scale].end
+    if only_show == 0:
+        self.suf_nonpol_cl = {}
+        self.suf_en_nonpol = {}
+        self.suf_pol_cl = {}
+        self.suf_en_pol = {}
+
+    if self.suf_en != 'Zero slabs constructed':
+        for suf_name in self.suf_en.keys():
+            try:
+                if self.suf_en[suf_name] != 'Error':
+                    print('\n\n\n\n',suf_name, round(self.suf_en[suf_name], 2), 'J/m2')
+                else:
+                    print('\n\n\n\n',suf_name, self.suf_en[suf_name])
+
+                sl = db[self.suf_cl[suf_name]].init
+                if stoichiometry_criteria2(sl, st_bulk, silent = 0):
+                    if symmetry_criteria(sl):
+                        if only_show == 0:
+                            self.suf_nonpol_cl[suf_name] = self.suf_cl[suf_name]
+                            self.suf_en_nonpol[suf_name] = self.suf_en[suf_name]
+                    else:
+                        # print('Non-symmetric')
+                        if only_show == 0:
+                            self.suf_pol_cl[suf_name] = self.suf_cl[suf_name]
+                            self.suf_en_pol[suf_name] = self.suf_en[suf_name]
+
+            except KeyError or AttributeError:
+                None
+
+

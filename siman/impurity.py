@@ -724,13 +724,14 @@ def make_interface(main_slab, m_xc, second_slab, s_xc):
 
         # print('i_center', i_center)
 
-        s_xred = xcart2xred([s_xc], ins.rprimd)[0]
         ins.rprimd[0] = ins.rprimd[0]*x_scale
         ins.rprimd[1] = ins.rprimd[1]*y_scale
         ir = ins.rprimd_len()
+        s_xred = xcart2xred([s_xc], ins.rprimd)[0]
         print('Insert vlength after scaling', ir)
 
         ins.update_xcart()
+        # ins.xcart2xred()
         ins_sc = ins.copy()
         ins_sc.name+='_scaled'
 
