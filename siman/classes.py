@@ -42,7 +42,7 @@ except:
 from siman.header import printlog, print_and_log, runBash, plt
 
 from siman import set_functions
-from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
+from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
 from siman.functions import (read_vectors, read_list, words, read_string,
      element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
@@ -262,6 +262,7 @@ class Structure():
 
         for i, xr in enumerate(st.xred):
             if xred_range[0]  < xr[2] < xred_range[1]:
+                # print(xred_range[0],xr[2],xred_range[1])
                 st.select[i] = [False, False, False] # fix
                 fixed.append(i)
         
@@ -392,9 +393,9 @@ class Structure():
 
     def el_diff(self, st2, mul = 1, silent = 0):
         """
-        Determine difference in number of atoms between two structures
+        Determine difference in number of atoms between two structures self and st2
         mul (int) - allows to compare supercells; self.natom = mul * st2.natom
-
+        
         RETURN:
         dict[key], where key is element and the value is difference in number of atoms of this element
         """
@@ -466,7 +467,11 @@ class Structure():
         return 
 
     def group_magmom(self, tol = 0.3):
-        """"""
+        """
+        Group magmom according to values 
+        tol - tolerance according to which the magmom are grouped
+
+        """
         st = self
         lengths = list(np.around(st.magmom, 2))
         unique = []
@@ -915,6 +920,21 @@ class Structure():
         n = np.linalg.norm
         return n(r[0]), n(r[1]), n(r[2])
 
+
+
+
+
+
+    def pvec(self):
+        """
+        print primitive vectors in formatted way
+        """
+        with np.printoptions(precision=3, suppress=True):
+            print( np.array(self.rprimd) )
+
+        return
+
+
     def add_z(self, z):
         # method appends additional height to the cell
         # negative value of z appends to remove vacuum layer
@@ -1048,7 +1068,7 @@ class Structure():
 
 
 
-    def get_primitive_cell(self):
+    def get_primitive_cell(self, international_monoclinic = True):
         """
         return primitive cell 
         """
@@ -1056,19 +1076,57 @@ class Structure():
 
         sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
 
-        sc = sf.get_primitive_standard_structure() # magmom are set to None
+        sc = sf.get_primitive_standard_structure(international_monoclinic=international_monoclinic) # magmom are set to None
 
         st = self.update_from_pymatgen(sc)
 
+        return st
+
+    def get_refined_structure(self, ):
+        """
+        Get the refined structure based on detected symmetry. 
+        The refined structure is a conventional cell setting with atoms moved to the expected symmetry positions.
+        """
+        st_mp = self.convert2pymatgen()
+
+        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
+
+        sc = sf.get_refined_structure() # magmom are set to None
+        # sc = sf.get_symmetrized_structure() # magmom are set to None
+
+
+        st = self.update_from_pymatgen(sc)
 
         return st
 
-    def get_surface_pos(self, reduced = False):
-        #allows to return positions of top and bottom surfaces (edge atoms) in cartesian
-        #assumed normal to R3
-        #small number is added or subtracted to/from edge atom to overcome further numericall errors
-        # reduced - reduced coordinations
 
+    def get_symmetry_operations(self, symprec = 0.1):
+        """
+        Return symmetry operations as a list of SymmOp objects. 
+        By default returns fractional coord symmops. But cartesian can be returned too.
+        """
+        st_mp = self.convert2pymatgen()
+
+        sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
+
+        sym_op = sf.get_symmetry_operations(cartesian=False)
+
+        return sym_op
+
+
+
+
+    def get_surface_pos(self, reduced = False):
+        """
+        Allows to return positions of bottom and top surfaces (edge atoms) in cartesian
+        assumed normal to R3
+        small number is added or subtracted to/from edge atom to overcome further numericall errors
+            
+            reduced - reduced coordinates
+
+        returns list of two z coordinates [bottom, top]
+        
+        """
         st = self
 
         z1 = 100
@@ -1095,14 +1153,17 @@ class Structure():
         return z
 
 
-    def get_surface_atoms(self, element, surface = 0, surface_width = 0.5 ):
-        #return numbers of surface atoms
-        #elememt (str) - which element is interesting? can be CoO to take two elements
-        #surface_width - which atoms to consider as surface 
-        #surface (int) - 0 or 1 - one of two surfaces; surface 1 has lowest z coordinate
-        #TODO - 
-        #now only along third vector, make more general
-        #PBC may work incorrect
+    def get_surface_atoms(self, element = None, surface = 0, surface_width = 0.5 ):
+        """
+        return numbers of surface atoms
+            elememt (str) - which element is interesting? can be CoO to take two elements; if None than all elements are takes
+            surface_width - which atoms to consider as surface 
+            surface (int) - 0 or 1 - one of two surfaces; surface 1 has smaller z coordinate
+            TODO - 
+            now only along third vector, make more general
+            PBC may work incorrect
+        """
+
         st = self
         surface_atoms = [[],[]]
         
@@ -1117,7 +1178,7 @@ class Structure():
         for i, x in enumerate(st.xred):
             el = els[i]
 
-            if el in element or element is None:
+            if element is None or el in element:
                 # print(x[2])
                 if z[0] <= x[2] < z[0]+suf_width_red:
                     surface_atoms[0].append(i)
@@ -1129,9 +1190,39 @@ class Structure():
         return surface_atoms[surface]
 
 
+    def cover_surface(self, el, d = 1):
+        """
+        Covers both surfaces of the slab with element el, 
+        each surface atoms on top positions
+        
+        the third vector should be parallel to z axis
+
+        el - element name 
+        d - distance in A
+
+        """
+
+
+        suf0_at = self.get_surface_atoms(surface = 0)
+        suf1_at = self.get_surface_atoms(surface = 1)
+        # print(suf_at)
+        st = self.copy()
+
+        coords = []
+        for i in suf0_at:
+            coords.append(st.xcart[i]-np.array([0,0,d]))
+        for i in suf1_at:
+            coords.append(st.xcart[i]+np.array([0,0,d]))
+
+        st = self.add_atoms(coords, element = el)
+
+        return st 
+
+
     def  if_surface_atom(self, i):
         """
-        Based on reduced coordinates
+        Based on reduced coordinates, 
+            i - number of atom from zero 
         """
         st = self
         suf = st.get_surface_pos(reduced = 1)
@@ -1142,7 +1233,9 @@ class Structure():
 
 
     def get_surface_area(self):
-        #currently should be normal to rprim[0] and rprim[1]
+        """
+        currently should be normal to rprim[0] and rprim[1]
+        """
         st = self
         # print()
         return np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
@@ -1283,22 +1376,24 @@ class Structure():
 
 
     def get_dipole(self, ox_states = None, chg_type = 'ox'):
-        #return dipole moment, e*A
-        #
-        # if you need to convert it to debye (D), use 1 D = 0.20819434 eÅ = 3.33564×10−30; 1 eA = 4.8 D
-
+        """ Return dipole moment in e*A calculated by pymatgen
+        ox_states (dict) - oxidation states of elements
+        chg_type (str) - type of charges  if provided in self.charges; see description of self.convert2pymatgen()
+        
+        If you need to convert e*A to debye (D), use 1 D = 0.20819434 eA = 3.33564×10−30 Cm; 1 eA = 4.8 D
+        """
         slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
         return slab.dipole
 
 
 
 
-    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
+    def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
         """
         appends at the end if element is new. Other case insertered according to VASP conventions
         Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
         atoms_xcart (list of ndarray)
-        atoms_xred (list of coordinate lists) - if provided both, this has higher priority (not implemented yet, use xcart!!!)
+        atoms_xred (list of coordinate lists) - if provided both, this has higher priority 
 
         selective (list of lists) - selective dynamics
 
@@ -1326,6 +1421,10 @@ class Structure():
                 st = st.selective_all()
         # print(st.select)
         # sys.exit()
+
+        if atoms_xred is not None:
+            atoms_xcart = xred2xcart(atoms_xred, st.rprimd)
+
 
         natom_to_add = len(atoms_xcart)
         if natom_to_add == 0:
@@ -1887,7 +1986,23 @@ class Structure():
         return st
 
 
+    def remove_at_in_zrange(self, z_range, del_range = 0):
+        # z_range - at 2 remove
+        # del_range: if true  - remove atoms in z_range, if false - remove atoms out of given z_range
 
+        st = copy.deepcopy(self)
+        at2remove = []
+        
+        for i in range(0, st.natom):
+
+            if (z_range[1]<st.xcart[i][2] or st.xcart[i][2]<z_range[0]) and not del_range:
+                at2remove.append(i)
+
+            if z_range[0]<=st.xcart[i][2]<=z_range[1]  and del_range:
+                at2remove.append(i)
+
+        st_new = st.remove_atoms(at2remove)
+        return st_new  
 
 
 
@@ -2026,23 +2141,23 @@ class Structure():
 
 
 
-    def add_vacuum(self, vec, thick):
+    def add_vacuum(self, vector_i, thickness):
         """
-        To be improved
-        vector - along which vector, 0, 1, 2
-        thick - thickness of vector 
+        Allows to add or remove vacuum along one of the rprimd vectors
+        vector_i (int) - index of vector along which vacuum should be added 0, 1, 2
+        thickness (float) - thickness of added (positive) or removed (negative) vacuum 
 
 
         TODO:
-        make thick to be thickness along axis and not vector
+        add capability to add vacuum normal to surface in case of non-orthogonal cells
 
         """
         st = copy.deepcopy(self)
-        v = st.rprimd[vec]
+        v = st.rprimd[vector_i]
         v_l = np.linalg.norm(v)
-        new_len = v_l+thick
+        new_len = v_l+thickness
 
-        st.rprimd[vec]*=new_len/v_l
+        st.rprimd[vector_i]*=new_len/v_l
 
         st.update_xred()
         st.name+='_vac'
@@ -2309,10 +2424,11 @@ class Structure():
             x2 = self.xcart[i2]
         return image_distance(x1, x2, self.rprimd, coord_type = coord_type)[0]
 
-    def remove_close_lying(self, rm_both = 0, rm_first = 0):
+    def remove_close_lying(self, rm_both = 0, rm_first = 0, tol = 0.4):
         """
         rm_both (bool) - if True than remove both atoms, if False than only the second atom is removed
         rm_first (bool) - if True than the first atom of two overlapping is removed, otherwise the second atom is removed
+        tol (float) - atoms separated by distance less than *tol* A are removed
 
         PBC is realized through image_distance
 
@@ -2325,7 +2441,6 @@ class Structure():
 
         """
         st = copy.deepcopy(self)    
-        tol = 0.4
         removed = False
         x1_del = []
         x2_del = []
@@ -2361,6 +2476,117 @@ class Structure():
         st._removed = removed
 
         return st, x1_del, x2_del
+
+
+    def remove_close_lying2(self, tol = 0.4):
+        """
+        Very fast removal, linear with respect to number of atoms
+        Support multiple overlaps
+        Makes a mesh with cubes and determine wich atoms appeared in the mesh 
+
+        Leaves only the first entry, the rest are removed
+
+        
+        TODO:
+        A problem may occur if two-close lying atoms goes into neibouring bins
+            This may be solved by making three additional meshes, 
+            where all atoms are shifted by (tol/2, 0, 0), (0, tol/2, 0), (0, 0, tol/2)
+
+        Problem with PBC, not taken into account
+            can be solved by making mesh for atoms with (tol, tol, tol) shift 
+
+        Then all overlaps detected on any mesh are treated 
+
+        Replace all overlapping atoms by their center of gravity.
+
+
+        """
+        st = copy.deepcopy(self)    
+        
+        st = st.return_atoms_to_cell()
+        vl = np.array(st.rprimd_len() )
+        t = tol/vl
+        # print(meshes)
+        # sys.exit()
+        # shifts_xc = [[0,0,0], [tol, tol, tol], [tol/2, 0, 0], [0, tol/2, 0], [0, 0, tol/2]]
+        # shifts = [[0,0,0], [0.5,0.5,0.5], [t[0]/2, 0, 0], [0, t[1]/2, 0], [0, 0, t[2]/2]]
+        # shifts = [[0,0,0], [1.5*t[0], 0, 0], [0, 1.5*t[1], 0], [0, 0, 1.5*t[2]]]
+        shifts = []
+        space = np.linspace(1.9,2.9,3)
+        if 1:
+            for s1 in space:
+                for s2 in space:
+                    for s3 in space:
+                        s = np.array([s1,s2,s3])
+                        # print(s*t) 
+                        shifts.append(s*t)
+        
+        else:
+            for i in 0,1,2:
+                v = [0,0,0]
+                for s in space:
+                    v[i] = s
+                    # print(v*t)    
+                    shifts.append(v*t)
+
+        # sys.exit()
+
+
+        # print(t)
+        print('Number of shifts is ', len(shifts) )
+
+
+        meshes = [{} for i in shifts]
+
+        
+        NML = (vl/tol).astype(int) # mesh sizes
+
+        # print('Mesh sizes are', NML, )#np.array([1/31, 1/27, 1/36])*NML)
+        for i, xr in enumerate(st.xred):
+            for m, s in zip(meshes, shifts):
+                # print(xr)
+                xrs = return_xred(xr+s)
+                # print(xrs,'\n')
+                p = (xrs*NML).astype(int)
+                pos = str(p[0])+' '+str(p[1])+' '+str(p[2])
+                # print()
+                # print(pos)
+
+                if pos in m:
+                    m[pos].append(i)
+                else:
+                    m[pos] = [i]
+            # print('\n')
+        rem_lists = []
+        for i, m in enumerate(meshes):
+            rem_list_m = []
+            for key in m:
+                if len(m[key]) > 1:
+                    # x = sum([st.xcartxr for ]  )
+                    rem_list_m.extend(m[key][1:])
+                    # print(x)
+            # print('For mesh', i, 'the list of atoms to remove is ',rem_list_m )
+            rem_lists.append(rem_list_m)
+
+        # print( list(set(rem_lists[0]).symmetric_difference(set(rem_lists[1]))) )
+        # print( list(set(rem_lists[2]).symmetric_difference(set(rem_lists[3]))) )
+        rem_flat_list = [item for sublist in rem_lists for item in sublist]
+        # print(rem_flat_list)
+        # print(list(set(rem_flat_list)))
+        nat_before = st.natom
+        st = st.remove_atoms(rem_flat_list)
+        print(nat_before- st.natom, 'atoms were removed')
+
+        return st
+
+
+
+
+
+
+
+
+
 
 
     def find_closest_atom(self, xc = None, xr = None):
@@ -2682,9 +2908,14 @@ class Structure():
 
         return
 
-    def center(self):
-        #return cartesian center of the cell
-        return np.sum(self.xcart, 0)/self.natom
+    def center(self, reduced = 0):
+        #return cartesian or reduced center of the cell
+        if reduced:
+            center = np.sum(self.xred, 0)/self.natom
+        else:
+            center = np.sum(self.xcart, 0)/self.natom
+
+        return center
 
     def center_on(self, i):
         #calc vector which alows to make particular atom in the center 
@@ -3208,10 +3439,10 @@ class Structure():
         """
         Find primitive cell and write it in cif format
         
-
+        filename (str) - name of produced cif file
         mcif (bool) - if True, than write mcif file with magnetic moments included, primitive cell is not supported
-
-
+        symprec (float) - symmetry precision, symprec = None allows to write the structure as is
+        write_prim (bool) - convert structure to primitive 
         
 
         """
@@ -3344,6 +3575,16 @@ class Structure():
     def vesta(self, *args, **kwargs):
         kwargs['program'] = 'vesta'
         self.jmol(*args, **kwargs)
+
+
+
+    @property
+    def vlen(self):
+        #return vector lengths
+        r = self.rprimd
+        n = np.linalg.norm
+        return n(r[0]), n(r[1]), n(r[2])
+
 
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation
@@ -3683,14 +3924,15 @@ class Calculation(object):
             if hasattr(st, 'select') and len(st.select) > 0 and not None in st.select:
                 f.write("\nselect  ")
                 for v in st.select:
-                    print(v)
+                    # print(type(v[0]))
+                    # sys.exit()
                     for i in 0,1,2:
-                        if v[i] == 'T':
+                        if v[i] == 'T' or v[i] is True:
                             v[i] = 1
                         else:
                             v[i] = 0
                     f.write("{:d} {:d} {:d}\n".format(v[0], v[1], v[2])  )
-
+                    # print(v)
             if hasattr(st, 'vel') and len(st.vel) > 0:
                 f.write("\nvel ")
                 for v in st.vel:
@@ -3917,26 +4159,43 @@ class Calculation(object):
 
 
 
-    def occ_diff(self, cl2, i_at = 0):
+    def occ_diff(self, cl2, li_at1 = None, li_at2 = None):
         """
-        difference bettween occupation matricies
+        difference bettween occupation matricies for atoms li_at1 from self and li_at2 from cl2
+
+        li_at1  -  list of atom numbers from self
+        li_at2  -  list of atom numbers from cl2
+        both lists should have the same length and the differences are taken between items at the same positions in lists
+
+
+        otherwise
+
+        self and cl2 should be commensurate, ideally having completly the same order of atoms
         first five for spin up
         then five for spin down
 
+
+
         """
-        TM = self.end.get_transition_elements(fmt = 'n')
+        if li_at1 or li_at2:
+            TM1 = li_at1
+            TM2 = li_at2
+
+        else:
+            TM1 = self.end.get_transition_elements(fmt = 'n')
+            TM2 = self.end.get_transition_elements(fmt = 'n')
         # print(TM)
         max_diff = 0.01
         nodiff  = True
-        for i_at in TM:
-            occ1 = self.occ_matrices.get(i_at)
-            occ2 = cl2.occ_matrices.get(i_at)
+        for i_at1, i_at2 in zip(TM1, TM2):
+            occ1 = self.occ_matrices.get(i_at1)
+            occ2 = cl2.occ_matrices.get(i_at2)
 
             if not occ1:
-                print('Warning! no', i_at, 'in self, skipping')
+                print('Warning! no', i_at1, 'in self, skipping')
                 continue
             if not occ2:
-                print('Warning! no', i_at, 'in cl2, skipping')
+                print('Warning! no', i_at2, 'in cl2, skipping')
                 continue
 
             occ1 = np.array(occ1)
@@ -3957,7 +4216,7 @@ class Calculation(object):
             if abs(m1) > max_diff:
                 nodiff = False
                 printlog('max diff larger than ', max_diff, 'was detected', imp = 'y')
-                printlog('For atom ', i_at, 'max diff is ', '{:0.2f}'.format(m1), imp = 'y')
+                printlog('For atom ', i_at1, 'and atom', i_at2,  'max diff is ', '{:0.2f}'.format(m1), imp = 'y')
                 printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
         if nodiff:
             printlog('No diffs larger than', max_diff, '; Last matrix:', imp = 'y')
@@ -4248,9 +4507,8 @@ class Calculation(object):
 
 
         elif kspacing:
-            # print(dir(self.init))
+            # print(self.init.rprimd)
             self.init.recip = self.init.get_recip()
-            
             N_from_kspacing = calc_ngkpt(self.init.recip, kspacing)
 
             N = N_from_kspacing
@@ -5579,6 +5837,7 @@ class Calculation(object):
 
 
 
+
 class CalculationAbinit(Calculation):
     """docstring for CalculationAbinit"""
     pass
@@ -6497,6 +6756,27 @@ class CalculationVasp(Calculation):
         return write_occmatrix(self.occ_matrices, self.get_path())
 
 
+    def vasp_dipole_center(self):
+        """
+        Determine dipole center in reduced coordinates 
+        based on vasp definition, https://www.vasp.at/wiki/index.php/DIPOL
+        as only number of position of minimum charge density is given
+        
+        TODO
+        works only in the case of dipole along z axis, as min_pos is read only for one direction
+        
+        """
+
+        if hasattr(self, 'ngxf'):
+            dc = return_xred([0,0, self.dipole_min_pos[-1]/self.ngxf[2]+0.5])[2]
+        else:
+            dc = None
+
+        return dc
+
+
+
+
     def bader_coseg():
 
         "used in coseg project Ti- C,O" 
@@ -6888,179 +7168,20 @@ class MP_Compound():
                     print(name_scale, '\tUnfinished calculation!!!\n\n')
 
 
-    def calc_suf(self, ise = '9sm', bulk_cl_name = None,  it_folder = 'bulk/', status = 'create', suf_list = None, 
-            min_slab_size = 12, only_stoich = 1, symmetrize = True, corenum = 4, cluster = 'cee', conv = 1, create = 1, reset_old = 0):
-        from siman.header import db
-        from siman.geo import create_surface2, stoichiometry_criteria
-        from siman.calc_manage   import add_loop, res_loop
+    def calc_suf(self, **argv):
+        from siman.matproj_functions import calc_suf_mat
+        calc_suf_mat(self, **argv)
 
+    def calc_suf_stoich(self, **argv):
+        from siman.matproj_functions import calc_suf_stoich_mat
+        calc_suf_stoich_mat(self, **argv)
 
-        if not bulk_cl_name:
-            bulk_cl_name = ['it','ise', '1']
-            
-        if not suf_list:
-            suf_list = [[1,1,0], [1,1,1]]
-
-
-        st_bulk = db[self.bulk_cl_scale].end
-
-        if conv:
-            st_bulk = st_bulk.get_conventional_cell()
-
-        st_name = '.'.join([self.pretty_formula, self.sg_crystal_str, self.sg_symbol])
-        st_name = st_name.replace('/','_')
-        # st_bulk.printme()
-        try:
-            # print(self.suf)
-            self.suf.keys()
-        except AttributeError:
-            self.suf = {}
-            self.suf_status = {}
-
-        try:
-            self.suf_cl.keys()
-        except AttributeError:
-            self.suf_cl = {}
-
-        try:
-            self.suf_en.keys()
-        except AttributeError:
-            self.suf_en = {}
-
-        if reset_old:
-            self.suf = {}
-            self.suf_status = {}
-            self.suf_cl = {}
-            self.suf_en = {}
-
-
-
-
-        ##################### create slab
-        if status == 'create':
-
-
-            try:
-                for surface in suf_list:
-                    print(surface)
-
-                    if self.suf == {} or ''.join([str(surface[0]),str(surface[1]),str(surface[2])]) not in self.suf.keys():
-
-                        slabs = create_surface2(st_bulk, miller_index = surface,  min_slab_size = min_slab_size, min_vacuum_size = 15, surface_i = 0,
-                          symmetrize = symmetrize, lll_reduce = 1, primitive = 1)
-                        
-                        s_i = 0
-                        if create:
-                            if len(slabs):
-                                for sl_i in slabs:
-                                    st = st_bulk
-                                    sl = st.update_from_pymatgen(sl_i)
-                                    suf_name = str(surface[0])+str(surface[1])+str(surface[2]) +'.'+str(s_i)
-
-                                    if self.suf_status == 'Zero slabs constructed':
-                                        self.suf_status = {}
-
-                                    self.suf[suf_name] = sl
-                                    self.suf_status[suf_name] = 'created'
-                                    print(st_name + '\n', surface, s_i+1, ' from ', len(slabs), ' slabs\n', sl.natom, ' atoms'  )
-
-                                    s_i+=1
-
-                            else:
-                                self.suf_status = 'Zero slabs constructed'
-                                print('\nWarning!  Zero slabs constructed!\n')
-
-            except AttributeError:
-                self.suf_status = 'Bulk calculation has some problems'
-                print('\nWarning!  Bulk calculation of {} has some problems!!\n'.format(st_name)) 
-
-
-
-        ##################### add slab calc
-
-        if status == 'add':
-            # for surface in suf_list:
-                for suf_name in self.suf_status.keys():
-                    if self.suf_status[suf_name] in ['created']:
-                        sl = self.suf[suf_name]
-                        
-                        if only_stoich:
-
-                            if stoichiometry_criteria(sl, st_bulk):
-                                    # print(st_name+'.sl.'+ suf_name, ise, 1, suf_name)
-
-                                    add_loop(st_name+'.sl.'+ suf_name, ise, 1 , 
-                                        input_st = sl,  it_folder = 'slabs_new/'+st_name, up = 'up2', cluster = cluster, corenum = corenum)
-                                    self.suf_status[suf_name] = 'added'
-                                    self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
-
-                            else:
-                                print('Non-stoichiometric slab')
-
-                        else:
-                            None
-                    else:
-                        print('\nThis slab hasn\'t been created yet!\n')
-                        print(self.suf_status[suf_name])
-    
-        
-
-
-
-        ##################### res slab calc
-
-        if status == 'res':
-            # print('1111')
-            print(self.suf.keys(), self.suf_status)
-            for suf_name in self.suf.keys():
-                s_hkl = suf_name.split('.')[0]
-                # print(s_hkl)
-                key = []
-                delta = 0
-                for i in range(0,3):
-                    i+=delta
-                    if s_hkl[i] != '-':
-                        key.append(int(s_hkl[i]))
-                    else:
-                        key.append(-int(s_hkl[i+1]))
-                        delta = 1
-                # hkl = [int(s_hkl[0]), int(s_hkl[1]), int(s_hkl[2])]
-                hkl = key
-                if self.suf_status[suf_name] in ['added', 'calculated'] and hkl in suf_list:
-
-                    try:
-                        try:
-                            res_loop(st_name+'.sl.'+ suf_name, ise, 1 , up = 'up2')
-                        except ValueError:
-                            self.suf_status[suf_name] = 'Error'
-                            self.suf_en[suf_name] = 'Error'
-                            break
-                    except KeyError:
-                        break
-
-                    self.suf_status[suf_name] = 'calculated'
-
-                    from siman.analysis import suf_en 
-
-                    try:
-                        print(self.suf_cl[suf_name])
-                    except KeyError:
-                        self.suf_cl[suf_name] = '.'.join([st_name+'.sl.'+ suf_name, ise, '1'])
-
-                    try:
-                        e = '-'
-                        e = suf_en(db[self.suf_cl[suf_name]],db[self.bulk_cl_scale])
-                        # self.suf_en = {}
-                        self.suf_en[suf_name] = e
-                    except AttributeError:
-                        self.suf_en[suf_name] = 'Error'
-
-            if self.suf_status == 'Zero slabs constructed':
-                self.suf_en = 'Zero slabs constructed'
-                        
-
-
-
+    def add_relax(self, **argv):
+        from siman.matproj_functions import add_relax_mat
+        add_relax_mat(self, **argv)
+    def move_suf_en(self, **argv):
+        from siman.matproj_functions import move_suf_en_mat
+        move_suf_en_mat(self, **argv)
 
 
     def get_st(self, folder = 'geo/'):
@@ -7075,6 +7196,8 @@ class MP_Compound():
         
         
         name = self.material_id+'.POSCAR'
+        # st = get_structure_from_matproj(mat_proj_id = self.material_id, it_folder = folder)
+
         if name not in os.listdir(folder):
             os.chdir(folder)
             st = get_structure_from_matproj(mat_proj_id = self.material_id, it_folder = folder)
@@ -7158,6 +7281,4 @@ class MP_Compound():
         
 
 
-
-
-
+    

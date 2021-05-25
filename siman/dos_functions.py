@@ -58,16 +58,20 @@ def det_gravity2(energy, dos, Erange = (-100, 0)):
 
     return gc
 
-def det_gravity(dos, Erange = (-100, 0)):
+def det_gravity(dos, Erange = (-100, 0), key = None):
     """Determine center of gravity for DOS and return values of energy for d6 orbitals in list
     INPUT:
     dos - ase dos type with added d6 - sum of d orbitals over neighbors to impurity atoms
     Erange - window of energy to determine center of gravity
     """
+
+    if key is None:
+        key = 'd6'
+
     sum_dos_E = {}
     sum_dos   = {}
-    sum_dos['d6'] = 0
-    sum_dos_E['d6'] = 0
+    sum_dos[key] = 0
+    sum_dos_E[key] = 0
 
     for i, E in enumerate(dos.energy):
         
@@ -76,11 +80,14 @@ def det_gravity(dos, Erange = (-100, 0)):
 
         if E > Erange[1]: 
             break
-        
-        sum_dos['d6']   += dos.d6[i] 
-        sum_dos_E['d6'] += dos.d6[i]*E 
+        if key == 'd6':
+            sum_dos['d6']   += dos.d6[i] 
+            sum_dos_E['d6'] += dos.d6[i]*E 
 
-    d6_gc = sum_dos_E['d6']/sum_dos['d6']
+        else:
+            pass
+
+    d6_gc = sum_dos_E[key]/sum_dos[key]
 
 
 
@@ -868,6 +875,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             # def autocorr(x):
             #     result = np.correlate(x, x, mode='full')
             #     return result[result.size/2:]
+
+
+        
 
 
     printlog("------End plot_dos()-----\n\n")
