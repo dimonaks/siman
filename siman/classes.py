@@ -2418,9 +2418,9 @@ class Structure():
 
         """
         # print(self.xcart)
-        if i1:
+        if i1 is not None:
             x1 = self.xcart[i1]
-        if i2:
+        if i2 is not None:
             x2 = self.xcart[i2]
         return image_distance(x1, x2, self.rprimd, coord_type = coord_type)[0]
 

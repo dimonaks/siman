@@ -1270,4 +1270,3 @@ def move_suf_en_mat(self, only_show = 1):
             except KeyError or AttributeError:
                 None
 
-

@@ -1286,6 +1286,7 @@ def polaron_analysis(cl, readfiles):
     iat2 = cl.params['polaron']['iend']
     mode = cl.params['polaron'].get('mode') or 'inherit'
     cl2.res(readfiles = readfiles)
+    # print(iat1, iat2)
     d = cl.end.distance(iat1, iat2)
 
     if mode == 'inherit':
@@ -1297,9 +1298,10 @@ def polaron_analysis(cl, readfiles):
         verlist = verlist1 + verlist2
         atom_pos = atom_pos1 + atom_pos2
     else:
-        verlist = [1]+list(range(3, 3+images))+[2]
-
-        atom_pos = np.linspace(0,d, images+2)
+        verlist1 = [1]+list(range(3, 3+images))+[2]
+        verlist2 = verlist1
+        atom_pos1 = np.linspace(0,d, images+2)
+        atom_pos2 = list(reversed(np.linspace(0,d, len(verlist2))))
 
     mep_energies1 = []
     mep_energies2 = []
@@ -1324,7 +1326,7 @@ def polaron_analysis(cl, readfiles):
 
     if 1: 
         #plot simple
-        n = 6
+        n = images
         pos1 = atom_pos1[0:n]
         e1   = mep_energies1[0:n]
         pos2 = atom_pos2[0:n]
@@ -1362,15 +1364,18 @@ def polaron_analysis(cl, readfiles):
             else:
                 e1_fine.append(e2)
                 pos1_fine.append(p2)
-
+        if max(e1_fine) > e1_fine[int(len(e1_fine)/2)]:
+            index = e1_fine.index(max(e1_fine))
+            del e1_fine[index]
+            del pos1_fine[index]
             # e = e1_fine
-
         fit_and_plot(
         # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
             a1 = (pos1_fine, e1_fine, '-or'),
             # power = 2, 
             params = {'xlim_power':(0, 4), 'y0':1}, 
-            ylim = (-0.02, 0.2), ver = False,
+            # ylim = (-0.02, 0.2), 
+            ver = False,
             xlim = (-0.02, 0.02+max(pos1_fine)),
             filename = 'figs/'+name_without_ext,
             xlabel = 'Position, (${\AA}$)',

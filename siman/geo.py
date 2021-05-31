@@ -77,6 +77,49 @@ def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = 
     else:
         return d[0], d[1] # old behaviour
 
+def image_vector(st, x1, x2,  coord_type = 'xcart'):
+    """
+    Calculate smallest vector between two atoms 
+    correctly treating periodic boundary conditions and oblique cells.
+    x1, x2 - vector[3] xcart coordinates of two atoms
+    r - rprimd of cell
+   
+    coord_type (str) 
+        - 'xred'
+        - 'xcart'
+
+    """
+    # import numpy as np
+
+    d = [] # list of distances between 1st atom and images of 2nd atom
+    x2i_list = []
+    r= st.rprimd
+    order = 1
+    # x1 = st.xcart[x1]
+    # x2 = st.xcart[x2]
+    if coord_type == 'xcart':
+        def dr(i,j,k):
+            return (r[0] * i + r[1] * j + r[2] * k)
+    if coord_type == 'xred':
+        a1=np.array([1,0,0])
+        a2=np.array([0,1,0])
+        a3=np.array([0,0,1])
+        def dr(i,j,k):
+            return (a1 * i + a2 * j + a3 * k)
+
+    for i in range(-order, order+1):
+        for j in range(-order, order+1):
+            for k in range(-order, order+1):
+                x2i = x2 +  dr(i,j,k) #determine coordinates of image of atom 2 in corresponding image cells
+                d.append(   np.linalg.norm(x1 - x2i)   )
+                x2i_list.append(x2i)
+    
+    dmin = min(d)
+    pos = d.index(dmin)
+    x2i = x2i_list[pos]
+
+    vec = (x1-x2i)/2
+    return  vec
 
 def scale_cell_uniformly(st, scale_region = None, n_scale_images = 7, parent_calc_name = None, ):
     """

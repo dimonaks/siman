@@ -1183,7 +1183,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             st1_vis.write_poscar('xyz/'+it+'/1.POSCAR')
             st2_vis.write_poscar('xyz/'+it+'/100.POSCAR')
             sts = interpolate(st1, st2, images= pm['images'], write_poscar = 3, poscar_folder = 'xyz/'+it+'/' )
-            del pm['st1'], pm['st2'] #not needed to serialize
+            # del pm['st1'], pm['st2'] #not needed to serialize
 
             inputset =setlist[0]
             mode = 'inherit'
