@@ -37,11 +37,34 @@ def normal(v1, v2):
     #normal to two vectors
     return np.cross(v1, v2)
 
+def get_mismatch(a, b):
+    """
+    relative mistmatch between the lattice vectors a and b
+    """
+    a = np.array(a)
+    b = np.array(b)
+    return np.linalg.norm(b) / np.linalg.norm(a) - 1
+
+
 
 def red_prec(value, precision = 100.):
     #
     a = value * precision
     return round(a)/1./precision
+
+def return_xred(xr, shift = 0):
+    # return reduced values to [0-shift, 1-shift] range or
+    # 
+    bob = 0-shift; upb = 1-shift;
+
+    for j in 0,1,2:
+        if xr[j]  < bob:  
+            xr[j] = xr[j] - int(xr[j]) + 1 #allows to account that xr can be more than 2
+
+        if xr[j]  >= upb:  
+            xr[j] = xr[j] - int(xr[j]) 
+
+    return xr
 
 
 

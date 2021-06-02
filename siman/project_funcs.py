@@ -19,11 +19,12 @@ from siman.picture_functions import fit_and_plot
 from siman.table_functions import table_geometry, table_potentials, generate_latex_report
 
 from siman.small_functions import merge_dics as md, makedir
+from siman.small_functions import list2string, cwd, return_xred, get_mismatch
 from siman.functions import invert
 from siman.calc_manage import add, res, add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
 from siman.neb import add_neb
 from siman.classes import Calculation
-from siman.analysis import calc_redox,  matrix_diff
+from siman.analysis import calc_redox,  matrix_diff, interface_en
 from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions, create_single_antisite
 from siman.inout import write_occmatrix
 from siman.database import add_to_archive_database
@@ -4182,12 +4183,13 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
         del add_loop_dic['calc_method']
     it_new = name
     if add: 
-        add_loop(it_new, ise, 1, up = 'up2', calc_method = calc_method, inherit_option = 'inherit_xred', scale_region = (-5, 3), input_st = st, it_folder = it_folder, **add_loop_dic)
+        printlog('Calc_method', calc_method, imp = 'y')
+        add_loop(it_new, ise, 1, up = 'up2', calc_method = calc_method, inherit_option = 'inherit_xred', input_st = st, it_folder = it_folder, **add_loop_dic)
 
     else:
         idd = (it_new+suf, ise, 100)
         if fit:
-            res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
+            res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfomag', up = up_res)
 
         else:
             res_loop(*idd, show = 'fo', up = up_res)#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
@@ -4804,3 +4806,432 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
 
 
 
+
+def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5, inter_term_i = 0, ab_shift = None, fix = None, 
+    exch = 0, calc_type = 'interface', ise = '1m5', min_vacuum_size = 20,
+    name = None, show = 1, add = 0, conts = None, old_name = 0, iopt = 'full_chg', iopt_lists = None, ise_lists = None, **kwargs):
+    """
+    Build slab with interface using pymatgen class InterfaceBuilder
+    Automatically finds the surface of the film layer with minimal mismatch for the given substrate surface
+
+
+    substrate_cl (Caluclation) - calculation with bulk substrate structure (a unit cell can be used)
+    film_cl (Caluclation) - calculation with film structure (a unit cell can be used)
+    sub_surface (list) - Miller indecies of substrate surface
+    sl (int) - number of substrate layers
+    fl (int) - number of film layers
+    mi (int) - index of interface structure; Several interfaces are constructed, usually 3-5; They have different sizes 
+    and different orientations
+    sh (float) - shift of film relative to substrate in A (More negative value means smaller separation)
+    inter_term_i (int) - index of interface termination 
+
+    ab_shift (length-2 list of float) - offset_vector along the interface plane in fractional coordinates
+    fix (list ) - list with two values: range of xred coordinates along 3d vector of atoms to be fixed
+    exch (bool) - if 1 than first and second vectors are exchanged
+
+    min_vacuum_size (float) - minimum thickness of added vacuum
+
+    ise (str) - default calculation set predefined in header.varset
+    iopt (str) - default type of inheritance, the same options as in self.add()
+    
+    
+    calc_type (str) - choose which type of calculation should be performed
+        'interface'
+        'substrate'
+        'film'
+    conts (dict of int) - allows to continiue calculation if more relaxation steps are required; 
+                can be used more than one time, the number shows the step;
+                should be manually increased step by step from 1 to n.
+    the keys are calc_type
+
+    ise_lists (dict of lists) - allows to use different ise on different steps
+    iopt_lists (dict of lists) - allows to use different types of inheritance on different steps
+    the keys are calc_type
+
+
+
+    name (str) - it name of created calculation, if None automatic name is created from input cl
+    show (bool) - open jmol with interface slab
+    add (bool) - if 1 then new calculation is created or updated
+
+
+    old_name (int) - used for compatibility with old naming conventions
+
+    kwargs - passed to add_loop()
+
+    
+    TODO
+    automatic check up that interface termination and film/substrate terminations are coincident
+
+
+    """
+
+    from pymatgen.analysis.interface import InterfaceBuilder
+    from  pymatgen.analysis import interface
+
+
+
+    # if it in 
+    # del header.struct_des[it]
+    if 'it_folder' not in kwargs:
+        kwargs['it_folder'] = substrate_cl.sfolder
+
+    
+    # print(cont == 0,show or add))
+    # sys.exit()
+
+    def build_slabs(calc_type = None, info_key = None):
+        sti = substrate_cl.end.copy()
+        sub = substrate_cl.end.convert2pymatgen()
+        film = film_cl.end.convert2pymatgen()
+
+        itf = InterfaceBuilder(sub, film)
+
+
+        # sl = 1; fl = 1; mi = 1; sh  = -0.5
+
+        # sub_suf = [0,0,1]
+        # print(sf)
+        itf.generate_interfaces(substrate_millers = [sub_surface], substrate_layers = sl, 
+         film_layers = fl, match_index = mi) 
+
+
+        with cwd('./xyz'):
+            # print(Gr_LO2.get_summary_dict())
+            ''
+            # itf.write_all_structures()
+            # print(interfaces)
+            # print(itf.matches)
+        t1 = itf.interfaces[inter_term_i] # different terminations 
+        t1.change_z_shift(sh)
+        t1.shift_film_along_surface_lattice(*ab_shift)
+
+
+
+        s1 = t1.substrate
+        # s1 = itf.modified_substrate_structures[sub_term_i] # slab with vacuum, lattice constants correspond to bulk
+        
+
+        # f1 = itf.modified_film_structures[film_term_i] # slab with vacuum, lattice constants correspond to bulk
+        f1 = t1.film
+
+        # s1 = itf.strained_substrate #bulk structure with vectors the same as in interface
+        # f1 = itf.strained_film #bulk structure with vectors the same as in interface
+
+        f1_m = t1.modified_film_structure
+        s1_m = t1.modified_sub_structure
+        # print(dir(t1))
+        # sys.exit()
+
+        slabs = {}
+        # st = sti.copy()
+        for s, name in zip([t1, s1, f1, s1_m, f1_m], ['interface', 'substrate', 'film', 'substrate_m', 'film_m']):
+            st = sti.update_from_pymatgen(s)
+            st.name +='_'+name
+            st = st.return_atoms_to_cell()
+
+
+            if name in ['substrate_m', 'film_m']:
+                #just needed to calculate mismatch
+                slabs[name] = st
+                continue
+
+            if 0:
+                if name == 'interface':
+                    R = st.rprimd
+                    st_interface = st.copy()
+                else:
+                    # print(st.rprimd)
+                    # st.pvec()
+                    if 0:
+                        #take structures prepared by pymatgen and modify vectors
+                        st.rprimd[0:2] = R[0:2]
+                        st.update_xcart()
+
+
+            
+            if 1:
+                #normalize vacuum thickness
+                if st.rprimd[2][2] < 0:
+                    st = st.invert_axis(2)
+
+                pos = st.get_surface_pos()
+                slab_thickness = pos[1] - pos[0]
+                current_vac_t = st.rprimd_len()[2] - slab_thickness
+                # print('Vacuum thickness from pymatgen:', current_vac_t)
+                vaccum_add = min_vacuum_size - current_vac_t
+                st = st.add_vacuum(2, vaccum_add)
+                pos = st.get_surface_pos() # get bottom position
+                # print(pos)
+                st = st.shift_atoms(vector_cart = [0,0, -pos[0]+0.2])
+                pos = st.get_surface_pos() # get bottom position
+                # print(pos)
+
+
+
+
+            if st.get_volume()<0:
+                st = st.exchange_axes(0,1)
+
+
+            if fix and name in ['interface', 'substrate']:
+                st = st.fix_layers(xcart_range = fix, highlight = 1) 
+
+            slabs[name] = st
+
+            print('For slab', name, ':')
+            print('cell vectors:')
+            st.pvec()
+            print('Slab thickness:', slab_thickness)
+
+            print('Number of atoms: ', st.natom)
+            print('Volume is ', st.get_volume())
+            # misfit = 
+
+            # sti.pvec()
+            if st.get_volume()<0:
+                printlog('Warning! Volume of slab is negative, use *exch*  to echange first and second vectors')
+
+            st.write_cif(mcif = 1)
+            if show:
+                ''
+                st.jmol(r=2)
+
+        #mismatch
+        sts = slabs['substrate_m']
+        stf = slabs['film_m']
+        # sts.jmol()
+        mx = get_mismatch(sts.rprimd[0], stf.rprimd[0])
+        my = get_mismatch(sts.rprimd[1], stf.rprimd[1])
+        print('Vectors lengths of unstrained subs: {:5.2f} {:5.2f} {:5.2f}'.format(*sts.vlen))
+        print('Vectors lengths of unstrained film: {:5.2f} {:5.2f} {:5.2f}'.format(*stf.vlen))
+        print('Average vectors lengths: {:5.2f} {:5.2f} {:5.2f}'.format(*(np.array(stf.vlen)+np.array(sts.vlen))/2))
+        # print('Mismatches are {:.1f} % and {:.1f} % relative to substrate; negative means that film vector is smaller'.format(mx*100, my*100))
+        
+
+        if info_key not in db:
+            db[info_key] = {}
+        db[info_key]['mismatch'] = [mx,my]
+
+
+        return slabs
+
+
+    def get_keys(calc_type):
+        keys = {}
+        nonlocal ab_shift, name, conts, iopt_lists, ise_lists
+
+
+        if 'fi' in calc_type:
+            calc_type = 'film'
+        if 'su' in calc_type:
+            calc_type = 'substrate'
+        if 'in' in calc_type:
+            calc_type = 'interface'
+
+        # print(conts, calc_type)
+        if conts is None:
+            conts = {}
+        if ise_lists is None:
+            ise_list = {}
+        if iopt_lists is None:
+            iopt_lists = {}
+
+
+        cont      = conts.get(calc_type) or 0
+        ise_list  = ise_lists.get(calc_type)
+        iopt_list = iopt_lists.get(calc_type)
+        # print(cont)
+        
+        if ise_list is None:
+            ise_list = [ise for i in range(cont+1)]
+
+        if iopt_list is None:
+            iopt_list = [iopt for i in range(cont)]
+
+
+
+        if ab_shift is None:
+            ab_shift = [0,0]
+
+        if ab_shift[0] == 0:
+            a_str = ''
+        else:
+            a_str = 'a'+str(ab_shift[0]).replace('.', '_')
+
+        if ab_shift[1] == 0:
+            b_str = ''
+        else:
+            b_str = 'b'+str(ab_shift[1]).replace('.', '_')
+
+
+
+        sf = list2string(sub_surface, '')
+        sh_str = str(sh).replace('.', '_')
+
+        if not name:
+
+            if old_name == 1:
+                aname = substrate_cl.id[0] + '.' + substrate_cl.id[0] #error with name in first calculations
+            else:
+                aname = substrate_cl.id[0] + '.' + film_cl.id[0]
+
+            if old_name in [1,2]:
+                it = aname+'.'+sf+'.'+str(sl)+str(fl)+str(mi)
+            else:
+                it = aname+'.'+sf+'.'+str(sl)+str(fl)+str(mi)+'sh'+sh_str+'t'+str(inter_term_i)+a_str+b_str
+     
+            it_int = it
+            
+            if calc_type == 'substrate':
+                # it = aname+'.'+sf+'.'+str(sl)+str(mi)+'t'+str(0)+'.sub'
+                it = aname+'.'+sf+'.'+str(sl)+str(mi)+'t'+str(inter_term_i)+'.sub'
+            if 'film' in calc_type:
+                it = aname+'.'+sf+'.'+str(fl)+str(mi)+'t'+str(inter_term_i)+'.'+calc_type#+'2'
+            # print(it, calc_type)
+            # sys.exit()
+
+        else:
+            it = name
+            it_int = it
+
+
+
+
+
+        keys['key0'] = (it, ise_list[0], 1)
+        new_ise = None 
+        if cont:
+            iopt_ss_dict = {'full_nomag':'.ifn', 'full':'.if', 'full_chg':'.ifc'}
+
+            iopt_ss_list = [iopt_ss_dict[key] for key in iopt_list][0:cont-1]
+
+            suffix = list2string(iopt_ss_list, '')
+            # print(suffix)
+            # sys.exit()
+            
+            if len(ise_list) < cont:
+                cur_ise = ise_list[-1]
+            else:
+                cur_ise = ise_list[cont-1]
+
+            if len(ise_list) < cont+1:
+                new_ise = ise_list[-1] # just use last
+            else:
+                new_ise = ise_list[cont]
+
+            # print(cont)
+            keys['key_cont'] = (it+suffix, cur_ise, 1)
+            keys['key_cont_new'] = (it+suffix+iopt_ss_dict[iopt_list[cont-1]], new_ise, 1)
+
+        for key in ['key0', 'key_cont', 'key_cont_new']: #determine the latest finished calculation
+            # print(keys[key])
+            if key in keys:
+                idd = keys[key]
+                if idd in db and '4' in db[idd].state:
+                    keys['key_last_ready'] = keys[key]
+
+
+
+        return keys, new_ise, cont, iopt_list, it_int+'info', calc_type
+
+
+
+    def run_wrapper(slabs, keys, new_ise, cont, iopt_list):
+
+        cl = None
+        key0 = keys['key0']
+        if slabs:
+            st = slabs[calc_type]
+            if add:
+                add_loop(*key0, input_st = st, up = 'up2', show = 'fo', **kwargs)
+
+        else:
+            cl = db[key0]
+            cl.res(up = 'up2')
+            
+            if cont:
+
+                key_cont = keys['key_cont']
+                cl = db[key_cont]
+
+                if cont > 1:
+                    cl.res()
+                cl = cl.run(new_ise, iopt = iopt_list[cont-1], **kwargs, add = add, )    
+
+        return cl
+
+
+    def analyze(cl, info_key):
+
+        return_dict = {}
+        info = db[info_key]
+
+        if hasattr(cl, 'dipol'):
+            # cl.res(show = 'path')
+            # cl.get_file('LVTOT')
+            print('Dipole moment: e*A', cl.dipol)
+            # print(cl.end.get_dipole(chg_type = 'pot'))
+            dcv = cl.vasp_dipole_center()
+            if dcv:
+                print('Dipole center determined by VASP and cell center: {:.2f} and {:.2f}'.format(dcv, cl.end.center(1)[2]) )
+
+                # print('Cell center: {:.2f}'.format(cl.end.center(1)[2]) )
+                pos = cl.end.get_surface_pos(reduced = True)
+                print('Surface 1, dcv, Surface 2: {:.2f} < {:.2f} < {:.2f}'.format(pos[0], dcv, pos[1]))
+                if pos[0]< dcv < pos[1]:
+                    print('Ok! Dipole center is inside the slab')
+                else:
+                    printlog('Error! Dipole center is out of slab!')
+                # cl.end.jmol()
+
+            else:
+                print('Error with dipole center ')
+
+        mx = info['mismatch'][0]
+        my = info['mismatch'][1]
+        print('Mismatches are {:.1f} % and {:.1f} % relative to substrate; negative means that film vector is smaller'.format(mx*100, my*100))
+
+
+        #interface energies
+        key = 'key_last_ready'
+
+        tk = get_keys('interface')[0].get(key)
+        sk = get_keys('substrate')[0].get(key)
+        fk = get_keys('film')[0].get(key)
+        if tk and sk and fk:
+            t = db[tk]
+            s = db[sk]
+            f = db[fk]
+            # print(tk)
+            # print(sk)
+            # print(fk)
+
+            interface_en(t, s, f, mul1 =1) 
+
+
+
+
+
+        return
+
+
+
+
+
+
+
+    "Start main code "
+    keys, new_ise, cont, iopt_list, info_key, calc_type = get_keys(calc_type)
+    # sys.exit()
+
+    if show or (cont == 0 and add):
+        slabs = build_slabs(calc_type, info_key)
+    else:
+        slabs = None
+
+    cl = run_wrapper(slabs, keys, new_ise, cont, iopt_list)
+
+    analyze(cl, info_key)
+
+    return

@@ -196,7 +196,8 @@ def write_batch_header(batch_script_filename = None,
             f.write("#SBATCH -n "+str(number_cores)+"\n")
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
-            # f.write("#SBATCH --mem-per-cpu=7675\n")
+            if header.MEM_CPU:
+                f.write("#SBATCH --mem-per-cpu=7675\n")
             
             # print(header.cluster)
             # sys.exit()
@@ -966,7 +967,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     def add_loop_prepare():
 
-        nonlocal calc, db, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params
+        nonlocal calc, db, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params, scale_region
 
         if not params:
             params = {}
@@ -1281,7 +1282,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     def add_loop_scale():
 
         struct_des = header.struct_des
-        nonlocal it, verlist, setlist, input_st,it_suffix
+        nonlocal it, verlist, setlist, input_st, it_suffix, scale_region
         u_scale_flag = False
         fitted_v100_id = None
 
@@ -1371,12 +1372,19 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 st.magmom = [None] # added on 24.06.2017
 
                 write_xyz(st, file_name = st.name+'_used_for_scaling')
+                # print(scale_region)
+                # sys.exit()
+                if scale_region is None:
+                    scale_region = (-4,4)
+
                 printlog('Scale_region is', scale_region, imp = 'y')
                 
+                # printlog('Calc_method', calc_method, 'uniform_scale' in calc_method, imp = 'y')
+
                 if 'uniform_scale' in calc_method:
 
                     sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
-                if 'c_scale' in calc_method:
+                elif 'c_scale' in calc_method:
                     #print('scale_start')
                     #sys.exit()
                     sts = scale_cell_by_matrix(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname, mul_matrix = [[1,0,0],[0,1,0],[0,0,1.01]])
@@ -2438,7 +2446,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
                 printlog('Error! end structure of', new.id, 'is empty! Use either init or finish calculation, check *use_init* flag!')
 
-    # print(st.typat)
+    # print(st.select)
+    # sys.exit()
 
 
     #path to new calc
@@ -2738,6 +2747,11 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     #print(len(new.end.xred))
     # print (id_base_st_type)
     new.init = st
+    # print(new.init.select)
+    # sys.exit()
+
+
+
     new.write_geometry('init', des, override = override)
     
 
@@ -3097,7 +3111,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 file = files[-1] #use last 
                 name = os.path.basename(file)
                 cl.get_file(name, )
-                runBash('subl '+cl.dir+'/'+name)
+                
+                try:
+                    header.PATH2EDITOR
+                except:
+                    print('Error! PATH2EDITOR parameter is not set. Please provide it in .simanrc or project_conf.py')
+
+                runBash(header.PATH2EDITOR+' '+cl.dir+'/'+name)
                 return
 
             if 'term' == show:
@@ -3117,7 +3137,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 return
 
             if 'out' in show:
-                runBash('subl '+cl.path['output'])
+                runBash(header.PATH2EDITOR+' '+cl.path['output'])
 
             if 'op' in show:
                 import webbrowser
