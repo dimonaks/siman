@@ -2271,6 +2271,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     i_atom_to_remove = None, 
     id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
+    mult_a = None, mult_c = None,
     it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, override = None, use_init = None,
     ):
     """
@@ -2481,6 +2482,23 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         st.rprimd[1] = st_from.rprimd[1].copy()
         st.rprimd[2] = st_from.rprimd[2].copy()       
         st.update_xcart() #calculate new xcart from xred, because rprimd was changed
+
+    elif inherit_type == "isotropic":
+        des = ' Inherited from the final state of '+cl_base.name+' by isotropic compression-tension with multiply factor of rprimd '+str(mult_rprimd)
+        st.rprimd[0] = [mult_rprimd * i for i in st_from.rprimd[0].copy()]
+        st.rprimd[1] = [mult_rprimd * i for i in st_from.rprimd[1].copy()]  
+        st.rprimd[2] = [mult_rprimd * i for i in st_from.rprimd[2].copy()]
+        st.update_xcart()
+
+    elif inherit_type == "c_a":
+        des = ' Inherited from the final state of '+cl_base.name+' by multiply factors for a and c lattice parameters of rprimd '+str(mult_rprimd)
+        # new.des = struct_des[it_new].des + des
+        new.hex_a = calc_from.hex_a * mult_a
+        new.hex_c = calc_from.hex_c * mult_c 
+        st.rprimd[0] = [mult_a * i for i in st_from.rprimd[0].copy()]
+        st.rprimd[1] = [mult_a * i for i in st_from.rprimd[1].copy()]  
+        st.rprimd[2] = [mult_c * i for i in st_from.rprimd[2].copy()]
+        st.update_xcart()
 
 
     elif inherit_type == "r1r2r3":
