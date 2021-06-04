@@ -24,7 +24,7 @@ from sympy import solve, diff, sqrt, Matrix
 
 
 def inherit_icalc_isotropic(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, min_mult = 1, max_mult = 1, num_points = 2, geo_folder = ''):
-    from classes import inherit_icalc
+    from calc_manage import inherit_icalc
     min_mult = min_mult
     max_mult = max_mult
     num_points = num_points
@@ -36,7 +36,7 @@ def inherit_icalc_isotropic(new_structure = '', start_new_version = None,  base_
         version += 1
 
 def inherit_icalc_c_a(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, min_mult_a = 1, max_mult_a = 1, num_points_a = 2, min_mult_c = 1, max_mult_c = 1,num_points_c = 2, geo_folder=''):
-    from classes import inherit_icalc
+    from calc_manage import inherit_icalc
     # Lattice parameter a
     min_mult_a = min_mult_a
     max_mult_a = max_mult_a
