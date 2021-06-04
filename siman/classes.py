@@ -4817,7 +4817,7 @@ class Calculation(object):
         prevcalcver = None, savefile = None, schedule_system = None,
         output_files_names = None,
         mode = None,
-        batch_script_filename = None):
+        batch_script_filename = None, mpi = False, cores = 1):
         """Without arguments writes header, else adds sequence of calculatios
             option - the same as inherit_option, 'inherit_xred' - control inheritance, or 'master' - run serial on master 
             prevcalcver - ver of previous calc; for first none
@@ -4876,7 +4876,7 @@ class Calculation(object):
 
 
 
-        def run_command(option, name, parrallel_run_command, condition = False, write = True):
+        def run_command(option, name, parrallel_run_command, condition = False, write = True, mpi = mpi, cores = cores):
             """2. write commands for running vasp. condition = true allows override additional conditions""" 
 
             if write:
@@ -4884,28 +4884,29 @@ class Calculation(object):
                 #     condition = (not 'only_neb' in self.calc_method)
 
                 # if condition:
+                if mpi == False:
+
+                    if option == 'master':
+                        f.write("vasp >"+name+".log\n")
+
+                    elif 'monte' in self.calc_method:
+                        f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
+
+                    elif 'polaron' in self.calc_method:
+                        f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
+
+                    elif 'atat' in  self.calc_method:
+                        f.write('maps -d&\npollmach runstruct_vasp mpirun\n')
 
 
-                if option == 'master':
-                    f.write("vasp >"+name+".log\n")
-
-                elif 'monte' in self.calc_method:
-                    f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
-
-                elif 'polaron' in self.calc_method:
-                    f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
-
-                elif 'atat' in  self.calc_method:
-                    f.write('maps -d&\npollmach runstruct_vasp mpirun\n')
-
-
-                else:
-                    f.write(parrallel_run_command +" >"+name+".log\n")
+                    else:
+                        f.write(parrallel_run_command +" >"+name+".log\n")
                 
-
-
-
+                elif mpi == True:
+                    f.write('mpirun -np '+str(cores)+' '+parrallel_run_command+" >"+name+".log\n")
+                
                 f.write("sleep 20\n")
+
             return
 
 
@@ -5151,7 +5152,7 @@ class Calculation(object):
                         continue
                     name_mod   = '.U'+str(u).replace('.', '')+set_mod
                    
-                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write, mpi = mpi, cores = cores)
 
                     if write: 
                         if copy_poscar_flag:
@@ -5204,7 +5205,7 @@ class Calculation(object):
                     prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile,
                         copy_poscar_flag = copy_poscar_flag)
                     
-                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command)
+                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, mpi = mpi, cores = cores)
 
                     contcar_file = mv_files_according_versions(savefile, v, name_mod = name_mod)
                 
@@ -5228,7 +5229,7 @@ class Calculation(object):
                     input_geofile = input_geofile, write = write_poscar, curver = version,
                     copy_poscar_flag = copy_poscar_flag)
 
-                run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+                run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write, mpi = mpi, cores = cores)
 
                 if final_analysis_flag:
                     rm_chg_wav = 'w' #The wavcar is removed for the sake of harddrive space
@@ -5287,7 +5288,7 @@ class Calculation(object):
 
                     
                     run_command(option = option, name = run_name_prefix+'.'+name_mod, 
-                        parrallel_run_command = parrallel_run_command, write = True)
+                        parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, cores = cores)
                     
                     u_last = u
 
@@ -5369,7 +5370,7 @@ class Calculation(object):
                 else:
 
                     run_command(option = option, name = self.name+set_mod+'.n_'+nim_str+name_mod, 
-                    parrallel_run_command = parrallel_run_command, write = True)
+                    parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, cores = cores)
                     # print(set_mod)
                     # sys.exit()
                     if '.' in set_mod and set_mod[0] == '.':
@@ -5435,7 +5436,7 @@ class Calculation(object):
 
 
                     run_command(option = option, name = self.id[0]+'.'+self.id[1]+'.100'+name_mod+'.fitted', 
-                        parrallel_run_command = parrallel_run_command, write = True)
+                        parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, cores = cores)
 
                     # print(final_analysis_flag)
                     # sys.exit()

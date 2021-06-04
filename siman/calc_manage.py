@@ -239,6 +239,10 @@ def write_batch_header(batch_script_filename = None,
 
             f.write("touch RUNNING\n")
 
+        if schedule_system == 'simple':
+            f.write("#!/bin/bash   \n")
+            # f.write("mpirun -np "+str(number_cores)+" /home/hieuvatly/vasp.5.4.4/bin/vasp_std \n")
+            print('"write_batch_header" was launched successfully!')  
 
     return
 
@@ -816,7 +820,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None,
+    run = False, mpi check_job  = 1, params = None, mpi = False, number_cores = 1,
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -1745,7 +1749,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                run = run, input_st = input_st, check_job = check_job, params = params)
+                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, number_cores=number_cores)
             
             prevcalcver = v
 
@@ -1773,7 +1777,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     calc, varset, up = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None):
+    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None, 
+    mpi = False, number_cores=1):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 'none'
@@ -2065,7 +2070,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 write_batch_header(batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
                     path_to_job = header.project_path_cluster+'/'+cl.dir, 
-                    job_name = cl.id[0]+"."+cl.id[1], number_cores = cl.corenum  )
+                    job_name = cl.id[0]+"."+cl.id[1], number_cores = number_cores  )
 
 
 
@@ -2139,7 +2144,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             out_name = cl.write_sge_script(str(version)+".POSCAR", version, 
                 inherit_option, prevcalcver, savefile, 
                 schedule_system = cl.schedule_system, mode = 'body',
-                batch_script_filename = batch_script_filename)
+                batch_script_filename = batch_script_filename, mpi = mpi, cores = number_cores)
             
         
 
@@ -2194,7 +2199,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                 
                 cl.write_sge_script(mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
-                    output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )
+                    output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile, 
+                    mpi = mpi, cores = number_cores )
                 
                 list_to_copy.extend( cl.make_incar() )
                 
