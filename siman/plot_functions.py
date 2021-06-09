@@ -1,61 +1,14 @@
-#!/usr/bin/env python3
-""" 
-Include:
-1. runBash(cmd)
-2. CalcResults
-3. interstitial()
-4. out_for_paper()
-5. shift_analys(st)
-6. write_geo(st)
-"""
-
-import subprocess
-import optparse
-import re
-import glob
-import os
-import math
-import sys
-import colorsys
-from pylab import *
-from scipy.optimize import leastsq
-from sympy import solve, diff, sqrt, Matrix
+﻿import sys, os
+sys.path.append(os.path.dirname(__file__)+'/../savelyev')
+sys.path.append(os.path.dirname(__file__)+'/../alglib_cpython')
+# print sys.path
+#from read_write_i import ReadWrite as RW
+#from plot_3d_i import Plot_3D as Pl3d
 
 
-
-
-
-
-def plot_graph(graph_folder = '', name = '', axis1 = '', axis2 = '', args=[]):
-    import matplotlib.pyplot as plt
-    import shutil as S
-    import os
-
-    # Make new directory
-    try: 
-        os.mkdir(os.getcwd()+'/Graphs/'+graph_folder)
-    except OSError: pass
-
-    # Removing old graph
-    try: 
-        os.remove(os.getcwd()+'/Graphs/'+graph_folder+'/'+name)
-    except OSError: 
-        pass
-        
-    # Plot new graph
-    d_color = dict(zip([0,1,2,3,4,5,6],['r','b','g','c', 'm', 'k', 'y']))
-    d_marker = dict(zip([0,1,2,3,4,5,6,7,8,9,10,11],['^','s','o','D','h','H','8','p','*','v', '>','<']))
-    fig = plt.figure(1)
-    count = 0
-    for g in args:
-        plt.plot(g[0],  g[1], linewidth=2, linestyle='-', marker = d_marker[count], markersize=3, color=d_color[count], label = g[2]+'_'+g[3])
-        count += 1
-    plt.xlabel(axis1, fontsize = 22)
-    plt.ylabel(axis2, fontsize = 22)
-    plt.legend(bbox_to_anchor=(0.9, 0.92), borderaxespad=0., labelspacing=0.3, numpoints=1, frameon=True, markerscale=1., handletextpad=0.3)
-    fig.savefig(name, format="pdf")
-    S.move(name, os.getcwd()+'/Graphs/'+graph_folder)
-
+import matplotlib
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
 
 
 def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', labels=(), lab_size=15, tick_size=15, fig_size=(), 
@@ -134,6 +87,23 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
         y_setca.append(y1)
         z_setca.append(z1)
 
+
+
+    # Chuan bi tep voi ket qua
+    x_list = []
+    y_list = []
+    z_list = []
+    for i in range(len(x_setca)):  
+        x_list += x_setca[i]
+        y_list += y_setca[i]
+        z_list += z_setca[i]
+
+    f = open(folder+'/plot_energy_xy_'+it+'_'+ise+'.out','w')
+    f.write('# {0:^15s} {1:^15s} {2:^15s}'.format('x, Angstrom', 'y, Angstrom', 'E, eV')+'\n')
+    for i in range(len(x_list)):
+        f.write('{0:^15.5f} {1:^15.5f} {2:^15.5f}'.format(x_list[i], y_list[i], z_list[i])+'\n')
+    f.close()
+
     # Tim gia tri it nhat
     min_x_list = [min(i) for i in x_setca]
     min_y_list = [min(i) for i in y_setca]
@@ -159,15 +129,14 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
     # Vẽ bức tranh
 
     fig = plt.figure()
+    font = matplotlib.font_manager.FontProperties()
+    font.set_size(20)
 
-    three_dim = False
-    contour = True
-
-    if type_plot == '3dim':
+    if type_plot == '3D_proj_xyz_fill':
         # ax = fig.gca(projection='3d')
         ax = fig.add_subplot(111, projection='3d')
-        cset = ax.contourf(x_setca_np, y_setca_np, z_setca_np, zdir='z', offset=zlim[0], cmap=cm.rainbow, zorder=0.5)          
-        ax.plot_surface(x_setca_np, y_setca_np, z_setca_np, rstride=8, cstride=8, alpha=0.2,  cmap=cm.rainbow, zorder=0.3)
+        cset = ax.contourf(x_setca_np, y_setca_np, z_setca_np, zdir='z', offset=zlim[0], cmap=cm.rainbow, zorder=0.3)          
+        ax.plot_surface(x_setca_np, y_setca_np, z_setca_np, rstride=8, cstride=8, alpha=0.2,  cmap=cm.rainbow, zorder=0.5)
         ax.scatter(x_setca_np, y_setca_np, z_setca_np, marker='o', color='red') 
 
         cset = ax.contourf(x_setca_np, y_setca_np, z_setca_np, zdir='x', offset=xlim[0], cmap=cm.rainbow )  
@@ -176,7 +145,7 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
 
         ax.set_xlabel(labels[0], fontsize=lab_size, labelpad=10)
         ax.set_ylabel(labels[1], fontsize=lab_size, labelpad=10)
-        ax.set_zlabel(labels[2], fontsize=lab_size, labelpad=10)
+        ax.set_zlabel(labels[2], fontsize=lab_size, labelpad=10,rotation=0)
 
         ax.set_xlim(xlim[0], xlim[1])
         ax.set_ylim(ylim[0], ylim[1])
@@ -191,6 +160,41 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
         ax.zaxis.set_major_formatter(FormatStrFormatter('%.2f'))
         ax.set_title(fig_title, fontsize=lab_size)
 
+    if type_plot == '3D_proj_z_contour':
+        # ax = fig.gca(projection='3d')
+        ax = fig.add_subplot(111, projection='3d')
+
+        # norm = plt.Normalize(z_setca_np.min(), z_setca_np.max())
+        # colors = cm.viridis(norm(z_setca_np))
+        # rcount, ccount, _ = colors.shape
+
+
+        cset = ax.contour(x_setca_np, y_setca_np, z_setca_np, zdir='z', offset=zlim[0], cmap=cm.rainbow, zorder=0.3)          
+        ax.plot_surface(x_setca_np, y_setca_np, z_setca_np, rstride=1, cstride=1, cmap=cm.rainbow, zorder=0.5)
+        # surf = ax.plot_surface(x_setca_np, y_setca_np, z_setca_np, rcount=rcount, ccount=ccount, facecolors=colors, shade=False, zorder=0.5)
+        # surf.set_facecolor((0,0,0,0))
+        ax.scatter(x_setca_np, y_setca_np, z_setca_np, marker='o', color='red') 
+        ax.set_xlabel(labels[0], fontsize=lab_size, labelpad=10)
+        ax.set_ylabel(labels[1], fontsize=lab_size, labelpad=10)
+        ax.set_zlabel(labels[2], fontsize=lab_size, labelpad=10)
+
+        ax.set_xlim(xlim[0], xlim[1])
+        ax.set_ylim(ylim[0], ylim[1])
+        ax.set_zlim(zlim[0], zlim[1])
+
+        ax.tick_params(axis = 'both', labelsize=tick_size)
+        # ax.xaxis.set_major_locator(LinearLocator(4))
+        # ax.yaxis.set_major_locator(LinearLocator(4))
+        # ax.zaxis.set_major_locator(LinearLocator(4))
+        ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+
+        ax.azim = 225
+        ax.zaxis.set_rotate_label(False)  # disable automatic rotation
+        ax.set_zlabel(labels[2], fontsize=lab_size, rotation=90)
+        ax.text2D(0.17,0.73, fig_title, fontproperties=font, transform=ax.transAxes)
+
     elif type_plot == 'contourf':
         cs = plt.contourf(x_setca, y_setca, z_setca, locator=LinearLocator(numticks = 50), cmap=cm.rainbow)
         cs.ax.set_xlabel(labels[0], fontsize=lab_size)
@@ -201,11 +205,13 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
         cbar.ax.tick_params(labelsize=tick_size) 
         cs.set_title(fig_title, fontsize=lab_size)
 
-
     # plt.show()
     fig.set_figheight(fig_size[0])
     fig.set_figwidth(fig_size[1])        
     fig.savefig(folder+'/'+it+'_'+ise+'_deform_xy_'+type_plot+'.pdf', format='pdf', dpi=600)
+    fig.savefig(folder+'/'+it+'_'+ise+'_deform_xy_'+type_plot+'.eps', format='eps', dpi=600)    
+    
+    
     
     
     
