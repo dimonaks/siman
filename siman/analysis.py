@@ -1286,6 +1286,7 @@ def polaron_analysis(cl, readfiles):
     iat2 = cl.params['polaron']['iend']
     mode = cl.params['polaron'].get('mode') or 'inherit'
     cl2.res(readfiles = readfiles)
+    # print(iat1, iat2)
     d = cl.end.distance(iat1, iat2)
 
     if mode == 'inherit':
@@ -1297,9 +1298,11 @@ def polaron_analysis(cl, readfiles):
         verlist = verlist1 + verlist2
         atom_pos = atom_pos1 + atom_pos2
     else:
-        verlist = [1]+list(range(3, 3+images))+[2]
+        verlist1 = [1]+list(range(3, 3+images))+[2]
+        verlist2 = verlist1
+        atom_pos1 = np.linspace(0,d, images+2)
+        atom_pos2 = list(reversed(np.linspace(0,d, len(verlist2))))
 
-        atom_pos = np.linspace(0,d, images+2)
 
     mep_energies1 = []
     mep_energies2 = []
@@ -1322,9 +1325,10 @@ def polaron_analysis(cl, readfiles):
 
     # print(len(atom_pos), len(mep_energies))
 
+
     if 1: 
         #plot simple
-        n = 6
+        n = images
         pos1 = atom_pos1[0:n]
         e1   = mep_energies1[0:n]
         pos2 = atom_pos2[0:n]
@@ -1364,13 +1368,19 @@ def polaron_analysis(cl, readfiles):
                 pos1_fine.append(p2)
 
             # e = e1_fine
+        print('\n\n\n',int(len(e1_fine)/2), e1_fine[int(len(e1_fine)/2)],max(e1_fine),e1_fine.index(max(e1_fine)),'\n\n\n')
+        if max(e1_fine) > e1_fine[int(len(e1_fine)/2)]:
+            i = e1_fine.index(max(e1_fine))
+            del e1_fine[i]
+            del pos1_fine[i]
 
         fit_and_plot(
         # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
             a1 = (pos1_fine, e1_fine, '-or'),
             # power = 2, 
             params = {'xlim_power':(0, 4), 'y0':1}, 
-            ylim = (-0.02, 0.2), ver = False,
+            # ylim = (-0.02, 0.2), 
+            ver = False,
             xlim = (-0.02, 0.02+max(pos1_fine)),
             filename = 'figs/'+name_without_ext,
             xlabel = 'Position, (${\AA}$)',
@@ -1393,8 +1403,8 @@ def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
     """
     Calculate surface energy
     cl - slab or cell with interface
-    cl1 - slab or cell with phase 1
-    cl2 - slab or cell with phase 2
+    cl1 - slab or cell with phase 1, usually substrate
+    cl2 - slab or cell with phase 2, usually film
     mul1, mul2, - multiply cells
 
     n_intefaces - number of similar  interfaces in the system
@@ -1410,12 +1420,14 @@ def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
     natom2 = st2.natom
 
 
-    A = np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
-    A1 = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )*mul1
-    A2 = np.linalg.norm( np.cross(st2.rprimd[0] , st2.rprimd[1]) )*mul2
+    A = np.linalg.norm( np.cross(st.rprimd[0], st.rprimd[1]) )
+    A1 = np.linalg.norm( np.cross(st1.rprimd[0], st1.rprimd[1]) )*mul1
+    A2 = np.linalg.norm( np.cross(st2.rprimd[0], st2.rprimd[1]) )*mul2
 
 
-    print('Surface areas:', A,A1,A2)
+    print('Sets are {:} {:} {:}'.format(cl.id[1], cl1.id[1], cl2.id[1]))
+    print('Max forces are {:.1f} {:.1f} {:.1f} meV/A'.format(cl.maxforce, cl1.maxforce, cl2.maxforce))
+    print('Surface areas: {:.1f} {:.1f} {:.1f} A^2'.format(A, A1, A2))
 
 
 
@@ -1432,7 +1444,7 @@ def interface_en(cl, cl1, cl2, mul1 = 1, mul2 = 1, silent = 0, n_intefaces = 1):
     gamma = diff / A * header.eV_A_to_J_m / n_intefaces# inteface
 
     if not silent:
-        print('Interface energy = {:3.2f} J/m2   | {:} eV '.format(gamma, diff))
+        print('Interface energy = {:3.2f} J/m2   | {:3.2f} eV '.format(gamma, diff))
     
 
     return gamma

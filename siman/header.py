@@ -102,7 +102,7 @@ class CalcDict(dict):
             # print('String key detected', key)
             key_str = key
             l = key.split('.')
-            if len(l) > 2:
+            if len(l) > 2 and l[-1].isdecimal():
                 key = ('.'.join(l[0:-2]), l[-2], int(l[-1]))            
         # else:
 

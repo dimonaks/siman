@@ -1,4 +1,5 @@
 
+
 import sys, copy, itertools, math
 from operator import itemgetter
 
@@ -3196,3 +3197,77 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
 
 
 
+
+def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
+    """
+    Allows to multiply atomic positions of atoms *el* in *st* according to symmetry of *st_ideal*
+    Usually st_ideal and st are commensurate crystal structures, but st has some defects, which are required to 
+    multiply according the symmetry of the ideal structure.
+
+
+    st_ideal (Structure) - the structure with required symmetry  
+    st (Structure) - the structure to be modified
+    el (str) - name of element, atoms of which should be multiplied; several elements can be given separated by space
+    rm_ovrlp (float) - atoms closer than rm_ovrlp (in A) will be removed, if None - nothing is done
+
+    ops (list ) - pymatgen type list of symmetry operations used in addition to that obtained from st_ideal
+
+    name (str)
+
+    TODO:
+
+    RETURN:
+        st (Structure) - the structure in which all atoms *el* are multiplied according to the given symmetry
+
+    Author: DA
+
+    """
+
+    st  = st.copy()
+
+    ops_full = st_ideal.get_symmetry_operations() # the first one is identity
+    
+    if ops:
+        ops_full.extend(ops)
+    
+    sym_xr   = []
+
+    els = el.split()
+
+    my_op = 0
+    if my_op:
+        from pymatgen.core.operations import SymmOp
+        op = SymmOp(np.arange(1, 17).reshape(4,4)) # just any 4x4 matrix
+        my_op = op.from_rotation_and_translation([[1,0,0],[0,-1,0],[0,0,1]], [0.5, 0.5, 0.5])
+
+        # print(my_op)
+        # sys.exit()
+        ops_full.append(my_op)
+
+
+
+    for v, elem in zip(st.xred, st.get_elements() ):
+        if elem in els:
+            for op in ops_full:
+                R = op.rotation_matrix
+                T = op.translation_vector
+                # print(R, T)
+                # print(v)
+                rv = np.dot(R,v)+T
+                # print(rv)
+                sym_xr.append(rv)
+                # print('\n')
+                st = st.add_atom(xr = rv, element = elem)
+
+    # print(elem)
+    st = st.return_atoms_to_cell()
+    st.name+='_multiplied'+name
+    
+    if rm_ovrlp:
+        # st, _, _ = st.remove_close_lying(tol = rm_ovrlp)
+        st = st.remove_close_lying2(tol = rm_ovrlp)
+    
+    st.write_poscar()
+    st.write_cif(symprec = None)
+
+    return st 

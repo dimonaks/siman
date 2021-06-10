@@ -1,6 +1,6 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
-import os, io, re, math
+import os, io, re, math, sys
 from csv import reader
 
 import numpy  as np
@@ -166,7 +166,12 @@ def read_poscar(st, filename, new = True):
 
         # st.name = self.name
         # print(f.readline())
-        mul = float( f.readline().split('!')[0] )
+        mul_str = f.readline()
+        # print(filename)
+        # print(name)
+        # print(mul_str)
+        # sys.exit()
+        mul = float( mul_str.split('!')[0] )
         # print 'mul', mul
 
 
@@ -1008,6 +1013,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             contcar_read = True
         except:
             contcar_read = False
+        if not contcar_read:
             printlog('Attention!, error in CONTCAR:', path_to_contcar, '. I use data from outcar')
 
     else:
@@ -1047,6 +1053,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         i_line = 0
         mdstep_prev = 0
         dipol = None
+        ediff = 0
         self.mdstep = 1
         warnings = 0#""
         self.time = 0
@@ -1142,6 +1149,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
         self.intstress = None
         spin_polarized = None
+        ifmaglist = None
         for line in outcarlines:
 
             #Check bands
@@ -1155,6 +1163,15 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if 'TITEL' in line:
                 self.potcar_lines.append( line.split()[2:] )
+
+            if 'NGXF=' in line:
+                # print(line)
+                l = re.sub("[^\d\.\ ]", "", line) #remove everything except digits, dot, and space
+                # sys.exit()
+                self.ngxf = [int(n) for n in l.split()] # ngxf, ngyf, ngzf
+                # print(self.ngxf ) 
+
+
 
             if 'LEXCH  =' in line:
                 # print(line)
@@ -1292,37 +1309,40 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 forces = []
                 magnitudes = []
 
-                # print(self.end.select)
-                for j in range(self.end.natom):
-                    parts = outcarlines[i_line+j+2].split()
-                    # print "parts", parts
-                    # sys.exit()
-                    if hasattr(self.end, 'select') and self.end.select:
-                        # print(float(parts[ff[0]]), self.end.select[j][0])
-                        b = []
-                        # print (self.end.select)
-                        for kkk in 0,1,2:
-                            cur = self.end.select[j][kkk]
-                            # print(cur)
-                            
-                            if cur == False:# or 'F' in cur:
-                                b.append(0)
-                            elif cur == True:# or 'T' in cur:
-                                b.append(1)
-                            else:
-                                b.append(cur)
-                        # print(b)
-                        x = float(parts[ff[0]]) * b[0]
-                        y = float(parts[ff[1]]) * b[1]
-                        z = float(parts[ff[2]]) * b[2]
-                    else:
-                        x = float(parts[ff[0]])
-                        y = float(parts[ff[1]])
-                        z = float(parts[ff[2]])
-                    
-                    
-                    forces.append([x,y,z])
-                    magnitudes.append(math.sqrt(x*x + y*y + z*z))
+                # print(len(self.end.select), self.end.natom)
+                try:
+                    for j in range(self.end.natom):
+                        parts = outcarlines[i_line+j+2].split()
+                        # print ("parts", parts, j)
+                        # sys.exit()
+                        if hasattr(self.end, 'select') and self.end.select:
+                            # print(float(parts[ff[0]]), self.end.select[j][0])
+                            b = []
+                            # print (self.end.select)
+                            for kkk in 0,1,2:
+                                cur = self.end.select[j][kkk]
+                                # print(cur)
+                                
+                                if cur == False:# or 'F' in cur:
+                                    b.append(0)
+                                elif cur == True:# or 'T' in cur:
+                                    b.append(1)
+                                else:
+                                    b.append(cur)
+                            # if parts[ff[0]].isdigit():
+                            x = float(parts[ff[0]]) * b[0]
+                            y = float(parts[ff[1]]) * b[1]
+                            z = float(parts[ff[2]]) * b[2]
+                        else:
+                            x = float(parts[ff[0]])
+                            y = float(parts[ff[1]])
+                            z = float(parts[ff[2]])
+                        
+                        
+                        forces.append([x,y,z])
+                        magnitudes.append(math.sqrt(x*x + y*y + z*z))
+                except:
+                    printlog('Warning! Problem with forces on ionic step', iterat)
                 # print('new step:')
                 # for f, s in zip(forces, self.end.select):
                 #     print('{:5.2f} {:5.2f} {:5.2f} {}'.format(*f, s))
@@ -1474,6 +1494,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if re_nkpts.search(line):
                 self.NKPTS = int(line.split()[3])
+            else:
+                self.NKPTS = 0
             if "WARNING" in line:
                 warnings += 1#line
 
@@ -1520,13 +1542,14 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if 'magnetization (x)' in line:
                 # print(line)
-                mags = []
-                for j in range(self.end.natom):
-                    mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
-                
-                tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
-                # print(ifmaglist)
-                tot_mag_by_mag_atoms.append(np.array(mags)[ifmaglist])
+                if ifmaglist is not None:
+                    mags = []
+                    for j in range(self.end.natom):
+                        mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
+                    
+                    tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
+                    # print(ifmaglist)
+                    tot_mag_by_mag_atoms.append(np.array(mags)[ifmaglist])
                 # print tot_mag_by_atoms
                 # magnetic_elements
                 # ifmaglist
@@ -1604,7 +1627,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 if gamma > 1 and 'conv' in show:
                     printlog('average eigenvalue GAMMA >1', gamma, imp = 'y')
                 # sys.exit()
-
+            if 'EDIFF  =' in line:
+                ediff = float(line.split()[2])
 
 
             # if 'DIPCOR: dipole corrections for dipol' in line:
@@ -1659,7 +1683,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     try:
         toldfe = self.set.toldfe  # eV
     except:
-        toldfe = 0
+        if ediff:
+            toldfe = ediff # 
+        else:
+            toldfe = 0.000000000001
 
 
 

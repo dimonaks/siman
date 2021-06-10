@@ -1183,7 +1183,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             st1_vis.write_poscar('xyz/'+it+'/1.POSCAR')
             st2_vis.write_poscar('xyz/'+it+'/100.POSCAR')
             sts = interpolate(st1, st2, images= pm['images'], write_poscar = 3, poscar_folder = 'xyz/'+it+'/' )
-            del pm['st1'], pm['st2'] #not needed to serialize
+            # del pm['st1'], pm['st2'] #not needed to serialize
 
             inputset =setlist[0]
             mode = 'inherit'
@@ -3111,7 +3111,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 file = files[-1] #use last 
                 name = os.path.basename(file)
                 cl.get_file(name, )
-                runBash('subl '+cl.dir+'/'+name)
+                
+                try:
+                    header.PATH2EDITOR
+                except:
+                    print('Error! PATH2EDITOR parameter is not set. Please provide it in .simanrc or project_conf.py')
+
+                runBash(header.PATH2EDITOR+' '+cl.dir+'/'+name)
                 return
 
             if 'term' == show:
@@ -3131,7 +3137,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 return
 
             if 'out' in show:
-                runBash('subl '+cl.path['output'])
+                runBash(header.PATH2EDITOR+' '+cl.path['output'])
 
             if 'op' in show:
                 import webbrowser

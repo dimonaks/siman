@@ -42,7 +42,7 @@ except:
 from siman.header import printlog, print_and_log, runBash, plt
 
 from siman import set_functions
-from siman.small_functions import makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
+from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
 from siman.functions import (read_vectors, read_list, words, read_string,
      element_name_inv, invert, calculate_voronoi, update_incar, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
@@ -262,6 +262,7 @@ class Structure():
 
         for i, xr in enumerate(st.xred):
             if xred_range[0]  < xr[2] < xred_range[1]:
+                # print(xred_range[0],xr[2],xred_range[1])
                 st.select[i] = [False, False, False] # fix
                 fixed.append(i)
         
@@ -919,6 +920,11 @@ class Structure():
         n = np.linalg.norm
         return n(r[0]), n(r[1]), n(r[2])
 
+
+
+
+
+
     def pvec(self):
         """
         print primitive vectors in formatted way
@@ -1062,7 +1068,7 @@ class Structure():
 
 
 
-    def get_primitive_cell(self):
+    def get_primitive_cell(self, international_monoclinic = True):
         """
         return primitive cell 
         """
@@ -1070,22 +1076,55 @@ class Structure():
 
         sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
 
-        sc = sf.get_primitive_standard_structure() # magmom are set to None
+        sc = sf.get_primitive_standard_structure(international_monoclinic=international_monoclinic) # magmom are set to None
 
         st = self.update_from_pymatgen(sc)
 
+        return st
+
+    def get_refined_structure(self, ):
+        """
+        Get the refined structure based on detected symmetry. 
+        The refined structure is a conventional cell setting with atoms moved to the expected symmetry positions.
+        """
+        st_mp = self.convert2pymatgen()
+
+        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
+
+        sc = sf.get_refined_structure() # magmom are set to None
+        # sc = sf.get_symmetrized_structure() # magmom are set to None
+
+
+        st = self.update_from_pymatgen(sc)
 
         return st
 
+
+    def get_symmetry_operations(self, symprec = 0.1):
+        """
+        Return symmetry operations as a list of SymmOp objects. 
+        By default returns fractional coord symmops. But cartesian can be returned too.
+        """
+        st_mp = self.convert2pymatgen()
+
+        sf = SpacegroupAnalyzer(st_mp, symprec = symprec)
+
+        sym_op = sf.get_symmetry_operations(cartesian=False)
+
+        return sym_op
+
+
+
+
     def get_surface_pos(self, reduced = False):
         """
-        Allows to return positions of top and bottom surfaces (edge atoms) in cartesian
+        Allows to return positions of bottom and top surfaces (edge atoms) in cartesian
         assumed normal to R3
         small number is added or subtracted to/from edge atom to overcome further numericall errors
             
             reduced - reduced coordinates
 
-        returns list z coordinates 
+        returns list of two z coordinates [bottom, top]
         
         """
         st = self
@@ -1337,22 +1376,24 @@ class Structure():
 
 
     def get_dipole(self, ox_states = None, chg_type = 'ox'):
-        #return dipole moment, e*A
-        #
-        # if you need to convert it to debye (D), use 1 D = 0.20819434 eÅ = 3.33564×10−30; 1 eA = 4.8 D
-
+        """ Return dipole moment in e*A calculated by pymatgen
+        ox_states (dict) - oxidation states of elements
+        chg_type (str) - type of charges  if provided in self.charges; see description of self.convert2pymatgen()
+        
+        If you need to convert e*A to debye (D), use 1 D = 0.20819434 eA = 3.33564×10−30 Cm; 1 eA = 4.8 D
+        """
         slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
         return slab.dipole
 
 
 
 
-    def add_atoms(self, atoms_xcart, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
+    def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
         """
         appends at the end if element is new. Other case insertered according to VASP conventions
         Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
         atoms_xcart (list of ndarray)
-        atoms_xred (list of coordinate lists) - if provided both, this has higher priority (not implemented yet, use xcart!!!)
+        atoms_xred (list of coordinate lists) - if provided both, this has higher priority 
 
         selective (list of lists) - selective dynamics
 
@@ -1380,6 +1421,10 @@ class Structure():
                 st = st.selective_all()
         # print(st.select)
         # sys.exit()
+
+        if atoms_xred is not None:
+            atoms_xcart = xred2xcart(atoms_xred, st.rprimd)
+
 
         natom_to_add = len(atoms_xcart)
         if natom_to_add == 0:
@@ -2096,23 +2141,23 @@ class Structure():
 
 
 
-    def add_vacuum(self, vec, thick):
+    def add_vacuum(self, vector_i, thickness):
         """
-        To be improved
-        vector - along which vector, 0, 1, 2
-        thick - thickness of vector 
+        Allows to add or remove vacuum along one of the rprimd vectors
+        vector_i (int) - index of vector along which vacuum should be added 0, 1, 2
+        thickness (float) - thickness of added (positive) or removed (negative) vacuum 
 
 
         TODO:
-        make thick to be thickness along axis and not vector
+        add capability to add vacuum normal to surface in case of non-orthogonal cells
 
         """
         st = copy.deepcopy(self)
-        v = st.rprimd[vec]
+        v = st.rprimd[vector_i]
         v_l = np.linalg.norm(v)
-        new_len = v_l+thick
+        new_len = v_l+thickness
 
-        st.rprimd[vec]*=new_len/v_l
+        st.rprimd[vector_i]*=new_len/v_l
 
         st.update_xred()
         st.name+='_vac'
@@ -2373,16 +2418,17 @@ class Structure():
 
         """
         # print(self.xcart)
-        if i1:
+        if i1 is not None:
             x1 = self.xcart[i1]
-        if i2:
+        if i2 is not None:
             x2 = self.xcart[i2]
         return image_distance(x1, x2, self.rprimd, coord_type = coord_type)[0]
 
-    def remove_close_lying(self, rm_both = 0, rm_first = 0):
+    def remove_close_lying(self, rm_both = 0, rm_first = 0, tol = 0.4):
         """
         rm_both (bool) - if True than remove both atoms, if False than only the second atom is removed
         rm_first (bool) - if True than the first atom of two overlapping is removed, otherwise the second atom is removed
+        tol (float) - atoms separated by distance less than *tol* A are removed
 
         PBC is realized through image_distance
 
@@ -2395,7 +2441,6 @@ class Structure():
 
         """
         st = copy.deepcopy(self)    
-        tol = 0.4
         removed = False
         x1_del = []
         x2_del = []
@@ -2431,6 +2476,117 @@ class Structure():
         st._removed = removed
 
         return st, x1_del, x2_del
+
+
+    def remove_close_lying2(self, tol = 0.4):
+        """
+        Very fast removal, linear with respect to number of atoms
+        Support multiple overlaps
+        Makes a mesh with cubes and determine wich atoms appeared in the mesh 
+
+        Leaves only the first entry, the rest are removed
+
+        
+        TODO:
+        A problem may occur if two-close lying atoms goes into neibouring bins
+            This may be solved by making three additional meshes, 
+            where all atoms are shifted by (tol/2, 0, 0), (0, tol/2, 0), (0, 0, tol/2)
+
+        Problem with PBC, not taken into account
+            can be solved by making mesh for atoms with (tol, tol, tol) shift 
+
+        Then all overlaps detected on any mesh are treated 
+
+        Replace all overlapping atoms by their center of gravity.
+
+
+        """
+        st = copy.deepcopy(self)    
+        
+        st = st.return_atoms_to_cell()
+        vl = np.array(st.rprimd_len() )
+        t = tol/vl
+        # print(meshes)
+        # sys.exit()
+        # shifts_xc = [[0,0,0], [tol, tol, tol], [tol/2, 0, 0], [0, tol/2, 0], [0, 0, tol/2]]
+        # shifts = [[0,0,0], [0.5,0.5,0.5], [t[0]/2, 0, 0], [0, t[1]/2, 0], [0, 0, t[2]/2]]
+        # shifts = [[0,0,0], [1.5*t[0], 0, 0], [0, 1.5*t[1], 0], [0, 0, 1.5*t[2]]]
+        shifts = []
+        space = np.linspace(1.9,2.9,3)
+        if 1:
+            for s1 in space:
+                for s2 in space:
+                    for s3 in space:
+                        s = np.array([s1,s2,s3])
+                        # print(s*t) 
+                        shifts.append(s*t)
+        
+        else:
+            for i in 0,1,2:
+                v = [0,0,0]
+                for s in space:
+                    v[i] = s
+                    # print(v*t)    
+                    shifts.append(v*t)
+
+        # sys.exit()
+
+
+        # print(t)
+        print('Number of shifts is ', len(shifts) )
+
+
+        meshes = [{} for i in shifts]
+
+        
+        NML = (vl/tol).astype(int) # mesh sizes
+
+        # print('Mesh sizes are', NML, )#np.array([1/31, 1/27, 1/36])*NML)
+        for i, xr in enumerate(st.xred):
+            for m, s in zip(meshes, shifts):
+                # print(xr)
+                xrs = return_xred(xr+s)
+                # print(xrs,'\n')
+                p = (xrs*NML).astype(int)
+                pos = str(p[0])+' '+str(p[1])+' '+str(p[2])
+                # print()
+                # print(pos)
+
+                if pos in m:
+                    m[pos].append(i)
+                else:
+                    m[pos] = [i]
+            # print('\n')
+        rem_lists = []
+        for i, m in enumerate(meshes):
+            rem_list_m = []
+            for key in m:
+                if len(m[key]) > 1:
+                    # x = sum([st.xcartxr for ]  )
+                    rem_list_m.extend(m[key][1:])
+                    # print(x)
+            # print('For mesh', i, 'the list of atoms to remove is ',rem_list_m )
+            rem_lists.append(rem_list_m)
+
+        # print( list(set(rem_lists[0]).symmetric_difference(set(rem_lists[1]))) )
+        # print( list(set(rem_lists[2]).symmetric_difference(set(rem_lists[3]))) )
+        rem_flat_list = [item for sublist in rem_lists for item in sublist]
+        # print(rem_flat_list)
+        # print(list(set(rem_flat_list)))
+        nat_before = st.natom
+        st = st.remove_atoms(rem_flat_list)
+        print(nat_before- st.natom, 'atoms were removed')
+
+        return st
+
+
+
+
+
+
+
+
+
 
 
     def find_closest_atom(self, xc = None, xr = None):
@@ -2752,9 +2908,14 @@ class Structure():
 
         return
 
-    def center(self):
-        #return cartesian center of the cell
-        return np.sum(self.xcart, 0)/self.natom
+    def center(self, reduced = 0):
+        #return cartesian or reduced center of the cell
+        if reduced:
+            center = np.sum(self.xred, 0)/self.natom
+        else:
+            center = np.sum(self.xcart, 0)/self.natom
+
+        return center
 
     def center_on(self, i):
         #calc vector which alows to make particular atom in the center 
@@ -3278,10 +3439,10 @@ class Structure():
         """
         Find primitive cell and write it in cif format
         
-
+        filename (str) - name of produced cif file
         mcif (bool) - if True, than write mcif file with magnetic moments included, primitive cell is not supported
-
-
+        symprec (float) - symmetry precision, symprec = None allows to write the structure as is
+        write_prim (bool) - convert structure to primitive 
         
 
         """
@@ -3414,6 +3575,16 @@ class Structure():
     def vesta(self, *args, **kwargs):
         kwargs['program'] = 'vesta'
         self.jmol(*args, **kwargs)
+
+
+
+    @property
+    def vlen(self):
+        #return vector lengths
+        r = self.rprimd
+        n = np.linalg.norm
+        return n(r[0]), n(r[1]), n(r[2])
+
 
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation
@@ -3761,7 +3932,7 @@ class Calculation(object):
                         else:
                             v[i] = 0
                     f.write("{:d} {:d} {:d}\n".format(v[0], v[1], v[2])  )
-                    print(v)
+                    # print(v)
             if hasattr(st, 'vel') and len(st.vel) > 0:
                 f.write("\nvel ")
                 for v in st.vel:
@@ -4336,9 +4507,8 @@ class Calculation(object):
 
 
         elif kspacing:
-            # print(dir(self.init))
+            # print(self.init.rprimd)
             self.init.recip = self.init.get_recip()
-            
             N_from_kspacing = calc_ngkpt(self.init.recip, kspacing)
 
             N = N_from_kspacing
@@ -5667,6 +5837,7 @@ class Calculation(object):
 
 
 
+
 class CalculationAbinit(Calculation):
     """docstring for CalculationAbinit"""
     pass
@@ -6583,6 +6754,27 @@ class CalculationVasp(Calculation):
     
 
         return write_occmatrix(self.occ_matrices, self.get_path())
+
+
+    def vasp_dipole_center(self):
+        """
+        Determine dipole center in reduced coordinates 
+        based on vasp definition, https://www.vasp.at/wiki/index.php/DIPOL
+        as only number of position of minimum charge density is given
+        
+        TODO
+        works only in the case of dipole along z axis, as min_pos is read only for one direction
+        
+        """
+
+        if hasattr(self, 'ngxf'):
+            dc = return_xred([0,0, self.dipole_min_pos[-1]/self.ngxf[2]+0.5])[2]
+        else:
+            dc = None
+
+        return dc
+
+
 
 
     def bader_coseg():
