@@ -3534,6 +3534,8 @@ class Structure():
             1 - open OUTCAR to see optimization steps
             2 - open mcif to see magnetic moments
             3 - xyz
+            4 - open mcif to see magnetic moments only on oxygen, other magmoms are set as zero
+
         show_voids (bool) - replace voids (z = 300) with Po to visualize them
         rep  (list 3*int) - replicate along vectors
         program - 
@@ -3560,6 +3562,13 @@ class Structure():
             filename = st.write_cif(mcif = 1)
         elif r == 3:
             filename = st.write_xyz()[0]
+        elif r == 4:
+            for i in range(0, len(st.xcart)):
+                if st.get_el_name(i) != 'O':
+                    st.magmom[i] = 0
+                else:
+                    st.magmom[i] *= 5
+            filename = st.write_cif(mcif = 1)
         else:
             filename = st.write_poscar(vasp5 = 1)
         

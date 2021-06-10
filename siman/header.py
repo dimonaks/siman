@@ -21,7 +21,7 @@ try:
     import matplotlib as mpl
     """Global matplotlib control"""
     # size = 22 #for one coloumn figures
-    size = 16 #for DOS
+    size = 10 #for DOS
     # size = 16 #for two coloumn figures
     mpl.rc('font',family='Serif')
     # mpl.rc('xtick', labelsize= size) 

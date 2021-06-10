@@ -1367,12 +1367,12 @@ def polaron_analysis(cl, readfiles):
                 e1_fine.append(e2)
                 pos1_fine.append(p2)
 
-            # e = e1_fine
         print('\n\n\n',int(len(e1_fine)/2), e1_fine[int(len(e1_fine)/2)],max(e1_fine),e1_fine.index(max(e1_fine)),'\n\n\n')
         if max(e1_fine) > e1_fine[int(len(e1_fine)/2)]:
             i = e1_fine.index(max(e1_fine))
             del e1_fine[i]
             del pos1_fine[i]
+
 
         fit_and_plot(
         # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
