@@ -806,7 +806,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     up = 'up2', inherit_option = None, id_from = None, inherit_args = None, confdic = None,
     i_atom_to_remove = None,
     coord = 'direct', savefile = 'oc', show = '', comment = '', 
-    input_geo_format = None, ifolder = None, input_geo_file = None, input_st = None,
+    input_geo_format = None, input_kpoints=None, ifolder = None, input_geo_file = None, input_st = None,
     corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
     mat_proj_cell = '',
@@ -1745,6 +1745,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             add_calculation(it,inputset,v, verlist[0], verlist[-1], 
                 input_folder, blockdir, calc, varset, up, 
                 inherit_option, prevcalcver, coord, savefile, input_geo_format, input_geo_file, 
+                input_kpoints=input_kpoints, 
                 calc_method = calc_method, 
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
@@ -1776,7 +1777,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 def add_calculation(structure_name, inputset, version, first_version, last_version, input_folder, blockdir, 
     calc, varset, up = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
-    input_geo_file = None, calc_method = None, u_ramping_region = None,
+    input_geo_file = None, input_kpoints=None, calc_method = None, u_ramping_region = None,
     mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None, 
     mpi = False, number_cores=1):
     """
@@ -2194,7 +2195,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     conf_file = write_configuration_file_for_cluster(cl.name, header.vasp_command, params['polaron'])
                     list_to_copy.append(conf_file)
 
-
+                if input_kpoints:
+                    list_to_copy.append(input_kpoints)
+                else:
+                    list_to_copy.extend( cl.make_kpoints_file() )  
 
 
                 
