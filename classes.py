@@ -2574,39 +2574,37 @@ class Structure():
 
         return st
 
-    
 
-    def remove_closest(self, el, nn = 6, n = 0, x_rel = 0.0):
+    def remove_closest(self, el, nn = 6, n = 2, x = 0.0):
         """
         Remove closest lying atoms of type el  
         st (Structure) - input structure 
         el (int array) - list of elements to remove
         nn (int) - number of closest atoms 
-        x (int) - number of removing atoms 
-        x_rel (float) - relative number of removing atoms 
-        
+        n (int array) - number of removing atoms 
+        x (float array) - relative number of removing atoms 
+        author - A. Burov 
+
         """
         st = copy.deepcopy(self)
         
         atoms = st.get_specific_elements(required_elements = el, fmt = 'n', z_range = None, zr_range = None)
         if (x != 0):
-            n = x
+            itr = x
         elif (x_rel != 0):
-            n = len(atoms)*x_rel
+            itr = int(len(atoms)*x_rel)
         else:
-            n = 0
+            itr = 0
         atoms_removed = [] 
         for i in range(n):
             dist_min = 1e3 
             idx_min = -1  
             for atom_idx in atoms:
-                blockPrint()
                 dist = st.nn(atom_idx, n, from_one = 0, only=[3], silent = 1)['dist'][1:]
-                enablePrint()
                 dist_cur = sum(dist)/len(dist)
                 if (dist_cur < dist_min):
                     dist_min, idx_min = dist_cur, atom_idx
-            st = st.remove_atoms([idx_min], from_one = 0, clear_magmom  = 1 )
+            st = st.remove_atoms([idx_min], from_one = 0, clear_magmom  = 1)
             atoms_removed.append(idx_min)
             print("Atoms were removed: {}".format(i+1))
         print("Atoms with indicies {} were removed".format(atoms_removed))
