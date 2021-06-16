@@ -1967,7 +1967,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
 
 
 
-def remove_x(st, el, sg = None, info_mode = 0, x = None):
+def remove_x(st, el, sg = None, info_mode = 0, x = None,):
     """
 
     Allows to remove x of element el from the structure.
@@ -2072,7 +2072,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
-def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6, mode = 'rep' ):
+def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6, mode = 'rep'):
     """
     Generate all possible configurations by replacing x of element el1 by el2 from the structure.
     You should know which space group you want to get.
@@ -2083,7 +2083,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     el2 (str) - replace by
     mag (float) - magnetic moment of new element
     x - replace x of atoms, for example 0.25 of atoms
-    
+
     info_mode (bool) - print all possible configurations
 
     mode 
@@ -2103,13 +2103,13 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
         Find recursivly all possible orderings for the given x
         ls - initial list of atoms 
         i - index in ls  
-
+        
         """
         for s in 1,-1:
             
             ls[i] = s
             
-            if i < len(ls)-1:
+            if (i < len(ls)-1):
             
                 order(ls, i+1)
             

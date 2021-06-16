@@ -1241,10 +1241,10 @@ class Structure():
         return np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
 
 
-
     def printme(self):
         print(self.convert2pymatgen())
         return 
+
 
     def get_space_group_info(self, symprec = None):
         
@@ -1323,6 +1323,7 @@ class Structure():
             tra = ns
         return tra
 
+
     def get_specific_elements(self, required_elements = None, fmt = 'n', z_range = None, zr_range = None):
         """Returns list of specific elements (chemical names. z, or numbers from 0) in the structure
         required_elements - list of elements z of interest
@@ -1374,7 +1375,6 @@ class Structure():
         return tra
 
 
-
     def get_dipole(self, ox_states = None, chg_type = 'ox'):
         """ Return dipole moment in e*A calculated by pymatgen
         ox_states (dict) - oxidation states of elements
@@ -1384,8 +1384,6 @@ class Structure():
         """
         slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
         return slab.dipole
-
-
 
 
     def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
@@ -2165,8 +2163,26 @@ class Structure():
         return st
 
 
+    def remove_vacuum(self, thickness = 2.0):
+        """
+        Remove vacuum from the structure  
+        st (Structure) - input structure 
+        thickness (float) - remaining thickness of vacuum  
+        author - A. Burov 
 
+        """
 
+        if (thickness < 0):
+            raise ValueError('The thickness of remaining vacuum should not be negative')
+        st = copy.deepcopy(self)
+        xyz = list(map(list, zip(st.xcart)))
+        z_coord = [i[-1][-1] for i in xyz]
+        z_length = st.rprimd[2][-1]
+        max_z = max(z_coord)-min(z_coord)
+        st_new = st.shift_atoms(vector_cart = [0, 0, -min(z_coord)], return2cell = 1)
+        st_new = st_new.add_vacuum(vector_i = 2, thickness = -(z_length - max_z - thickness))
+        return st_new
+    
 
     # def sum_of_coord(self):
     #     sumx = 0
@@ -2359,7 +2375,7 @@ class Structure():
     def shift_atoms(self, vector_red = None, vector_cart = None, return2cell = 1):
         """
         Shift all atoms according to *vector_red* or *vector_cart*
-		Use *return2cell* if atoms coordinates should be inside cell
+        Use *return2cell* if atoms coordinates should be inside cell
         """
         st = copy.deepcopy(self)
         if vector_cart is not None:
@@ -2580,13 +2596,87 @@ class Structure():
         return st
 
 
+    def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
+        """
+        Remove closest lying atoms of type el  
+        st (Structure) - input structure 
+        el (int array) - list of elements to remove
+        nn (int) - number of closest atoms 
+        n (int array) - number of removing atoms 
+        x (float array) - relative number of removing atoms 
+        author - A. Burov 
 
+        """
+        st = copy.deepcopy(self)
+        
+        atoms = {} 
+        if (n != 0):
+            natoms = sum(n)
+            for idx, el_c in enumerate(el):
+                if (n[idx] != 0):
+                    atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
+                    if (len(atoms_c) == 0):
+                        n[idx] = 0  
+                    atoms[el_c] = atoms_c
+        elif (x != 0):
+            natoms = 0
+            n = []
+            for item in atoms.items():
+                n.append(int(len(item)*x))
+                natoms += n[-1]
+            print("Atoms of each species will be removed: {}".format(n))
+            for idx, el_c in enumerate(el):    
+                if (x[idx] != 0):
+                    atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
+                    if (len(atoms_c) == 0):
+                        n[idx] = 0 
+                    atoms[el_c] = atoms_c    
+        else:
+            natoms = 0
+        atoms_removed = {} 
+        for el_c in el:
+            atoms_removed[el_c] = []
+        for i in range(natoms):
+            dist_min = 1e3 
+            idx_min = -1  
+            for el_idx, el_c in enumerate(el):
+                if (n[el_idx] == 0):
+                    continue 
+                for atom_idx in atoms[el_c]:
+                    #dist = st.nn(atom_idx, nn, from_one = 0, only = [el, silent = 1)['dist'][1:]
+                    dist = st.nn(atom_idx, nn, from_one = 0, silent = 1)['dist'][1:]
+                    dist_cur = sum(dist)/len(dist)
+                    if (dist_cur < dist_min):
+                        dist_min, idx_min = dist_cur, atom_idx
+                        el_min = el_idx
+            st = st.remove_atoms([idx_min], from_one = 0, clear_magmom  = 1)
+            #del atoms[el[el_min]][idx_min]    
+            """
+            for el_c in el:
+                for idx_c, atom_c in enumerate(atoms[el_c]):
+                    if (atom_c > idx_min):
+                        atoms[el_c][idx_c] -= 1
+            """
+            idx_shift = 0   
+            for el_c in el:
+                for atom in atoms_removed[el_c]:
+                    if (idx_min <= atom):
+                        idx_shift += 1 
+            atoms_removed[el[el_min]].append(idx_min+idx_shift)
+            print("Atoms were removed: {} / {}".format(i+1, natoms))
+            n[el_min] -= 1
+            if (n[el_min] == 0):
+                del atoms[el[el_min]]
 
-
-
-
-
-
+            atoms = {}  
+            for idx, el_c in enumerate(el):
+                if (n[idx] != 0):
+                    atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
+                    atoms[el_c] = atoms_c 
+        for el_c in el:
+            print("For element {}, atoms with indicies {} were removed".format(el_c, atoms_removed[el_c]))
+        print("The final reduced formula is {}".format(st.get_reduced_formula()))
+        return st
 
 
     def find_closest_atom(self, xc = None, xr = None):
@@ -7281,4 +7371,8 @@ class MP_Compound():
         
 
 
-    
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+def enablePrint():
+    sys.stdout = sys.__stdout__
