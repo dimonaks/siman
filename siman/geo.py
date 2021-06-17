@@ -1967,7 +1967,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
 
 
 
-def remove_x(st, el, sg = None, info_mode = 0, x = None):
+def remove_x(st, el, sg = None, info_mode = 0, x = None,):
     """
 
     Allows to remove x of element el from the structure.
@@ -2072,7 +2072,7 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None):
 
 
 
-def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6, mode = 'rep' ):
+def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0, silent  = 0, mag = 0.6, mode = 'rep'):
     """
     Generate all possible configurations by replacing x of element el1 by el2 from the structure.
     You should know which space group you want to get.
@@ -2083,7 +2083,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     el2 (str) - replace by
     mag (float) - magnetic moment of new element
     x - replace x of atoms, for example 0.25 of atoms
-    
+
     info_mode (bool) - print all possible configurations
 
     mode 
@@ -2103,13 +2103,13 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
         Find recursivly all possible orderings for the given x
         ls - initial list of atoms 
         i - index in ls  
-
+        
         """
         for s in 1,-1:
             
             ls[i] = s
             
-            if i < len(ls)-1:
+            if (i < len(ls)-1):
             
                 order(ls, i+1)
             
@@ -2183,7 +2183,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
 
 def two_cell_to_one(st1, st2):
     """Join two cells 
-	st1 - first cell 
+    st1 - first cell 
     st2 - second cell
     """
     # xcart = []
@@ -3271,3 +3271,84 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
     st.write_cif(symprec = None)
 
     return st 
+
+
+    def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
+        """
+        Remove closest lying atoms of type el  
+
+        INPUT:
+        st (Structure) - input structure 
+        el (int array) - list of elements to remove
+        nn (int) - number of closest atoms 
+        n (int array) - number of removing atoms 
+        x (float array) - relative number of removing atoms 
+
+        RETURN:
+        st (Structure) - modified structure 
+
+        author - A. Burov 
+
+        """
+        st = copy.deepcopy(self)
+        
+        atoms = {} 
+        if (n != 0):
+            natoms = sum(n)
+            for idx, el_c in enumerate(el):
+                if (n[idx] != 0):
+                    atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
+                    if (len(atoms_c) == 0):
+                        n[idx] = 0  
+                    atoms[el_c] = atoms_c
+        elif (x != 0):
+            natoms = 0
+            n = []
+            for item in atoms.items():
+                n.append(int(len(item)*x))
+                natoms += n[-1]
+            print("Atoms of each species will be removed: {}".format(n))
+            for idx, el_c in enumerate(el):    
+                if (x[idx] != 0):
+                    atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
+                    if (len(atoms_c) == 0):
+                        n[idx] = 0 
+                    atoms[el_c] = atoms_c    
+        else:
+            natoms = 0
+
+        atoms_removed = {} 
+        for el_c in el:
+            atoms_removed[el_c] = []
+        for i in range(natoms):
+            dist_min = 1e3 
+            idx_min = -1  
+            for el_idx, el_c in enumerate(el):
+                if (n[el_idx] == 0):
+                    continue 
+                for atom_idx in atoms[el_c]:
+                    dist = st.nn(atom_idx, nn, from_one = 0, silent = 1)['dist'][1:]
+                    dist_cur = sum(dist) / len(dist)
+                    if (dist_cur < dist_min):
+                        dist_min, idx_min = dist_cur, atom_idx
+                        el_min = el_idx
+            st = st.remove_atoms([idx_min], from_one = 0, clear_magmom  = 1)
+            del atoms[el[el_min]][idx_min]  
+            if (n[el_min] == 0):
+                del atoms[el[el_min]]
+            for el_c in el:
+                for idx_c, atom_c in enumerate(atoms[el_c]):
+                    if (atom_c > idx_min):
+                        atoms[el_c][idx_c] -= 1
+            idx_shift = 0   
+            for el_c in el:
+                for atom in atoms_removed[el_c]:
+                    if (idx_min >= atom):
+                        idx_shift += 1 
+            atoms_removed[el[el_min]].append(idx_min+idx_shift)
+            print("Atoms were removed: {} / {}".format(i+1, natoms))
+            n[el_min] -= 1
+        for el_c in el:
+            print("For element {}, atoms with indicies {} were removed".format(el_c, atoms_removed[el_c]))
+        print("The final reduced formula is {}".format(st.get_reduced_formula()))
+        return st
