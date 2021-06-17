@@ -3276,11 +3276,17 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
     def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
         """
         Remove closest lying atoms of type el  
+
+        INPUT:
         st (Structure) - input structure 
         el (int array) - list of elements to remove
         nn (int) - number of closest atoms 
         n (int array) - number of removing atoms 
         x (float array) - relative number of removing atoms 
+
+        RETURN:
+        st (Structure) - modified structure 
+
         author - A. Burov 
 
         """
@@ -3322,7 +3328,7 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
                     continue 
                 for atom_idx in atoms[el_c]:
                     dist = st.nn(atom_idx, nn, from_one = 0, silent = 1)['dist'][1:]
-                    dist_cur = sum(dist)/len(dist)
+                    dist_cur = sum(dist) / len(dist)
                     if (dist_cur < dist_min):
                         dist_min, idx_min = dist_cur, atom_idx
                         el_min = el_idx
