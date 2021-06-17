@@ -48,7 +48,7 @@ from siman.functions import (read_vectors, read_list, words, read_string,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
 from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
-local_surrounding, local_surrounding2, determine_symmetry_positions, )
+local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest)
 from siman.set_functions import InputSet, aims_keys
 
 
@@ -1241,10 +1241,10 @@ class Structure():
         return np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
 
 
-
     def printme(self):
         print(self.convert2pymatgen())
         return 
+
 
     def get_space_group_info(self, symprec = None):
         
@@ -1323,6 +1323,7 @@ class Structure():
             tra = ns
         return tra
 
+
     def get_specific_elements(self, required_elements = None, fmt = 'n', z_range = None, zr_range = None):
         """Returns list of specific elements (chemical names. z, or numbers from 0) in the structure
         required_elements - list of elements z of interest
@@ -1374,7 +1375,6 @@ class Structure():
         return tra
 
 
-
     def get_dipole(self, ox_states = None, chg_type = 'ox'):
         """ Return dipole moment in e*A calculated by pymatgen
         ox_states (dict) - oxidation states of elements
@@ -1384,8 +1384,6 @@ class Structure():
         """
         slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
         return slab.dipole
-
-
 
 
     def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
@@ -2163,10 +2161,7 @@ class Structure():
         st.name+='_vac'
         # st.write_xyz()
         return st
-
-
-
-
+    
 
     # def sum_of_coord(self):
     #     sumx = 0
@@ -2359,7 +2354,7 @@ class Structure():
     def shift_atoms(self, vector_red = None, vector_cart = None, return2cell = 1):
         """
         Shift all atoms according to *vector_red* or *vector_cart*
-		Use *return2cell* if atoms coordinates should be inside cell
+        Use *return2cell* if atoms coordinates should be inside cell
         """
         st = copy.deepcopy(self)
         if vector_cart is not None:
@@ -2580,13 +2575,9 @@ class Structure():
         return st
 
 
-
-
-
-
-
-
-
+    def remove_closest(self, *args, **kwargs):
+        #see description for write_xyz()
+        return remove_closest(self, *args, **kwargs)
 
 
     def find_closest_atom(self, xc = None, xr = None):
@@ -7278,7 +7269,3 @@ class MP_Compound():
             self.ec_es = ec_es
         except AttributeError:
             self.ec_es = None
-        
-
-
-    
