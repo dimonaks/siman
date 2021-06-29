@@ -3275,7 +3275,7 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
 
     def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
         """
-        Remove closest lying atoms of type el  
+        Removes closest lying atoms of type el  
 
         INPUT:
         st (Structure) - input structure 
@@ -3287,7 +3287,7 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
         RETURN:
         st (Structure) - modified structure 
 
-        author - A. Burov 
+        author - A. Burov
 
         """
         st = copy.deepcopy(self)
@@ -3328,24 +3328,19 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
                     continue 
                 for atom_idx in atoms[el_c]:
                     dist = st.nn(atom_idx, nn, from_one = 0, silent = 1)['dist'][1:]
-                    dist_cur = sum(dist) / len(dist)
-                    if (dist_cur < dist_min):
+                    dist_cur = sum(dist)/len(dist)
+                    if (dist_cur <= dist_min):
                         dist_min, idx_min = dist_cur, atom_idx
                         el_min = el_idx
             st = st.remove_atoms([idx_min], from_one = 0, clear_magmom  = 1)
             del atoms[el[el_min]][idx_min]  
             if (n[el_min] == 0):
-                del atoms[el[el_min]]
+                del atoms[el[el_min]]   
             for el_c in el:
                 for idx_c, atom_c in enumerate(atoms[el_c]):
-                    if (atom_c > idx_min):
+                    if (atom_c >= idx_min):
                         atoms[el_c][idx_c] -= 1
-            idx_shift = 0   
-            for el_c in el:
-                for atom in atoms_removed[el_c]:
-                    if (idx_min >= atom):
-                        idx_shift += 1 
-            atoms_removed[el[el_min]].append(idx_min+idx_shift)
+            atoms_removed[el[el_min]].append(idx_min)
             print("Atoms were removed: {} / {}".format(i+1, natoms))
             n[el_min] -= 1
         for el_c in el:
