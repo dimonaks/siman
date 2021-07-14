@@ -18,6 +18,7 @@ from siman.set_functions import InputSet
 from siman.functions import  return_atoms_to_cell, element_name_inv
 from siman.inout import write_xyz
 from siman.geo import local_surrounding, local_surrounding2, xcart2xred, xred2xcart
+from siman.small_functions import block_print, enable_print
 
 lib = cdll.LoadLibrary(os.path.dirname(__file__)+'/libfindpores.so')
 
@@ -765,7 +766,118 @@ def make_interface(main_slab, m_xc, second_slab, s_xc):
 
 
 
+def make_interface2(st1, st2, shift, mesh = [5,5], oxi = {}, at_fixed = [], mode = "top", tol = 0.05):
+    """
+    Removes vacuum from the structure  
 
+    INPUT:
+    st1 (Structure) - main input structure 
+    st2 (Structure) - appending input structure 
+    thickness (float) - remaining thickness of vacuum  
+    shift (float array) - shift atoms along axis 
+    tol (float) - relative difference between two steps with different meshes 
+    mode (str) - type of interfaces or interfaces that will be returned 
+        'top' - returns one structure that was made from highest atoms from st1 and lowest atom from st2 
+        'min' - returns
+
+    'min' mode requires these arguments:
+        mesh (int array) - mesh in AB plane to find a structure with lowest Ewald energy
+        oxi (float dic) - dictionary oxidation states. Look siman.geo.make_neutral() for more details 
+            E.g {"Li": 1, "La": 2, "Zr":4, "O": -1}
+        at_fixed (string array) - atoms with fixed oxidation states 
+
+    RETURN:
+        interface and new structure st2. 
+
+    author - A. Burov 
+
+    """
+    from pymatgen.analysis.ewald import EwaldSummation
+
+    st1 = copy.deepcopy(st1)
+    st2 = copy.deepcopy(st2)
+    st1_tmp = copy.deepcopy(st1)
+    st2_tmp = copy.deepcopy(st2)
+
+    st1_tmp = st1_tmp.remove_vacuum()
+    st2_tmp = st2_tmp.remove_vacuum()
+    z1 = st1_tmp.rprimd[2][2]
+    z2 = st2_tmp.rprimd[2][2]
+    st2 = st2.add_vacuum(vector_i = 2, thickness = z1 - z2)
+
+    z_coord1 = [x[-1] for x in st1.xcart]
+    z_coord2 = [x[-1] for x in st2.xcart]
+    z1_max = [x for _, x in sorted(zip(z_coord1, range(st1.natom)))][-1]
+    z2_min = [x for _, x in sorted(zip(z_coord2, range(st2.natom)))][0]
+
+    block_print()
+    interface, li_super_new = make_interface(st1, st1.xcart[z1_max], st2, st2.xcart[z2_min]+shift)
+    interface = interface.remove_vacuum(thickness = abs(shift[-1]))
+    z3 = interface.rprimd[2][2]
+    enable_print()
+
+    structures = []
+    if (mode == "min"):
+        print("Finding structure with minimal Ewald energy")
+        shift_x = interface.rprimd[0][0] / mesh[0]
+        shift_y = interface.rprimd[1][1] / mesh[1]
+
+        en_min = 1e20
+        diff = 1.0
+        itr = 0
+
+        while (diff > tol):
+            en_prev = en_min
+            en_min = 1e20
+            itr += 1 
+            for x in range(mesh[0]):
+                for y in range(mesh[1]):
+                    block_print()
+                    interface_c = copy.deepcopy(interface)
+
+                    for xc in interface_c.xcart:
+                        if (xc[2] > z3 - z2  + (z1 - z2)):
+                            xc[0] += shift_x * x
+                            xc[1] += shift_y * y
+
+                    interface_c.update_xred()
+                    interface_c = interface_c.return_atoms_to_cell()
+                    interface_c = interface_c.make_neutral(oxidation = oxi, at_fixed = at_fixed, mode = 'equal',
+                                                            silent = 1, return_oxidation = 0)
+
+                    en = EwaldSummation(interface_c)
+                    en = en.total_energy
+                    if (en < en_min) and (x != 0) and (y != 0):
+                        en_min = en
+                        move_x = x
+                        move_y = y
+                    enable_print()
+                    print(en)
+                 
+            diff = abs((en_min - en_prev) / max(abs(en_min), abs(en_prev)))
+            shift_x /= 2
+            shift_y /= 2
+            print("Interation: {}, difference: {}".format(itr, diff))
+        
+        block_print()
+        interface_c = copy.deepcopy(interface)
+
+        for xc in interface_c.xcart:
+            if (xc[2] > z3 - z2  + (z1 - z2)):
+                xc[0] += shift_x * x
+                xc[1] += shift_y * y
+
+        interface_c.update_xred()
+        interface_c = interface_c.return_atoms_to_cell()
+        enable_print()
+        
+    else:
+        pass
+
+    if (mode == "top") or (mode == "min"):
+        return interface_c, li_super_new
+    else:
+        raise ValueError("Wrong mode, check function's description.")
 
 
 
@@ -983,5 +1095,6 @@ def insert_atom(st, el, i_void = None, i_void_list = None, r_imp = 1.6, ):
     st_new.magmom = [None]
 
     return st_new, i_add, sts_by_one
+
 
 
