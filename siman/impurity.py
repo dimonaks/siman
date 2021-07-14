@@ -768,7 +768,7 @@ def make_interface(main_slab, m_xc, second_slab, s_xc):
 
 def make_interface2(st1, st2, shift, mesh = [5,5], oxi = {}, at_fixed = [], mode = "top", tol = 0.05):
     """
-    Removes vacuum from the structure  
+    Creates interface from two input structures
 
     INPUT:
     st1 (Structure) - main input structure 
