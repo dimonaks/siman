@@ -9,10 +9,10 @@ sys.path.append(os.path.dirname(__file__)+'/../alglib_cpython')
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
-
+from analysis_functions import ALGLIB as ALB
 
 def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', labels=(), lab_size=15, tick_size=15, fig_size=(), 
-                   fig_title='', xlim = (), ylim = (), zlim = ()):
+                   fig_title='', xlim = (), ylim = (), zlim = (), shag_a=0.001,shag_b=0.001,npoint_a=1000,npoint_b=1000):
 
     acell_list = []
     etotal_list = []    
@@ -24,7 +24,7 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
         etotal_list.append ( calc[id1].energy_sigma0 )
 
 
-    f0 = open(folder+'/deformation_xy.out', 'w')
+    f0 = open(folder+'/deformation_'+it+'_'+ise+'_xy.out', 'w')
   
   
     f0.write('Calc equilibrium acell for\n')
@@ -57,6 +57,42 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
                     break
                 else: jj+=1
 
+    # Find position with minimum energy
+    etot_min = min(etot)
+    f0.write('Etot_min (without spline) = '+ str(etot_min)+' eV\n\n')
+    ii=0; exit = False
+    for j in b:
+        if exit==True: break
+        for k in a:
+            if etot[ii]==etot_min:
+                amin = k
+                bmin = j
+                exit = True
+                break
+            else: ii+=1
+
+    f0.write('xcell_min (without spline) = '+ str(amin)+' Angstrom\n')
+    f0.write('ycell_min (without spline) = '+ str(bmin)+' Angstrom\n\n\n')
+
+    e2 = ALB()
+    e2.build_2d_bicubic_spline(a, len(a), b, len(b), etot, 1)
+
+    e_min = 10**(8)
+    for j in range(-npoint_b, npoint_b):
+        b_cur = bmin+i*shag_b
+        for k in range(-npoint_a, npoint_a):
+            a_cur = amin+k*shag_a
+            e_cur = e2.calc(a_cur,b_cur,0)
+            if e_cur < e_min:
+                e_min = e_cur
+                a_min = a_cur
+                b_min = b_cur
+    f0.write('Etot_min (with spline) = '+ str(e_min)+' eV\n\n')                
+    f0.write('xcell_min (with spline) = '+ str(a_min)+' Angstrom\n')
+    f0.write('ycell_min (with spline) = '+ str(b_min)+' Angstrom\n\n\n')
+    f0.write('Found min etot for limitation:\n')
+    f0.write('xcell = '+str(amin)+' +/- '+str(npoint_a*shag_a)+'  Angstrom'+' (step = '+str(shag_a)+')'+'\n')
+    f0.write('ycell = '+str(bmin)+' +/- '+str(npoint_b*shag_b)+'  Angstrom'+' (step = '+str(shag_b)+')'+'\n\n\n') 
     # Check etot
     assert None not in etot, 'None in etot'
     f0.close()
@@ -125,7 +161,9 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
     y_setca_np = np.array(y_setca)
     z_setca_np = np.array(z_setca)
 
-
+    if not xlim: xlim = (min(x_setca), max(x_setca))
+    if not ylim: ylim = (min(y_setca), max(y_setca))
+    if not zlim: zlim = (min(z_setca), max(z_setca))
     # Vẽ bức tranh
 
     fig = plt.figure()
@@ -169,7 +207,7 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
         # rcount, ccount, _ = colors.shape
 
 
-        cset = ax.contour(x_setca_np, y_setca_np, z_setca_np, zdir='z', offset=zlim[0], cmap=cm.rainbow, zorder=0.3)          
+        # cset = ax.contour(x_setca_np, y_setca_np, z_setca_np, zdir='z', offset=zlim[0], cmap=cm.rainbow, zorder=0.3)          
         ax.plot_surface(x_setca_np, y_setca_np, z_setca_np, rstride=1, cstride=1, cmap=cm.rainbow, zorder=0.5)
         # surf = ax.plot_surface(x_setca_np, y_setca_np, z_setca_np, rcount=rcount, ccount=ccount, facecolors=colors, shade=False, zorder=0.5)
         # surf.set_facecolor((0,0,0,0))
@@ -203,7 +241,7 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
         cbar = plt.colorbar(format = FormatStrFormatter('%.2f'))
         cbar.set_label('$'+labels[2]+'$', fontsize = lab_size)
         cbar.ax.tick_params(labelsize=tick_size) 
-        cs.set_title(fig_title, fontsize=lab_size)
+        # cs.title(fig_title, fontsize=lab_size)
 
     # plt.show()
     fig.set_figheight(fig_size[0])
