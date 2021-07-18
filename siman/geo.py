@@ -1,6 +1,6 @@
 
 
-import sys, copy, itertools, math
+import sys, re, copy, itertools, math
 from operator import itemgetter
 
 import itertools
@@ -3273,82 +3273,209 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
     return st 
 
 
-    def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
-        """
-        Remove closest lying atoms of type el  
+def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
+    """
+    Removes closest lying atoms of type el  
 
-        INPUT:
+    INPUT:
         st (Structure) - input structure 
         el (int array) - list of elements to remove
         nn (int) - number of closest atoms 
         n (int array) - number of removing atoms 
         x (float array) - relative number of removing atoms 
 
-        RETURN:
+    RETURN:
         st (Structure) - modified structure 
 
-        author - A. Burov 
+    author - A. Burov
 
-        """
-        st = copy.deepcopy(self)
-        
-        atoms = {} 
-        if (n != 0):
-            natoms = sum(n)
-            for idx, el_c in enumerate(el):
-                if (n[idx] != 0):
-                    atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
-                    if (len(atoms_c) == 0):
-                        n[idx] = 0  
-                    atoms[el_c] = atoms_c
-        elif (x != 0):
-            natoms = 0
-            n = []
-            for item in atoms.items():
-                n.append(int(len(item)*x))
-                natoms += n[-1]
-            print("Atoms of each species will be removed: {}".format(n))
-            for idx, el_c in enumerate(el):    
-                if (x[idx] != 0):
-                    atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
-                    if (len(atoms_c) == 0):
-                        n[idx] = 0 
-                    atoms[el_c] = atoms_c    
-        else:
-            natoms = 0
+    """
+    st = copy.deepcopy(self)
+    
+    atoms = {} 
+    if (n != 0):
+        natoms = sum(n)
+        for idx, el_c in enumerate(el):
+            if (n[idx] != 0):
+                atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
+                if (len(atoms_c) == 0):
+                    n[idx] = 0  
+                atoms[el_c] = atoms_c
+    elif (x != 0):
+        natoms = 0
+        n = []
+        for item in atoms.items():
+            n.append(int(len(item)*x))
+            natoms += n[-1]
+        print("Atoms of each species will be removed: {}".format(n))
+        for idx, el_c in enumerate(el):    
+            if (x[idx] != 0):
+                atoms_c = st.get_specific_elements(required_elements = [el_c], fmt = 'n', z_range = None, zr_range = None)
+                if (len(atoms_c) == 0):
+                    n[idx] = 0 
+                atoms[el_c] = atoms_c    
+    else:
+        natoms = 0
 
-        atoms_removed = {} 
+    atoms_removed = {} 
+    for el_c in el:
+        atoms_removed[el_c] = []
+    for i in range(natoms):
+        dist_min = 1e3 
+        idx_min = -1  
+        for el_idx, el_c in enumerate(el):
+            if (n[el_idx] == 0):
+                continue 
+            for atom_idx in atoms[el_c]:
+                dist = st.nn(atom_idx, nn, from_one = 0, silent = 1)['dist'][1:]
+                dist_cur = sum(dist) / len(dist)
+                if (dist_cur <= dist_min):
+                    dist_min, idx_min = dist_cur, atom_idx
+                    el_min = el_idx
+        st = st.remove_atoms([idx_min], from_one = 0, clear_magmom  = 1)
+        del atoms[el[el_min]][idx_min]  
+        if (n[el_min] == 0):
+            del atoms[el[el_min]]   
         for el_c in el:
-            atoms_removed[el_c] = []
-        for i in range(natoms):
-            dist_min = 1e3 
-            idx_min = -1  
-            for el_idx, el_c in enumerate(el):
-                if (n[el_idx] == 0):
-                    continue 
-                for atom_idx in atoms[el_c]:
-                    dist = st.nn(atom_idx, nn, from_one = 0, silent = 1)['dist'][1:]
-                    dist_cur = sum(dist) / len(dist)
-                    if (dist_cur < dist_min):
-                        dist_min, idx_min = dist_cur, atom_idx
-                        el_min = el_idx
-            st = st.remove_atoms([idx_min], from_one = 0, clear_magmom  = 1)
-            del atoms[el[el_min]][idx_min]  
-            if (n[el_min] == 0):
-                del atoms[el[el_min]]
-            for el_c in el:
-                for idx_c, atom_c in enumerate(atoms[el_c]):
-                    if (atom_c > idx_min):
-                        atoms[el_c][idx_c] -= 1
-            idx_shift = 0   
-            for el_c in el:
-                for atom in atoms_removed[el_c]:
-                    if (idx_min >= atom):
-                        idx_shift += 1 
-            atoms_removed[el[el_min]].append(idx_min+idx_shift)
-            print("Atoms were removed: {} / {}".format(i+1, natoms))
-            n[el_min] -= 1
-        for el_c in el:
-            print("For element {}, atoms with indicies {} were removed".format(el_c, atoms_removed[el_c]))
-        print("The final reduced formula is {}".format(st.get_reduced_formula()))
+            for idx_c, atom_c in enumerate(atoms[el_c]):
+                if (atom_c >= idx_min):
+                    atoms[el_c][idx_c] -= 1
+        atoms_removed[el[el_min]].append(idx_min)
+        print("Atoms were removed: {} / {}".format(i+1, natoms))
+        n[el_min] -= 1
+    for el_c in el:
+        print("For element {}, atoms with indicies {} were removed".format(el_c, atoms_removed[el_c]))
+    print("The final reduced formula is {}".format(st.get_reduced_formula()))
+    return st
+
+
+
+def remove_vacuum(self, thickness = 0.0):
+    """
+    Removes vacuum from a structure  
+    
+    INPUT:
+        st (Structure) - input structure 
+        thickness (float) - remaining thickness of vacuum  
+    
+    RETURN:
+        slab with vacuum specified thickness 
+
+    author - A. Burov 
+
+    """
+
+    if (thickness < 0):
+        raise ValueError('The thickness of remaining vacuum should not be negative')
+
+    st = copy.deepcopy(self)
+    xyz = list(map(list, zip(st.xcart)))
+    z_coord = [i[-1][-1] for i in xyz]
+    z_length = st.rprimd[2][2]
+    max_z = max(z_coord)-min(z_coord)
+    st_new = st.shift_atoms(vector_cart = [0, 0, -min(z_coord)], return2cell = 1)
+    st_new = st_new.add_vacuum(vector_i = 2, thickness = -(z_length - max_z - thickness))
+
+    return st_new
+
+
+def make_neutral(self, oxidation = None, at_fixed = None, mode = 'equal', return_oxidation = 1, silent = 1):
+    """
+    Makes slab with total a charge equal to 0 
+
+    INPUT:
+        st (Structure) - input structure 
+        oxidation (dir integer) - list of oxidation states  
+            E.g oxi_state = {"Li": 1, "La": 2, "Zr":4, "O": -2}
+        at_fixed (dir string) - list of atoms with fixed oxidation states
+        mode (string) - how uncompensated charge will be redistributed between unfixed atoms    
+            'equal' - equally between unfixed atoms 
+            'propotional' - proportionally to oxidation state
+    
+    RETURN:
+        if (return_oxidation == True)
+            returns a new structure with a neutral charge and new oxidation states
+        else
+            returns only a new structure 
+
+    author - A. Burov 
+
+    """
+
+    st = copy.deepcopy(self)
+    st = st.convert2pymatgen()
+
+    st.add_oxidation_state_by_element(oxidation)    
+    diff_chr = st.charge
+
+    if (silent  == 1):
+        print("Uncompensated charge is {}".format(st.charge))
+
+    atoms = st.formula.split()
+    at_init = {}
+
+    for atom in atoms:
+        at_type = re.sub(r'[0-9]+', '', atom) 
+        at_number = re.sub(r'[^0-9]+', '', atom)
+        at_init[at_type] = int(at_number)
+
+    at_sum = 0
+    if (mode == 'equal'):
+        for key, item in at_init.items():
+            if (diff_chr > 0):
+                if (key not in at_fixed):
+                    if (oxidation[key] > 0):
+                        at_sum += item
+            else:
+                if (key not in at_fixed):
+                    if (oxidation[key] < 0):
+                        at_sum += item
+            
+        rel_chr = diff_chr / at_sum
+        for key, item in oxidation.items():
+            if (diff_chr > 0):
+                if (key not in at_fixed):
+                    if (oxidation[key] > 0):
+                        oxidation[key] = item - rel_chr
+            else:
+                if (key not in at_fixed):
+                    if (oxidation[key] < 0):
+                        oxidation[key] = item - rel_chr
+
+    elif (mode == 'propotional'):
+        ox_sum = 0
+        for key, item in at_init.items():
+            if (diff_chr > 0):
+                if (key not in at_fixed):
+                    if (oxidation[key] > 0):
+                        ox_sum += oxidation[key]
+            else:
+                if (key not in at_fixed):
+                    if (oxidation[key] < 0):
+                        ox_sum += oxidation[key]
+
+        for key, item in oxidation.items():
+            rel_chr = item / ox_sum * diff_chr / at_init[key]
+            if (diff_chr > 0):
+                if (key not in at_fixed):
+                    if (oxidation[key] > 0):
+                        oxidation[key] = item - rel_chr
+            else:
+                if (key not in at_fixed):
+                    if (oxidation[key] < 0):
+                        oxidation[key] = item - rel_chr 
+
+        st.add_oxidation_state_by_element(oxidation)    
+        print(st.charge)
+
+    else:
+        print("Wrong mode, check the function's description")
+
+    if (silent == 1):
+        print("New oxidation states are {}".format(oxidation))
+
+    if (return_oxidation == 1):
+        return st, oxidation
+    else:
         return st
+        
