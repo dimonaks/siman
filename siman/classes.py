@@ -431,6 +431,12 @@ class Structure():
 
         return determine_symmetry_positions(self, element)
 
+    def get_symmetry_positions(self, element):
+        #just another name
+        from siman.geo import determine_symmetry_positions
+
+        return determine_symmetry_positions(self, element)
+
 
     def get_maglist(self):
         """
