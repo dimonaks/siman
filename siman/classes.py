@@ -6430,6 +6430,14 @@ class CalculationVasp(Calculation):
             path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
             path_to_poscar = path_to_outcar.replace('OUTCAR', "POSCAR")
             path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
+            path_to_ibzkpt  = path_to_outcar.replace('OUTCAR', "IBZKPT")
+            path_to_wavecar = path_to_outcar.replace('OUTCAR', "WAVECAR")
+            path_to_doscar = path_to_outcar.replace('OUTCAR', "DOSCAR")
+            path_to_eigenval = path_to_outcar.replace('OUTCAR', "EIGENVAL")
+            path_to_procar = path_to_outcar.replace('OUTCAR', "PROCAR")
+            path_to_locpot = path_to_outcar.replace('OUTCAR', "LOCPOT")
+            path_to_kpoints = path_to_outcar.replace('OUTCAR', "KPOINTS")
+            path_to_waveder = path_to_outcar.replace('OUTCAR', "WAVEDER")  
         else:
             path_to_contcar = ''
             path_to_xml     = ''
@@ -6500,7 +6508,37 @@ class CalculationVasp(Calculation):
             
             self.get_file(os.path.basename(path_to_xml), up = load)
 
+        if 'w' in load:
 
+            self.get_file(os.path.basename(path_to_wavecar), up = load)
+            self.get_file(os.path.basename(self.dir+'/WAVECAR'), up = load)
+        if 'b' in load:
+
+            self.get_file(os.path.basename(path_to_ibzkpt), up = load)
+
+        if 'e' in load:
+            self.get_file(os.path.basename(path_to_eigenval), up = load)
+            self.get_file(os.path.basename(self.dir+'/EIGENVAL'), up = load)
+
+        if 'd' in load:
+            self.get_file(os.path.basename(path_to_doscar), up = load)
+            self.get_file(os.path.basename(self.dir+'/DOSCAR'), up = load)
+
+        if 'l' in load:
+            self.get_file(os.path.basename(path_to_locpot), up = load)
+            self.get_file(os.path.basename(self.dir+'/LOCPOT'), up = load)
+
+        if 'pr' in load:
+
+            # self.get_file(os.path.basename(path_to_procar), up = load)
+            self.get_file(os.path.basename(self.dir+'/PROCAR'), up = load)
+        if 'k' in load:
+
+            self.get_file(os.path.basename(self.dir+'/KPOINTS'), up = load)
+
+        if 'wd' in load:
+            self.get_file(os.path.basename(path_to_waveder), up = load)
+            self.get_file(os.path.basename(self.dir+'/WAVEDER'), up = load)
 
 
 

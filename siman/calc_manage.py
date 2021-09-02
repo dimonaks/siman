@@ -2739,6 +2739,15 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
         override = True
 
+    elif inherit_type == 'band_hse':
+        des = 'Inherited from the final state of '+cl_base.name+' with the copying the wave function'
+
+
+    elif inherit_type == 'optic':
+        des = 'Inherited from the final state of '+cl_base.name+' with the copying the wave function'
+
+    elif inherit_type == 'optic_loc':
+        des = 'Inherited from the final state of '+cl_base.name+' with the copying the wave function and waveder files'
 
 
 
