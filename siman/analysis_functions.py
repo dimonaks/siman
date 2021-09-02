@@ -412,8 +412,8 @@ def carrier_mobility(calc_init=(), calc_deform_x=(), calc_deform_y=(),
             mu_hole_x = function_cm(t=temperature_ref, c2d=C_2D_x, el=E_l_hole_x, m=effective_mass_hole[j], md=effective_mass_xy_hole['X'])
             mu_hole_y = function_cm(t=temperature_ref, c2d=C_2D_y, el=E_l_hole_y, m=effective_mass_hole[j], md=effective_mass_xy_hole['Y'])
 
-        f.write('{0:^15s}{1:^10s}{2:^15.2f}{3:^15.2f}{4:^15.2f}{5:^17.2f}'.format('Hole', 'x', C_2D_x, effective_mass_hole[j], E_l_el_x/ev_in_j, mu_hole_x)+'\n')
-        f.write('{0:^15s}{1:^10s}{2:^15.2f}{3:^15.2f}{4:^15.2f}{5:^17.2f}'.format('Hole', 'y', C_2D_y, effective_mass_hole[j], E_l_el_y/ev_in_j, mu_hole_y)+'\n')
+        f.write('{0:^15s}{1:^10s}{2:^15.2f}{3:^15.2f}{4:^15.2f}{5:^17.2f}'.format('Hole', 'x', C_2D_x, effective_mass_hole[j], E_l_hole_x/ev_in_j, mu_hole_x)+'\n')
+        f.write('{0:^15s}{1:^10s}{2:^15.2f}{3:^15.2f}{4:^15.2f}{5:^17.2f}'.format('Hole', 'y', C_2D_y, effective_mass_hole[j], E_l_hole_y/ev_in_j, mu_hole_y)+'\n')
 
         # If the temperature range is set
         if temperature_range:
