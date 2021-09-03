@@ -4967,6 +4967,11 @@ class Calculation(object):
                     f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
                     f.write('gzip -f '+parchg+'\n') 
 
+                if 'pr' in savefile: # 
+                    fln = 'PROCAR'
+                    procar  = pre +'.'+fln
+                    f.write('cp '+fln+' '+procar+'\n') #use cp, cause it may be needed for other calcs in run
+
                 if 'l' in savefile: # 
                     fln = 'LOCPOT'
                     locpot  = pre +'.'+fln
@@ -4981,8 +4986,7 @@ class Calculation(object):
                 if "d" in savefile:
                     fln = 'DOSCAR'
                     doscar  = pre +'.'+fln
-                    f.write('mv '+fln+' '+doscar+'\n')
-                    f.write('gzip -f '+doscar+'\n')                
+                    f.write('mv '+fln+' '+doscar+'\n')            
                 
 
 
