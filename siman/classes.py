@@ -4945,6 +4945,7 @@ class Calculation(object):
 
                     f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
                     f.write("mv CONTCAR "         + contcar+'\n')
+                    f.write("cp EIGENVAL "          + v + name_mod +  ".EIGENVAL\n")
 
                 if "i" in savefile:
                     f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
@@ -5009,6 +5010,12 @@ class Calculation(object):
                     rm_chg_wav = rm_chg_wav.replace('w','')
                 # else:
                 #     f.write("rm WAVECAR\n")
+                if 'wd' in savefile:
+                    fln = 'WAVEDER'
+                    waveder  = pre +'.'+fln
+                    # f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
+                    f.write('cp '+fln+' '+waveder+'\n') #
+                    rm_chg_wav = rm_chg_wav.replace('w','')
 
 
                 if 'c' in rm_chg_wav:
