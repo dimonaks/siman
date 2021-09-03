@@ -5456,7 +5456,7 @@ class Calculation(object):
             #clean at the end
             if final_analysis_flag: 
                 if header.final_vasp_clean:
-                    f.write('rm LOCPOT CHGCAR CHG PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+                    f.write('rm LOCPOT CHGCAR CHG PROCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
                 f.write('rm RUNNING\n')
 
 
