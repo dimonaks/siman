@@ -1669,11 +1669,26 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             printlog('Copying CHGCAR ...', imp = 'y')
 
             wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
+        
+        if inherit_option  == 'optic':
+            printlog('Copying WAVECAR ...', imp = 'y')
+            wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            pass
 
+        if inherit_option  == 'band_hse':
+            printlog('Copying WAVECAR ...', imp = 'y')
+            wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            
+            pass
 
+        if inherit_option  == 'optic_loc':
+            printlog('Copying WAVECAR ...', imp = 'y')
+            wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            
 
-
-
+            printlog('Copying WAVEDER ...', imp = 'y')
+            wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVEDER'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVEDER')       
+            pass
 
         hstring = "res_loop('{:s}', {:s}, {:s}, show = 'fo'  )     # {:s}, on {:s}  ".format(
             it, str(setlist), str(verlist), comment, str(datetime.date.today() )  )
