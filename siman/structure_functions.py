@@ -64,12 +64,12 @@ def inherit_icalc_c_a(new_structure = '', start_new_version = None,  base_calcul
                 inherit_icalc('c_a',   new_structure,  version, base_calculation, database, mult_a = j, mult_c = k, geo_folder=geo_folder)
                 version += 1
 
-    elif num_points_c = 1:
+    elif num_points_c == 1:
         for j in mult_list_a:
             inherit_icalc('c_a',   new_structure,  version, base_calculation, database, mult_a = j, mult_c = 1, geo_folder=geo_folder, override=override)
             version += 1
 
-    elif num_points_a = 1:
+    elif num_points_a == 1:
         for j in mult_list_c:
             inherit_icalc('c_a',   new_structure,  version, base_calculation, database, mult_a = 1, mult_c = j, geo_folder=geo_folder, override=override)
             version += 1

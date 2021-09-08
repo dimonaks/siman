@@ -250,6 +250,289 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
     fig.savefig(folder+'/'+it+'_'+ise+'_deform_xy_'+type_plot+'.eps', format='eps', dpi=600)    
     
     
+
+  
+def plot_dielectric_functions( dielectric_filepath='', ax=None, folder=''):
     
+    eV_to_recip_cm = 1.0/(physical_constants['Planck constant in eV s'][0]*speed_of_light*1e2)
+
+ 
+    # dielectric
+    outcar = Outcar(dielectric_filepath)
+    outcar.read_freq_dielectric_independent()
+    
+
+    freq=outcar.frequencies
+    real_dielectric = outcar.real
+    imag_dielectric = outcar.imaginary
+
+    # print(dir(outcar))
+    # print(outcar.final_energy)
+    # Diagonal elements of real dielectric tensor
+    real_xx = [real_dielectric[i][0][0] for i in range(len(real_dielectric))]
+    real_yy = [real_dielectric[i][1][1] for i in range(len(real_dielectric))]
+    real_zz = [real_dielectric[i][2][2] for i in range(len(real_dielectric))]
+
+    # Diagonal elements of imaginary dielectric tensor
+    imag_xx = [imag_dielectric[i][0][0] for i in range(len(imag_dielectric))]
+    imag_yy = [imag_dielectric[i][1][1] for i in range(len(imag_dielectric))]
+    imag_zz = [imag_dielectric[i][2][2] for i in range(len(imag_dielectric))]
+
+    # if ax is None:
+    #     fig, ax = plt.subplots(1, 1, figsize=(24.0,12.0))
+    # else:
+    #     fig = None
+    
+    # Files
+    f = open(folder+'/real_dielectric_'+dielectric_filepath.split('/')[-2]+'.out', 'w')
+    for i in range(len(freq)):
+        f.write('{0:15.9f} {1:15.9f} {2:15.9f} {3:15.9f}'.format(freq[i],real_xx[i], real_yy[i], real_zz[i])+'\n')
+    f.close()
+
+    f = open(folder+'/imaginary_dielectric_'+dielectric_filepath.split('/')[-2]+'.out', 'w')
+    for i in range(len(freq)):
+        f.write('{0:15.9f} {1:15.9f} {2:15.9f} {3:15.9f}'.format(freq[i],imag_xx[i], imag_yy[i], imag_zz[i])+'\n')
+    f.close()
+
+    # Real part of dielectric function
+    fig = plt.figure(1)
+    plt.plot( freq, real_xx, linewidth=1, linestyle='-', color='red', label='$\\epsilon_1(\\omega)$ xx'  )
+    plt.plot( freq, real_yy, linewidth=3, linestyle='--', color='blue', label='$\\epsilon_1(\\omega)$ yy'  )
+    plt.plot( freq, real_zz, linewidth=2, linestyle='-', color='green', label='$\\epsilon_1(\\omega)$ zz'  )
+    # plt.xlim([0,40])
+    # plt.ylim([-20,30])
+    plt.xlabel("Energy (eV)", fontsize=18)
+    plt.ylabel("$\\epsilon_1$ ($\\omega$)  ", fontsize=25)
+    plt.legend(bbox_to_anchor=(0.6, 0.65), borderaxespad=0., labelspacing=0.3, numpoints=1, frameon=True, markerscale=1., handletextpad=0.3, fontsize=17)
+    # return fig
+    plt.tight_layout()
+    plt.savefig(folder+'/'+dielectric_filepath.split('/')[-2]+"_real.png")
+    plt.clf()
+    plt.cla()
+
+
+    # Imaginary part of dielectric function
+    fig = plt.figure(1)
+    plt.plot( freq, imag_xx, linewidth=2, linestyle='-', color='red', label='$\\epsilon_2(\\omega)$ xx'  )
+    plt.plot( freq, imag_yy, linewidth=3, linestyle='--', color='blue', label='$\\epsilon_2(\\omega)$ yy'  )
+    plt.plot( freq, imag_zz, linewidth=2, linestyle='-', color='green', label='$\\epsilon_2(\\omega)$ zz'  )
+    # plt.xlim([0,40])
+    # plt.ylim([-20,30])
+    plt.xlabel("Energy (eV)", fontsize=18)
+    plt.ylabel("$\\epsilon_2$ ($\\omega$)  ", fontsize=25)
+    plt.legend(bbox_to_anchor=(0.734, 0.80), borderaxespad=0., labelspacing=0.3, numpoints=1, frameon=True, markerscale=1., handletextpad=0.3, fontsize=17)
+    # return fig
+    plt.tight_layout()
+    plt.savefig(folder+'/'+dielectric_filepath.split('/')[-2]+"_imag.png")
+    plt.clf()
+    plt.cla()
+
+   
+
+
+def give_absorption_coeff( dielectric_filepath, folder):
+
+    eV_to_recip_cm = 1.0/(physical_constants['Planck constant in eV s'][0]*speed_of_light*1e2)
+    
+    outcar = Outcar(dielectric_filepath)
+    outcar.read_freq_dielectric_independent()
+   
+    
+    freq=outcar.frequencies
+    real_dielectric = outcar.real
+    imag_dielectric = outcar.imaginary
+    # Diagonal elements of real dielectric tensor
+    real_xx = [real_dielectric[i][0][0] for i in range(len(real_dielectric))]
+    real_yy = [real_dielectric[i][1][1] for i in range(len(real_dielectric))]
+    real_zz = [real_dielectric[i][2][2] for i in range(len(real_dielectric))]
+
+    # Diagonal elements of imaginary dielectric tensor
+    imag_xx = [imag_dielectric[i][0][0] for i in range(len(imag_dielectric))]
+    imag_yy = [imag_dielectric[i][1][1] for i in range(len(imag_dielectric))]
+    imag_zz = [imag_dielectric[i][2][2] for i in range(len(imag_dielectric))]
+
+    epsilon_1_xx=real_xx
+    epsilon_1_yy=real_yy
+    epsilon_1_zz=real_zz
+    epsilon_2_xx=imag_xx
+    epsilon_2_yy=imag_yy
+    epsilon_2_zz=imag_zz
+
+    # extinction coefficient k
+    k_xx=[]
+    k_yy=[]
+    k_zz=[]
+    for i in range(len(real_dielectric)):
+        x=np.sqrt( -epsilon_1_xx[i] + np.sqrt( epsilon_1_xx[i]**2 + epsilon_2_xx[i]**2 ) )*2**(-0.5)
+        y=np.sqrt( -epsilon_1_yy[i] + np.sqrt( epsilon_1_yy[i]**2 + epsilon_2_yy[i]**2 ) )*2**(-0.5) 
+        z=np.sqrt( -epsilon_1_zz[i] + np.sqrt( epsilon_1_zz[i]**2 + epsilon_2_zz[i]**2 ) )*2**(-0.5) 
+        k_xx.append(x)
+        k_yy.append(y)
+        k_zz.append(z)
+
+    # absorption_coeff in 1e4 (cm-1)
+    absor_xx=[]
+    absor_yy=[]
+    absor_zz=[]
+    for i in range(len(real_dielectric)):
+        x=2.0 *pi*eV_to_recip_cm*freq[i]*k_xx[i]/1e4
+        y=2.0 *pi*eV_to_recip_cm*freq[i]*k_yy[i]/1e4 
+        z=2.0 *pi*eV_to_recip_cm*freq[i]*k_zz[i]/1e4 
+        absor_xx.append(x)
+        absor_yy.append(y)
+        absor_zz.append(z)
+
+    # Files
+    f = open(folder+'/extinction_coefficient_k_'+dielectric_filepath.split('/')[-2]+'.out', 'w')
+    for i in range(len(freq)):
+        f.write('{0:15.9f} {1:15.9f} {2:15.9f} {3:15.9f}'.format(freq[i],k_xx[i], k_yy[i], k_zz[i])+'\n')
+    f.close()
+
+    f = open(folder+'/absorption_coefficient_'+dielectric_filepath.split('/')[-2]+'.out', 'w')
+    for i in range(len(freq)):
+        f.write('{0:15.9f} {1:15.9f} {2:15.9f} {3:15.9f}'.format(freq[i],absor_xx[i], absor_yy[i], absor_zz[i])+'\n')
+    f.close()
+
+    # Plot absorption_coeff
+    fig = plt.figure(1)
+    plt.plot( freq, absor_xx, linewidth=2, linestyle='-', color='red', label='$\\alpha(\\omega)$ xx'  )
+    plt.plot( freq, absor_yy, linewidth=3, linestyle='--', color='blue', label='$\\alpha(\\omega)$ yy'  )
+    plt.plot( freq, absor_zz, linewidth=2, linestyle='-', color='green', label='$\\alpha(\\omega)$ zz'  )
+    # plt.xlim([0,40])
+    # plt.ylim([-20,30])
+    plt.xlabel("Energy (eV)", fontsize=18)
+    plt.ylabel("$\\alpha$ ($\\omega$) $10^4cm^{-1}$ ", fontsize=20)
+    plt.legend(bbox_to_anchor=(0.55, 0.95), borderaxespad=0., labelspacing=0.3, numpoints=1, frameon=True, markerscale=1., handletextpad=0.3, fontsize=17)
+    plt.tight_layout()
+    plt.savefig(folder+'/'+dielectric_filepath.split('/')[-2]+"_absorption_coeff.png")
+    plt.clf()
+    plt.cla()
+
+    # Plot extinction coefficient k
+    fig = plt.figure(1)
+    plt.plot( freq, k_xx, linewidth=2, linestyle='-', color='red', label='$k(\\omega)$ xx'  )
+    plt.plot( freq, k_yy, linewidth=3, linestyle='--', color='blue', label='$k(\\omega)$ yy'  )
+    plt.plot( freq, k_zz, linewidth=2, linestyle='-', color='green', label='$k(\\omega)$ zz'  )
+    # plt.xlim([0,40])
+    # plt.ylim([-20,30])
+    plt.xlabel("Energy (eV)", fontsize=18)
+    plt.ylabel("$k(\\omega$) ", fontsize=20)
+    plt.legend(bbox_to_anchor=(0.55, 0.95), borderaxespad=0., labelspacing=0.3, numpoints=1, frameon=True, markerscale=1., handletextpad=0.3, fontsize=17)
+    plt.tight_layout()
+    plt.savefig(folder+'/'+dielectric_filepath.split('/')[-2]+"_extinction.png")
+    plt.clf()
+    plt.cla()
+
+    # Refractive index n
+    n_xx=[]
+    n_yy=[]
+    n_zz=[]
+    for i in range(len(real_dielectric)):
+        x=np.sqrt( epsilon_1_xx[i] + np.sqrt( epsilon_1_xx[i]**2 + epsilon_2_xx[i]**2 ) )*2**(-0.5)
+        y=np.sqrt( epsilon_1_yy[i] + np.sqrt( epsilon_1_yy[i]**2 + epsilon_2_yy[i]**2 ) )*2**(-0.5)
+        z=np.sqrt( epsilon_1_zz[i] + np.sqrt( epsilon_1_zz[i]**2 + epsilon_2_zz[i]**2 ) )*2**(-0.5)
+        n_xx.append(x)
+        n_yy.append(y)
+        n_zz.append(z)
+
+
+    # Files
+    f = open(folder+'/refractive_index_n_'+dielectric_filepath.split('/')[-2]+'.out', 'w')
+    for i in range(len(freq)):
+        f.write('{0:15.9f} {1:15.9f} {2:15.9f} {3:15.9f}'.format(freq[i],n_xx[i], n_yy[i], n_zz[i])+'\n')
+    f.close()
+
+    # Plot Refractive index n
+    fig = plt.figure(1)
+    plt.plot( freq, n_xx, linewidth=2, linestyle='-', color='red', label='$n(\\omega)$ xx'  )
+    plt.plot( freq, n_yy, linewidth=3, linestyle='--', color='blue', label='$n(\\omega)$ yy'  )
+    plt.plot( freq, n_zz, linewidth=2, linestyle='-', color='green', label='$n(\\omega)$ zz'  )
+    # plt.xlim([0,40])
+    # plt.ylim([-20,30])
+    plt.xlabel("Energy (eV)", fontsize=18)
+    plt.ylabel("$n(\\omega$) ", fontsize=20)
+    plt.legend(bbox_to_anchor=(0.55, 0.95), borderaxespad=0., labelspacing=0.3, numpoints=1, frameon=True, markerscale=1., handletextpad=0.3, fontsize=17)
+    plt.tight_layout()
+    plt.savefig(folder+'/'+dielectric_filepath.split('/')[-2]+"_Refractive index.png")
+    plt.clf()
+    plt.cla()
+
+    # Optical reflectivity R
+    R_xx=[]
+    R_yy=[]
+    R_zz=[]
+    for i in range(len(real_dielectric)):
+        x=( (n_xx[i]-1)**2 + k_xx[i]**2 ) /( (n_xx[i]+1)**2 + k_xx[i]**2 )
+        y=( (n_yy[i]-1)**2 + k_yy[i]**2 ) /( (n_yy[i]+1)**2 + k_yy[i]**2 ) 
+        z=( (n_zz[i]-1)**2 + k_zz[i]**2 ) /( (n_zz[i]+1)**2 + k_zz[i]**2 ) 
+        R_xx.append(x)
+        R_yy.append(y)
+        R_zz.append(z)
+
+    # Files
+    f = open(folder+'/optical_reflectivity_R_'+dielectric_filepath.split('/')[-2]+'.out', 'w')
+    for i in range(len(freq)):
+        f.write('{0:15.9f} {1:15.9f} {2:15.9f} {3:15.9f}'.format(freq[i],R_xx[i], R_yy[i], R_zz[i])+'\n')
+    f.close()
+
+    # Plot Optical reflectivity R
+    fig = plt.figure(1)
+    plt.plot( freq, R_xx, linewidth=2, linestyle='-', color='red', label='$R(\\omega)$ xx'  )
+    plt.plot( freq, R_yy, linewidth=3, linestyle='--', color='blue', label='$R(\\omega)$ yy'  )
+    plt.plot( freq, R_zz, linewidth=2, linestyle='-', color='green', label='$R(\\omega)$ zz'  )
+    # plt.xlim([0,40])
+    # plt.ylim([-20,30])
+    plt.xlabel("Energy (eV)", fontsize=18)
+    plt.ylabel("$R(\\omega$) ", fontsize=20)
+    plt.legend(bbox_to_anchor=(0.55, 0.95), borderaxespad=0., labelspacing=0.3, numpoints=1, frameon=True, markerscale=1., handletextpad=0.3, fontsize=17)
+    plt.tight_layout()
+    plt.savefig(folder+'/'+dielectric_filepath.split('/')[-2]+"_optical_reflec.png")
+    plt.clf()
+    plt.cla()
+
+
+
+    # Electron energy-loss spectrum L
+    L_xx=[]
+    L_yy=[]
+    L_zz=[]
+    for i in range(len(real_dielectric)):
+        x=epsilon_2_xx[i]/( epsilon_1_xx[i]**2 + epsilon_2_xx[i]**2 )
+        y=epsilon_2_yy[i]/( epsilon_1_yy[i]**2 + epsilon_2_yy[i]**2 ) 
+        z=epsilon_2_zz[i]/( epsilon_1_zz[i]**2 + epsilon_2_zz[i]**2 ) 
+        L_xx.append(x)
+        L_yy.append(y)
+        L_zz.append(z)
+
+    # Files
+    f = open(folder+'/eels_L_'+dielectric_filepath.split('/')[-2]+'.out', 'w')
+    for i in range(len(freq)):
+        f.write('{0:15.9f} {1:15.9f} {2:15.9f} {3:15.9f}'.format(freq[i],L_xx[i], L_yy[i], L_zz[i])+'\n')
+    f.close()
+
+    # Plot Electron energy-loss spectrum L
+    fig = plt.figure(1)
+    plt.plot( freq, L_xx, linewidth=2, linestyle='-', color='red', label='$L(\\omega)$ xx'  )
+    plt.plot( freq, L_yy, linewidth=3, linestyle='--', color='blue', label='$L(\\omega)$ yy'  )
+    plt.plot( freq, L_zz, linewidth=2, linestyle='-', color='green', label='$L(\\omega)$ zz'  )
+    # plt.xlim([0,40])
+    # plt.ylim([-20,30])
+    plt.xlabel("Energy (eV)", fontsize=18)
+    plt.ylabel("$L(\\omega$) ", fontsize=20)
+    plt.legend(bbox_to_anchor=(0.55, 0.95), borderaxespad=0., labelspacing=0.3, numpoints=1, frameon=True, markerscale=1., handletextpad=0.3, fontsize=17)
+    plt.tight_layout()
+    plt.savefig(folder+'/'+dielectric_filepath.split('/')[-2]+"_Elec_energy-loss.png")
+
+
+
+
+    # # print(real_dielectric)
+    # print(k_xx)
+    # print(absor_xx)
+    
+   
+    
+
+                           
     
     
