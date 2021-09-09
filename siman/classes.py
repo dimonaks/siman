@@ -3853,6 +3853,7 @@ class Calculation(object):
 
         # print (st.magmom)
         # sys.exit()
+        print('self.path["input_geo"] ', self.path["input_geo"])
         with open(self.path["input_geo"],"w", newline = '') as f:
             f.write("des "+description+"\n")
             f.write("len_units "+self.len_units+"\n")
@@ -5060,10 +5061,12 @@ class Calculation(object):
             # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
             # parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
             parrallel_run_command = header.vasp_command #skoltech cluster
-        
         elif schedule_system == 'SLURM':
             # parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI"
             parrallel_run_command = header.vasp_command
+        elif schedule_system == 'simple':
+            parrallel_run_command = header.vasp_command
+        
         else:
             raise RuntimeError
 
@@ -5600,6 +5603,8 @@ class Calculation(object):
                 f.write("squeue\n") 
                 f.write("sbatch " + run_name+"\n") 
                 # f.write("sbatch -p AMG " + run_name+"\n") 
+            elif schedule_system == 'simple':
+                pass
             else:
                 printlog('Error! Unknown schedule_system', schedule_system)
                 

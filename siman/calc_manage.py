@@ -774,7 +774,9 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
     # header.SCHEDULE_SYSTEM    = clust['schedule']
     header.schedule_system    = clust['schedule']
     # header.CORENUM    = clust['corenum']
-    
+    # print('string 777 calc_manage.py dir(header) ',dir(header))
+    # print('string 778 calc_manage.py header.corenum ',header.corenum)
+    # print('string 779 calc_manage.py clust ',clust)
     if corenum:
         header.corenum    = corenum
 
@@ -2212,6 +2214,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                 if input_kpoints:
                     list_to_copy.append(input_kpoints)
+                    shutil.copy(input_kpoints, cl.dir)
                 else:
                     list_to_copy.extend( cl.make_kpoints_file() )  
 
@@ -2223,7 +2226,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 
                 list_to_copy.extend( cl.make_incar() )
                 
-                list_to_copy.extend( cl.make_kpoints_file() )
+                # list_to_copy.extend( cl.make_kpoints_file() )
 
                 list_to_copy.append(batch_script_filename)
                 
@@ -2290,8 +2293,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     i_atom_to_remove = None, 
     id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
-    mult_a = None, mult_c = None,
-    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, override = None, use_init = None,
+    mult_a = None, mult_b=None, mult_c = None, mult_rprimd = None,
+    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, geo_folder='', override = None, use_init = None,
     ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
@@ -2488,8 +2491,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
     it_new_folder = header.geo_folder + section_folder + '/' + it_new
-    new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
-
+    # new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+    new.path["input_geo"] = geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
     makedir(new.path["input_geo"])
     print_and_log('Path for inherited calc =', it_new_folder)
 
@@ -2518,6 +2521,19 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         st.rprimd[1] = [mult_a * i for i in st_from.rprimd[1].copy()]  
         st.rprimd[2] = [mult_c * i for i in st_from.rprimd[2].copy()]
         st.update_xcart()
+
+    elif inherit_type == "xy":
+        des = ' Inherited from the final state of '+calc[id_base].name+' by multiply factors for a and b lattice parameters of rprimd '+str(mult_a)+' and '+str(mult_b)
+        # new.des = struct_des[it_new].des + des
+        cl_cur = calc[id_base].end.rprimd
+        new.hex_a = calc[id_base].a * mult_a
+        st.rprimd[0] = [cl_cur[0][0] * mult_a, cl_cur[0][1] * mult_b, cl_cur[0][2]]
+        st.rprimd[1] = [cl_cur[1][0] * mult_a, cl_cur[1][1] * mult_b, cl_cur[1][2]]  
+        st.rprimd[2] = [cl_cur[2][0] * mult_a, cl_cur[2][1] * mult_b, cl_cur[2][2]]
+        st.update_xcart()
+        # new.end.xcart = xred2xcart(new.end.xred, new.end.rprimd) 
+        # new.write_geometry("end",des, override=override)    
+
 
 
     elif inherit_type == "r1r2r3":
@@ -2807,7 +2823,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     new.write_geometry('init', des, override = override)
     
 
-    write_xyz(st)
+    write_xyz(st, file_name=geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new))
 
 
 
