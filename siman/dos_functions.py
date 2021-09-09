@@ -208,7 +208,6 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     """
 
-
     if dostype == 'partial'  :
         eld1, eld2 = {}, {}
         for i, el in enumerate(cl1.end.get_elements()):

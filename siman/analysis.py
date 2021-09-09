@@ -1280,7 +1280,9 @@ def polaron_analysis(cl, readfiles):
     name_without_ext = 'polmep.'+itise+'.U'+str(max(cl.ldauu))
 
     cl = db[cl.id[0], cl.id[1], 1]
+    cl.res(up='up2')
     cl2 = db[cl.id[0], cl.id[1], 2]
+    cl2.res(up='up2')
     images = cl.params['polaron']['images']
     iat1 = cl.params['polaron']['istart']
     iat2 = cl.params['polaron']['iend']
@@ -1308,14 +1310,14 @@ def polaron_analysis(cl, readfiles):
     # print(verlist)
     for i, v in enumerate(verlist1):
         cl = db[cl.id[0], cl.id[1], v]
-        cl.res(readfiles = readfiles)
+        cl.res(readfiles = readfiles, up='up2')
         if '4' in cl.state:
             mep_energies1.append( cl.list_e_sigma0[0] )
         else:
             mep_energies1.append(0)
     for i, v in enumerate(verlist2):
         cl = db[cl.id[0], cl.id[1], v]
-        cl.res(readfiles = readfiles)
+        cl.res(readfiles = readfiles, up='up2')
         if '4' in cl.state:
 
             mep_energies2.append( cl.list_e_sigma0[0] )
@@ -1369,6 +1371,7 @@ def polaron_analysis(cl, readfiles):
             del e1_fine[index]
             del pos1_fine[index]
             # e = e1_fine
+        # print(pos1_fine, e1_fine)
         fit_and_plot(
         # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
             a1 = (pos1_fine, e1_fine, '-or'),

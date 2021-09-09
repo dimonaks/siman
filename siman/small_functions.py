@@ -45,7 +45,9 @@ def get_mismatch(a, b):
     b = np.array(b)
     return np.linalg.norm(b) / np.linalg.norm(a) - 1
 
-
+def vec_l(vec):
+    mag = np.linalg.norm(vec)
+    return mag
 
 def red_prec(value, precision = 100.):
     #
