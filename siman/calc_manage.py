@@ -442,7 +442,7 @@ def cif2poscar(cif_file, poscar_file):
 
 
 
-    if pymatgen_flag:
+    if pymatgen_flag and not header.CIF2CELL:
         # print(cif_file)
         parser = CifParser(cif_file)
         # s = parser.get_structures(primitive = True)[0]
@@ -477,7 +477,7 @@ def cif2poscar(cif_file, poscar_file):
         printlog('Error! Support of cif files requires pymatgen or cif2cell; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
 
 
-
+    return
 
 def determine_file_format(input_geo_file):
 
