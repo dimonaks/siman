@@ -2478,19 +2478,24 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     # print(st.select)
     # sys.exit()
 
-
+    print('calc_manage.py, string 2481, it_new ', it_new)
     #path to new calc
-    if it_folder:
-        # add_des(struct_des, it_new, it_folder, des = 'auto by inherit_icalc '+inherit_type) see below
-        section_folder = it_folder
+    try:
+        if it_folder:
+            # add_des(struct_des, it_new, it_folder, des = 'auto by inherit_icalc '+inherit_type) see below
+            section_folder = it_folder
 
-    else:
-        if it_new not in struct_des:
-            printlog('Error! please provide *it_folder*')
-        section_folder = struct_des[it_new].sfolder
+        else:
+            if it_new not in struct_des:
+                printlog('Error! please provide *it_folder*')
+            section_folder = struct_des[it_new].sfolder
+    except Exception:
+        section_folder = it_new
 
+    if section_folder == None:
+        section_folder = it_new
 
-    it_new_folder = header.geo_folder + section_folder + '/' + it_new
+    it_new_folder = header.geo_folder +'/' + section_folder + '/' + it_new
     # new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
     new.path["input_geo"] = geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
     makedir(new.path["input_geo"])
@@ -2795,14 +2800,16 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
     #auto addition of description
-    if it_new not in struct_des: 
-        add_des(struct_des, it = it_new, it_folder = it_folder, des = 'auto '+des)
-        new.des =  struct_des[it_new].des
-    else:
-        new.des = des + struct_des[it_new].des
-        if it_folder:
-            struct_des[it_new].sfolder = it_folder #update itfolder,
-
+    try:
+        if it_new not in struct_des: 
+            add_des(struct_des, it = it_new, it_folder = it_folder, des = 'auto '+des)
+            new.des =  struct_des[it_new].des
+        else:
+            new.des = des + struct_des[it_new].des
+            if it_folder:
+                struct_des[it_new].sfolder = it_folder #update itfolder,
+    except Exception:
+        new.des = des
 
 
 

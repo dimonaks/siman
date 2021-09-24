@@ -836,7 +836,7 @@ def read_list(token, number_of_elements, ttype, list_of_words):
     list_of_elements = []
     
     #define function dependig on type:
-    print('string 839 functions.py Blind Guardian! token', token)
+    # print('string 839 functions.py Blind Guardian! token', token)
     if   ttype == int  : 
         def convert(a): 
             return int(a)
