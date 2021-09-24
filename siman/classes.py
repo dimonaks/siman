@@ -4954,8 +4954,8 @@ class Calculation(object):
 
                 if "o" in savefile:
 
-                    f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
-                    f.write("mv CONTCAR "         + contcar+'\n')
+                    f.write("cp OUTCAR "          + v + name_mod +  ".OUTCAR\n")
+                    f.write("cp CONTCAR "         + contcar+'\n')
                     f.write("cp EIGENVAL "          + v + name_mod +  ".EIGENVAL\n")
 
                 if "i" in savefile:
