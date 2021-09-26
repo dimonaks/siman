@@ -822,7 +822,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, mpi = False, number_cores = 1,
+    run = False, check_job  = 1, params = None, mpi = False, number_cores = 1, copy_to_server = True
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -1627,7 +1627,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if ifolder:
             input_folder = ifolder
         else:
-            input_folder = header.geo_folder+header.struct_des[it].sfolder+"/"+it
+            input_folder = header.geo_folder+'/'+header.struct_des[it].sfolder+"/"+it
 
         return input_folder
 
@@ -1661,36 +1661,47 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             
             # calc[id_base].path["charge"]
             printlog('Copying CHGCAR for band structure', imp = 'y')
-            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
-
+            # print('calc_manage.py, string 1664, calc[id_base].path["charge"] ', calc[id_base].path["charge"])
+            if copy_to_server: 
+                wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
+            else:
+                shutil.copy(os.getcwd()+'/'+calc[id_base].path["charge"], calc[id].dir + '/CHGCAR')
 
         if inherit_option  == 'full_chg':
 
             # cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
             # print(calc[id_base].path)
             printlog('Copying CHGCAR ...', imp = 'y')
-
-            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
-        
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
+            else:
+                pass
         if inherit_option  == 'optic':
             printlog('Copying WAVECAR ...', imp = 'y')
-            wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
-            pass
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            else:
+                pass
 
         if inherit_option  == 'band_hse':
             printlog('Copying WAVECAR ...', imp = 'y')
-            wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
-            
-            pass
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            else:
+                pass
 
         if inherit_option  == 'optic_loc':
             printlog('Copying WAVECAR ...', imp = 'y')
-            wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
-            
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            else:
+                pass
 
             printlog('Copying WAVEDER ...', imp = 'y')
-            wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVEDER'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVEDER')       
-            pass
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVEDER'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVEDER')       
+            else:
+                pass
 
         hstring = "res_loop('{:s}', {:s}, {:s}, show = 'fo'  )     # {:s}, on {:s}  ".format(
             it, str(setlist), str(verlist), comment, str(datetime.date.today() )  )
@@ -2478,7 +2489,6 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     # print(st.select)
     # sys.exit()
 
-    print('calc_manage.py, string 2481, it_new ', it_new)
     #path to new calc
     try:
         if it_folder:
@@ -2496,8 +2506,14 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         section_folder = it_new
 
     it_new_folder = header.geo_folder +'/' + section_folder + '/' + it_new
-    # new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
-    new.path["input_geo"] = geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+
+
+    if geo_folder == '':
+        new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+    else:
+        new.path["input_geo"] = geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+
+    
     makedir(new.path["input_geo"])
     print_and_log('Path for inherited calc =', it_new_folder)
 
@@ -2829,9 +2845,10 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
     new.write_geometry('init', des, override = override)
     
-
-    write_xyz(st, file_name=geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new))
-
+    if geo_folder:
+        write_xyz(st, file_name=geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new))
+    else:
+        write_xyz(st)
 
 
 

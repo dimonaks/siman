@@ -4970,7 +4970,7 @@ class Calculation(object):
                     fln = 'CHGCAR'
                     chgcar  = pre +'.'+fln
                     f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
-                    f.write('gzip -f '+chgcar+'\n')                
+                    # f.write('gzip -f '+chgcar+'\n')                
 
                 if 'p' in savefile: # 
                     fln = 'PARCHG'
@@ -4997,7 +4997,7 @@ class Calculation(object):
                 if "d" in savefile:
                     fln = 'DOSCAR'
                     doscar  = pre +'.'+fln
-                    f.write('mv '+fln+' '+doscar+'\n')            
+                    f.write('cp '+fln+' '+doscar+'\n')            
                 
 
 
@@ -5712,7 +5712,8 @@ class Calculation(object):
                 
                 elif 'none' in cl.schedule_system:
                     job_in_queue = ''
-                    
+                elif 'simple' in cl.schedule_system:
+                    print_and_log('For SCHEDULE_SYSTEM='+cl.schedule_system+' please manually run on server! ', imp = 'y')                    
                 else:
                     print_and_log('Attention! unknown SCHEDULE_SYSTEM='+cl.schedule_system+'; Please teach me here! ', imp = 'y')
                     job_in_queue = ''
