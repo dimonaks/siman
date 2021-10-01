@@ -223,7 +223,12 @@ TM_MAG = {'NM':0.6,
           'Mg2+':0, 
           }
            # canonical magnetic moments of TM depending on oxidation state and spin state
-
+dic_sol = {'zero': 0.0, 'elec':0.2, 'hole':-0.2, 'Co_Li':-0.1, 'Ni_Li': -0.05, 'Li_Co':0.15, 'Ni_Na': -0.18, 'Na_Ni': 0.1,
+            'W_Co':0.1, 'Fels_Co':0.05, 'Fehs_Co':0.1, 'Ti_Co':0.15, 'Ti4+_Co':0.06, 'Cr3+_Co':0.7, 'Cr4+_Co':0.05,
+            'Cr2+hs_Co':0.26, 'Cr2+ls_Co':0.19, 'Ni3+hs_Co':0.05,'Ni3+ls_Co':0, 'Ni4+hs_Co':-0.07, 'Ni2+_Co':0.14,
+            'Mn3+hs_Co':0.1,'Mn3+ls_Co':0.03, 'Mn2+hs_Co':0.15,'Mg2+_Co':0.18, 'Mn4+_Co':-0.15, 'V4+_Co': 0.03,
+            'Co3+hs_Ni': 0.04, 'Mg2+_Ni':0.15, 'V4+_Ni':0, 'Ti4+_Ni': 0.04, 'Mg2+_Ni4':-0.2,
+            'Al_Co':0,}
 
 ION_RADII_coord_6 = { 
                     'Co2+hs':0.745, 'Co2+ls':0.65, 'Co3+hs':0.61, 'Co3+ls':0.545, 'Co4+hs':0.53, 'Co4+ls': 0.53,
