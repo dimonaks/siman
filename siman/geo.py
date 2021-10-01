@@ -1438,7 +1438,7 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
         if mag_AS1  is None and mag_AP is None:
             st_as.magmom = [None]
 
-        if mag_AS1:
+        if mag_AS1 is not None:
             st_as.magmom[i] = mag_AS1
 
         if disp_AS1:
@@ -1469,7 +1469,6 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
         st_as.name+='_'+suf
         sts.append(st_as)
         i_el1s.append(i)
-
 
     return sts, i_el1s
 
@@ -3314,3 +3313,53 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
     st.write_cif(symprec = None)
 
     return st 
+
+
+def rotate_align_with_vector(st1, at1, at2):
+    '''
+    The function orients the given structure by aligning the z-axis with a vector between two atoms.
+    
+    cl1 (str)  - Structure() object
+    at1 (int)  - atomic number since 0
+    at2 (int)  - atomic number since 0
+
+
+    returns a structure oriented along a vector 
+
+    Author: A.Boev
+    
+    '''
+    from siman.functions import rotation_matrix_from_vectors
+    from siman.small_functions import vec_l, angle, normal
+    from siman.geo import image_vector
+
+    # cl = cl1.copy()
+    st = st1.copy()
+    def get_vector(st, at1, at2):
+        xc1=st.xcart[at1]
+        xc2=st.xcart[at2]
+
+        vector = [i-j for i,j in zip(xc1,xc2)]
+        print(xc1,xc2, vector)
+        return vector
+
+    # vec1 = st.rprimd
+
+    vec1 = st.rprimd[2]
+    vec2 = get_vector(st, at1, at2)
+    # vec2 = image_vector(st, st.xcart[at1], st.xcart[at2])
+    # print(vec2,vec22,vec_l(vec2),vec_l(vec22))
+    m=rotation_matrix_from_vectors(vec1, vec2)
+    ang = angle(vec1,vec2)
+    if ang > 90:
+        ang = 180 - ang
+    if vec2[0] < 0:
+        vec2 = [-i for i in vec2]
+    print(vec2,normal(vec1,vec2), ang)
+
+    st1 = st.rotate(normal(vec1, vec2), ang)
+    # st1.jmol(r=3)
+    # print(st.rprimd,st1.rprimd)
+
+    # print(dir(cl),cl.id)
+    return st1

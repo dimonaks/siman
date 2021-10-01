@@ -2574,32 +2574,30 @@ def pol_disp(typ):
         'elec' - electron
         'hole' - hole
     """
-    if typ == 'zero':
-        disp = 0.0
-    elif typ == 'elec':
-        disp = 0.2
-    elif typ == 'hole':
-        disp = -0.2
-    elif typ == 'Co_Li':
-        disp = -0.1  # obtained from dft in LiCoO2
+    # if typ == 'zero':
+    #     disp = 0.0
+    # elif typ == 'elec':
+    #     disp = 0.2
+    # elif typ == 'hole':
+    #     disp = -0.2
+    # elif typ == 'Co_Li':
+    #     disp = -0.1  # obtained from dft in LiCoO2
 
-    elif typ == 'Ni_Li':
-        disp = -0.05  # obtained from dft in LiNiO2 for p2/c smaller diff
-
-
-    elif typ == 'Li_Co':
-        disp = 0.15  # obtained from dft in LiCoO2
-    elif typ == 'Ni_Na':
-        disp = -0.18  # obtained from dft in NaNiO2
-    elif typ == 'Na_Ni':
-        disp = 0.1  # obtained from dft in NaNiO2
+    # elif typ == 'Ni_Li':
+    #     disp = -0.05  # obtained from dft in LiNiO2 for p2/c smaller diff
 
 
-    elif typ: 
-        dic_sol = {'W_Co':0.1, 'Fels_Co':0.05, 'Fehs_Co':0.1, 'Ti_Co':0.15, 'Ti4+_Co':0.06, 'Cr3+_Co':0.7, 'Cr4+_Co':0.05,
-            'Cr2+hs_Co':0.26, 'Cr2+ls_Co':0.19, 'Ni3+hs_Co':0.05,'Ni3+ls_Co':0,
-            'Mn3+hs_Co':0.1,'Mn3+ls_Co':0.03, 'Mg2+_Co':0.18, 'V4+_Co': 0.03,
-            'Co3+hs_Ni': 0.04, 'Mg2+_Ni':0.15, 'V4+_Ni':0, 'Ti4+_Ni': 0.04, 'Mg2+_Ni4':-0.2,}
+    # elif typ == 'Li_Co':
+    #     disp = 0.15  # obtained from dft in LiCoO2
+    # elif typ == 'Ni_Na':
+    #     disp = -0.18  # obtained from dft in NaNiO2
+    # elif typ == 'Na_Ni':
+    #     disp = 0.1  # obtained from dft in NaNiO2
+
+
+    if typ: 
+        from siman.header import dic_sol
+        
         disp = dic_sol[typ]  #
 
 
@@ -2718,9 +2716,16 @@ def calc_single_antisite(mode = 1, update = 0, suf = '', param_dic = None, add_l
         if jmol:
             st_as.jmol(r=2, shift = shift)
         st_as.get_mag_tran()
+
+        if 'params' not in add_loop_dic.keys():
+            add_params = {}
+        else:
+            add_params = add_loop_dic['params']
+            del add_loop_dic['params']
+
         add_loop(it+'.'+suf, c['set'], 1, 
             input_st = st_as, it_folder = header.struct_des[it_base].sfolder+'/as', up = up, 
-            params = {'res_params':{'up':up_res}, 'charge':charge}, 
+            params = {'res_params':{'up':up_res}, 'charge':charge, **add_params}, 
             **add_loop_dic)
         cl_as = calc[it+'.'+suf, c['set'], 1]
         # print(cl_as.path['output'])
@@ -4697,7 +4702,8 @@ def run_OMC( cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = 
 
 
 
-def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = None, suf = '', up = 0, gmt = 0, soluted_atom = None, e_s = None):
+def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = None, suf = '', up = 0, gmt = 0, soluted_atom = None, e_s = None, 
+    add_loop_dic = None):
     """
     
     Optionally for each defect atom an occupation matrix can be provided
@@ -4763,9 +4769,12 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
 
         if defect_occ:
             for j, i in enumerate(defect_atoms):
-                print('Additionally applying provided occ matrix for i=',i_at_def )
-                cl_defect = cl_defect.set_occ_mat(i_at_def, defect_occ[j])
-
+                if cl_defect.end.get_elements_z()[i_at_def] in header.TRANSITION_ELEMENTS:
+                    print('Additionally applying provided occ matrix for i=',i_at_def )
+                    cl_defect = cl_defect.set_occ_mat(i_at_def, defect_occ[j])
+                else:
+                    print('Chosen element {} is not a transition metal'.format(cl_defect.end.get_el_name(i_at_def)))
+                    cl_defect = cl_defect.set_occ_mat(i_at_def, None)
 
 
         #test
@@ -4778,7 +4787,7 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
 
         #'update_set_dic':{'OCCEXT':1 }
         add(*id_new, input_st = cl_defect.end, it_folder = cl_defect.sfolder+'/occ',
-            params = {'occmatrix':occfile, }, cluster = 'cee-omc')
+            params = {'occmatrix':occfile, }, cluster = 'cee-omc', **add_loop_dic)
     else:
 
         db[id_new].res(choose_outcar = 1, up = 'up1', show = 'for')
@@ -4802,7 +4811,7 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
 
 
 
-    return
+    return db[id_new]
 
 
 
