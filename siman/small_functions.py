@@ -45,7 +45,14 @@ def get_mismatch(a, b):
     b = np.array(b)
     return np.linalg.norm(b) / np.linalg.norm(a) - 1
 
+
+def get_vec(a, b):
+    a = np.array(a)
+    b = np.array(b)
+    vec = np.linalg.norm(a-b)
+    return vec
 def vec_l(vec):
+    #length of vector
     mag = np.linalg.norm(vec)
     return mag
 

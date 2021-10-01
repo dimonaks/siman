@@ -4745,13 +4745,16 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
                 else:
                     sol.append(i_at)
             tran_el_id.extend(sol)
+            print(tran_el_id)
+        else:
+            tran_el_id = cl_ideal.end.get_transition_elements('n')
+
             
 
 
 
         # print(cl_defect.end.get_transition_elements('n'))
         # print(cl_ideal.end.get_transition_elements('n'))
-        print(tran_el_id)
 
 
 
