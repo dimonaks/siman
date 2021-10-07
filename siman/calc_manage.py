@@ -2513,11 +2513,6 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     else:
         it_new_folder = section_folder
 
-    print('calc_manage.py, string 2513, it_new_folder ', it_new_folder)
-    print('calc_manage.py, string 2514, section_folder ', section_folder)
-    print('calc_manage.py, string 2515, it_new ', it_new)
-    # print('calc_manage.py, string 2516, struct_des[it_new] ', struct_des[it_new])
-
     if geo_folder == '':
         new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
     else:
