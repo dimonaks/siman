@@ -1623,12 +1623,15 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
     def add_loop_choose_input_folder():
+
+        print('calc_manage.py, string 1627, it ', it)
         
         if ifolder:
             input_folder = ifolder
         else:
             input_folder = header.geo_folder+'/'+header.struct_des[it].sfolder+"/"+it
 
+        print('calc_manage.py, string 1634, input_folder ', input_folder)
         return input_folder
 
     def add_loop_try_to_read():
@@ -2505,8 +2508,15 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     if section_folder == None:
         section_folder = it_new
 
-    it_new_folder = header.geo_folder +'/' + section_folder + '/' + it_new
+    if it_new not in struct_des:
+        it_new_folder = header.geo_folder +'/' + section_folder + '/' + it_new
+    else:
+        it_new_folder = section_folder
 
+    print('calc_manage.py, string 2513, it_new_folder ', it_new_folder)
+    print('calc_manage.py, string 2514, section_folder ', section_folder)
+    print('calc_manage.py, string 2515, it_new ', it_new)
+    # print('calc_manage.py, string 2516, struct_des[it_new] ', struct_des[it_new])
 
     if geo_folder == '':
         new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
@@ -2819,14 +2829,17 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     try:
         if it_new not in struct_des: 
             add_des(struct_des, it = it_new, it_folder = it_folder, des = 'auto '+des)
-            new.des =  struct_des[it_new].des
+            new.des = struct_des[it_new].des
         else:
             new.des = des + struct_des[it_new].des
             if it_folder:
                 struct_des[it_new].sfolder = it_folder #update itfolder,
+            else:
+                struct_des[it_new].sfolder = it_new_folder
+
     except Exception:
         new.des = des
-
+        struct_des[it_new].sfolder = it_new_folder
 
 
     if mul_matrix is not None:
