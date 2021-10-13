@@ -23,7 +23,7 @@ from sympy import solve, diff, sqrt, Matrix
 
 
 
-def inherit_icalc_isotropic(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, min_mult = 1, max_mult = 1, num_points = 2, geo_folder = ''):
+def inherit_icalc_isotropic(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, min_mult = 1, max_mult = 1, num_points = 2, geo_folder = '', it_folder =''):
     from calc_manage import inherit_icalc
     min_mult = min_mult
     max_mult = max_mult
@@ -35,7 +35,7 @@ def inherit_icalc_isotropic(new_structure = '', start_new_version = None,  base_
         inherit_icalc('isotropic',   new_structure,  version, base_calculation, database, mult_rprimd = j, geo_folder=geo_folder)
         version += 1
 
-def inherit_icalc_c_a(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, min_mult_a = 1, max_mult_a = 1, num_points_a = 2, min_mult_c = 1, max_mult_c = 1,num_points_c = 2, geo_folder=''):
+def inherit_icalc_c_a(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, min_mult_a = 1, max_mult_a = 1, num_points_a = 2, min_mult_c = 1, max_mult_c = 1,num_points_c = 2, geo_folder='', it_folder =''):
     from classes import inherit_icalc
     
     if num_points_a > 1:    
@@ -75,7 +75,7 @@ def inherit_icalc_c_a(new_structure = '', start_new_version = None,  base_calcul
             version += 1
             
 def inherit_icalc_x_y(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, 
-                      min_mult_a = 1, max_mult_a = 1, num_points_a = 2, min_mult_b = 1, max_mult_b = 1,num_points_b = 2, geo_folder='',
+                      min_mult_a = 1, max_mult_a = 1, num_points_a = 2, min_mult_b = 1, max_mult_b = 1,num_points_b = 2, geo_folder='', it_folder ='',
                       override = False):
     from calc_manage import inherit_icalc
 
@@ -96,16 +96,16 @@ def inherit_icalc_x_y(new_structure = '', start_new_version = None,  base_calcul
     if num_points_a > 1 and num_points_b > 1:
         for j in mult_list_a:
             for k in mult_list_b:
-                inherit_icalc('xy',   new_structure,  version, base_calculation, database, mult_a = j, mult_b = k, geo_folder=geo_folder, override=override)
+                inherit_icalc('xy',   new_structure,  version, base_calculation, database, mult_a = j, mult_b = k, geo_folder=geo_folder, it_folder = it_folder, override=override)
                 version += 1
     elif num_points_b == 1:
         for j in mult_list_a:
-            inherit_icalc('xy',   new_structure,  version, base_calculation, database, mult_a = j, mult_b = 1, geo_folder=geo_folder, override=override)
+            inherit_icalc('xy',   new_structure,  version, base_calculation, database, mult_a = j, mult_b = 1, geo_folder=geo_folder, it_folder = it_folder, override=override)
             version += 1
 
     elif num_points_a == 1:
         for j in mult_list_b:
-            inherit_icalc('xy',   new_structure,  version, base_calculation, database, mult_a = 1, mult_b = j, geo_folder=geo_folder, override=override)
+            inherit_icalc('xy',   new_structure,  version, base_calculation, database, mult_a = 1, mult_b = j, geo_folder=geo_folder, it_folder = it_folder, override=override)
             version += 1
 
 
