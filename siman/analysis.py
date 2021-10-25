@@ -1644,9 +1644,11 @@ def suf_en_polar_layered(formula, cl_surf, dmu_a = 0, dmu_b = 0, dmu_c = 0, prin
 
 def ads_en(cl_slab_ads, cl_slab, ads_at = 'O'):
 
-    ads_at_dic = {'O':-1.52, 'H':-1.07}
-    ads_at_dic = {'O':-4.22, 'H':-1.07} # half E of A2 mol    -1.36 per O2 mol overestimate error
+    # ads_at_dic = {'O':-1.52, 'H':-1.07}
+    ads_at_dic = {'O':-4.22, 'H':-1.07, 'Li': -1.91, 'LCO':-5.7241 } # half E of A2 mol    -1.36 per O2 mol overestimate error
     e_ads_at = ads_at_dic[ads_at]
+    if ads_at == 'LCO':
+        e_ads_at = ads_at_dic['LCO']*4 - ads_at_dic['Li'] - ads_at_dic['O']*2
 
 
     e_ads = cl_slab_ads.energy_sigma0 - cl_slab.energy_sigma0 - e_ads_at

@@ -4703,7 +4703,7 @@ def run_OMC( cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = 
 
 
 def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = None, suf = '', up = 0, gmt = 0, soluted_atom = None, e_s = None, 
-    add_loop_dic = None):
+    add_loop_dic = None, cluster = 'cee-omc'):
     """
     
     Optionally for each defect atom an occupation matrix can be provided
@@ -4772,12 +4772,13 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
 
         if defect_occ:
             for j, i in enumerate(defect_atoms):
-                if cl_defect.end.get_elements_z()[i_at_def] in header.TRANSITION_ELEMENTS:
-                    print('Additionally applying provided occ matrix for i=',i_at_def )
-                    cl_defect = cl_defect.set_occ_mat(i_at_def, defect_occ[j])
+                if cl_defect.end.get_elements_z()[i] in header.TRANSITION_ELEMENTS:
+                    print('Additionally applying provided occ matrix for i=',i )
+                    cl_defect = cl_defect.set_occ_mat(i, defect_occ[j])
+                    print(cl_defect.end.magmom[i])
                 else:
-                    print('Chosen element {} is not a transition metal'.format(cl_defect.end.get_el_name(i_at_def)))
-                    cl_defect = cl_defect.set_occ_mat(i_at_def, None)
+                    print('Chosen element {} is not a transition metal'.format(cl_defect.end.get_el_name(i)))
+                    cl_defect = cl_defect.set_occ_mat(i, None)
 
 
         #test
@@ -4790,7 +4791,7 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
 
         #'update_set_dic':{'OCCEXT':1 }
         add(*id_new, input_st = cl_defect.end, it_folder = cl_defect.sfolder+'/occ',
-            params = {'occmatrix':occfile, }, cluster = 'cee-omc', **add_loop_dic)
+            params = {'occmatrix':occfile, }, cluster = cluster, **add_loop_dic)
     else:
 
         db[id_new].res(choose_outcar = 1, up = 'up1', show = 'for')
@@ -4815,6 +4816,7 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
 
 
     return db[id_new]
+
 
 
 
