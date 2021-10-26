@@ -14,7 +14,7 @@ import shutil as S
 from siman.small_functions import makedir
 
 
-def make_vaspkit_kpoints(type_calc='', type_lattice='', poscar = '', list_kpoints=[], folder_vaspkit='' ):
+def make_vaspkit_kpoints(type_calc='', type_lattice='', poscar='', list_kpoints=[], kpoints_density=0.02, num_points=6, folder_vaspkit=''):
 
     makedir(folder_vaspkit)
 
@@ -34,7 +34,7 @@ def make_vaspkit_kpoints(type_calc='', type_lattice='', poscar = '', list_kpoint
 
         f = open(folder_vaspkit+'/VPKIT.in', 'w')
         f.write('1       # "1" for pre-process (generate KPOINTS), "2" for post-process(calculate m*)\n')
-        f.write('11      #  number of points for quadratic function fitting.\n')
+        f.write(str(num_points)+'      #  number of points for quadratic function fitting.\n')
         f.write('0.015   # k-cutoff, unit Å-1.\n')
         f.write(str(len(full_list_kpoints))+'       # number of tasks for effective mass calculation\n')
         for i in full_list_kpoints:
@@ -42,7 +42,22 @@ def make_vaspkit_kpoints(type_calc='', type_lattice='', poscar = '', list_kpoint
                                                                                          i[1][0], i[1][1], i[1][2])+3*' '+i[0][3]+'->'+i[1][3]+'\n')
         f.close()
 
-        s = SP.Popen('/home/sirio/science/programs/vaspkit.1.12/bin/vaspkit -task 912 -kpr 0.02', cwd=folder_vaspkit, shell=True)
+        s = SP.Popen('/home/sirio/science/programs/vaspkit.1.12/bin/vaspkit -task 912 -kpr '+str(kpoints_density), cwd=folder_vaspkit, shell=True)
         s.wait()
 
         print('File '+folder_vaspkit+'/KPOINTS was built successfully')
+
+def insert_0weight_kpoints(ibzkpt='', list_kpoints=[], folder_kpoints=''):
+
+    f = open(ibzkpt)
+    l = f.readlines()
+    f.close()
+
+    l[1] = str(int(l[1])+len(list_kpoints))+'\n'
+
+    l_new = l + list_kpoints
+
+    makedir(folder_kpoints)
+    f = open(folder_kpoints+'/KPOINTS', 'w')
+    f.writelines(l_new)
+    f.close()

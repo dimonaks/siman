@@ -368,19 +368,23 @@ def carrier_mobility(calc_init=(), calc_deform_x=(), calc_deform_y=(),
     else:
         raise RuntimeError('Choose the appropriate expression for carrier mobility!!!')
 
+
+    # Electrons
+    effective_mass_xy_el_md = (effective_mass_xy_el['X']*effective_mass_xy_el['Y'])**0.5
+
     for j in effective_mass_el.keys():
         f.write('CBM -> '+j+'\n')
         if expression == 'Guo2021_JMCC':
-            mu_el_x = function_cm(t=temperature_ref, c2d=C_2D_x, el=E_l_el_x, m=effective_mass_el[j], md=effective_mass_xy_el['X'])
-            mu_el_y = function_cm(t=temperature_ref, c2d=C_2D_y, el=E_l_el_y, m=effective_mass_el[j], md=effective_mass_xy_el['Y'])
+            mu_el_x = function_cm(t=temperature_ref, c2d=C_2D_x, el=E_l_el_x, m=effective_mass_el[j], md=effective_mass_xy_el_md)
+            mu_el_y = function_cm(t=temperature_ref, c2d=C_2D_y, el=E_l_el_y, m=effective_mass_el[j], md=effective_mass_xy_el_md)
 
         f.write('{0:^15s}{1:^10s}{2:^15.2f}{3:^15.2f}{4:^15.2f}{5:^17.2f}'.format('Electron', 'x', C_2D_x, effective_mass_el[j], E_l_el_x/ev_in_j, mu_el_x)+'\n')
         f.write('{0:^15s}{1:^10s}{2:^15.2f}{3:^15.2f}{4:^15.2f}{5:^17.2f}'.format('Electron', 'y', C_2D_y, effective_mass_el[j], E_l_el_y/ev_in_j, mu_el_y)+'\n')
         
         # If the temperature range is set
         if temperature_range:
-            mu_el_x_list = [function_cm(t=i, c2d=C_2D_x, el=E_l_el_x, m=effective_mass_el[j], md=effective_mass_xy_el['X']) for i in t_list]
-            mu_el_y_list = [function_cm(t=i, c2d=C_2D_y, el=E_l_el_y, m=effective_mass_el[j], md=effective_mass_xy_el['Y']) for i in t_list]
+            mu_el_x_list = [function_cm(t=i, c2d=C_2D_x, el=E_l_el_x, m=effective_mass_el[j], md=effective_mass_xy_el_md) for i in t_list]
+            mu_el_y_list = [function_cm(t=i, c2d=C_2D_y, el=E_l_el_y, m=effective_mass_el[j], md=effective_mass_xy_el_md) for i in t_list]
             
             f1 = open(folder+'/carrier_mobility_t'+str(temperature_range[0])+'_'+str(temperature_range[1])+'_el_CBM_'+j+'_X.out', 'w')
             for i in range(len(t_list)):
@@ -406,19 +410,22 @@ def carrier_mobility(calc_init=(), calc_deform_x=(), calc_deform_y=(),
             plt.clf()
             plt.cla()
 
+    # Holes
+    effective_mass_xy_hole_md = (effective_mass_xy_hole['X']*effective_mass_xy_hole['Y'])**0.5
+
     for j in effective_mass_hole.keys():
         f.write('VBM -> '+j+'\n')
         if expression == 'Guo2021_JMCC':
-            mu_hole_x = function_cm(t=temperature_ref, c2d=C_2D_x, el=E_l_hole_x, m=effective_mass_hole[j], md=effective_mass_xy_hole['X'])
-            mu_hole_y = function_cm(t=temperature_ref, c2d=C_2D_y, el=E_l_hole_y, m=effective_mass_hole[j], md=effective_mass_xy_hole['Y'])
+            mu_hole_x = function_cm(t=temperature_ref, c2d=C_2D_x, el=E_l_hole_x, m=effective_mass_hole[j], md=effective_mass_xy_hole_md)
+            mu_hole_y = function_cm(t=temperature_ref, c2d=C_2D_y, el=E_l_hole_y, m=effective_mass_hole[j], md=effective_mass_xy_hole_md)
 
         f.write('{0:^15s}{1:^10s}{2:^15.2f}{3:^15.2f}{4:^15.2f}{5:^17.2f}'.format('Hole', 'x', C_2D_x, effective_mass_hole[j], E_l_hole_x/ev_in_j, mu_hole_x)+'\n')
         f.write('{0:^15s}{1:^10s}{2:^15.2f}{3:^15.2f}{4:^15.2f}{5:^17.2f}'.format('Hole', 'y', C_2D_y, effective_mass_hole[j], E_l_hole_y/ev_in_j, mu_hole_y)+'\n')
 
         # If the temperature range is set
         if temperature_range:
-            mu_hole_x_list = [function_cm(t=i, c2d=C_2D_x, el=E_l_hole_x, m=effective_mass_hole[j], md=effective_mass_xy_hole['X']) for i in t_list]
-            mu_hole_y_list = [function_cm(t=i, c2d=C_2D_y, el=E_l_hole_y, m=effective_mass_hole[j], md=effective_mass_xy_hole['Y']) for i in t_list]
+            mu_hole_x_list = [function_cm(t=i, c2d=C_2D_x, el=E_l_hole_x, m=effective_mass_hole[j], md=effective_mass_xy_hole_md) for i in t_list]
+            mu_hole_y_list = [function_cm(t=i, c2d=C_2D_y, el=E_l_hole_y, m=effective_mass_hole[j], md=effective_mass_xy_hole_md) for i in t_list]
 
             f1 = open(folder+'/carrier_mobility_t'+str(temperature_range[0])+'_'+str(temperature_range[1])+'_hole_VBM_'+j+'_X.out', 'w')
             for i in range(len(t_list)):

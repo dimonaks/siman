@@ -2481,6 +2481,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     elif id_base_st_type == 'end':
         st = new.end
         if not hasattr(st, 'znucl'):
+            print('calc_manage.py, string 2484, Aria')
             if use_init:
                 st = new.init
                 printlog('Attention! *use_init* flag detected, init is used instead of end')
