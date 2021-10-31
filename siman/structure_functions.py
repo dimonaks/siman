@@ -24,6 +24,24 @@ from sympy import solve, diff, sqrt, Matrix
 
 
 def inherit_icalc_isotropic(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, min_mult = 1, max_mult = 1, num_points = 2, geo_folder = '', it_folder =''):
+    """
+    This function makes set of structures uniformly scaled from the initial one within the range of deformation
+
+    ###INPUT:
+        * new_structure (str)       - arbitary name for your crystal structure 
+        * start_new_version (int)   - start version for newly built structures
+        * base_calculation (tuple)  - tuple describing initial CalculationVasp object in form ('structure', 'set', 'version')
+        * database (dict)           - dictionary with the project's results
+        * min_mult (int)            - minimal deformation of the initial structure
+        * max_mult (int)            - maximal deformation of the initial structure
+        * num_points (int)          - number of newly built structures
+        * geo_folder (str)          - path to the folder to save *.geo files of newly built structures
+        * it folder (str)           - section folder
+
+    ###RETURN:
+        None
+    """
+
     from calc_manage import inherit_icalc
     min_mult = min_mult
     max_mult = max_mult
@@ -36,6 +54,23 @@ def inherit_icalc_isotropic(new_structure = '', start_new_version = None,  base_
         version += 1
 
 def inherit_icalc_c_a(new_structure = '', start_new_version = None,  base_calculation = (None, None, None), database = None, min_mult_a = 1, max_mult_a = 1, num_points_a = 2, min_mult_c = 1, max_mult_c = 1,num_points_c = 2, geo_folder='', it_folder =''):
+    """
+    This function makes set of structures uniformly scaled from the initial one within the range of deformation
+
+    ###INPUT:
+        * new_structure (str)       - arbitary name for your crystal structure 
+        * start_new_version (int)   - start version for newly built structures
+        * base_calculation (tuple)  - tuple describing initial CalculationVasp object in form ('structure', 'set', 'version')
+        * database (dict)           - dictionary with the project's results
+        * min_mult (int)            - minimal deformation of the initial structure
+        * max_mult (int)            - maximal deformation of the initial structure
+        * num_points (int)          - number of newly built structures
+        * geo_folder (str)          - path to the folder to save *.geo files of newly built structures
+        * it folder (str)           - section folder
+
+    ###RETURN:
+        None
+    """
     from classes import inherit_icalc
     
     if num_points_a > 1:    

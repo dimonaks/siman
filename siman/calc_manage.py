@@ -1781,7 +1781,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, number_cores=number_cores)
+                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, number_cores=corenum)
             
             prevcalcver = v
 

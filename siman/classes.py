@@ -4997,8 +4997,11 @@ class Calculation(object):
                 if "d" in savefile:
                     fln = 'DOSCAR'
                     doscar  = pre +'.'+fln
-                    f.write('cp '+fln+' '+doscar+'\n')            
-                
+                    if "d2" in savefile:
+                        f.write('cp '+fln+' '+doscar+'\n')
+                    else:            
+                        f.write('mv '+fln+' '+doscar+'\n')
+                    f.write('gzip -f '+doscar+'\n') 
 
 
                 if "a" in savefile:
@@ -5006,7 +5009,10 @@ class Calculation(object):
                     f.write("mv AECCAR2 "     + v + name_mod + ".AECCAR2\n")
                 
                 if 'x' in savefile:
-                    f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+                    if 'x2' in savefile:
+                        f.write("cp vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+                    else:
+                        f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
 
                 if 't' in savefile:
                     f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
@@ -5019,16 +5025,17 @@ class Calculation(object):
                 if 'w' in savefile:
                     fln = 'WAVECAR'
                     wavecar  = pre +'.'+fln
-                    # f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
-                    f.write('mv '+fln+' '+wavecar+'\n') #
+                    if 'w2' in savefile:
+                        f.write('cp '+fln+' '+wavecar+'\n') #
+                    else:                        
+                        f.write('mv '+fln+' '+wavecar+'\n') #
                     f.write('gzip -f '+wavecar+'\n')  
                     rm_chg_wav = rm_chg_wav.replace('w','')
-                # else:
-                #     f.write("rm WAVECAR\n")
+
+
                 if 'wd' in savefile:
                     fln = 'WAVEDER'
                     waveder  = pre +'.'+fln
-                    # f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
                     f.write('cp '+fln+' '+waveder+'\n') #
                     rm_chg_wav = rm_chg_wav.replace('w','')
 
