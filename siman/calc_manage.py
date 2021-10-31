@@ -822,7 +822,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, mpi = False, number_cores = 1, copy_to_server = True
+    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
