@@ -21,7 +21,7 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = 'contourf', label
         - it (str) - the name of crystal structure
         - ise (str) - name of the parameters' set
         - verslist (list of int) - list of versions of new calculations
-        - calc (.gbdm3) - database dictionaries; could be provided; if not then are taken from header
+        - calc (.gbdm3) - database dictionary; could be provided; if not then are taken from header
         - folder (str) - directory where all the results will be built
         - type_plot (str) - represents kind of plot to build (2D,3D, contour etc.). 
           Possible options are:
@@ -29,8 +29,8 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = 'contourf', label
             '3D_proj_z_contour' - 3D plot with projection on the xy plane only in form of 2D contour plot
             'contourf' - 2D filled contour plot
         - labels (tuple of str) - has form ('label_x', 'label_y', 'label_z') and represents desirable names of axes
-        - lab_size (int) - size of labels
-        - tick_size (int) - size of ticks
+        - lab_size (int) - font size of labels
+        - tick_size (int) - font size of ticks
         - fig_size (tuple of floats) - has form (height, width) set size of the figure in units of cm
         - fig_title (str) - optional, the title placed above the plot
         - xlim (tuple of floats) - has form (min_x, max_x) and represents limits of the plot along the 'x' axis

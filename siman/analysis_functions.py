@@ -1,28 +1,23 @@
 #!/usr/bin/env python3
 """ 
-Include:
-1. runBash(cmd)
-2. CalcResults
-3. interstitial()
-4. out_for_paper()
-5. shift_analys(st)
-6. write_geo(st)
+Author: Kartamyshev A.I. (Darth Feiwante)
 """
 
-import subprocess
-import optparse
-import re
-import glob
-import os
-import math
-import sys
-import colorsys
-from pylab import *
-from scipy.optimize import leastsq
-from sympy import solve, diff, sqrt, Matrix
-
-
 def min_distance(database = None, calculation = ()):
+    """
+    This function is used to find minimal distance in the lattice presented 
+    as a part of the 'Calculation' object
+
+    INPUT:
+        - database (.gbdm3) - database dictionary; could be provided; if not then are taken from header
+        - calculation (tuple) - tuple describing the Calculation object in form ('structure', 'set', version)
+    RETURN:
+        None
+    SOURCE:
+        None
+    TODO:
+        Some improvements
+    """
     c = database[calculation] 
     min_dist = 1000000
     for i in range(c.natom):
@@ -40,6 +35,23 @@ def min_distance(database = None, calculation = ()):
     print('Atom 2 = ', atom2)
 
 def formation_energy(database = None, calc_def = (), calc_id = ()):
+    """
+    This function is used to find minimal distance in the lattice presented 
+    as a part of the 'Calculation' object
+
+    INPUT:
+        - database (.gbdm3) - database dictionary; could be provided; if not then are taken from header
+        - calc_def (tuple) - tuple describing the Calculation object for the 
+                             lattice containing a defect in form ('structure', 'set', version)
+        - calc_id (tuple) - tuple describing the Calculation object for the 
+                             lattice without a defect in form ('structure', 'set', version)
+    RETURN:
+        None
+    SOURCE:
+        None
+    TODO:
+        - Add different type of defects
+    """
     defect = database[calc_def]
     ideal = database[calc_id]
     n_at_def = defect.natom
@@ -92,7 +104,55 @@ def carrier_mobility(calc_init=(), calc_deform_x=(), calc_deform_y=(),
                      effective_mass_hole={}, effective_mass_xy_hole={},                      
                      lab_size=15, tick_size=15, leg_size=15, fig_size=(9,17), fig_title='', xlim=(), ylim_elastic=(), ylim_deform=(),
                      expression='Guo2021_JMCC', database=None, folder=''):
-    
+    """
+    This function is used to calculate carrier mobility for 2D structure
+
+    INPUT:
+        - calc_init (tuple) - tuple describing the Calculation object for the 
+                              undeformed lattice in form ('structure', 'set', version)
+        - calc_deform_x (tuple) - tuple describing the Calculation object for the 
+                                  lattice deformed along the 'x' axis in form ('structure', 'set', range(version1, version2))
+        - calc_deform_y (tuple) - tuple describing the Calculation object for the 
+                                  lattice deformed along the 'y' axis in form ('structure', 'set', range(version1, version2))
+        - vbm (int) - number of the last occupied band (valence band) (count starts from '1')
+        - vbm_point (int) - number of the k-point in the IBZKPT file, at which the valence band maximum (VBM) is located (count starts from '0')
+        - cbm (int) - number of the first unoccupied band (conduction band) (count starts from '1')
+        - cbm_point (int) - number of the k-point in the IBZKPT file, at which the conduction band minimum (CBM) is located (count starts from '0')
+        - deform_x (tuple of floats) - range of deformations along the 'x' axis in relative units
+        - n_points_x (int) - number of different deformations along the 'x' axis
+        - deform_y (tuple of floats) - range of deformations along the 'y' axis in relative units
+        - n_points_y (int) - number of different deformations along the 'y' axis
+        - temperature_range (tuple of floats) - temperature range for the calculations of the temperature-dependent carrier mobility
+        - temperature_ref (float) - temperature, for which the detailed information is caculated
+        - effective_mass_el (dict) - the dictionary of the effective masses of electrons in different directions of the reciprocal space
+                                     has form {'M':0.250,...}, where 'M' - name of the point and 0.250 is the effective mass in 
+                                     electron mass units. The point determines the direction 'CBM' -> 'M'.
+        - effective_mass_xy_el (dict) - the same as 'effective_mass_el' but for directions 'CBM' -> 'X' and 'CBM' -> 'Y' only                                  
+        - effective_mass_hole (dict) - the same as 'effective_mass_el' but for holes
+        - effective_mass_xy_el (dict) - the same as 'effective_mass_xy_el' but for holes
+        - lab_size (int) - font size of labels
+        - tick_size (int) - font size of ticks
+        - leg_size (int) - font size of legend
+        - fig_size (tuple of floats) - has form (height, width) set size of the figure in units of cm
+        - fig_title (str) - optional, the title placed above the plot
+        - xlim (tuple of floats) - has form (min_x, max_x) and represents limits of deformation for
+                                   both plots of the elastic moduli and deformation potential
+        - ylim_elastic (tuple of floats) - has form (min_y, max_y) and represents limits for
+                                           the elastic moduli plot, units are N/m
+        - ylim_deform (tuple of floats) - has form (min_y, max_y) and represents limits for
+                                           the deformation plot, units are eV 
+        - expression (str) - key representing the formula to calculate carrier mobility
+                             Possible options:
+                             'Guo2021_JMCC' - Eq. (4) from J. Mater. Chem. C. 9 (2021) 2464–2473. doi:10.1039/D0TC05649A
+        - database (.gbdm3) - database dictionary; could be provided; if not then are taken from header
+        - folder (str) - directory where all the results will be built 
+    RETURN:
+        None
+    SOURCE:
+        Guo2021_JMCC equation - S.-D. Guo, W.-Q. Mu, Y.-T. Zhu, R.-Y. Han, W.-C. Ren, J. Mater. Chem. C. 9 (2021) 2464–2473. doi:10.1039/D0TC05649A. (Eq. 4)
+    TODO:
+        - Add calculations for 3D structures
+    """
     from math import pi, sqrt, acos, sin
     from pymatgen.io.vasp import Vasprun, Outcar
     from pymatgen.electronic_structure.core import Spin, OrbitalType

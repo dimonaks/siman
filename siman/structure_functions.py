@@ -10,7 +10,7 @@ def inherit_icalc_isotropic(new_structure = '', start_new_version = None,  base_
     INPUT:
         - new_structure (str)       - arbitary name for your crystal structure 
         - start_new_version (int)   - start version for newly built structures
-        - base_calculation (tuple)  - tuple describing initial CalculationVasp object in form ('structure', 'set', 'version')
+        - base_calculation (tuple)  - tuple describing initial Calculation object in form ('structure', 'set', 'version')
         - database (dict)           - dictionary with the project's results
         - min_mult (int)            - minimal deformation of the initial structure
         - max_mult (int)            - maximal deformation of the initial structure
@@ -46,7 +46,7 @@ def inherit_icalc_c_a(new_structure = '', start_new_version = None,  base_calcul
     INPUT:
         - new_structure (str)       - arbitary name for your crystal structure 
         - start_new_version (int)   - start version for newly built structures
-        - base_calculation (tuple)  - tuple describing initial CalculationVasp object in form ('structure', 'set', 'version')
+        - base_calculation (tuple)  - tuple describing initial Calculation object in form ('structure', 'set', 'version')
         - database (dict)           - dictionary with the project's results
         - min_mult_a (float)        - minimal simultaneous deformation of the vector 1 and 2 of the final structure from "base_calculation"
         - max_mult_a (float)        - maximal simultaneous deformation of the vector 1 and 2 of the final structure from "base_calculation"
@@ -112,7 +112,7 @@ def inherit_icalc_x_y(new_structure = '', start_new_version = None,  base_calcul
     INPUT:
         - new_structure (str)       - arbitary name for your crystal structure 
         - start_new_version (int)   - start version for newly built structures
-        - base_calculation (tuple)  - tuple describing initial CalculationVasp object in form ('structure', 'set', 'version')
+        - base_calculation (tuple)  - tuple describing initial Calculation object in form ('structure', 'set', version)
         - database (dict)           - dictionary with the project's results
         - min_mult_a (float)        - minimal deformation of the vector 1 of the structure from "base_calculation"
         - max_mult_a (float)        - maximal deformation of the vector 1 of the structure from "base_calculation"
