@@ -4940,6 +4940,9 @@ class Calculation(object):
                     't' - XDATCAR
                     'z' - OSZICAR
                     'w' - WAVECAR
+                    'wd' - WAVEDER
+                    'pr' - PROCAR
+                    
 
             """   
             printlog('The value of savefile is', savefile)

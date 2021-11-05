@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """ 
-Include:
-1. runBash(cmd)
-2. CalcResults
-3. interstitial()
-4. out_for_paper()
-5. shift_analys(st)
-6. write_geo(st)
+Author: Kartamyshev A.I. (Darth Feiwante)
 """
 
 import subprocess as SP
@@ -18,29 +12,30 @@ from siman import header
 def make_vaspkit_kpoints(type_calc='', type_lattice='', poscar='', list_kpoints=[], kpoints_density=0.02, k_cutoff=0.015, num_points=6, folder_vaspkit=''):
     """
     The function is used to prepare KPOINTS using the "VASPKIT" package
-    ###INPUT:
+    INPUT:
         
-        * type_calc (str)             - quantity, which is calculated 
-        * type_lattice (str)          - one of common lattices such as bcc, fcc, hcp etc.
-        * poscar (str)                - POSCAR file with structure, for which the KPOINTS file is built
-        * list_kpoints (list)         - list of additional kpoints to add into the KPOINTS file with zero weights;
-                                        has format [((a1,a2,a3,label_a),(b1,b2,b3,label_b)),...], where "a" and "b" are 
-                                        the coordinates of points in the reciprocal space, "label" is the name of the point
-                                        These two points determine the direction in the reciprocal space.
-        * kpoints_density (float)     - density of k-points with non-zero weights
-        * k_cutoff (float)            - distance along the choosen direction in the reciprocal space in A^{-1} unit
-        * num_points (int)            - number of k-points along the choosen direction in the reciprocal space
-        * folder_vaspkit (str)        - name of folder to make the KPOINTS file
-
-    ###SOURCE
-
-    For more details see:
-
-    https://vaspkit.com/tutorials.html#effective-mass 
-
-    ###RETURN:
-        
+        - type_calc (str)             - quantity, which is calculated 
+            - "effective mass" - prepare the KPOINTS file to calculate the effective mass along chosen directions in the reciprocal space
+        - type_lattice (str)          - one of common lattices such as bcc, fcc, hcp etc.
+            - "hcp" - hexagonal close-packed lattice
+        - poscar (str)                - POSCAR file with structure, for which the KPOINTS file is built
+        - list_kpoints (list of tuples)         - list of additional kpoints to add into the KPOINTS file with zero weights;
+                                                  has format [((a1,a2,a3,label_a),(b1,b2,b3,label_b)),...], where "a" and "b" are 
+                                                  the relative coordinates of points (floats) in the reciprocal space, "label" (str) is the name of the point
+                                                  These two points determine the direction in the reciprocal space.
+        - kpoints_density (float)     - density of k-points with non-zero weights
+        - k_cutoff (float)            - distance along the choosen direction in the reciprocal space in A^{-1} unit
+        - num_points (int)            - number of k-points along the choosen direction in the reciprocal space
+        - folder_vaspkit (str)        - name of folder to make the KPOINTS file
+    RETURN:
         None
+    SOURCE:
+        For more details see:
+        https://vaspkit.com/tutorials.html#effective-mass 
+    TODO:
+        - Add more common lattices such as bcc, fcc etc.
+        - Add another types of calculations requiring the specific KPOINTS files
+
 
     """
 
@@ -80,20 +75,19 @@ def insert_0weight_kpoints(ibzkpt='', list_kpoints=[], folder_kpoints=''):
     """
     The function is used to add k-points to the current IBZKPT file 
     and convert it to new KPOINTS file
-    ###INPUT:
+    INPUT:
         
-        * ibzkpt (str)             - path to IBZKPT file to insert k-points with zero weight 
-        * list_kpoints (list)      - list of k-points with relative coordinates; 
+        - ibzkpt (str)             - path to IBZKPT file to insert k-points with zero weight 
+        - list_kpoints (list)      - list of k-points with relative coordinates; 
                                      it has the following form ['a1, a2, a3 0\n',...]
-        * folder_kpoints (str)     - name of folder to make the resulting KPOINTS file
-
-    ###SOURCE
-
+        - folder_kpoints (str)     - name of folder to make the resulting KPOINTS file
+    RETURN:
         None
-
-    ###RETURN:
-        
+    SOURCE
         None
+    TODO
+        Some improvements
+
 
     """
     f = open(ibzkpt)

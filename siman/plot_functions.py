@@ -1,5 +1,4 @@
 ﻿import sys, os
-sys.path.append(os.path.dirname(__file__)+'/../savelyev')
 sys.path.append(os.path.dirname(__file__)+'/../alglib_cpython')
 # print sys.path
 #from read_write_i import ReadWrite as RW
@@ -9,11 +8,47 @@ sys.path.append(os.path.dirname(__file__)+'/../alglib_cpython')
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
-from analysis_functions import ALGLIB as ALB
+from siman.analysis_functions import ALGLIB as ALB
 
-def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', labels=(), lab_size=15, tick_size=15, fig_size=(), 
+def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = 'contourf', labels=(), lab_size=15, tick_size=15, fig_size=(), 
                    fig_title='', xlim = (), ylim = (), zlim = (), shag_a=0.001,shag_b=0.001,npoint_a=1000,npoint_b=1000):
+    """
+    This function produces the plot of the energy surface corresponding to the structure deformed along
+    the lattice vectors 1 and 2. The result can be presented as a 2D or 3D figure. 
+    Also the function has feature finding minimum of the energy surface based on bicubic spline scheme
 
+    INPUT:
+        - it (str) - the name of crystal structure
+        - ise (str) - name of the parameters' set
+        - verslist (list of int) - list of versions of new calculations
+        - calc (.gbdm3) - database dictionaries; could be provided; if not then are taken from header
+        - folder (str) - directory where all the results will be built
+        - type_plot (str) - represents kind of plot to build (2D,3D, contour etc.). 
+          Possible options are:
+            '3D_proj_xyz_fill' - 3D plot with projections on xy, yz and xz planes in form 2D filled contour plots
+            '3D_proj_z_contour' - 3D plot with projection on the xy plane only in form of 2D contour plot
+            'contourf' - 2D filled contour plot
+        - labels (tuple of str) - has form ('label_x', 'label_y', 'label_z') and represents desirable names of axes
+        - lab_size (int) - size of labels
+        - tick_size (int) - size of ticks
+        - fig_size (tuple of floats) - has form (height, width) set size of the figure in units of cm
+        - fig_title (str) - optional, the title placed above the plot
+        - xlim (tuple of floats) - has form (min_x, max_x) and represents limits of the plot along the 'x' axis
+        - ylim (tuple of floats) - has form (min_y, max_y) and represents limits of the plot along the 'y' axis
+        - zlim (tuple of floats) - has form (min_z, max_z) and represents limits of the plot along the 'z' axis
+        - shag_a (float) - step of the fine grid of points along the lattice vector 1 of the structure for the bicubic spline
+        - shag_b (float) - step of the fine grid of points along the lattice vector 2 of the structure for the bicubic spline
+        - npoint_a (int) - number of points of the fine grid of points along the lattice vector 1 of the structure for the bicubic spline
+        - npoint_b (int) - number of points of the fine grid of points along the lattice vector 2 of the structure for the bicubic spline
+
+    RETURN:
+        None
+    SOURCE:
+        None
+    TODO:
+        - Add more types of plots
+        - Add plot based on fine bicubic spline grid
+    """
     acell_list = []
     etotal_list = []    
     for v in verlist:
@@ -252,8 +287,23 @@ def plot_energy_xy(it,ise,verlist,calc, folder='', type_plot = '3d_contour', lab
     
 
   
-def plot_dielectric_functions( dielectric_filepath='', ax=None, folder=''):
-    
+def plot_dielectric_functions( dielectric_filepath='', folder=''):
+    """
+    This function produces 2D plots of real and imaginary parts of the 
+    frequency dependent dielectric fuction
+
+
+    INPUT:
+        - dielectric_filepath (str) - path to the OUTCAR of the calculation of the dielectric properties
+        - folder (str) - directory where all the results will be built 
+
+    RETURN:
+        None
+    SOURCE:
+        None
+    TODO:
+        Some improvements
+    """
     eV_to_recip_cm = 1.0/(physical_constants['Planck constant in eV s'][0]*speed_of_light*1e2)
 
  
@@ -331,7 +381,26 @@ def plot_dielectric_functions( dielectric_filepath='', ax=None, folder=''):
 
 
 def give_absorption_coeff( dielectric_filepath, folder):
+    """
+    This function produces 2D plots of frequency dependent optical properties:
+    1. Extinction coefficient
+    2. Absorption coefficient
+    3. Refractive index
+    4. Optical reflectivity
+    5. Electron energy-loss spectrum
 
+
+    INPUT:
+        - dielectric_filepath (str) - path to the OUTCAR of the calculation of the dielectric properties
+        - folder (str) - directory where all the results will be built 
+
+    RETURN:
+        None
+    SOURCE:
+        None
+    TODO:
+        Some improvements
+    """
     eV_to_recip_cm = 1.0/(physical_constants['Planck constant in eV s'][0]*speed_of_light*1e2)
     
     outcar = Outcar(dielectric_filepath)
