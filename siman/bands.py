@@ -17,9 +17,29 @@ from pymatgen.electronic_structure.core import Spin, OrbitalType
 
 from siman.small_functions import makedir
 
-def rgbline(ax, k, e, red, green, blue, alpha=1.):
-    # creation of segments based on
-    # http://nbviewer.ipython.org/urls/raw.github.com/dpsanders/matplotlib-examples/master/colorline.ipynb
+def rgbline(ax, k, e, red, green, blue, alpha=0.2):
+    """
+    This function is used to provide colour for the line of the band structure plot
+    depending on the contribution of different orbitals of the specific element.
+    It is used in the 'plot_bands' function. 
+
+    INPUT:
+        - ax (matplotlib plot object) - object of the band structure plot
+        - k (list of ints) - list of numbers of k-points in the reciprocal space
+        - e (list of floats) - list of energies corresponding to the k-points from the parameter 'k'
+        - red (<class 'numpy.ndarray'>) - contribution from s orbitals
+        - green (<class 'numpy.ndarray'>) - contribution from p orbitals
+        - blue (<class 'numpy.ndarray'>) - contribution from d orbitals
+        - alpha (float) - 
+
+    RETURN:
+        None
+    SOURCE:
+        http://nbviewer.ipython.org/urls/raw.github.com/dpsanders/matplotlib-examples/master/colorline.ipynb
+    TODO:
+        Some improvements
+    """
+
     pts = np.array([k, e]).T.reshape(-1, 1, 2)
     seg = np.concatenate([pts[:-1], pts[1:]], axis=1)
 
@@ -35,6 +55,15 @@ def rgbline(ax, k, e, red, green, blue, alpha=1.):
 def read_kpoint_labels(filename):
     """
     Read commented kpoint labels from VASP KPOINTS file 
+
+    INPUT:
+        - filename (str) - path to the KPOINTS file
+    RETURN:
+        None
+    SOURCE:
+        None
+    TODO:
+        Some improvements
     """
     labels = []
     with open(filename, 'r') as f:
@@ -52,14 +81,29 @@ def read_kpoint_labels(filename):
                 lab = lab_next
     return labels
 
-# if __name__ == "__main__":
-def plot_bands_old(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, None)):
-    # read data
-    # Credit https://github.com/gVallverdu/bandstructureplots
-    # ---------
 
-    # kpoints labels
-    # labels = [r"$L$", r"$\Gamma$", r"$X$", r"$U,K$", r"$\Gamma$"]
+def plot_bands_old(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, None)):
+    """
+    This function is used to build plot of the electronic band structure along with
+    the density of states (DOS) plot. It has feature to provide contributions from different
+    elements to both band structure and DOS
+
+    INPUT:
+        - vasprun_dos (str) - path to the vasprun file of the DOS calculation
+        - vasprun_band (str) - path to the vasprun file of the band structure calculation
+        - kpoints (str) - path to the KPOINTS file of the band structure calculation
+        - element (str) - label of the chemical element, for which the contribution
+                          to the band structure and DOS
+        - ylim (tuple of floats) - energy range of the band structure and DOS plots, units are eV
+    RETURN:
+        None
+    SOURCE:
+        Credit https://github.com/gVallverdu/bandstructureplots
+    TODO:
+        Some improvements
+    """
+
+
 
     labels = read_kpoint_labels(kpoints)
 
@@ -196,18 +240,44 @@ def plot_bands_old(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, N
     plt.savefig("figs/bands.png")
 
 def plot_bands(vasprun_dos, vasprun_bands, kpoints, element, ylim = (None, None), folder = '', renew_folder=True, vb_top=0, cb_bottom=1, vbm_pos=0, cbm_pos=0):
-    # read data
-    # ---------
+    """
+    This function is used to build plot of the electronic band structure along with
+    the density of states (DOS) plot. It has feature to provide contributions from different
+    elements to both band structure and DOS. In addition, the band gap (in eV) is automatically
+    calculated.
 
-    # kpoints labels
-    # labels = [r"$L$", r"$\Gamma$", r"$X$", r"$U,K$", r"$\Gamma$"]
-    from functions_system import make_dir as MD
+    INPUT:
+        - vasprun_dos (str) - path to the vasprun file of the DOS calculation
+        - vasprun_band (str) - path to the vasprun file of the band structure calculation
+        - kpoints (str) - path to the KPOINTS file of the band structure calculation
+        - element (str) - label of the chemical element, for which the contribution
+                          to the band structure and DOS
+        - ylim (tuple of floats) - energy range of the band structure and DOS plots, units are eV
+        - folder (str) - directory where all the results will be built
+        - renew_folder (bool) - if True then the folder will be renewed with removing old one
+        - vb_top (int) - number of the last occupied band (valence band) (count starts from '1')
+        - vbm_pos (int) - supposed number of the k-point in the IBZKPT file, at which the valence band maximum (VBM) is located (count starts from '0')
+        - cb_bottom (int) - number of the first unoccupied band (conduction band) (count starts from '1')
+        - cbm_pos (int) - supposed number of the k-point in the IBZKPT file, at which the conduction band minimum (CBM) is located (count starts from '0')
+ 
+    RETURN:
+        None
+    SOURCE:
+        Credit https://github.com/gVallverdu/bandstructureplots
+    TODO:
+        Some improvements
+    """    
+
+    from siman.small_functions import makedir
     # The folder to collect data necessary for graph building
     full_name_folder_data = folder+vasprun_bands.split('/')[-2]
-    MD(full_name_folder_data, renew_dir = renew_folder)
+    print('bands.py, string 274, full_name_folder_data ', full_name_folder_data)
+    makedir(full_name_folder_data+'/', renew_folder = renew_folder)
+
+
+
 
     labels = read_kpoint_labels(kpoints)
-
 
     # density of states
     # dosrun = Vasprun(vasprun_dos)
