@@ -3862,7 +3862,7 @@ class Calculation(object):
 
         # print (st.magmom)
         # sys.exit()
-        print('self.path["input_geo"] ', self.path["input_geo"])
+        printlog('self.path["input_geo"] ', self.path["input_geo"], imp='y')
         with open(self.path["input_geo"],"w", newline = '') as f:
             f.write("des "+description+"\n")
             f.write("len_units "+self.len_units+"\n")
