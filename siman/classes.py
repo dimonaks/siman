@@ -4930,6 +4930,7 @@ class Calculation(object):
                 savefile (str) - key, which determines what files should be saved
                     'o' - OUTCAR
                     'i' - INCAR
+                    'e' - EIGENVAL
                     'v' - CHG
                     'c' - CHGCAR
                     'p' - PARCHG
@@ -4952,6 +4953,11 @@ class Calculation(object):
 
             pre = v + name_mod
             contcar = pre+'.CONTCAR'
+
+            try:
+                printlog('The files to be removed are ', header.clean_vasp_files)
+            except NameError:
+                raise RuntimeError('The variable "clean_vasp_files" is absent! It should be initially stated in project_conf.py file!!!')
 
             if write:
 
