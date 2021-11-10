@@ -1623,15 +1623,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
     def add_loop_choose_input_folder():
-
-        print('calc_manage.py, string 1627, it ', it)
         
         if ifolder:
             input_folder = ifolder
         else:
             input_folder = header.geo_folder+'/'+header.struct_des[it].sfolder+"/"+it
 
-        print('calc_manage.py, string 1634, input_folder ', input_folder)
         return input_folder
 
     def add_loop_try_to_read():

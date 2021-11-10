@@ -159,6 +159,7 @@ class CalcDict(dict):
 #Global variables
 final_vasp_clean     = True 
 copy_to_cluster_flag = True
+clean_vasp_files = 'PCDAT REPORT'
 close_run = False # alows to control close run file automatically after each add_loop
 first_run = True  # needed to write header of run script
 ssh_object = None # paramiko ssh_object
