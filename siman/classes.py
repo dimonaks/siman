@@ -4956,151 +4956,191 @@ class Calculation(object):
 
             try:
                 printlog('The files to be removed are ', header.clean_vasp_files)
-            except NameError:
-                raise RuntimeError('The variable "clean_vasp_files" is absent! It should be initially stated in project_conf.py file!!!')
+            except AttributeError:
+                raise RuntimeError('The variable "clean_vasp_files" is absent! It should be initially stated in project_conf.py file as a list of file names ["NAME"]!!!')
+
+            try:
+                printlog('The files to be removed are ', header.clean_vasp_files_ignore)
+            except AttributeError:
+                raise RuntimeError('The variable "clean_vasp_files_ignore" is absent! It should be initially stated in project_conf.py file as a list of file names ["NAME"]!!!')
 
             if write:
 
-                if "o" in savefile:
+                files_key_dict = {"o": "OUTCAR",
+                                  "s": "CONTCAR",
+                                  "i": "INCAR",
+                                  "e": "EIGENVAL",
+                                  "v": "CHG",
+                                  "c": "CHGCAR",
+                                  "p": "PARCHG",
+                                  "r": "PROCAR",
+                                  "l": "LOCPOT",
+                                  "d": "DOSCAR",
+                                  "a0": "AECCAR0",
+                                  "a2": "AECCAR2",
+                                  "x": "vasprun.xml",
+                                  "t": "XDATCAR",
+                                  "z": "OSZICAR",
+                                  "w": "WAVECAR",
+                                  "f": "WAVEDER"}
 
-                    f.write("cp OUTCAR "          + v + name_mod +  ".OUTCAR\n")
-                    f.write("cp CONTCAR "         + contcar+'\n')
-
-                if "i" in savefile:
-                    f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
-
-                if "e" in savefile:
-                    fln = 'EIGENVAL'
-                    eigenval = pre+'.'+fln
-                    if 'e!' in savefile:
-                        f.write('cp '+fln+' '+eigenval+'\n')
+                for i in files_key_dict.keys():
+                    if i in savefile:
+                        fln = files_key_dict[i]
+                        prefln = pre+'.'+fln
+                        if i+'!' in savefile:
+                            f.write('cp '+fln+' '+prefln+'\n')
+                        else:
+                            f.write('mv '+fln+' '+prefln+'\n')
+                        if (i+'!@' in savefile) or (i+'@' in savefile): 
+                            f.write("gzip -f "+prefln+"\n")
+                        else:
+                            pass
                     else:
-                        f.write('mv '+fln+' '+eigenval+'\n')
-                else:
-                    header.clean_vasp_files += ' EIGENVAL'                         
-                
-                if "v" in savefile: # v means visualization chgcar
-                    chg  = pre + '.CHG'
-                    if 'v!' in savefile:
-                        f.write("cp CHG "+chg+"\n")
-                    else:
-                        f.write("mv CHG "+chg+"\n")
-                    f.write("gzip -f "+chg+"\n")
-                else:
-                    header.clean_vasp_files += ' CHG'         
-
-                if 'c' in savefile: # 
-                    fln = 'CHGCAR'
-                    chgcar  = pre +'.'+fln
-                    if 'c!' in savefile:
-                        f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
-                    else:
-                        f.write('mv '+fln+' '+chgcar+'\n')
-                    f.write('gzip -f '+chgcar+'\n')
-                else:
-                    header.clean_vasp_files += ' CHGCAR'                 
-
-                if 'p' in savefile: # 
-                    fln = 'PARCHG'
-                    parchg  = pre +'.'+fln
-                    if 'p!' in savefile:
-                        f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
-                    else:
-                        f.write('mv '+fln+' '+parchg+'\n')
-                    f.write('gzip -f '+parchg+'\n') 
-                else:
-                    header.clean_vasp_files += ' PARCHG' 
-
-                if 'pr' in savefile: # 
-                    fln = 'PROCAR'
-                    procar  = pre +'.'+fln
-                    if 'pr!' in savefile:
-                        f.write('cp '+fln+' '+procar+'\n') #use cp, cause it may be needed for other calcs in run
-                    else:
-                        f.write('mv '+fln+' '+procar+'\n')
-                else:
-                    header.clean_vasp_files += ' PROCAR' 
+                        if files_key_dict[i] in header.clean_vasp_files_ignore: pass
+                        else: header.clean_vasp_files.append(files_key_dict[i])                                                   
 
 
-                if 'l' in savefile: # 
-                    fln = 'LOCPOT'
-                    locpot  = pre +'.'+fln
-                    if 'l!' in savefile:
-                        f.write('cp '+fln+' '+locpot+'\n')
-                    else:
-                        f.write('mv '+fln+' '+locpot+'\n') 
-                    f.write('gzip -f '+locpot+'\n') 
-                else:
-                    header.clean_vasp_files += ' LOCPOT' 
+                # if "o" in savefile:
 
+                #     f.write("cp OUTCAR "          + v + name_mod +  ".OUTCAR\n")
+                #     f.write("cp CONTCAR "         + contcar+'\n')
+
+                # if "i" in savefile:
+                #     f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
+
+                # if "e" in savefile:
+                #     fln = 'EIGENVAL'
+                #     eigenval = pre+'.'+fln
+                #     if 'e!' in savefile:
+                #         f.write('cp '+fln+' '+eigenval+'\n')
+                #     else:
+                #         f.write('mv '+fln+' '+eigenval+'\n')
                 # else:
-                #     f.write("rm CHG \n") #file can be used only for visualization
-
-
-                if "d" in savefile:
-                    fln = 'DOSCAR'
-                    doscar  = pre +'.'+fln
-                    if "d!" in savefile:
-                        f.write('cp '+fln+' '+doscar+'\n')
-                    else:            
-                        f.write('mv '+fln+' '+doscar+'\n')
-                    f.write('gzip -f '+doscar+'\n')
-                else:
-                    header.clean_vasp_files += ' PROCAR' 
-
-
-                if "a" in savefile:
-                    f.write("mv AECCAR0 "     + v + name_mod + ".AECCAR0\n")
-                    f.write("mv AECCAR2 "     + v + name_mod + ".AECCAR2\n")
+                #     header.clean_vasp_files += ' EIGENVAL'                         
                 
-                if 'x' in savefile:
-                    if 'x!' in savefile:
-                        f.write("cp vasprun.xml " + v + name_mod + ".vasprun.xml\n")
-                    else:
-                        f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
-                else:
-                    header.clean_vasp_files += ' vasprun.xml' 
+                # if "v" in savefile: # v means visualization chgcar
+                #     chg  = pre + '.CHG'
+                #     if 'v!' in savefile:
+                #         f.write("cp CHG "+chg+"\n")
+                #     else:
+                #         f.write("mv CHG "+chg+"\n")
+                #     f.write("gzip -f "+chg+"\n")
+                # else:
+                #     header.clean_vasp_files += ' CHG'         
+
+                # if 'c' in savefile: # 
+                #     fln = 'CHGCAR'
+                #     chgcar  = pre +'.'+fln
+                #     if 'c!' in savefile:
+                #         f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
+                #     else:
+                #         f.write('mv '+fln+' '+chgcar+'\n')
+                #     f.write('gzip -f '+chgcar+'\n')
+                # else:
+                #     header.clean_vasp_files += ' CHGCAR'                 
+
+                # if 'p' in savefile: # 
+                #     fln = 'PARCHG'
+                #     parchg  = pre +'.'+fln
+                #     if 'p!' in savefile:
+                #         f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
+                #     else:
+                #         f.write('mv '+fln+' '+parchg+'\n')
+                #     f.write('gzip -f '+parchg+'\n') 
+                # else:
+                #     header.clean_vasp_files += ' PARCHG' 
+
+                # if 'pr' in savefile: # 
+                #     fln = 'PROCAR'
+                #     procar  = pre +'.'+fln
+                #     if 'pr!' in savefile:
+                #         f.write('cp '+fln+' '+procar+'\n') #use cp, cause it may be needed for other calcs in run
+                #     else:
+                #         f.write('mv '+fln+' '+procar+'\n')
+                # else:
+                #     header.clean_vasp_files += ' PROCAR' 
 
 
-                if 't' in savefile:
-                    if 't!' in savefile:
-                        f.write("cp XDATCAR " + v + name_mod + ".XDATCAR\n")
-                    else:                        
-                        f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
-                else:
-                    header.clean_vasp_files += ' XDATCAR'
+                # if 'l' in savefile: # 
+                #     fln = 'LOCPOT'
+                #     locpot  = pre +'.'+fln
+                #     if 'l!' in savefile:
+                #         f.write('cp '+fln+' '+locpot+'\n')
+                #     else:
+                #         f.write('mv '+fln+' '+locpot+'\n') 
+                #     f.write('gzip -f '+locpot+'\n') 
+                # else:
+                #     header.clean_vasp_files += ' LOCPOT' 
 
-                if 'z' in savefile:
-                    if 'z!' in savefile:
-                        f.write("cp OSZICAR " + v + name_mod + ".OSZICAR\n")
-                    else:
-                        f.write("mv OSZICAR " + v + name_mod + ".OSZICAR\n")
-                else:
-                    header.clean_vasp_files += ' OSZICAR'               
+                # # else:
+                # #     f.write("rm CHG \n") #file can be used only for visualization
+
+
+                # if "d" in savefile:
+                #     fln = 'DOSCAR'
+                #     doscar  = pre +'.'+fln
+                #     if "d!" in savefile:
+                #         f.write('cp '+fln+' '+doscar+'\n')
+                #     else:            
+                #         f.write('mv '+fln+' '+doscar+'\n')
+                #     f.write('gzip -f '+doscar+'\n')
+                # else:
+                #     header.clean_vasp_files += ' PROCAR' 
+
+
+                # if "a" in savefile:
+                #     f.write("mv AECCAR0 "     + v + name_mod + ".AECCAR0\n")
+                #     f.write("mv AECCAR2 "     + v + name_mod + ".AECCAR2\n")
+                
+                # if 'x' in savefile:
+                #     if 'x!' in savefile:
+                #         f.write("cp vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+                #     else:
+                #         f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+                # else:
+                #     header.clean_vasp_files += ' vasprun.xml' 
+
+
+                # if 't' in savefile:
+                #     if 't!' in savefile:
+                #         f.write("cp XDATCAR " + v + name_mod + ".XDATCAR\n")
+                #     else:                        
+                #         f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
+                # else:
+                #     header.clean_vasp_files += ' XDATCAR'
+
+                # if 'z' in savefile:
+                #     if 'z!' in savefile:
+                #         f.write("cp OSZICAR " + v + name_mod + ".OSZICAR\n")
+                #     else:
+                #         f.write("mv OSZICAR " + v + name_mod + ".OSZICAR\n")
+                # else:
+                #     header.clean_vasp_files += ' OSZICAR'               
                
                
-                if 'w' in savefile:
-                    fln = 'WAVECAR'
-                    wavecar  = pre +'.'+fln
-                    if 'w!' in savefile:
-                        f.write('cp '+fln+' '+wavecar+'\n') #
-                    else:                        
-                        f.write('mv '+fln+' '+wavecar+'\n') #
-                    f.write('gzip -f '+wavecar+'\n')  
-                    rm_chg_wav = rm_chg_wav.replace('w','')
-                else:
-                    header.clean_vasp_files += ' WAVECAR' 
+                # if 'w' in savefile:
+                #     fln = 'WAVECAR'
+                #     wavecar  = pre +'.'+fln
+                #     if 'w!' in savefile:
+                #         f.write('cp '+fln+' '+wavecar+'\n') #
+                #     else:                        
+                #         f.write('mv '+fln+' '+wavecar+'\n') #
+                #     f.write('gzip -f '+wavecar+'\n')  
+                #     rm_chg_wav = rm_chg_wav.replace('w','')
+                # else:
+                #     header.clean_vasp_files += ' WAVECAR' 
 
-                if 'wd' in savefile:
-                    fln = 'WAVEDER'
-                    waveder  = pre +'.'+fln
-                    if 'wd!' in savefile:
-                        f.write('cp '+fln+' '+waveder+'\n') #
-                    else:
-                        f.write('mv '+fln+' '+waveder+'\n') #
-                    rm_chg_wav = rm_chg_wav.replace('w','')
-                else:
-                    header.clean_vasp_files += ' WAVEDER' 
+                # if 'wd' in savefile:
+                #     fln = 'WAVEDER'
+                #     waveder  = pre +'.'+fln
+                #     if 'wd!' in savefile:
+                #         f.write('cp '+fln+' '+waveder+'\n') #
+                #     else:
+                #         f.write('mv '+fln+' '+waveder+'\n') #
+                #     rm_chg_wav = rm_chg_wav.replace('w','')
+                # else:
+                #     header.clean_vasp_files += ' WAVEDER' 
 
                 # if 'c' in rm_chg_wav:
                 #     f.write("rm CHGCAR   # rm_chg_wav flag\n") #file is important for continuation
@@ -5540,8 +5580,12 @@ class Calculation(object):
             #clean at the end
             if final_analysis_flag: 
                 if header.final_vasp_clean:
+                    uni_files = list(set(header.clean_vasp_files))
+                    uni_files_string = ''
+                    for i in uni_files:
+                        uni_files_string += i+' '
                     # f.write('rm LOCPOT CHGCAR CHG PROCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
-                    f.write('rm '+header.clean_vasp_files+'\n')
+                    f.write('rm '+uni_files_string+'\n')
                 f.write('rm RUNNING\n')
 
 
