@@ -33,6 +33,23 @@ from siman.database import push_figure_to_archive
 
 printlog = print_and_log
 
+
+# Check the default parameters
+
+# Default savefile
+try:
+    printlog('calc_manage.py, string 41, header.default_savefile ', header.default_savefile)
+except AttributeError:
+    raise RuntimeError('The variable "default_savefile" is absent! \
+        It should be initially stated in project_conf.py file as a string (example "osxc")!!! \
+        File codes are listed in the "mv_files_according_versions" function in classes.py.')
+
+
+
+
+
+
+
 init_default_sets()
 
 
@@ -807,7 +824,7 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
 def add_loop(it, setlist, verlist, calc = None, varset = None, 
     up = 'up2', inherit_option = None, id_from = None, inherit_args = None, confdic = None,
     i_atom_to_remove = None,
-    coord = 'direct', savefile = 'oc', show = '', comment = '', 
+    coord = 'direct', savefile = header.default_savefile, show = '', comment = '', 
     input_geo_format = None, input_kpoints=None, ifolder = None, input_geo_file = None, input_st = None,
     corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
@@ -1769,6 +1786,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             
            
             blockdir = header.struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
+
+
 
             add_calculation(it,inputset,v, verlist[0], verlist[-1], 
                 input_folder, blockdir, calc, varset, up, 

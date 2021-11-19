@@ -4936,13 +4936,14 @@ class Calculation(object):
                     'p' - PARCHG
                     'l' - LOCPOT
                     'd' - DOSCAR
-                    'a' - AECCAR0, AECCAR2
+                    'a0' - AECCAR0 
+                    'a2' - AECCAR2
                     'x' - vasprun.xml
                     't' - XDATCAR
                     'z' - OSZICAR
                     'w' - WAVECAR
-                    'wd' - WAVEDER
-                    'pr' - PROCAR
+                    'f' - WAVEDER
+                    'r' - PROCAR
                     
 
             """   
