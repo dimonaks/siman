@@ -4911,14 +4911,18 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
 
 
         with cwd('./xyz'):
-            # print(Gr_LO2.get_summary_dict())
+            # print(itf.get_summary_dict()['match']['film_miller']) #
             ''
             # itf.write_all_structures()
-            # print(interfaces)
+            # print(itf)
             # print(itf.matches)
         t1 = itf.interfaces[inter_term_i] # different terminations 
+
+        print('Number of terminations is ', len(itf.interfaces), 'term ', inter_term_i, 'was chosen')
+        # sys.exit()
         t1.change_z_shift(sh)
-        t1.shift_film_along_surface_lattice(*ab_shift)
+        t1.shift_film_along_surface_lattice(ab_shift[0],ab_shift[1] )
+        # print(t1.get_summary_dict())
 
 
 
@@ -4935,6 +4939,7 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
         f1_m = t1.modified_film_structure
         s1_m = t1.modified_sub_structure
         # print(dir(t1))
+        # print(t1)
         # sys.exit()
 
         slabs = {}
@@ -4987,6 +4992,10 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
             if st.get_volume()<0:
                 st = st.exchange_axes(0,1)
 
+                print('The film is shifted by ', ab_shift[1], ab_shift[0])
+            else:
+                print('The film is shifted by ', ab_shift)
+
 
             if fix and name in ['interface', 'substrate']:
                 st = st.fix_layers(xcart_range = fix, highlight = 1) 
@@ -5005,11 +5014,13 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
             # sti.pvec()
             if st.get_volume()<0:
                 printlog('Warning! Volume of slab is negative, use *exch*  to echange first and second vectors')
-
             st.write_cif(mcif = 1)
-            if show:
+            if name == 'interface':
+                st_init = st.selective_all()
+            # st_sall.write_poscar()
+            if show and 'int' in name:
                 ''
-                st.jmol(r=2)
+                # st.jmol(r=2)
 
         #mismatch
         sts = slabs['substrate_m']
@@ -5026,9 +5037,11 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
         if info_key not in db:
             db[info_key] = {}
         db[info_key]['mismatch'] = [mx,my]
+        db[info_key]['sub_orientation'] = sub_surface
+        db[info_key]['film_orientation'] = itf.get_summary_dict()['match']['film_miller']
 
 
-        return slabs
+        return slabs, st_init
 
 
     def get_keys(calc_type):
@@ -5176,7 +5189,7 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
         return cl
 
 
-    def analyze(cl, info_key):
+    def analyze(cl, info_key, st_init):
 
         return_dict = {}
         info = db[info_key]
@@ -5213,6 +5226,7 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
         tk = get_keys('interface')[0].get(key)
         sk = get_keys('substrate')[0].get(key)
         fk = get_keys('film')[0].get(key)
+        print(tk, sk, fk)
         if tk and sk and fk:
             t = db[tk]
             s = db[sk]
@@ -5221,13 +5235,24 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
             # print(sk)
             # print(fk)
 
-            interface_en(t, s, f, mul1 =1) 
+            info['energy'] = interface_en(t, s, f, mul1 =1) 
+
+            so = list2string(info['sub_orientation'], '')
+            fo = list2string(info['film_orientation'], '')
+            # name =  s.end.get_name()+'/'+f.end.get_name()
+            # print(inter_term_i)
+            # sys.exit()
+            name =  s.end.get_reduced_formula()+so+'_'+f.end.get_reduced_formula()+'_'+fo+'_t'+str(inter_term_i)
+            info['name'] = name
+            # print(s.end.get_name(), f.end.get_name())
+            if cl:
+                st = cl.end.selective_all()
+                st.write_poscar('xyz/POSCAR_'+name)
+            st_init.write_poscar('xyz/POSCAR_'+name+'_init')
 
 
 
-
-
-        return
+        return info
 
 
 
@@ -5240,12 +5265,12 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
     # sys.exit()
 
     if show or (cont == 0 and add):
-        slabs = build_slabs(calc_type, info_key)
+        slabs, st_init = build_slabs(calc_type, info_key)
     else:
         slabs = None
 
     cl = run_wrapper(slabs, keys, new_ise, cont, iopt_list)
 
-    analyze(cl, info_key)
+    info = analyze(cl, info_key, st_init)
 
-    return
+    return info 

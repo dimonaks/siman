@@ -257,3 +257,15 @@ def cwd(path):
         yield
     finally:
         os.chdir(oldpwd)
+
+def block_print():
+    """
+    Blocks standard output. It may be used in functions that do not have silent mode.
+    """
+    sys.stdout = open(os.devnull, 'w')
+
+def enable_print():
+    """
+    Enables standard output. It may be used in functions that do not have silent mode.
+    """
+    sys.stdout = sys.__stdout__

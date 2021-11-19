@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*- 
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
@@ -68,7 +69,7 @@ def calc_oxidation_states(cl = None, st = None, silent = 1):
         z_vals.append(ox)
         if not silent:
             ''
-            print(el, '{:3.1f}'.format(ox))
+            print(j, st.xred[j][2], el, '{:3.1f}'.format(ox))
     # print(list(zip(z_vals, self.end.get_elements())))
     # print(z_vals)
     return z_vals
@@ -1566,7 +1567,6 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
         return gamma, diff
     else:
         return gamma
-
 
 def suf_en_polar_layered(formula, cl_surf, dmu_a = 0, dmu_b = 0, dmu_c = 0, printlog = True):
     #This function calculates an energy of polar surface using chemical potentials for every elements

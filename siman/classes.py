@@ -48,7 +48,7 @@ from siman.functions import (read_vectors, read_list, words, read_string,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
 from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
-local_surrounding, local_surrounding2, determine_symmetry_positions, )
+local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral)
 from siman.set_functions import InputSet, aims_keys
 
 
@@ -430,6 +430,12 @@ class Structure():
 
 
     def determine_symmetry_positions(self, element):
+        from siman.geo import determine_symmetry_positions
+
+        return determine_symmetry_positions(self, element)
+
+    def get_symmetry_positions(self, element):
+        #just another name
         from siman.geo import determine_symmetry_positions
 
         return determine_symmetry_positions(self, element)
@@ -1046,6 +1052,11 @@ class Structure():
             # print(oxi_state[0:8])
         return oxi_states
 
+
+    def make_neutral(self, *args, **kwargs):
+        return make_neutral(self, *args, **kwargs)
+
+
     def get_conventional_cell(self):
         """
         return conventional cell 
@@ -1244,10 +1255,10 @@ class Structure():
         return np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
 
 
-
     def printme(self):
         print(self.convert2pymatgen())
         return 
+
 
     def get_space_group_info(self, symprec = None):
         
@@ -1326,6 +1337,7 @@ class Structure():
             tra = ns
         return tra
 
+
     def get_specific_elements(self, required_elements = None, fmt = 'n', z_range = None, zr_range = None):
         """Returns list of specific elements (chemical names. z, or numbers from 0) in the structure
         required_elements - list of elements z of interest
@@ -1377,7 +1389,6 @@ class Structure():
         return tra
 
 
-
     def get_dipole(self, ox_states = None, chg_type = 'ox'):
         """ Return dipole moment in e*A calculated by pymatgen
         ox_states (dict) - oxidation states of elements
@@ -1387,8 +1398,6 @@ class Structure():
         """
         slab = self.convert2pymatgen(slab = 1, oxidation = ox_states, chg_type = chg_type)
         return slab.dipole
-
-
 
 
     def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
@@ -2170,7 +2179,6 @@ class Structure():
 
 
 
-
     # def sum_of_coord(self):
     #     sumx = 0
     #     for x in self.xcart:
@@ -2362,7 +2370,7 @@ class Structure():
     def shift_atoms(self, vector_red = None, vector_cart = None, return2cell = 1):
         """
         Shift all atoms according to *vector_red* or *vector_cart*
-		Use *return2cell* if atoms coordinates should be inside cell
+        Use *return2cell* if atoms coordinates should be inside cell
         """
         st = copy.deepcopy(self)
         if vector_cart is not None:
@@ -2583,13 +2591,13 @@ class Structure():
         return st
 
 
+    def remove_closest(self, *args, **kwargs):
+        return remove_closest(self, *args, **kwargs)
 
 
 
-
-
-
-
+    def remove_vacuum(self, *args, **kwargs):
+        return remove_vacuum(self, *args, **kwargs)
 
 
     def find_closest_atom(self, xc = None, xr = None):
@@ -3219,15 +3227,16 @@ class Structure():
         # site if provided (from 0), than site energy is printed
         from pymatgen.analysis.ewald import EwaldSummation
         # from siman.analysis import set_oxidation_states
-        st = self
+
+        st = copy.deepcopy(self)
+
         if ox_st == 1:
             # st = set_oxidation_states(st)
-            # st.printme()
+            #st.printme()
             stpm = st.convert2pymatgen(chg_type = 'pm')
             # print('The following oxi states were set', st.oxi_state)
-        if ox_st == 2:
+        elif ox_st == 2:
             stpm = st.convert2pymatgen(chg_type = 'pot')
-
         else:
             stpm = st.convert2pymatgen()
         
@@ -7344,6 +7353,3 @@ class MP_Compound():
         except AttributeError:
             self.ec_es = None
         
-
-
-    
