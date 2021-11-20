@@ -42,6 +42,7 @@ except:
 from siman.header import printlog, print_and_log, runBash, plt
 
 from siman import set_functions
+# from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
 from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
 from siman.functions import (read_vectors, read_list, words, read_string,
      element_name_inv, invert, calculate_voronoi, update_incar, 
@@ -3861,6 +3862,7 @@ class Calculation(object):
 
         # print (st.magmom)
         # sys.exit()
+        printlog('self.path["input_geo"] ', self.path["input_geo"], imp='y')
         with open(self.path["input_geo"],"w", newline = '') as f:
             f.write("des "+description+"\n")
             f.write("len_units "+self.len_units+"\n")
@@ -4826,7 +4828,7 @@ class Calculation(object):
         prevcalcver = None, savefile = None, schedule_system = None,
         output_files_names = None,
         mode = None,
-        batch_script_filename = None):
+        batch_script_filename = None, mpi = False, cores = 1):
         """Without arguments writes header, else adds sequence of calculatios
             option - the same as inherit_option, 'inherit_xred' - control inheritance, or 'master' - run serial on master 
             prevcalcver - ver of previous calc; for first none
@@ -4885,7 +4887,7 @@ class Calculation(object):
 
 
 
-        def run_command(option, name, parrallel_run_command, condition = False, write = True):
+        def run_command(option, name, parrallel_run_command, condition = False, write = True, mpi = mpi, cores = cores):
             """2. write commands for running vasp. condition = true allows override additional conditions""" 
 
             if write:
@@ -4893,28 +4895,29 @@ class Calculation(object):
                 #     condition = (not 'only_neb' in self.calc_method)
 
                 # if condition:
+                if mpi == False:
+
+                    if option == 'master':
+                        f.write("vasp >"+name+".log\n")
+
+                    elif 'monte' in self.calc_method:
+                        f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
+
+                    elif 'polaron' in self.calc_method:
+                        f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
+
+                    elif 'atat' in  self.calc_method:
+                        f.write('maps -d&\npollmach runstruct_vasp mpirun\n')
 
 
-                if option == 'master':
-                    f.write("vasp >"+name+".log\n")
-
-                elif 'monte' in self.calc_method:
-                    f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
-
-                elif 'polaron' in self.calc_method:
-                    f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
-
-                elif 'atat' in  self.calc_method:
-                    f.write('maps -d&\npollmach runstruct_vasp mpirun\n')
-
-
-                else:
-                    f.write(parrallel_run_command +" >"+name+".log\n")
+                    else:
+                        f.write(parrallel_run_command +" >"+name+".log\n")
                 
-
-
-
+                elif mpi == True:
+                    f.write('mpirun -np '+str(cores)+' '+parrallel_run_command+" >"+name+".log\n")
+                
                 f.write("sleep 20\n")
+
             return
 
 
@@ -4927,16 +4930,21 @@ class Calculation(object):
                 savefile (str) - key, which determines what files should be saved
                     'o' - OUTCAR
                     'i' - INCAR
+                    'e' - EIGENVAL
                     'v' - CHG
                     'c' - CHGCAR
                     'p' - PARCHG
                     'l' - LOCPOT
                     'd' - DOSCAR
-                    'a' - AECCAR0, AECCAR2
+                    'a0' - AECCAR0 
+                    'a2' - AECCAR2
                     'x' - vasprun.xml
                     't' - XDATCAR
                     'z' - OSZICAR
                     'w' - WAVECAR
+                    'f' - WAVEDER
+                    'r' - PROCAR
+                    
 
             """   
             printlog('The value of savefile is', savefile)
@@ -4947,86 +4955,200 @@ class Calculation(object):
             pre = v + name_mod
             contcar = pre+'.CONTCAR'
 
+            try:
+                printlog('The files to be removed are ', header.clean_vasp_files)
+            except AttributeError:
+                raise RuntimeError('The variable "clean_vasp_files" is absent! It should be initially stated in project_conf.py file as a list of file names ["NAME"]!!!')
+
+            try:
+                printlog('The files to be removed are ', header.clean_vasp_files_ignore)
+            except AttributeError:
+                raise RuntimeError('The variable "clean_vasp_files_ignore" is absent! It should be initially stated in project_conf.py file as a list of file names ["NAME"]!!!')
+
             if write:
 
-                if "o" in savefile:
+                files_key_dict = {"o": "OUTCAR",
+                                  "s": "CONTCAR",
+                                  "i": "INCAR",
+                                  "e": "EIGENVAL",
+                                  "v": "CHG",
+                                  "c": "CHGCAR",
+                                  "p": "PARCHG",
+                                  "r": "PROCAR",
+                                  "l": "LOCPOT",
+                                  "d": "DOSCAR",
+                                  "a0": "AECCAR0",
+                                  "a2": "AECCAR2",
+                                  "x": "vasprun.xml",
+                                  "t": "XDATCAR",
+                                  "z": "OSZICAR",
+                                  "w": "WAVECAR",
+                                  "f": "WAVEDER"}
 
-                    f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
-                    f.write("mv CONTCAR "         + contcar+'\n')
-
-                if "i" in savefile:
-                    f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
-                
-                if "v" in savefile: # v means visualization chgcar
-                    chg  = pre + '.CHG'
-                    f.write("mv CHG "+chg+"\n")
-                    f.write("gzip -f "+chg+"\n")
-                
-                if 'c' in savefile: # 
-                    fln = 'CHGCAR'
-                    chgcar  = pre +'.'+fln
-                    f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
-                    f.write('gzip -f '+chgcar+'\n')                
-
-                if 'p' in savefile: # 
-                    fln = 'PARCHG'
-                    parchg  = pre +'.'+fln
-                    f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
-                    f.write('gzip -f '+parchg+'\n') 
-
-                if 'l' in savefile: # 
-                    fln = 'LOCPOT'
-                    locpot  = pre +'.'+fln
-                    f.write('cp '+fln+' '+locpot+'\n') #use cp, cause it may be needed for other calcs in run
-                    f.write('gzip -f '+locpot+'\n') 
+                for i in files_key_dict.keys():
+                    if i in savefile:
+                        fln = files_key_dict[i]
+                        prefln = pre+'.'+fln
+                        if i+'!' in savefile:
+                            f.write('cp '+fln+' '+prefln+'\n')
+                        else:
+                            f.write('mv '+fln+' '+prefln+'\n')
+                        if (i+'!@' in savefile) or (i+'@' in savefile): 
+                            f.write("gzip -f "+prefln+"\n")
+                        else:
+                            pass
+                    else:
+                        if files_key_dict[i] in header.clean_vasp_files_ignore: pass
+                        else: header.clean_vasp_files.append(files_key_dict[i])                                                   
 
 
+                # if "o" in savefile:
+
+                #     f.write("cp OUTCAR "          + v + name_mod +  ".OUTCAR\n")
+                #     f.write("cp CONTCAR "         + contcar+'\n')
+
+                # if "i" in savefile:
+                #     f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
+
+                # if "e" in savefile:
+                #     fln = 'EIGENVAL'
+                #     eigenval = pre+'.'+fln
+                #     if 'e!' in savefile:
+                #         f.write('cp '+fln+' '+eigenval+'\n')
+                #     else:
+                #         f.write('mv '+fln+' '+eigenval+'\n')
                 # else:
-                #     f.write("rm CHG \n") #file can be used only for visualization
-
-
-                if "d" in savefile:
-                    fln = 'DOSCAR'
-                    doscar  = pre +'.'+fln
-                    f.write('mv '+fln+' '+doscar+'\n')
-                    f.write('gzip -f '+doscar+'\n')                
+                #     header.clean_vasp_files += ' EIGENVAL'                         
                 
-
-
-                if "a" in savefile:
-                    f.write("mv AECCAR0 "     + v + name_mod + ".AECCAR0\n")
-                    f.write("mv AECCAR2 "     + v + name_mod + ".AECCAR2\n")
-                
-                if 'x' in savefile:
-                    f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
-
-                if 't' in savefile:
-                    f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
-
-                if 'z' in savefile:
-                    f.write("mv OSZICAR " + v + name_mod + ".OSZICAR\n")
-               
-               
-               
-                if 'w' in savefile:
-                    fln = 'WAVECAR'
-                    wavecar  = pre +'.'+fln
-                    # f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
-                    f.write('mv '+fln+' '+wavecar+'\n') #
-                    f.write('gzip -f '+wavecar+'\n')  
-                    rm_chg_wav = rm_chg_wav.replace('w','')
+                # if "v" in savefile: # v means visualization chgcar
+                #     chg  = pre + '.CHG'
+                #     if 'v!' in savefile:
+                #         f.write("cp CHG "+chg+"\n")
+                #     else:
+                #         f.write("mv CHG "+chg+"\n")
+                #     f.write("gzip -f "+chg+"\n")
                 # else:
-                #     f.write("rm WAVECAR\n")
+                #     header.clean_vasp_files += ' CHG'         
+
+                # if 'c' in savefile: # 
+                #     fln = 'CHGCAR'
+                #     chgcar  = pre +'.'+fln
+                #     if 'c!' in savefile:
+                #         f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
+                #     else:
+                #         f.write('mv '+fln+' '+chgcar+'\n')
+                #     f.write('gzip -f '+chgcar+'\n')
+                # else:
+                #     header.clean_vasp_files += ' CHGCAR'                 
+
+                # if 'p' in savefile: # 
+                #     fln = 'PARCHG'
+                #     parchg  = pre +'.'+fln
+                #     if 'p!' in savefile:
+                #         f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
+                #     else:
+                #         f.write('mv '+fln+' '+parchg+'\n')
+                #     f.write('gzip -f '+parchg+'\n') 
+                # else:
+                #     header.clean_vasp_files += ' PARCHG' 
+
+                # if 'pr' in savefile: # 
+                #     fln = 'PROCAR'
+                #     procar  = pre +'.'+fln
+                #     if 'pr!' in savefile:
+                #         f.write('cp '+fln+' '+procar+'\n') #use cp, cause it may be needed for other calcs in run
+                #     else:
+                #         f.write('mv '+fln+' '+procar+'\n')
+                # else:
+                #     header.clean_vasp_files += ' PROCAR' 
 
 
-                if 'c' in rm_chg_wav:
-                    f.write("rm CHGCAR   # rm_chg_wav flag\n") #file is important for continuation
-                if 'w' in rm_chg_wav:
-                    ''
-                    f.write("rm WAVECAR  # rm_chg_wav flag\n") #
-                if 'v' in rm_chg_wav: #chgcar for visualization
-                    ''
-                    f.write("rm CHG   # rm_chg_wav flag\n") #
+                # if 'l' in savefile: # 
+                #     fln = 'LOCPOT'
+                #     locpot  = pre +'.'+fln
+                #     if 'l!' in savefile:
+                #         f.write('cp '+fln+' '+locpot+'\n')
+                #     else:
+                #         f.write('mv '+fln+' '+locpot+'\n') 
+                #     f.write('gzip -f '+locpot+'\n') 
+                # else:
+                #     header.clean_vasp_files += ' LOCPOT' 
+
+                # # else:
+                # #     f.write("rm CHG \n") #file can be used only for visualization
+
+
+                # if "d" in savefile:
+                #     fln = 'DOSCAR'
+                #     doscar  = pre +'.'+fln
+                #     if "d!" in savefile:
+                #         f.write('cp '+fln+' '+doscar+'\n')
+                #     else:            
+                #         f.write('mv '+fln+' '+doscar+'\n')
+                #     f.write('gzip -f '+doscar+'\n')
+                # else:
+                #     header.clean_vasp_files += ' PROCAR' 
+
+
+                # if "a" in savefile:
+                #     f.write("mv AECCAR0 "     + v + name_mod + ".AECCAR0\n")
+                #     f.write("mv AECCAR2 "     + v + name_mod + ".AECCAR2\n")
+                
+                # if 'x' in savefile:
+                #     if 'x!' in savefile:
+                #         f.write("cp vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+                #     else:
+                #         f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
+                # else:
+                #     header.clean_vasp_files += ' vasprun.xml' 
+
+
+                # if 't' in savefile:
+                #     if 't!' in savefile:
+                #         f.write("cp XDATCAR " + v + name_mod + ".XDATCAR\n")
+                #     else:                        
+                #         f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
+                # else:
+                #     header.clean_vasp_files += ' XDATCAR'
+
+                # if 'z' in savefile:
+                #     if 'z!' in savefile:
+                #         f.write("cp OSZICAR " + v + name_mod + ".OSZICAR\n")
+                #     else:
+                #         f.write("mv OSZICAR " + v + name_mod + ".OSZICAR\n")
+                # else:
+                #     header.clean_vasp_files += ' OSZICAR'               
+               
+               
+                # if 'w' in savefile:
+                #     fln = 'WAVECAR'
+                #     wavecar  = pre +'.'+fln
+                #     if 'w!' in savefile:
+                #         f.write('cp '+fln+' '+wavecar+'\n') #
+                #     else:                        
+                #         f.write('mv '+fln+' '+wavecar+'\n') #
+                #     f.write('gzip -f '+wavecar+'\n')  
+                #     rm_chg_wav = rm_chg_wav.replace('w','')
+                # else:
+                #     header.clean_vasp_files += ' WAVECAR' 
+
+                # if 'wd' in savefile:
+                #     fln = 'WAVEDER'
+                #     waveder  = pre +'.'+fln
+                #     if 'wd!' in savefile:
+                #         f.write('cp '+fln+' '+waveder+'\n') #
+                #     else:
+                #         f.write('mv '+fln+' '+waveder+'\n') #
+                #     rm_chg_wav = rm_chg_wav.replace('w','')
+                # else:
+                #     header.clean_vasp_files += ' WAVEDER' 
+
+                # if 'c' in rm_chg_wav:
+                #     f.write("rm CHGCAR   # rm_chg_wav flag\n") #file is important for continuation
+                # if 'w' in rm_chg_wav:
+                #     f.write("rm WAVECAR  # rm_chg_wav flag\n") #
+                # if 'v' in rm_chg_wav: #chgcar for visualization
+                #     f.write("rm CHG   # rm_chg_wav flag\n") #
 
 
             return contcar
@@ -5056,10 +5178,12 @@ class Calculation(object):
             # parrallel_run_command = "mpiexec --prefix /home/aleksenov_d/mpi/openmpi-1.6.3/installed vasp" bsu cluster
             # parrallel_run_command = "mpirun  vasp_std" #skoltech cluster
             parrallel_run_command = header.vasp_command #skoltech cluster
-        
         elif schedule_system == 'SLURM':
             # parrallel_run_command = "prun /opt/vasp/bin/vasp5.4.1MPI"
             parrallel_run_command = header.vasp_command
+        elif schedule_system == 'simple':
+            parrallel_run_command = header.vasp_command
+        
         else:
             raise RuntimeError
 
@@ -5160,7 +5284,7 @@ class Calculation(object):
                         continue
                     name_mod   = '.U'+str(u).replace('.', '')+set_mod
                    
-                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write, mpi = mpi, cores = cores)
 
                     if write: 
                         if copy_poscar_flag:
@@ -5213,7 +5337,7 @@ class Calculation(object):
                     prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile,
                         copy_poscar_flag = copy_poscar_flag)
                     
-                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command)
+                    run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, mpi = mpi, cores = cores)
 
                     contcar_file = mv_files_according_versions(savefile, v, name_mod = name_mod)
                 
@@ -5237,7 +5361,7 @@ class Calculation(object):
                     input_geofile = input_geofile, write = write_poscar, curver = version,
                     copy_poscar_flag = copy_poscar_flag)
 
-                run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write)
+                run_command(option = option, name = self.name+name_mod, parrallel_run_command = parrallel_run_command, write = write, mpi = mpi, cores = cores)
 
                 if final_analysis_flag:
                     rm_chg_wav = 'w' #The wavcar is removed for the sake of harddrive space
@@ -5296,7 +5420,7 @@ class Calculation(object):
 
                     
                     run_command(option = option, name = run_name_prefix+'.'+name_mod, 
-                        parrallel_run_command = parrallel_run_command, write = True)
+                        parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, cores = cores)
                     
                     u_last = u
 
@@ -5378,7 +5502,7 @@ class Calculation(object):
                 else:
 
                     run_command(option = option, name = self.name+set_mod+'.n_'+nim_str+name_mod, 
-                    parrallel_run_command = parrallel_run_command, write = True)
+                    parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, cores = cores)
                     # print(set_mod)
                     # sys.exit()
                     if '.' in set_mod and set_mod[0] == '.':
@@ -5444,7 +5568,7 @@ class Calculation(object):
 
 
                     run_command(option = option, name = self.id[0]+'.'+self.id[1]+'.100'+name_mod+'.fitted', 
-                        parrallel_run_command = parrallel_run_command, write = True)
+                        parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, cores = cores)
 
                     # print(final_analysis_flag)
                     # sys.exit()
@@ -5457,7 +5581,12 @@ class Calculation(object):
             #clean at the end
             if final_analysis_flag: 
                 if header.final_vasp_clean:
-                    f.write('rm LOCPOT CHGCAR CHG PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+                    uni_files = list(set(header.clean_vasp_files))
+                    uni_files_string = ''
+                    for i in uni_files:
+                        uni_files_string += i+' '
+                    # f.write('rm LOCPOT CHGCAR CHG PROCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+                    f.write('rm '+uni_files_string+'\n')
                 f.write('rm RUNNING\n')
 
 
@@ -5596,6 +5725,8 @@ class Calculation(object):
                 f.write("squeue\n") 
                 f.write("sbatch " + run_name+"\n") 
                 # f.write("sbatch -p AMG " + run_name+"\n") 
+            elif schedule_system == 'simple':
+                pass
             else:
                 printlog('Error! Unknown schedule_system', schedule_system)
                 
@@ -5694,7 +5825,8 @@ class Calculation(object):
                 
                 elif 'none' in cl.schedule_system:
                     job_in_queue = ''
-                    
+                elif 'simple' in cl.schedule_system:
+                    print_and_log('For SCHEDULE_SYSTEM='+cl.schedule_system+' please manually run on server! ', imp = 'y')                    
                 else:
                     print_and_log('Attention! unknown SCHEDULE_SYSTEM='+cl.schedule_system+'; Please teach me here! ', imp = 'y')
                     job_in_queue = ''
@@ -6438,6 +6570,14 @@ class CalculationVasp(Calculation):
             path_to_contcar = path_to_outcar.replace('OUTCAR', "CONTCAR")
             path_to_poscar = path_to_outcar.replace('OUTCAR', "POSCAR")
             path_to_xml     = path_to_outcar.replace('OUTCAR', "vasprun.xml")
+            path_to_ibzkpt  = path_to_outcar.replace('OUTCAR', "IBZKPT")
+            path_to_wavecar = path_to_outcar.replace('OUTCAR', "WAVECAR")
+            path_to_doscar = path_to_outcar.replace('OUTCAR', "DOSCAR")
+            path_to_eigenval = path_to_outcar.replace('OUTCAR', "EIGENVAL")
+            path_to_procar = path_to_outcar.replace('OUTCAR', "PROCAR")
+            path_to_locpot = path_to_outcar.replace('OUTCAR', "LOCPOT")
+            path_to_kpoints = path_to_outcar.replace('OUTCAR', "KPOINTS")
+            path_to_waveder = path_to_outcar.replace('OUTCAR', "WAVEDER")  
         else:
             path_to_contcar = ''
             path_to_xml     = ''
@@ -6508,7 +6648,37 @@ class CalculationVasp(Calculation):
             
             self.get_file(os.path.basename(path_to_xml), up = load)
 
+        if 'w' in load:
 
+            self.get_file(os.path.basename(path_to_wavecar), up = load)
+            self.get_file(os.path.basename(self.dir+'/WAVECAR'), up = load)
+        if 'b' in load:
+
+            self.get_file(os.path.basename(path_to_ibzkpt), up = load)
+
+        if 'e' in load:
+            self.get_file(os.path.basename(path_to_eigenval), up = load)
+            self.get_file(os.path.basename(self.dir+'/EIGENVAL'), up = load)
+
+        if 'd' in load:
+            self.get_file(os.path.basename(path_to_doscar), up = load)
+            self.get_file(os.path.basename(self.dir+'/DOSCAR'), up = load)
+
+        if 'l' in load:
+            self.get_file(os.path.basename(path_to_locpot), up = load)
+            self.get_file(os.path.basename(self.dir+'/LOCPOT'), up = load)
+
+        if 'pr' in load:
+
+            # self.get_file(os.path.basename(path_to_procar), up = load)
+            self.get_file(os.path.basename(self.dir+'/PROCAR'), up = load)
+        if 'k' in load:
+
+            self.get_file(os.path.basename(self.dir+'/KPOINTS'), up = load)
+
+        if 'wd' in load:
+            self.get_file(os.path.basename(path_to_waveder), up = load)
+            self.get_file(os.path.basename(self.dir+'/WAVEDER'), up = load)
 
 
 

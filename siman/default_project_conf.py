@@ -46,6 +46,7 @@ PATH2POTENTIALS = './potcars/'
 PATH2NEBMAKE = 'nebmaker.pl'
 PATH2JMOL = 'jmol'
 PATH2PHONOPY = 'phonopy'
+PATH2VASPKIT = 'vaspkit'
 pmgkey = "" #PMG_MAPI_KEY
 
 path_to_paper        = './'
