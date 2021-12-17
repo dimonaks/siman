@@ -2,5 +2,5 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'auto'
+git commit -m 'last heap commit'
 git push origin simanaks

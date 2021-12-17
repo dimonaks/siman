@@ -1532,7 +1532,7 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
             if abs(dif) > 0:
                 el_dif[el] = int(dif) 
 
-        print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')
+        print('The following elements are off-stoichiometry in the slab', el_dif, 'please provide corresponding chemical potentials')
         
         E_nonst = 0
         for key in el_dif:

@@ -2054,7 +2054,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # plt.plot(np.array(sur[3]).round(2), tot_mag_by_atoms[-1][numb]) mag vs dist for last step
         
         # print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
-        if 'p' in show:
+        if 'magp' in show:
             plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
             plt.show()
             plt.clf()

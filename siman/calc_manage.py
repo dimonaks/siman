@@ -216,7 +216,7 @@ def write_batch_header(batch_script_filename = None,
             # f.write("#SBATCH --nodelist=node-amg03\n")
             if header.siman_run: #only for me
                 if header.EXCLUDE_NODES:
-                    f.write("#SBATCH --exclude=node-amg13\n")
+                    f.write("#SBATCH --exclude=node-amg11\n")
                 # f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
                 # f.write("#SBATCH --mail-type=END\n")
             f.write("cd "+path_to_job+"\n")
@@ -437,7 +437,7 @@ def cif2poscar(cif_file, poscar_file):
 
 
 
-
+    # print(header.CIF2CELL)
     if pymatgen_flag and not header.CIF2CELL:
         # print(cif_file)
         parser = CifParser(cif_file)
@@ -907,7 +907,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             - 'atat' - create all input for ATAT
                 params['atat']
-                    'active_atoms' - now dictionary of elements, which can be substituted by what e.g. {'Li':'Vac'}
+                    - 'active_atoms' - now dictionary of elements, which can be substituted by what e.g. {'Li':'Vac'}
+                    please improve that Li0 can be used, to consider only symmetrically non-equivalent position for this element
+                    - 'exclude_atoms_n' - exclude specific atoms from cluster expansion
+                    - 'subatom' -  a string for choosing different POTCAR, e.g. 's/K/K_pv/g'
 
 
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
@@ -932,7 +935,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 - 'thickness' - thickness of slice where Monte-Carlo changes are allowed (from top surface)
                 - 'mcsteps' - number of Monte-Carlo steps
                 - 'temp'    - temperature (K) for Metropolis Algorithm
-                - 'normal'  - vector normal to surface
+                - 'normal'  - vector normal to surface; check if works correctly
             - 'charge' - charge of the system, +1 - electrons are removed, -1 - electrons are added
 
 
@@ -1267,7 +1270,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             # sys.exit()
             if exclude:
                 for i in exclude:
-                    exclude_new.append(input_st.old_numbers.index(i))
+                    exclude_new.append(input_st.old_numbers.index(i)) # required since the structure was reordered
                 # exclude = exclude_new
                 params['atat']['exclude_atoms_n'] = exclude_new
 
@@ -2012,14 +2015,38 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         # all additional properties:
 
+
+
+        cl.calc_method = calc_method
+
+
+        if input_st:
+            
+            if type(input_st) is not type(Structure()):
+                printlog('Error! input_st should be of type Structure()')
+            cl.init  = input_st
+        else:
+            cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
+                input_geo_format = input_geo_format, input_geo_file = input_geo_file)
+
+
+
+        setseq = [cl.set]                                                                                                    
+        if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
+            for s in cl.set.set_sequence:
+                setseq.append(s)
+   
+        for curset in setseq:
+            if len(setseq) > 1:
+                printlog('sequence set mode: set', curset.ise,':', end = '\n')
+            curset.load(params['update_set_dic'], inplace = True)
+            cl.actualize_set(curset, params = params)
+
+
         if hasattr(cl.set, 'savefile'):
             for s in cl.set.savefile:
                 if s not in savefile:
                     savefile+=s
-
-
-
-        cl.calc_method = calc_method
 
 
         if hasattr(cl.set, 'u_ramping_nstep') and cl.set.u_ramping_nstep:
@@ -2069,14 +2096,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-        if input_st:
-            
-            if type(input_st) is not type(Structure()):
-                printlog('Error! input_st should be of type Structure()')
-            cl.init  = input_st
-        else:
-            cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
-                input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
 
         # print(cl.init.printme())
@@ -2113,22 +2132,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         cl.des = ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
 
 
-        setseq = [cl.set]                                                                                                    
-        if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
-            for s in cl.set.set_sequence:
-                setseq.append(s)
-    
+
+
 
         cl.check_kpoints()    
-        
-
-        for curset in setseq:
-            if len(setseq) > 1:
-                printlog('sequence set mode: set', curset.ise,':', end = '\n')
-            curset.load(params['update_set_dic'], inplace = True)
-            cl.actualize_set(curset, params = params)
-
-
 
 
         if up in ['up1', 'up2', 'up3']:
@@ -2239,7 +2246,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             cl.state = '2. Can be completed but was reinitialized' #new behavior 30.08.2016
 
 
-        print_and_log("\nCalculation "+str(id)+" successfully created\n\n", imp = 'Y')
+        print_and_log("\nCalculation db["+str(id)+"] successfully created\n\n", imp = 'Y')
 
 
 
@@ -3070,6 +3077,11 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             # print(db[idd_new].id)
 
 
+    # if analys_type == 'mc':
+        # 'Make code for Monte-Carlo'
+
+
+
     """Main loop"""
     if it_suffix:
         it_suffix = '.'+it_suffix
@@ -3172,6 +3184,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 path = cl.project_path_cluster +'/'+ cl.dir
                 # print(path)
                 out = run_on_server('ls '+path+'/*.pickle', cl.cluster_address)
+                out = run_on_server('cp '+path+'/OUTCAR_last '+path+'/'+str(cl.id[2])+'.OUTCAR', cl.cluster_address)
+                printlog('Last outcar of mc calculation:', imp = 'y')
                 files = out.splitlines()
                 for file in files:
                     name = os.path.basename(file)
@@ -3180,6 +3194,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                         cl.get_file(name, )
                     cl_step = CalculationVasp().deserialize(cl.dir+'/'+name, encoding = 'latin1') # python2
                     cl_step.end.write_poscar(cl.dir+'/'+'CONTCAR-'+i)
+                # cl = cl_step
                 # sys.exit()
 
 

@@ -249,6 +249,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     if 'figsize' not in plot_param:
         plot_param['figsize'] = (4,6)
     if 'legend' not in plot_param:
+        ''
         plot_param['legend'] = 'best'
 
     pm = plot_param
@@ -299,7 +300,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     if dostype == 'total':
         # print(dos[0].dos)
         ylabel = "DOS (states/eV)"
-
+        del plot_param['legend']
         if spin_pol:
             dosplot = {'Tot up':{'x':dos[0].energy,    'y':smoother(dos[0].dos[0], nsmooth), 'c':'b', 'ls':'-'}, 
                         'Tot down':{'x':dos[0].energy, 'y':-smoother(dos[0].dos[1], nsmooth),'c':'r', 'ls':'-'}}
@@ -368,11 +369,12 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         local_atoms = local_surrounding(surround_center, cl1.end, neighbors, control = 'atoms', periodic = True)
 
-        numbers = local_atoms[2] 
+        numbers = local_atoms[2]
         els = cl1.end.get_elements()
-        el_sur = els[numbers[1]] # element of surrounding type
+        els_sur = [els[i] for i in numbers]
+        el_sur = ', '.join(list(set(els_sur[1:]))) # element of surrounding type
         
-        printlog("Numbers of local atoms:", [n+1 for n in numbers], imp = 'Y' )
+        printlog("Numbers of local atoms (from one):", [n+1 for n in numbers], imp = 'Y' )
         
         printlog("Elements of local atoms:", [els[i] for i in numbers], imp = 'Y' )
 
@@ -381,8 +383,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         iX = numbers[0]# first atom is impurity if exist
         # printlog
-        numbers_list = [numbers] # numbers_list is list of lists
+        numbers_list = [numbers] # numbers_list is list of lists; exclude first 
         calcs = [cl1]
+        
+
         if cl2:
             numbers_list.append([iatom2]) # for cl2 only one atom is supported
             calcs.append(cl2)
@@ -478,8 +482,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
             #sum by surrounding atoms atoms
-            n_sur = len(numbers)
-            for i in numbers: #Now for surrounding atoms in numbers list:
+            n_sur = len(numbers)-1 # number of surrounding atoms
+            printlog('Number of surrounding atoms:', n_sur, imp = 'Y')
+            # sys.exit()
+            for i in numbers: #Now for central and surrounding atoms in numbers list:
 
                 if spin_pol:
                     plist_up   = [d.site_dos(i, l)  for l in (2,4,6) ]
@@ -529,14 +535,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
 
 
-            d.p6 = [ sum(pi)/n_sur for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
+            d.p6 = [ sum(pi[1:])/n_sur for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
             
             if spin_pol:
-                d.p6_up   = [ sum(pi)/n_sur for pi in zip(*d.p_up)   ] #sum over neighbouring atoms now only for spin up
-                d.p6_down = [ sum(pi)/n_sur for pi in zip(*d.p_down) ] #sum over neighbouring atoms now only for spin up
+                d.p6_up   = [ sum(pi[1:])/n_sur for pi in zip(*d.p_up)   ] #sum over neighbouring atoms now only for spin up
+                d.p6_down = [ sum(pi[1:])/n_sur for pi in zip(*d.p_down) ] #sum over neighbouring atoms now only for spin up
             
 
-            d.d6 = [ sum(di) for di in zip(*d.d) ] #sum over neighbouring atoms
+            d.d6 = [ sum(di[1:])/n_sur for di in zip(*d.d) ]#sum over neighbouring atoms
 
 
 

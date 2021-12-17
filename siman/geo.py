@@ -54,6 +54,7 @@ def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = 
     if coord_type == 'xcart':
         def dr(i,j,k):
             return (r[0] * i + r[1] * j + r[2] * k)
+    
     if coord_type == 'xred':
         a1=np.array([1,0,0])
         a2=np.array([0,1,0])
@@ -165,7 +166,7 @@ def find_moving_atom(st1, st2):
 
 
 
-    return number of atom which moves between two cell
+    return number of atom which moves between two cell (from zero)
     """
 
     for r1, r2 in zip(st1.rprimd, st2.rprimd):
@@ -263,12 +264,24 @@ def xred2xcart(xred, rprimd):
     return xcart
 
 def rms_between_structures(st1, st2):
-    #should be already imposed on each other
+    """
+    Compare atoms position and calculated RMS between them
+    Useful to see the effect of relaxation, or atoms moves during NEB
+    st1 and st2 should be imposed on each other
+
+    INPUT
+        - st1 (Structure) - structure 1
+        - st2 (Structure) - structure 2
+
+    RETURN:
+
+    """
     els1 = st1.get_elements()
     els2 = st2.get_elements()
     sumv = 0
     sumd = 0
     sumdsqr = 0
+    
     for j, x1 in enumerate(st2.xcart):
         i, d, v = st1.find_closest_atom(x1)
         if len(els1) == len(els2):
@@ -282,6 +295,65 @@ def rms_between_structures(st1, st2):
     print('Average deviation {:.2f} A'.format(sumd/st2.natom) )
     print('Average squared deviation {:.2f} A'.format(np.sqrt(sumdsqr/st2.natom)) )
     print('Shift of first cell relative to second cell', sumv/st2.natom, np.linalg.norm(sumv/st2.natom))
+
+    return 
+
+def rms_between_structures2(st1, st2, el = None):
+    """
+    Compare atoms position and calculated RMS between two structures with the same order of atoms
+    Useful to see the effect of relaxation, or atoms moves during NEB
+    st1 and st2 should be imposed on each other
+
+    INPUT
+        - st1 (Structure) - structure 1
+        - st2 (Structure) - structure 2
+        - el (str) - calculate only for element *el*, if None then for all elments
+
+    RETURN:
+        - d_list (list) - list of shifts for each atom
+        - rms (float) - rms over all atoms
+
+    Aksyonov
+    """
+    els1 = st1.get_elements()
+    els2 = st2.get_elements()
+
+    st = st1.combine([st2], add2end = 1)
+    # print(st.natom, st1.natom)
+    # print(st1.xcart[1], st.xcart[1], )
+    # print(st2.xcart[1], st.xcart[st1.natom+1])
+    # st.printme()
+    if 1:
+        d_list = []
+        els = st1.get_elements()
+        for i in range(st1.natom):
+            x1 = st.xcart[i]
+            x2 = st.xcart[i+st1.natom]
+            d = image_distance(x1, x2, st1.rprimd, )[0] # shift
+            d_list.append(d)
+            print('Atom {:4d} {:2s} d = {:5.2f} A'.format(i, els[i], d))
+
+
+        n_list = range(len(d_list))
+        if el:
+            dn_list = [[d, n] for d, ele, n in zip(d_list, els, n_list) if ele == el]
+
+            # print(dn_list)
+            # sys.exit()
+
+            d_list = np.array(dn_list).T[0]
+            n_list = np.array(dn_list).T[1].astype(int)
+            print('For element', el, ':')
+        else:
+            print('For all elements:')
+
+        rms = np.sqrt( np.mean(np.array(d_list)**2)  )
+        av = np.mean(d_list)
+        i_max = np.array(d_list).argmax()
+        print('Rms = {:5.2f}, Av = {:5.2f}, Max d = {:5.2f} A for i = {:4d} '.format(rms, av, max(d_list), n_list[i_max]))
+
+    return d_list, rms
+
 
 
 
@@ -1890,7 +1962,7 @@ def remove_half(st, el, sg = None, info_mode = 0):
 
 
 
-def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
+def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None, silent = None):
     """
     Generate all possible configurations by removing x of atoms
     
@@ -1967,7 +2039,7 @@ def remove_x_based_on_symmetry(st, sg = None, info_mode = 0, x = None):
 
 
 
-def remove_x(st, el, sg = None, info_mode = 0, x = None,):
+def remove_x(st, el, sg = None, info_mode = 0, x = None, silent = 0, return_sts = None):
     """
 
     Allows to remove x of element el from the structure.
@@ -1982,6 +2054,8 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None,):
     info_mode (bool) - more information
 
     sg - number of required space group obtained with info_mode = 1
+
+    return_sts - return all structure, otherwise only first one is returned
 
     TODO
     1. Take care about matching the initial cell and supercell from primitive
@@ -2023,10 +2097,13 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None,):
 
     if info_mode:
         syms, sts_dic = remove_x_based_on_symmetry(st_prim, info_mode = 1, x = x)
+        sts_dic2 = {}
+    
     else:
         sts = remove_x_based_on_symmetry(st_prim, sg, x = x )
         syms = [sg]
         sts_dic = {}
+        sts_dic2 = {}
         sts_dic[sg] = sts
     # st_prim.jmol()
     # print(sts)
@@ -2038,33 +2115,42 @@ def remove_x(st, el, sg = None, info_mode = 0, x = None,):
         if len(sts) == 0:
             printlog('Warning! number of structures for sg',sg,'is zero')
 
-        st_only_el_x = sts[0]   # now only first configuration is taken, they could be different
+        sts2 = []
+
+        if not return_sts:
+            sts = sts[0:1]
+        for st_only_el_x in sts:
+            # st_only_el_x = sts[0]   # now only first configuration is taken, they could be different
 
 
-        if prim:
-            mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
-            mul_matrix = np.array(mul_matrix_float)
-            mul_matrix = mul_matrix.round(0)
-            mul_matrix = mul_matrix.astype(int)
-            sc_only_el_half = create_supercell(st_only_el_x, mul_matrix = mul_matrix)
-            sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
-            sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
-        else:
-            sc_only_el_x = st_only_el_x
+            if prim:
+                mul_matrix_float = np.dot( st.rprimd,  np.linalg.inv(st_prim.rprimd) )
+                mul_matrix = np.array(mul_matrix_float)
+                mul_matrix = mul_matrix.round(0)
+                mul_matrix = mul_matrix.astype(int)
+                sc_only_el_half = create_supercell(st_only_el_x, mul_matrix = mul_matrix)
+                sc_only_el_half = sc_only_el_half.shift_atoms([0.125,0.125,0.125])
+                sc_only_el_half = sc_only_el_half.return_atoms_to_cell()
+            else:
+                sc_only_el_x = st_only_el_x
 
 
-        # st_only_el.write_poscar('xyz/POSCAR1')
-        # sc_only_el_half.write_poscar('xyz/POSCAR2')
+            # st_only_el.write_poscar('xyz/POSCAR1')
+            # sc_only_el_half.write_poscar('xyz/POSCAR2')
 
 
-        st_x = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
+            st_x = st_ohne_el.add_atoms(sc_only_el_x.xcart, el)
 
-        st_x.name+='_'+str(x)+'_'+str(sg)
-        # st_x.write_poscar()
-        sts_dic_one[sg] = st_x
-
+            st_x.name+='_'+str(x)+'_'+str(sg)
+            # st_x.write_poscar()
+            sts2.append(st_x)
+        
+        sts_dic_one[sg] = sts2[0]
+        sts_dic2[sg] = sts2
     if info_mode:
         return syms, sts_dic_one
+    elif return_sts:
+        return sts_dic2[sg]
     else:
         return sts_dic_one[sg] # only one structure is returned
 
@@ -2149,7 +2235,8 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
         printlog('Atoms to replace:', list(els[i] for i in atoms_to_replace), atoms_to_replace, imp = warn)
         
         if 'rep' in mode:
-            st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent, mag_new = mag)
+            # print(st.magmom)
+            st_rep = st.replace_atoms(atoms_to_replace, el2, silent = silent, mag_new = mag, mode = 1)
         if 'pol' in mode:
             # print(mag)
             # sys.exit()
@@ -2163,6 +2250,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
         if nm == sg:
             structures.append(st_rep)
             at_replace.append(atoms_to_replace)
+    
     if not silent:
         print('The following space groups were found', Counter(symmetries))
     if info_mode:
@@ -2405,6 +2493,8 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
 
     from pymatgen.core.surface import SlabGenerator
     from pymatgen.io.vasp.inputs import Poscar
+    from pymatgen.core.composition import Composition
+
     from siman.geo import replic
 
     void_param = 0
@@ -2431,7 +2521,7 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
     # print(slabgen.oriented_unit_cell)
     slabs = slabgen.get_slabs(symmetrize = symmetrize)
 
-    for slab in slabs:
+    for i, slab in enumerate(slabs):
         sl = st.update_from_pymatgen(slab)
         if stoichiometry_criteria(sl, st_bulk):
             stoi = 'Stoichiometric slab'
@@ -2443,7 +2533,9 @@ def create_surface2(st, miller_index, shift = None, min_slab_size = 10, min_vacu
         #     ';Polar:',       slab.is_polar(),
         #     ';Eqvuivalent:', slab.have_equivalent_surfaces(), 
         #     ';symmetric:',   slab.is_symmetric(), imp = 'n')
-
+        if not silent:
+            cm = Composition(slab.formula)
+            print(i, cm.reduced_composition, stoi)
         
 
     if not silent:

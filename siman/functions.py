@@ -794,7 +794,7 @@ def read_string(token, length, string):
     i = string.find(token)+sh
     # print('length', i, i+length)
     # sys.exit()
-    if i is -1:
+    if i == -1:
         return ''
     else:
         return string[i:i+length]

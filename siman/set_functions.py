@@ -21,7 +21,7 @@ ngkpt_dict_for_kspacings - when ngkpt is used could be problems, please test.
 
 from siman import header
 from siman.header import print_and_log, printlog;
-from siman.small_functions import is_list_like, red_prec
+from siman.small_functions import is_list_like, red_prec, is_string_like
 from siman.functions import invert
 
 #Vasp keys
@@ -143,6 +143,10 @@ vasp_other_keys = [
 'M_CONSTR',
 'I_CONSTRAINED_M',
 'RWIGS',
+'LSOL',
+'EB_k',
+'LAMBDA_D_K',
+'TAU',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -372,10 +376,11 @@ class InputSet():
                 s.set_ngkpt(param[key])
 
             elif key == 'kpoints_file':
-                if param[key]:
+                if param[key] in [1, True]:
                     s.kpoints_file = True 
+                elif is_string_like(param[key]):
+                    s.kpoints_file = param[key]
                 else:
-                    ''
                     s.kpoints_file = False
 
             elif key == 'bfolder':

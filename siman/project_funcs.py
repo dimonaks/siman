@@ -5260,3 +5260,133 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
     info = analyze(cl, info_key, st_init)
 
     return info 
+
+
+
+
+
+def replace_atoms(it, ise, st, el1, el2, mag = 0.6, x = None, sgs  = None, 
+    up = 0, test = 1, it_folder = 'replaced', n_st = 2, up_sts = 0, gmt = 0, mode = 'rep', up_res = 'up1'):
+    """
+    Wrapper for replacing atoms according to symmetry
+
+    sgs - list of space groups
+    # sgs = None will search for all possible
+    test - check structures 
+    n_st - number of structures for each symmetry
+
+    up - update everithing
+    up_sts - generate structures again
+    gmt - show magnetic moments
+    """
+    from siman.geo import replace_x_based_on_symmetry
+    
+
+    if sgs is None:
+        replace_x_based_on_symmetry(st, el1, el2, x = x, info_mode = 1, sg = sgs, silent = 0)
+    else:
+        for sg in sgs:
+
+
+            suf = '_'+el1+'_'+el2+str(x).replace('.', '')+'sg'+str(sg)
+            idd = (it+suf, ise, 1)
+            
+            if idd not in db or up or up_sts:
+                sts, atrs = replace_x_based_on_symmetry(st, el1, el2, x = x, sg = sg, silent = 0, mag = mag, mode = mode)
+            
+            for i in range(n_st):
+                if i == 0:
+                    sufn = ''
+                else:
+                    sufn = '_'+str(i+1)
+                suf2= suf+sufn
+                idd = (it+suf2, ise, 1)
+            
+                if idd not in db or up:
+                    # print(sg, sts)
+                    st1 = sts[i]
+                    st1.name+=suf2
+                    # st1.magmom = [None]
+                    if not test:
+                        add(*idd, up = 'up2', input_st = st1, it_folder = it_folder+'/'+it)
+                    else:
+                        st1.write_poscar()
+                        # st1.get_mag_tran()
+                        # st1.nn(34)
+                        # st1.get_mag_tran()
+                        # st2.get_mag_tran()
+                        # st1.jmol(r=2)
+                        # st2.jmol(r=2)
+                else:
+                    ''
+                    res(*idd, up = up_res)
+                    if gmt:
+                        db[idd].gmt()
+
+    return
+
+
+
+def remove_atoms(it, ise, st, el, mag = 0.6, x = None, sgs  = None, 
+    up = 0, test = 1, it_folder = 'removed', n_st = 2, up_sts = 0, gmt = 0, up_res = 'up1'):
+    """
+    Wrapper for removing atoms according to symmetry
+
+    sgs - list of space groups
+    # sgs = None will search for all possible
+    test - check structures 
+    n_st - number of structures for each symmetry
+
+    up - update everithing
+    up_sts - generate structures again
+    gmt - show magnetic moments
+    """
+    from siman.geo import remove_x
+    
+    sts = []
+    if sgs is None:
+        remove_x(st, el, x = x, info_mode = 1, sg = sgs, silent = 0)
+    else:
+        for sg in sgs:
+
+
+            suf = '_'+el+str(x).replace('.', '')+'sg'+str(sg)
+            idd = (it+suf, ise, 1)
+            
+            if idd not in db or up or up_sts:
+                sts = remove_x(st, el, x = x, sg = sg, silent = 0, return_sts = 1)
+            
+            # if len(sts) < n_st:
+                # n_st = len(sts)
+            for i in range(n_st):
+                if i == 0:
+                    sufn = ''
+                else:
+                    sufn = '_'+str(i+1)
+                suf2= suf+sufn
+                idd = (it+suf2, ise, 1)
+            
+                if idd not in db or up:
+                    # print(sg, sts)
+                    if i >= len(sts):
+                        continue
+                    st1 = sts[i]
+                    st1.name+=suf2
+                    # st1.magmom = [None]
+                    if not test:
+                        add(*idd, up = 'up2', input_st = st1, it_folder = it_folder+'/'+it)
+                    else:
+                        st1.write_poscar()
+                        # st1.get_mag_tran()
+                        # st1.nn(34)
+                        # st1.get_mag_tran()
+                        # st2.get_mag_tran()
+                        # st1.jmol(r=2)
+                        # st2.jmol(r=2)
+                else:
+                    ''
+                    res(*idd, up = up_res)
+                    if gmt:
+                        db[idd].gmt()
+
+    return

@@ -48,7 +48,8 @@ from siman.functions import (read_vectors, read_list, words, read_string,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
 from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
-local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral)
+local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral, 
+rms_between_structures, rms_between_structures2)
 from siman.set_functions import InputSet, aims_keys
 
 
@@ -618,7 +619,7 @@ class Structure():
             # print(len(self.xred))
             # print(site_properties)
 
-            pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
+            pm = pymatgen.core.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
         oxi = None
         
@@ -1386,6 +1387,17 @@ class Structure():
         return tra
 
 
+    def get_el(self, el):
+        """
+        Get atomic numbers for el
+        """
+        z = invert(el)
+        num = self.get_specific_elements([z,])
+
+
+        return num
+
+
     def get_dipole(self, ox_states = None, chg_type = 'ox'):
         """ Return dipole moment in e*A calculated by pymatgen
         ox_states (dict) - oxidation states of elements
@@ -1397,19 +1409,29 @@ class Structure():
         return slab.dipole
 
 
-    def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, atoms_xred = None, mag = None):
+    def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, 
+        atoms_xred = None, mag = None, add2end = False):
         """
-        appends at the end if element is new. Other case insertered according to VASP conventions
+        Appends atoms of type *element* at the end if the element is new. Otherwise insert according to VASP conventions if *add2end* is False.
+        
         Updates ntypat, typat, znucl, nznucl, xred, magmom and natom
-        atoms_xcart (list of ndarray)
-        atoms_xred (list of coordinate lists) - if provided both, this has higher priority 
+        
+        INPUT: 
 
-        selective (list of lists) - selective dynamics
+            - atoms_xcart (list of ndarray)
+            
+            - atoms_xred (list of coordinate lists) - if provided both, this has higher priority 
 
-        mag magnetic moment of added atoms, if None, than 0.6 is used
-            magmom is appended with 0.6, 
-            please improve me! by using the corresponding list of magmoms
+            - selective (list of lists) - selective dynamics
 
+            - mag magnetic moment of added atoms, if None, than 0.6 is used
+                magmom is appended with 0.6, 
+                please improve me! by using the corresponding list of magmoms
+            
+            - add2end (bool) - override default behavior by appending all atoms to the end
+
+
+        RETURN:
 
         if return_ins:
             Returns Structure(), int - place of insertion of first atom
@@ -1450,15 +1472,18 @@ class Structure():
 
         el_z_to_add = element_name_inv(element)
 
-        if hasattr(st, 'magmom') and any(st.magmom) or mag:
+        if hasattr(st, 'magmom') and any(st.magmom) or (mag and st.natom == 0) :
             magmom_flag = True
         else:
             magmom_flag = False
 
+        # print(magmom_flag, st.magmom)
+        # sys.exit()
+
         if mag is None:
             mag = 0.6
 
-        if el_z_to_add not in st.znucl:
+        if el_z_to_add not in st.znucl or add2end:
             
             st.znucl.append( el_z_to_add )
             
@@ -1543,7 +1568,7 @@ class Structure():
             return st
 
 
-    def add_atom(self, xr = None, element = 'Pu', xc = None, selective = None):
+    def add_atom(self, xr = None, element = 'Pu', xc = None, selective = None, add2end = False):
         """
         
         allows to add one atom using reduced coordinates or cartesian
@@ -1567,7 +1592,7 @@ class Structure():
         if selective is not None:
             selective = [selective]
 
-        st = self.add_atoms([xc], element = element, selective = selective)
+        st = self.add_atoms([xc], element = element, selective = selective, add2end = add2end)
         return st 
 
 
@@ -1788,7 +1813,7 @@ class Structure():
         del st.xcart[i]
 
         # print ('Magmom deleted?')
-        # print(st.magmom)
+        # print(st.magmom, i)
         if hasattr(st, 'magmom') and any(st.magmom):
             del st.magmom[i]
             # print ('Yes!')
@@ -2064,8 +2089,11 @@ class Structure():
                         
                         st.typat[n] = it
                         # print('mag_new',mag_new)
+                        # print(st.magmom)
+                        if hasattr(st, 'magmom') and any(st.magmom):
+
+                            st.magmom[n] = mag_new
                         # sys.exit()
-                        st.magmom[n] = mag_new
                         # print(it, z_new, st.typat)
                         # print(st.get_elements())
                         # sys.exit()
@@ -2217,22 +2245,30 @@ class Structure():
 
 
 
-    def combine(self, st_list, only_numbers = None):
+    def combine(self, st_list, only_numbers = None, add2end = False):
         """
         Combine several structures into one
         using reduced coordinates
+
+        INPUT:
+            - st_list (list) - list of structures to combine
+            - only_numbers (list) - list of atom numbers to be added; if None all atoms are added
+            - add2end (bool) - see self.add_atoms()
+
         """
         st_b = self.copy()
 
-        if only_numbers is None:
-            only_numbers = []
+        # if only_numbers is None:
+            # only_numbers = []
 
         for i, st in enumerate(st_list):
             # print(i)
 
             for j, xr, el in zip(list(range(st.natom)), st.xred, st.get_elements() ):
-                if j in only_numbers:
-                    st_b = st_b.add_atom(xr, el)
+
+                if only_numbers is None or j in only_numbers:
+                    # print(j)
+                    st_b = st_b.add_atom(xr, el, add2end = add2end)
 
 
         return st_b
@@ -2322,8 +2358,8 @@ class Structure():
         #     if np.linalg.norm(x-x_tar) < prec:
         #         printlog('Atom', i+1, 'corresponds to', x_tar)
         #         return i
-        
-        vmax = max(self.vlength)
+        # print('vlength', self.vlength)
+        vmax = max(self.vlen)
         prec_xr = prec/vmax
         print('Reduced precision is', prec_xr, '')
 
@@ -2601,8 +2637,12 @@ class Structure():
         """
         Find closest atom in structure to xc (cartesian) or xr (reduced) coordinate
 
+        TODO: Should be revised!
+
         RETURN:
-        i shifts, and dist
+            - i (int)
+            - shifts ()
+            - dist
         """
         if xc is not None:
             x = np.asarray(xc)
@@ -2618,7 +2658,9 @@ class Structure():
         abs_shifts = [self.distance(x1 = x, x2 = x1, coord_type = coord_type) for x1 in coords]
         # print(sorted(abs_shifts))
         i = np.argmin(abs_shifts)
+        
         return i, abs_shifts[i], self.distance(x1 = x, x2 = coords[i], coord_type = coord_type)
+
 
     def find_closest_neighbor(self,i_at):
         #find closest atom in structure to i_at
@@ -2631,13 +2673,32 @@ class Structure():
         i = np.argmin(abs_shifts)
         return i, abs_shifts[i], x - self.xcart[i]
 
+
+    def rms(self, st, el = None ):
+        """
+        Get rms difference 
+
+        INPUT:
+            - st (Structure) - structure to be compared with
+            - el (str) - see rms_between_structures2()
+        RETURN:
+
+
+        """
+        rms_between_structures2(self, st, el)
+
+        return
+
+
+
+
     def nn(self, i, n = 6, ndict = None, only = None, silent = 0, 
         from_one = True, more_info = 0, oxi_state = 0, print_average = 0):
         """
         show neigbours
 
         INPUT:
-        i - number of central atom, from 1 or 0 (from_one = True or False)
+        i - number of central atom, from 1 or 0 (from_one = True or False); if header.from_one is False or True than the behaviour is overriden
         n - number of neigbours to return
         ndict (dic) - number of specific neigbour atoms to take into account e.g ndict = {8:3} - 3 oxygen atoms will be considered
         only - list of interesting z neighbours
@@ -2664,6 +2725,9 @@ class Structure():
 
 
         """
+        if header.FROM_ONE is not None:
+            from_one = header.FROM_ONE
+
 
         if from_one:
             i -= 1
@@ -2712,6 +2776,8 @@ class Structure():
         else:
             printlog(tab[1:], imp = imp )
 
+
+
         info = {}
         info['numbers'] = out_or[2]
         info['dist'] = out_or[3]
@@ -2721,6 +2787,8 @@ class Structure():
         el = st.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
         info['av(A-O,F)'] = local_surrounding(x, st, n, 'av', True, only_elements = [8,9], round_flag = 0)
+
+        print
 
         if more_info:
             info['avsq(A-O,F)'] = local_surrounding2(x, st, n, 'avsq', True, only_elements = [8,9])
@@ -2751,7 +2819,7 @@ class Structure():
             # print(info['Onumbers'])
 
         if print_average:
-            print('av(A-O,F)', info['av(A-O,F)'])
+            print('av(A-O,F) = {:5.2f} A'.format( info['av(A-O,F)']))
 
         return info
 
@@ -3595,11 +3663,22 @@ class Structure():
         return n(r[0]), n(r[1]), n(r[2])
 
 
+    def run_vasp(self):
+        """
+        Convinient wrapper for add_loop()
+
+        TODO: to be finished; It is more reasonable to move this method to class; Then a new calculation is created which requires a structure
+        and set; But probably it can be here as well. It will be very simple to use. 
+
+        please make it in such a way that a res command is suggested at the end, required to read the results
+        """
+        return
+
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation
         List of important fields:
-            - init (Structure)
-            - end  (Structure)
+            - init (Structure) - the initial structure used for calculation
+            - end  (Structure) - the structure obtained after optimization
             - occ_matrices (dict) - occupation matrices, number of atom (starting from 0) is used as key
 
 
@@ -3635,6 +3714,7 @@ class Calculation(object):
         header.db[self.id] = self
         self.cluster_address = ''
         self.project_path_cluster = ''
+    
     def get_path(self,):
         path = os.path.dirname(os.getcwd()+'/'+self.path['output'])
         print( path)
@@ -4239,15 +4319,22 @@ class Calculation(object):
 
 
 
-    def dos(self, isym = None, el = None, i_at = None, iatoms = None,  *args, **kwargs):
+    def dos(self, isym = None, el = None, i_at = None, iatoms = None, multi = None,  *args, **kwargs):
         """
-        Plot dos either for self or for children with dos
-        isym (int) - choose symmetry position to plot DOS,
-        otherwise use 
-        i_at - number of atom from 0
-        iatoms - list of atom numbers (from 0) to make one plot with several dos
-        el - element for isym, otherwise first TM is used
-        orbitals
+        Plot DOS either for self or for children with dos
+
+        INPUT:
+            - isym (int) - choose symmetry position to plot DOS, otherwise use i_at
+            - i_at - number of atom from 0
+            - iatoms - list of atom numbers (from 0) to make one plot with several dos
+            - el - element for isym, otherwise first TM is used orbitals
+            - multi (dict) - special dict to make multiplots, 
+                    default is {'first':1, 'last':1, 'ax':None, 'hide_xlabels':False, 'pad':None}; see fit_and_plot()
+            - nneighbors
+
+            fit_and_plot arguments can be used
+
+        RETURN:
 
         """
         from siman.header import db
@@ -4270,13 +4357,24 @@ class Calculation(object):
         labels = pm.get('labels')
         image_name = pm.get('image_name')
         fig_format = pm.get('fig_format') or 'pdf'
+        dostype = pm.get('dostype') or 'partial'
+        nneighbors = pm.get('nneighbors') or 6
 
         if efermi_origin is None:
             efermi_origin = 1
 
 
-        if corner_letter is None:
-            corner_letter = 1
+        xlabel = '$E-E_F$, eV'
+        if multi is None:
+            multi = {'first':1, 'last':1, 'ax':None, 'hide_xlabels':False, 'pad':None}
+            ylabel = 'Total DOS, states/eV'
+        else:
+            ylabel = None
+            if multi['hide_xlabels']:
+                xlabel = None
+
+        
+
         # print(corner_letter)
         # sys.exit()
 
@@ -4304,6 +4402,7 @@ class Calculation(object):
             orbitals = ['d', 'p6']
 
         st = cl.end
+        
         if isym is not None:
 
             if el:
@@ -4319,18 +4418,41 @@ class Calculation(object):
         else:
             iTM = i_at
 
+
+        if fontsize:
+            # header.mpl.rcParams.update({'font.size': fontsize+4})
+            # fontsize = 2
+            SMALL_SIZE = fontsize
+            MEDIUM_SIZE = fontsize
+            BIGGER_SIZE = fontsize
+
+            header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
+            header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+            header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+            header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+            header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+            header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+            header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
+
+
         if not iatoms:
             #just one plot
             plot_dos(cl,  iatom = iTM+1,  
-            dostype = 'partial', orbitals = orbitals, 
+            dostype = dostype, orbitals = orbitals, 
             labels = labels, 
             nsmooth = nsmooth, 
             image_name = image_name, 
             # invert_spins = invert_spins,
             efermi_origin = efermi_origin,
             efermi_shift = efermi_shift,
+            neighbors = nneighbors,
             show = 0,  plot_param = {
             'figsize': (6,3), 
+            'first':multi['first'], 'last':multi['last'], 'ax':multi['ax'], 'pad':multi['pad'], 'hide_xlabels':multi['hide_xlabels'],
+            'xlabel':xlabel, 'ylabel':ylabel,
+            'corner_letter':corner_letter,
             'linewidth':linewidth, 
             'fontsize':fontsize,
             'ylim':ylim, 'ver':1, 'fill':1,
@@ -4344,21 +4466,10 @@ class Calculation(object):
         if iatoms:
 
 
-            if fontsize:
-                # header.mpl.rcParams.update({'font.size': fontsize+4})
-                # fontsize = 2
-                SMALL_SIZE = fontsize
-                MEDIUM_SIZE = fontsize
-                BIGGER_SIZE = fontsize
 
-                header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
-                header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-                header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-                header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-                header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-                header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
-                header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
+            if corner_letter is None:
+                corner_letter = 1
 
             color_dicts = [None, {'s':'k', 'p':'r', 'p6':'#FF0018', 'd':'g'}]
 
@@ -4398,6 +4509,7 @@ class Calculation(object):
                     xlabel = "Energy (eV)"
                 plot_dos(cl,  iatom = iat+1,  efermi_origin = efermi_origin,
                 dostype = 'partial', orbitals = orbitals, 
+                neighbors = nneighbors,
                 labels = ['', ''], 
                 nsmooth = 1, 
                 color_dict = color_dicts[i%2],
@@ -4502,9 +4614,15 @@ class Calculation(object):
         kspacing = self.set.vasp_params['KSPACING']
         # print(kspacing)
         # sys.exit()
-        # print (struct_des)
+        # print (self.set.kpoints_file)
+        # sys.exit()
+        # printlog("Warning! If you use *update_set_dic* in add(), check_kpoints() works for set before update. Please fix.") #done
         if ngkpt:
             N = ngkpt
+
+        elif is_string_like(self.set.kpoints_file):
+            print_and_log("External K-points file was provided", self.set.kpoints_file)
+            N = None
 
         elif kspacing in ngkpt_dict:
             N = ngkpt_dict[kspacing]
@@ -4522,10 +4640,6 @@ class Calculation(object):
 
             N = N_from_kspacing
             printlog('check_kpoints(): k-points are determined from kspacing',kspacing)
-
-        elif self.set.kpoints_file:
-            print_and_log("K-points file was provided", self.set.kpoints_file)
-            N = None
 
         else:
             # print(self.dir)
@@ -4844,7 +4958,7 @@ class Calculation(object):
         
         f = open(batch_script_filename,'a', newline = '') #
 
-        # print(savefile)
+        printlog("The following output files will be saved: savefile =", savefile,)
         # sys.exit()
 
 
@@ -5782,26 +5896,51 @@ class Calculation(object):
         else:
             # printlog('File', path_to_file, 'was not found. Trying to update from server')
             out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = address)
-
+            if out:
+                printlog('File', path2file_cluster, 'was not found, trying archive:',header.PATH2ARCHIVE, imp = 'Y')
+                # printlog(out, imp  = 'Y')
 
         if out:
-            printlog('File', path2file_cluster, 'was not found, trying archive:',header.PATH2ARCHIVE, imp = 'Y')
-            # printlog('Charge file', path_to_file, 'was not found')
-            try:
-                pp = self.project_path_cluster.replace(self.cluster_home, '') #project path without home
-            except:
-                pp = ''
-            # print(pp)
-            path_to_file_scratch = header.PATH2ARCHIVE+'/'+pp+'/'+path_to_file
+            if header.PATH2ARCHIVE:
+                # printlog('Charge file', path_to_file, 'was not found')
+                try:
+                    pp = self.project_path_cluster.replace(self.cluster_home, '') #project path without home
+                except:
+                    pp = ''
+                # print(pp)
+                path_to_file_scratch = header.PATH2ARCHIVE+'/'+pp+'/'+path_to_file
 
-            out = get_from_server(path_to_file_scratch, os.path.dirname(path_to_file), addr = self.cluster['address'])
-            
-            if out:
-                printlog('File', path_to_file_scratch, 'was not found', imp = 'Y')
+                out = get_from_server(path_to_file_scratch, os.path.dirname(path_to_file), addr = self.cluster['address'])
+                
+                if out:
+                    printlog('File', path_to_file, ' was downloaded from archive', imp = 'e')
+
+                else:
+                    printlog('File', path_to_file_scratch, 'was not found, trying local archive path', imp = 'Y')
+
+
+            else:
+                printlog('project_conf.PATH2ARCHIVE is empty, trying local archive path', imp = 'Y')
+
+
+        if out: 
+            if header.PATH2ARCHIVE_LOCAL:
+
+                path_to_file_AL= header.PATH2ARCHIVE_LOCAL+'/'+path_to_file
+                # print(path_to_file_AL)
+                if os.path.exists(path_to_file_AL):
+                    shutil.copyfile(path_to_file_AL, path_to_file)
+
+                    printlog('Succefully found in local archive and copied to the current project folder', imp = 'Y')
+                else:
+                    printlog('File', path_to_file_AL,'not found in local archive', imp = 'Y')
+
+            else:
                 path_to_file = None
-           
-        printlog('File', path_to_file, ' was download', imp = 'e')
-        
+                printlog('project_path.PATH2ARCHIVE_LOCAL is empty', imp = 'Y')
+
+
+
         return path_to_file
 
     def run_on_server(self, command, addr = None):
@@ -6214,7 +6353,7 @@ class CalculationVasp(Calculation):
 
         struct_des = header.struct_des
         #Generate KPOINTS
-        kspacing = self.set.vasp_params['KSPACING']
+        kspacing = self.set.vasp_params.get('KSPACING')
 
         filename = os.path.join(self.dir, "KPOINTS")
 
@@ -6243,9 +6382,9 @@ class CalculationVasp(Calculation):
 
 
         elif self.set.kpoints_file:
-            if self.set.kpoints_file == True:
+            if self.set.kpoints_file is True:
 
-                print_and_log( "You said to generate KPOINTS file.\n")
+                print_and_log( "You said to generate KPOINTS file. set.kpoints_file =",self.set.kpoints_file," \n")
                 self.calc_kspacings()
                 #Generate kpoints file
 
@@ -6291,6 +6430,7 @@ class CalculationVasp(Calculation):
                 shutil.copyfile(self.set.kpoints_file, filename)
                 print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
 
+            self.path['kpoints'] = filename 
 
 
         else:
@@ -6567,7 +6707,15 @@ class CalculationVasp(Calculation):
 
 
     def get_chg_file(self, *args, **kwargs):
-        """just wrapper to get chgcar files """
+        """just wrapper to get chgcar files 
+
+        - nametype (str)
+            - 'asoutcar', e.g. 1.CHGCAR
+            - '', CHGCAR
+
+        """
+        if 'nametype' not in kwargs:
+            kwargs['nametype'] = 'asoutcar'
         if 'CHGCAR' in kwargs:
             del kwargs['CHGCAR']
         # print(self.path['charge'])
@@ -6892,6 +7040,7 @@ class CalculationVasp(Calculation):
 
         if 'it_suffix' in kwargs:
             it_suffix = '.'+kwargs['it_suffix']
+            it_suffix_del = False
         else:
             it_suffix = ''
         
@@ -6931,7 +7080,8 @@ class CalculationVasp(Calculation):
                         res_params = kwargs['params'].get('res_params') or {}
                     except:
                         res_params = {}
-
+                    if kwargs.get('it_suffix'):
+                        del kwargs['it_suffix']
                     cl_son.res(up = up, **res_params, **kwargs)
                     child = idd
                     add = 0
@@ -7085,6 +7235,49 @@ class CalculationVasp(Calculation):
         os.chdir(cwd)
 
         return
+
+    def band(self, ylim = None):
+        """
+        Plot band structure using pymatgen. Can be applied only to band structure calculations with correct KPOINTS and vasprun.xml files
+        INPUT:
+            - ylim (2*tuple of float)
+        """
+
+        from pymatgen.io.vasp import Vasprun, BSVasprun
+        from pymatgen.electronic_structure.plotter import BSPlotter
+
+        xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
+        # print(xml_file)
+        # print(self.path['kpoints']) #os.getcwd()+'/'+
+        if ylim is None:
+            ylim = (-12,6)
+
+        # sys.exit()
+        v = BSVasprun(xml_file)
+        bs = v.get_band_structure(kpoints_filename = self.path['kpoints'], line_mode = True)
+        plt = BSPlotter(bs,)
+        ax = plt.get_plot(vbm_cbm_marker=True, ylim = ylim,)
+        # ax.legend = None
+        ax.legend().remove()
+        ax.savefig('figs/png/'+str(self.name)+'_band.png', dpi = 300)
+        ax.savefig('figs/'+str(self.name)+'_band.pdf')
+        # ax.show()
+        return
+    def get_band_info(self):
+        """
+        Vasprun.xml is expected
+
+        TODO
+        can be done with EIGENVAL, please make
+
+        """
+        from pymatgen.io.vasp import Vasprun
+        xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
+
+        v = Vasprun(xml_file)
+        ll = list(v.eigenvalue_band_properties)
+        print('band gap = {:.1f} eV, cbm = {:.1f} eV, vbm = {:.1f} eV, is_band_gap_direct = {:}'.format(*ll))
+
 
 
 

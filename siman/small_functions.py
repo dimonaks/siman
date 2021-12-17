@@ -243,6 +243,13 @@ def setting_sshpass(cl = None, clust = None):
 
 @contextmanager
 def cwd(path):
+    """
+    Alows to change working directory inside 
+    
+    with cwd(): 
+        expression
+
+    """
     oldpwd=os.getcwd()
     os.chdir(path)
     try:

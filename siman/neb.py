@@ -111,7 +111,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
                                     by inserting atom *atom_to_insert*
         - None - just use st and st2 as initial and final
 
-    ###INPUT:
+    INPUT:
         - starting_calc (Calculation) - Calculation object with structure
         - st (Structure) - structure, can be used instead of Calculation
             - it_new (str) - name for calculation
@@ -147,12 +147,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - add_loop_dic - standart parameters of add()
         - params (dic) - provide additional parameters to add() # should be removed
 
-    ###RETURN:
+    RETURN:
         None
 
-    ###DEPENDS:
+    DEPENDS:
 
-    ###TODO
+    TODO
     1. Take care of manually provided i_atom_to_move in case of replicate flag using init_numbers 
     2. For search_type == None x_m and x_del should be determined for magnetic searching and for saving their coordinates
     to struct_des; now their just (0,0,0) 

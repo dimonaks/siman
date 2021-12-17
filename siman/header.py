@@ -51,6 +51,35 @@ WALLTIME_LIMIT = False # now only for PBS if True 72 hours limit is used
 # warnings = 'neyY'
 warnings = 'yY' # level of warnings to show: n - all, e - normal, y - important, Y - very important
 
+#Global constants, can be overriden in project_conf.py and simanrc.py
+FROM_ONE = None # atom numbering convention; allows to override the default behaviour of functions where atomic numbers are provided as arguments
+PATH2ARCHIVE_LOCAL  = None
+
+
+#Global variables
+final_vasp_clean     = True 
+copy_to_cluster_flag = True
+close_run = False # alows to control close run file automatically after each add_loop
+first_run = True  # needed to write header of run script
+ssh_object = None # paramiko ssh_object
+sshpass = None # using sshpass wrapper for rsync; see functions.py/push_to_server()
+show = None
+corenum = 1
+check_job = 1 # check job by additional ssh requests
+reorganize = 0 # use this from time to time to optimize database file size
+verbose_log = 0 # in addition to normal log write verbose log in any case by openning the log_verbose each time
+cluster_address = ''
+override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
+pymatgen_flag = None
+
+
+
+
+
+
+
+
+
 #1. Read default global settings for siman package
 from siman.default_project_conf import *
 
@@ -156,23 +185,6 @@ class CalcDict(dict):
             return keys
 
 
-#Global variables
-final_vasp_clean     = True 
-copy_to_cluster_flag = True
-close_run = False # alows to control close run file automatically after each add_loop
-first_run = True  # needed to write header of run script
-ssh_object = None # paramiko ssh_object
-sshpass = None # using sshpass wrapper for rsync; see functions.py/push_to_server()
-show = None
-corenum = 1
-check_job = 1 # check job by additional ssh requests
-reorganize = 0 # use this from time to time to optimize database file size
-verbose_log = 0 # in addition to normal log write verbose log in any case by openning the log_verbose each time
-cluster_address = ''
-override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
-
-pymatgen_flag = None
-
 
 db = CalcDict()
 # global db
@@ -204,10 +216,10 @@ F = 96485.3329 # sA/mol
 kB = 8.617e-5 # eV/K
 kB_SI = 1.380649e-23 # J/K
 R = 8.3145 # J/mol/K
+N_A = 6.02214e23
 
 
-
-TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 29, 40, 44, 74]
+TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 29, 40, 41,42,43,44, 74]
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
 TM_MAG = {'NM':0.6,
