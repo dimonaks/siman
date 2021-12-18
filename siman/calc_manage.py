@@ -1807,6 +1807,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         if 'bulk' in pm:
             del pm['bulk'] # is CalculationVasp object - cant be serialized
 
+
         pm['vasp_run'] = vasp_run_com + ' > ' + name+'.log'
         with io.open(  file, 'w', newline = '') as fp:
             json.dump(pm, fp,)
@@ -3077,7 +3078,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             # print(db[idd_new].id)
 
 
-    # if analys_type == 'mc':
+    # if analys_type == 'monte':
         # 'Make code for Monte-Carlo'
 
 
