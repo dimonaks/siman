@@ -23,7 +23,7 @@ def ionic_radius(el, state, coordination, radius_type = 'r_ionic'):
         radius_type (str) - radius type and two additional fields
             'r_ionic'
             'r_crystal'
-            'spin'
+            'spin' - check possible spin
             'remark'
 
 

@@ -41,6 +41,24 @@ from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.calcul import site_repulsive_e
 
 
+def assign_oxi_states(formula, charge = 0 ):
+    """
+    Assign oxidation states for the given chemical formula
+
+    INPUT:
+        - charge (float) - total electric charge of the compound
+
+
+    RETURN:
+        - Pymatgen Composition() object with assigned oxidation states
+
+    """
+    from pymatgen.core.composition import Composition
+    c = Composition(formula)
+    c = c.add_charges_from_oxi_state_guesses(target_charge = charge)
+    print(c)
+    return c
+
 def set_oxidation_states_guess(st):
     # set from guess
     pm = st.convert2pymatgen()

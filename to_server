@@ -2,5 +2,5 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'improvements in Monte-Carlo'
+git commit -m 'assign oxi states, fix occ, fix bader'
 git push origin simanaks

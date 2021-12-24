@@ -6757,8 +6757,8 @@ class CalculationVasp(Calculation):
         ppc = self.project_path_cluster+'/'
         self.determine_filenames()
 
-        # print()
-        CHG_scratch_gz  = header.PATH2ARCHIVE+'/'+self.dir+'/'+v+".CHGCAR.gz"
+        if header.PATH2ARCHIVE:
+            CHG_scratch_gz  = header.PATH2ARCHIVE+'/'+self.dir+'/'+v+".CHGCAR.gz"
 
         CHG     = ppc + self.path['chgcar']
         AECCAR0 = ppc + self.path['aeccar0']
@@ -6775,8 +6775,10 @@ class CalculationVasp(Calculation):
 
         command_chg_gunzip = 'gunzip '+CHG+'.gz ' # on cluster
         
-        restore_CHG = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
-        restore_AEC = "rsync "+header.PATH2ARCHIVE+'/'+self.path['aeccar0']+' '+ header.PATH2ARCHIVE+'/'+self.path['aeccar2']+' '+path # on cluster
+        if header.PATH2ARCHIVE:
+        
+            restore_CHG = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
+            restore_AEC = "rsync "+header.PATH2ARCHIVE+'/'+self.path['aeccar0']+' '+ header.PATH2ARCHIVE+'/'+self.path['aeccar2']+' '+path # on cluster
 
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"

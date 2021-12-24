@@ -3181,19 +3181,36 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 print(nodes_conf)
 
             if 'pickle' in show:
-                sys.modules['classes'] = siman.classes # temporary migration solution
+                # sys.modules['classes'] = siman.classes # temporary migration solution
+                steps = [int(n) for n in re.findall(r'\d+', show)]
+                # print(steps)
                 path = cl.project_path_cluster +'/'+ cl.dir
                 # print(path)
-                out = run_on_server('ls '+path+'/*.pickle', cl.cluster_address)
-                out = run_on_server('cp '+path+'/OUTCAR_last '+path+'/'+str(cl.id[2])+'.OUTCAR', cl.cluster_address)
+                pickle_out = run_on_server('ls '+path+'/*.pickle', cl.cluster_address)
+                outcar_out = run_on_server('ls '+path+'/OUTCAR-*', cl.cluster_address)
+                run_on_server('cp '+path+'/OUTCAR_last '+path+'/'+str(cl.id[2])+'.OUTCAR', cl.cluster_address)
                 printlog('Last outcar of mc calculation:', imp = 'y')
-                files = out.splitlines()
-                for file in files:
+                
+                pickle_files = pickle_out.splitlines()
+                outcar_files = outcar_out.splitlines()
+                # print(outcar_files)
+                for s in steps:
+                    for file in outcar_files:
+                        name = os.path.basename(file)
+                        # print(s, name, name.split('-')[1], int(name.split('-')[1]) ==s)
+
+                        if s == int(name.split('-')[1]):
+                            print(name)
+                            cl.get_file(name, )
+                            # sys.exit()
+
+                for file in pickle_files:
                     name = os.path.basename(file)
                     i = name.split('-')[0]
                     if not os.path.exists(cl.dir+'/'+name):
                         cl.get_file(name, )
                     cl_step = CalculationVasp().deserialize(cl.dir+'/'+name, encoding = 'latin1') # python2
+                    # cl_step.init.write_poscar(cl.dir+'/'+'POSCAR-'+i) # not avail
                     cl_step.end.write_poscar(cl.dir+'/'+'CONTCAR-'+i)
                 # cl = cl_step
                 # sys.exit()
