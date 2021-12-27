@@ -170,16 +170,24 @@ aims_keys = [
 'spin',
 ]
 
+'put here quantum espresso keys'
+qe_keys = [
+]
+
+
+
 def read_vasp_sets(user_vasp_sets, override_global = False):
     """
     Read user sets and add them to project database
     Now for VASP
-    ###INPUT:
+    
+    INPUT:
         - varset (dict) - database dict with all sets of a project
         - user_vasp_sets (list) - list of user sets that describes creation of new sets based on inheritance 
         - override - allows to recreate all sets; can be usefull than you want to add some new property to all your sets - very dangerous to do!
 
-    ###RETURN:
+    
+    RETURN:
         - user_vasp_sets (list)
 
     """

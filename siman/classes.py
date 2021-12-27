@@ -955,18 +955,22 @@ class Structure():
         return st
 
 
-    def get_oxi_states(self, typ = 'charges'):
+    def get_oxi_states(self, typ = 'charges', silent = 1,):
         """
         Create and return list of oxidation states from charges and valences
         self.charges should exist as full charges (e.g. from Bader analysis)
         
         INPUT:
-            typ (str) 
-                'charges' - from charges and zval
-                'guess'   - from guess
-        
+            - typ (str) 
+                - 'charges' - from charges and zval
+                - 'guess'   - from guess
+            - silent (bool) - no output
+
         RETURN
-            oxi (list) - list of oxidation states for each atom
+            - oxi (list) - list of oxidation states for each atom
+
+        SIDE
+            - fill in self.oxi_state property
         """
         st = self
         if typ == 'charges':
@@ -975,7 +979,7 @@ class Structure():
             oxi = []
             for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
                 oxi.append( z_val - st.charges[j] )
-            # st.oxi_state = oxi
+            st.oxi_state = oxi
         
         elif typ == 'guess':
             pm = st.convert2pymatgen()
@@ -985,6 +989,17 @@ class Structure():
 
 
         return oxi
+
+    def print_oxi(self, el):
+        """
+        Print oxidation states for particular element 
+
+        INPUT:
+            - el (str) - element
+        """
+        iel = self.get_specific_elements([invert(el)])
+        print(  ' '.join( ['{:.1f}'.format(self.oxi_state[i]) for i in iel] ) )
+
 
 
     def generate_charge_orders(self, el, states = None, x = 0.5):
@@ -2068,51 +2083,58 @@ class Structure():
             warn = 'Y'
 
 
-        while atom_exsist:
+        if mode in [1,2]:
+            while atom_exsist:
 
 
-            for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
-                # print(i)
+                for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
+                    # print(i)
 
-                if n in atoms_to_replace:
-                    xcart = st.xcart[i]
+                    if n in atoms_to_replace:
+                        xcart = st.xcart[i]
 
-                    if mode == 2:
-                        if st.get_elements().count(el) == 1:
-                            printlog('Error! The functions replace_atoms() in mode == 2 works incorrectly if one atom of type ', el)
-                        if el_new not in st.get_elements():
-                            st.znucl.append(z_new)
-                            # print(st.nznucl)
-                            st.ntypat+=1
-                        
-                        it = st.znucl.index(z_new)+1
-                        
-                        st.typat[n] = it
-                        # print('mag_new',mag_new)
-                        # print(st.magmom)
-                        if hasattr(st, 'magmom') and any(st.magmom):
+                        if mode == 2:
+                            if st.get_elements().count(el) == 1:
+                                printlog('Error! The functions replace_atoms() in mode == 2 works incorrectly if one atom of type ', el)
+                            if el_new not in st.get_elements():
+                                st.znucl.append(z_new)
+                                # print(st.nznucl)
+                                st.ntypat+=1
+                            
+                            it = st.znucl.index(z_new)+1
+                            
+                            st.typat[n] = it
+                            # print('mag_new',mag_new)
+                            # print(st.magmom)
+                            if hasattr(st, 'magmom') and any(st.magmom):
 
-                            st.magmom[n] = mag_new
-                        # sys.exit()
-                        # print(it, z_new, st.typat)
-                        # print(st.get_elements())
-                        # sys.exit()
-                        del numbers[i]
+                                st.magmom[n] = mag_new
+                            # sys.exit()
+                            # print(it, z_new, st.typat)
+                            # print(st.get_elements())
+                            # sys.exit()
+                            del numbers[i]
 
-                        printlog('replace_atoms(): atom', i, el, 'replaced with', st.get_elements()[n], '; Atom number stayed the same' , imp = warn)
+                            printlog('replace_atoms(): atom', i, el, 'replaced with', st.get_elements()[n], '; Atom number stayed the same' , imp = warn)
 
-                    else:
-                        # atom number is changed, since new typat is added
-                        el_rep = st.get_elements()[i]
-                        st = st.del_atom(i)
-                        del numbers[i]
-                        # print(mag_new)
-                        st = st.add_atoms([xcart], element = el_new, mag = mag_new)
-                        printlog('replace_atoms(): atom', i, el_rep, 'replaced with', el_new, '; Atom number was changed', imp = warn)
-                        # print('replace_atoms(): mag, magmom', mag_new, st.magmom)
-                    break
-            else:
-                atom_exsist = False
+                        else:
+                            # atom number is changed, since new typat is added
+                            el_rep = st.get_elements()[i]
+                            st = st.del_atom(i)
+                            del numbers[i]
+                            # print(mag_new)
+                            st = st.add_atoms([xcart], element = el_new, mag = mag_new)
+                            printlog('replace_atoms(): atom', i, el_rep, 'replaced with', el_new, '; Atom number was changed', imp = warn)
+                            # print('replace_atoms(): mag, magmom', mag_new, st.magmom)
+                        break
+                else:
+                    atom_exsist = False
+        if mode == 3:
+            xcart_replace = [st.xcart[i] for i in atoms_to_replace]
+            st = st.remove_atoms(atoms_to_replace)
+            st = st.add_atoms(xcart_replace, element = el_new, mag = mag_new)
+
+
         st.get_nznucl()
         # printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
 

@@ -30,6 +30,8 @@ from siman.geo import interpolate, replic, image_distance, scale_cell_uniformly,
 from siman.set_functions import init_default_sets
 from siman.database import push_figure_to_archive
 
+from siman.calculators.qe import CalculationQE
+
 
 printlog = print_and_log
 
@@ -1995,6 +1997,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         if params.get('calculator') == 'aims':
             cl = CalculationAims( varset[id[1]] )
+
+        elif params.get('calculator') == 'qe':
+            'Quantum Espresso'
+            cl = CalculationQE( varset[id[1]] )
 
         else:
             #by default Vasp

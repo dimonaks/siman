@@ -2,5 +2,5 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'assign oxi states, fix occ, fix bader'
+git commit -m 'qe step 1'
 git push origin simanaks
