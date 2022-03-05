@@ -14,7 +14,7 @@ try:
     from pymatgen.io.cif import CifParser
     pymatgen_flag = True 
 except:
-    print('pymatgen is not available')
+    print('matproj_functions.py: pymatgen is not available')
     pymatgen_flag = False 
 
 from siman.classes import CalculationVasp
@@ -1269,5 +1269,7 @@ def move_suf_en_mat(self, only_show = 1):
 
             except KeyError or AttributeError:
                 None
+
+
 
 

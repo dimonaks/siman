@@ -3,6 +3,7 @@ from __future__ import division, unicode_literals, absolute_import
 import os, io, re, math, sys
 from csv import reader
 
+
 import numpy  as np
 try:
     import pandas as pd 
@@ -22,6 +23,32 @@ from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
 from siman.small_classes import empty_struct
 from siman.geo import local_surrounding, replic
+
+
+
+def determine_file_format(input_geo_file):
+
+    supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif', 'xyz':'.xyz'} #format name:format specifier
+
+    if ('POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file) and not '.geo' in input_geo_file:
+        input_geo_format = 'vasp'
+    elif '.vasp' in input_geo_file:
+        input_geo_format = 'vasp'
+    elif '.cif' in input_geo_file:
+        input_geo_format = 'cif'
+    elif '.geo' in input_geo_file:
+        input_geo_format = 'abinit'
+    elif '.xyz' in input_geo_file:
+        input_geo_format = 'xyz'
+    elif '.gau' in input_geo_file:
+        input_geo_format = 'gaussian'
+
+
+    else:
+        printlog("Attention! File format of",input_geo_file ,"is unknown, should be from ", supported_file_formats, 'skipping')
+        input_geo_format = None
+    return input_geo_format
+
 
 
 
@@ -2276,3 +2303,75 @@ def read_atat_fit_out(filename, filter_names = None, i_energy = 1):
             count+=1
         # print(a)
     return X, E
+
+
+
+
+
+
+def read_structure(filename = None, format = None):
+    """
+    Smart wrapper for reading files with atomic structure. New version of smart_structure_read 
+
+    INPUT:
+        - filename (str)
+        - format (str) - file format. Normally the format is determined automatically from the name or extension
+            - 'abinit'
+            - 'vasp'
+            - 'cif'
+            - 'gaussian'
+
+
+    returns Structure()
+    """
+
+    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'vasp-phonopy': 'POSCAR*', 'cif':'*.cif'}
+
+    input_geo_format = determine_file_format(filename)
+    printlog(input_geo_format,' format is detected')
+
+
+
+    if input_geo_format   == 'abinit':
+        # cl.read_geometry(input_geo_file)
+        ''
+    
+    elif input_geo_format == 'vasp':
+        # cl.read_poscar(input_geo_file, version = curver)
+        ''
+
+    elif input_geo_format == 'cif':
+        ''
+        # cif2poscar(input_geo_file, input_geo_file.replace('.cif', '.POSCAR'))
+        # input_geo_file = input_geo_file.replace('.cif', '.POSCAR')
+        # cl.read_poscar(input_geo_file)
+
+    elif input_geo_format == 'xyz':
+        from siman.classes import Structure
+        #version = 1
+        # st = cl.init
+        st = Structure()
+        st = read_xyz(st, filename)
+        # cl.init = st
+        # cl.path["input_geo"] = input_geo_file
+        # cl.version = 1
+
+    elif input_geo_format == 'gaussian':
+        ''
+        from pymatgen.io.gaussian import GaussianInput
+        from siman.core.structure import Molecule
+        gaus = GaussianInput(mol = None)
+        st = gaus.from_file(filename).molecule
+
+        # st = Molecule(pymatgen_molecule_object = st)
+        st = Molecule.cast(st, filename)
+        # print(st)
+
+    else:
+        printlog("Error! smart_structure_read(): File format", input_geo_format, "is unknown")
+
+
+        # printlog("Error! Input file was not properly read for some reason")
+    
+
+    return st

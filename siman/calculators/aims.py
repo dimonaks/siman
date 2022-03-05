@@ -1,30 +1,15 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 from siman.core.calculation import Calculation
-from siman.set_functions import InputSet, qe_keys
 
-def write_geometry_qe(st, filename, coord_type, periodic):
-    """
-
-    """
-
-    
-
-
-
-def read_qe_out(cl, out_type, show):
-    """
-
-    """
-
-
-
-class CalculationQE(Calculation):
-    """object for quantum Espresso """
+class CalculationAims(Calculation):
+    """object for Aims code """
     def __init__(self, inset = None, iid = None, output = None):
-        super(CalculationQE, self).__init__(inset, iid, output)
+        super(CalculationAims, self).__init__(inset, iid, output)
         self.len_units = 'Angstrom'
-        self.calculator = 'qe'
+        self.calculator = 'aims'
+        self.init = Structure()
+        self.end = Structure()
 
     def write_structure(self, name_of_output_file, type_of_coordinates = 'dir', option = None, prevcalcver = None, path = None, state = 'init'):
 
@@ -42,14 +27,14 @@ class CalculationQE(Calculation):
 
         makedir(filename)
 
-        write_geometry_qe(st, filename, coord_type = type_of_coordinates, periodic = self.set.periodic)
+        write_geometry_aims(st, filename, coord_type = type_of_coordinates, periodic = self.set.periodic)
 
 
     def add_potcar(self):
 
         d = self.dir
 
-        incar = d+'control.in' # change to quantum espresso name
+        incar = d+'control.in'
 
         with open(self.set.path_to_potcar, 'r') as f:
             fil = f.read()
@@ -62,7 +47,7 @@ class CalculationQE(Calculation):
     def make_incar(self):
         d = self.dir
         
-        incar = d+'control.in' # change to quantum espresso name
+        incar = d+'control.in'
         with open(incar, 'r') as f:
             fil = f.read()
         vp = self.set.params
@@ -77,7 +62,7 @@ class CalculationQE(Calculation):
             f.write(vp['universal'])
             f.write('\n')
             for key in vp:
-                if key in qe_keys:
+                if key in aims_keys:
                     # print(key, self.set.params[key])
                     if vp[key] is not None:
                         f.write(key+' '+str(vp[key])+'\n')
@@ -94,7 +79,7 @@ class CalculationQE(Calculation):
 
     def copy_to_cluster(self, list_to_copy, update):
         d = self.dir
-        list_to_copy.extend( glob.glob(   os.path.join(d, '*geometry*')  ) ) # change to qe
+        list_to_copy.extend( glob.glob(   os.path.join(d, '*geometry*')  ) )
         
         if "up" in update: #Copy to server
             printlog('Files to copy:', list_to_copy)
@@ -115,7 +100,7 @@ class CalculationQE(Calculation):
     def read_results(self, load = '', out_type = '', voronoi = None, show = '', choose_outcar = None, alkali_ion_number = None):
 
         """
-        QE
+        Aims
 
         choose_outcar - for now is dummy
         alkali_ion_number - for now is dummy
@@ -125,11 +110,11 @@ class CalculationQE(Calculation):
         filename = cl.download(load) # wrapper for downloading output files
 
 
-        cl.state = check_output(filename, 'string with succesfull ', load)
+        cl.state = check_output(filename, 'Have a nice day', load)
         
         if "4" in cl.state:
 
-            outstr = read_qe_out(cl, out_type, show)
+            outstr = read_aims_out(cl, out_type, show)
             
             printlog(outstr)
 
@@ -140,3 +125,4 @@ class CalculationQE(Calculation):
         
 
         return outstr
+

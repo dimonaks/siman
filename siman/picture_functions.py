@@ -202,7 +202,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     xlog = False,ylog = False, scatter = False, 
     legend = False, ncol = 1, 
     fontsize = None, legend_fontsize=None, markersize = None,  
-    linewidth = None, hor = False, ver = True, fig_format = 'eps', dpi = 300,
+    linewidth = None, hor = False, ver = False, fig_format = 'eps', dpi = 300,
     ver_lines = None, hor_lines = None, xy_line = None, x_nbins = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
@@ -537,7 +537,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             # print(con)
             if fill:
                 ''
-                ax.fill(xyf[0], xyf[1], facecolor = con['c'], alpha = 0.6)
+                print('fill', xyf[0], xyf[1])
+                # ax.fill(xyf[0], xyf[1], facecolor = con['c'], alpha = 0.6)
+                ax.fill_between(xyf[0], xyf[1], y2=0, facecolor = con['c'], alpha = 0.6)
 
 
             if convex:

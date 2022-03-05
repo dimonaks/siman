@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*- 
+# Copyright (c) Siman Development Team.
+# Distributed under the terms of the GNU License.
 from __future__ import division, unicode_literals, absolute_import, print_function
 import json
 import copy
@@ -174,6 +175,13 @@ aims_keys = [
 qe_keys = [
 ]
 
+'gaussian keys'
+gaus_keys = [
+'functional',
+'basis_set',
+'job_type',
+'optional'
+]
 
 
 def read_vasp_sets(user_vasp_sets, override_global = False):
@@ -289,6 +297,9 @@ class InputSet():
             self.vasp_params[key] = None 
 
         for key in aims_keys: 
+            self.params[key] = None 
+
+        for key in gaus_keys: 
             self.params[key] = None 
 
 
@@ -758,7 +769,7 @@ class InputSet():
         print('spinat', '\n'.join(wrap(mag_str)) )
 
 
-
+        return
 
 
 
@@ -975,6 +986,27 @@ def init_default_sets(init = 0):
         s.update()
         header.varset[setname] = copy.deepcopy(s)
     # print(header.varset[setname], setname)
+
+
+
+    setname = 'gaus_sp'
+    if init or setname not in varset: #init only once
+        s = InputSet(setname) #default starting set without relaxation
+        # s.kpoints_file = True
+        # s.add_nbands = 1.5
+        s.params = {
+            'functional'    : 'B3LYP',
+            'basis_set'     : '6-31G(d)',
+            'job_type'      : 'SP',
+            'optional'      : None,
+            }
+        # s.potdir = copy.deepcopy(header.nu_dict)
+
+        # s.update()
+        header.varset[setname] = copy.deepcopy(s)
+    
+
+
 
 
 

@@ -1,20 +1,7 @@
-# -*- coding: utf-8 -*-
-#Copyright Aksyonov D.A
-#hello_man
+# Copyright (c) Siman Development Team.
+# Distributed under the terms of the GNU License.
 from __future__ import division, unicode_literals, absolute_import, print_function
 
-"""
-Siman - management of VASP calculations
-Author: Aksyonov D.A.
-
-
-!Internal units are Angstroms!
-Bohrs should be converted during reading!
-
-TODO:
-
-
-"""
 
 import os, subprocess, sys, shelve
 try:

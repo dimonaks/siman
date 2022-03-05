@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*- 
-#Copyright Aksyonov D.A
+# Copyright (c) Siman Development Team.
+# Distributed under the terms of the GNU License.
 from __future__ import division, unicode_literals, absolute_import 
 from operator import itemgetter
 import copy, traceback, datetime, sys, os, glob, shutil, re, io, json
@@ -7,23 +7,35 @@ from itertools import product
 
 import numpy as np
 
+
+
 try:
     # pmg config --add VASP_PSP_DIR $VASP_PSP_DIR MAPI_KEY $MAPI_KEY
+    import pymatgen
+    pymatgen_flag = True 
+except:
+    print('calc_manage.py: pymatgen is not available')
+    pymatgen_flag = False 
+
+if pymatgen_flag:
     from pymatgen.ext.matproj import MPRester
     from pymatgen.io.vasp.inputs import Poscar
     from pymatgen.io.cif import CifParser
-    pymatgen_flag = True 
-except:
-    print('pymatgen is not available')
-    pymatgen_flag = False 
 
 import siman
 from siman import header
 from siman.header import print_and_log, runBash, mpl, plt
 from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt, setting_sshpass
-from siman.classes import Calculation, CalculationVasp, Description, CalculationAims, Structure
+from siman.classes import Description, Structure
+from siman.calculators.vasp import CalculationVasp
+from siman.calculators.aims import CalculationAims
+from siman.calculators.gaussian import CalculationGaussian
+from siman.core.structure import Molecule
+from siman.core.cluster_run_script import prepare_run, make_run
+from siman.core.cluster_batch_script import write_batch_header
+
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
-from siman.inout import write_xyz, read_xyz, write_occmatrix
+from siman.inout import determine_file_format, write_xyz, read_xyz, write_occmatrix
 from siman.picture_functions import plot_mep, fit_and_plot, plot_conv
 from siman.analysis import find_polaron, neb_analysis,polaron_analysis, calc_redox, matrix_diff, fit_a
 from siman.geo import interpolate, replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
@@ -39,305 +51,10 @@ init_default_sets()
 
 
 
-
-def log_func_exec():
-    """
-    save to history the executed form
-    """
-    ''
-
-
-
-
-
-def write_batch_header(batch_script_filename = None,
-    schedule_system = None, path_to_job = None, job_name = 'SuperJob', number_cores = 1):
-    """
-    self-explanatory)
-    path_to_job (str) - absolute path to job folder 
-    """
-    NC = str(number_cores)
-    with open(batch_script_filename,'w', newline = '') as f:
-
-
-        if schedule_system == 'SGE':
-            if 'shell' in header.cluster:
-                def_shell = header.cluster['shell']
-            else:
-                def_shell = '/bin/tcsh'
-            
-            f.write("#!"+def_shell+"\n")
-            # f.write("#$ -M aksenov@mpie.de\n")
-            f.write("#$ -m be\n")
-            f.write("#$ -S "+def_shell+"\n")
-            f.write("#$ -cwd \n")
-            f.write("#$ -R y \n")
-            f.write("#$ -V  \n") # use variables
-            f.write("#$ -o "+path_to_job+" -j y\n")
-            if 'pe' in header.cluster:
-                f.write("#$ -pe "+header.cluster['pe']+' '+NC+'\n')
-            f.write("\n")
-
-
-            f.write("cd "+path_to_job+"\n")
-
-            if 'modules' in header.cluster:
-                f.write(header.cluster['modules']+'\n')
-            # f.write("module load sge\n")
-            # f.write("module load vasp/parallel/5.2.12\n\n")
-
-
-        if schedule_system == 'PBS':
-
-            prefix = '#PBS'
-            f.write("#!/bin/bash   \n")
-            f.write("#PBS -N "+job_name+"\n")
-            
-            if 'walltime' in header.cluster:
-                f.write("#PBS -l walltime="+str(header.cluster['walltime'])+'\n')
-            else:
-                if header.WALLTIME_LIMIT: #deprecated remove
-                    f.write("#PBS -l walltime=72:00:00 \n")
-            
-
-            # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
-            nodes = 1
-            if 'nodes' in header.cluster:
-                nodes = header.cluster['nodes']
-
-
-
-            if header.PBS_PROCS or nodes == 0: # parameter in header
-                f.write("#PBS -l procs="+str(number_cores)+"\n")
-            else: #  node option 
-
-                if type(nodes) is str:
-                    f.write("#PBS -l nodes="+nodes+"\n")
-                else:
-                    f.write("#PBS -l nodes="+str(nodes)+":ppn="+str(number_cores)+"\n")
-            
-
-
-            if 'queue' in header.cluster:
-                f.write("#PBS -q "+str(header.cluster['queue'])+'\n')
-
-
-            
-            if 'procmemgb' in header.cluster:
-                f.write("#PBS -l pmem="+str(header.cluster['procmemgb'])+'gb\n')
-
-            if 'feature' in header.cluster:
-                f.write("#PBS -l feature="+header.cluster['feature']+"\n")
-
-
-
-            f.write("#PBS -r n\n")
-            f.write("#PBS -j eo\n")
-            f.write("#PBS -m bea\n")
-
-            if 'any_commands' in header.cluster:
-                lines = header.cluster['any_commands']
-                if not is_list_like(lines):
-                    printlog('Error! Please use list for sbatch key in cluster description')
-                for line in lines:
-                    f.write(prefix+' '+line+'\n')
-
-
-
-            f.write("cd $PBS_O_WORKDIR\n")
-            
-
-            if 'modules' in header.cluster:
-                f.write(header.cluster['modules']+'\n')
-
-
-
-        if schedule_system == 'PBS_bsu':
-            f.write("#!/bin/bash   \n")
-            f.write("#PBS -N "+job_name+"\n")
-            if header.WALLTIME_LIMIT:
-                f.write("#PBS -l walltime=72:00:00 \n")
-            # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
-            if header.PBS_PROCS:
-                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
-            else: # 1 node option 
-                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
-            # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
-            f.write("#PBS -r n\n")
-            f.write("#PBS -j eo\n")
-            f.write("#PBS -m bea\n")
-            f.write("#PBS -M boev.anton.olegovich@gmail.com\n")
-            f.write("cd $PBS_O_WORKDIR\n")
-            f.write("echo $LD_LIBRARY_PATH \n")
-
-
-
-
-        if schedule_system == 'none':
-            f.write("#!/bin/bash   \n")
-            if 'modules' in header.cluster:
-                f.write(header.cluster['modules']+'\n')
-
-
-
-        if schedule_system == 'SLURM':
-            
-            hc = header.cluster
-            if '~' in path_to_job:
-                print_and_log('Error! For slurm std err and out you need full paths')
-
-            f.write("#!/bin/bash   \n")
-            f.write("#SBATCH -J "+job_name+"\n")
-            if 'walltime' in header.cluster:
-                f.write("#SBATCH -t "+str(header.cluster['walltime'])+'\n')
-            else:
-                ''
-                # f.write("#SBATCH -t 250:00:00 \n")
-
-            f.write("#SBATCH -N 1\n")
-            f.write("#SBATCH -n "+str(number_cores)+"\n")
-            f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
-            f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
-            if header.MEM_CPU:
-                f.write("#SBATCH --mem-per-cpu=7675\n")
-            
-            # print(header.cluster)
-            # sys.exit()
-            if 'partition' in hc:
-                f.write('#SBATCH -p '+hc['partition']+'\n')
-
-            if 'any_commands' in header.cluster:
-                lines = header.cluster['any_commands']
-                if not is_list_like(lines):
-                    printlog('Error! Please use list for sbatch key in cluster description')
-                for line in lines:
-                    f.write('#SBATCH '+line+'\n')
-
-            # f.write("#SBATCH -I other=avx\n") # AVX2 instructions for new node to improve speed by 18% 
-
-            # f.write("#SBATCH --nodelist=node-amg03\n")
-            if header.siman_run: #only for me
-                if header.EXCLUDE_NODES:
-                    f.write("#SBATCH --exclude=node-amg11\n")
-                # f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
-                # f.write("#SBATCH --mail-type=END\n")
-            f.write("cd "+path_to_job+"\n")
-            # f.write("export OMP_NUM_THREADS=1\n")
-
-            if 'modules' in header.cluster:
-                f.write(header.cluster['modules']+'\n')
-            # f.write("module add prun/1.0\n")
-            # f.write("module add intel/16.0.2.181\n")
-            # f.write("module add impi/5.1.3.181\n")
-            
-            # if header.siman_run: #only for me
-            lib64 = header.cluster['homepath'] + '/tools/lib64'
-            atlas = header.cluster['homepath'] + '/tools/atlas'
-            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
-            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
-            
-            f.write("export PATH=$PATH:"+header.cluster['homepath'] +"/tools/\n")
-            
-
-            f.write("touch RUNNING\n")
-
-
-    return
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 def clean_history_file(history_list):
     seen = set()
     seen_add = seen.add
     return [x for x in history_list if not (x in seen or seen_add(x))]
-
-
-
-
-
-def prepare_run():
-    """
-    INPUT:
-        schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM'
-    """
-    schedule_system = header.schedule_system
-    with open('run','w', newline = '') as f:
-    
-        if schedule_system == 'SGE':
-            if 'shell' in header.cluster:
-                f.write("#!"+header.cluster['shell']+'\n')
-
-            else:
-                f.write("#!/bin/tcsh\n")
-            # if 'modules' in header.cluster:
-                # f.write(header.cluster['modules']+'\n')
-            # f.write("module load sge\n")
-            # f.write("module load vasp/parallel/5.2.12\n")
-        elif schedule_system in ('PBS', 'PBS_bsu', 'SLURM', 'none'):
-            f.write("#!/bin/bash\n")
-        else:
-            ''
-            # print_and_log('Please provide schedule_system!')
-            # raise RuntimeError
-
-    # f.close()
-    return
-
-
-def complete_run(close_run = True):
-    header.first_run = False
-    if close_run:
-
-        with open('run','a', newline = '') as f:
-            if header.schedule_system in ["PBS", 'PBS_bsu']:
-                f.write("qstat\n")
-                f.write("sleep 2\n")
-            elif header.schedule_system == "SLURM":
-                f.write("squeue\n")
-            elif header.schedule_system == "SGE":
-                f.write("qstat\n")
-            elif header.schedule_system == "none":
-                f.write("\n")
-            f.write("mv run last_run\n")
-
-
-        if header.copy_to_cluster_flag:
-            push_to_server('run',  header.cluster_home, header.cluster_address)
-            run_on_server('chmod +x run', header.cluster_address)
-            printlog('run sent')
-    
-    return
-
-
-
-
-
-
-
-
-
 
 
 
@@ -373,20 +90,18 @@ def create_additional(struct_des):
 
 def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided description for me :( ', override = False):
     """
-    Function adds description to struct_des dictionary;
+    Add description to the struct_des dictionary;
 
-
-    ###INPUT:
+    INPUT:
         
         - struct_des (dict)         - dict from project database
-        * it (str)        - name of calculation
-        * it_folder (str) - path and name of folder used for calculation in current project both on local and remote machines
-        * des (str)       - description of calculation
-        * override (bool) - allows to override existing field
+        - it (str)        - name of calculation
+        - it_folder (str) - path and name of folder used for calculation in current project both on local and remote machines
+        - des (str)       - description of calculation
+        - override (bool) - allows to override existing field
 
-
-    ###RETURN:
-        
+    RETURN:
+     
         None
     """
 
@@ -417,12 +132,12 @@ def update_des(struct_des, des_list):
     Manuall adding of information to struct_des dictionary
     
 
-    ###INPUT:
+    INPUT:
         - struct_des (dict)         - dict from project database
         - des_list (list of tuples) - list of new calculations to be added to database
 
 
-    ###RETURN:
+    RETURN:
         - struct_des (dict) 
     """
 
@@ -477,24 +192,6 @@ def cif2poscar(cif_file, poscar_file):
 
     return
 
-def determine_file_format(input_geo_file):
-
-    supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif', 'xyz':'.xyz'} #format name:format specifier
-
-    if ('POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file) and not '.geo' in input_geo_file:
-        input_geo_format = 'vasp'
-    elif '.vasp' in input_geo_file:
-        input_geo_format = 'vasp'
-    elif '.cif' in input_geo_file:
-        input_geo_format = 'cif'
-    elif '.geo' in input_geo_file:
-        input_geo_format = 'abinit'
-    elif '.xyz' in input_geo_file:
-        input_geo_format = 'xyz'
-    else:
-        printlog("Attention! File format of",input_geo_file ,"is unknown, should be from ", supported_file_formats, 'skipping')
-        input_geo_format = None
-    return input_geo_format
 
 
 
@@ -568,7 +265,7 @@ def get_file_by_version(geofilelist, version):
 
 def smart_structure_read(filename = None, curver = 1, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None, ):
     """
-    Wrapper for reading geometry files
+    Wrapper for reading geometry files (use new reader read_structure() from siman.inout )
     calcul (Calculation()) - object to which the path and version read
 
     curver (int) - version of file to be read
@@ -1995,16 +1692,29 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             cl_prev = copy.deepcopy(calc[id])
 
-        if params.get('calculator') == 'aims':
-            cl = CalculationAims( varset[id[1]] )
 
-        elif params.get('calculator') == 'qe':
-            'Quantum Espresso'
-            cl = CalculationQE( varset[id[1]] )
 
+
+        if params.get('calculator'):
+            if params.get('calculator') == 'aims':
+                cl = CalculationAims( varset[id[1]] )
+
+            elif params.get('calculator') == 'qe':
+                'Quantum Espresso'
+                cl = CalculationQE( varset[id[1]] )
         else:
-            #by default Vasp
-            cl = CalculationVasp( varset[id[1]] )
+
+            if input_st and isinstance(input_st, Molecule):
+                params['calculator'] = 'gaussian' # for molecules uses Gaussian by default
+                # print(type(input_st))
+                cl = CalculationGaussian( varset[id[1]] )
+
+                # sys.exit()
+
+
+            else:
+                #by default Vasp
+                cl = CalculationVasp( varset[id[1]] )
         
 
 
@@ -2028,9 +1738,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         if input_st:
-            
-            if type(input_st) is not type(Structure()):
-                printlog('Error! input_st should be of type Structure()')
+            if not isinstance(input_st, Molecule) and not isinstance(input_st, Structure):
+                printlog('Error! input_st should be of type Structure() or Molecule')
             cl.init  = input_st
         else:
             cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
@@ -2243,7 +1952,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     run_on_server('chmod +x '+batch_on_server, header.cluster_address)
 
                     if header.siman_run or run: #for IPython should be only for run = 1 
-                        cl.make_run(cl.schedule_system, batch_on_server)
+                        make_run(cl.dir, cl.schedule_system, batch_on_server)
 
             cl.state = "2. Ready for start"
 
@@ -3069,12 +2778,13 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
         # print(fit_i_min)
         xs = sorted(fit_i_min.keys())
-        print("I read lowest energy configurations for the following concentration of vacancies", xs)
+        print("I read lowest energy configurations for the following concentration of vacancies", xs, 'They are availabe as' )
         verlist = []
         choose_outcar = None
         for x in xs:
             i = fit_i_min[x]
             idd_new = (it, ise, i)
+            print(x,':db['+str(idd_new)+'], ')
             if i != v:
                 db[idd_new] = cl.copy(idd_new)
                 db[idd_new].update_name()
@@ -3928,7 +3638,7 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
 
     Find material with 'it' stoichiometry (lowest energy) from materialsproject.org, 
     download and create field in struct_des and input POSCAR file
-    ###INPUT:
+    INPUT:
         
         - struct_des-  
         - it        - materials name, such as 'LiCoO2', .... By default the structure with minimum *e_above_hull* is taken
@@ -3938,7 +3648,7 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
         - mat_proj_cell (str)- 
                 - 'conv' - conventional
 
-    ###RETURN:
+    RETURN:
         
         - ?
         - ?

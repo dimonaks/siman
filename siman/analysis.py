@@ -1,6 +1,5 @@
-
-# -*- coding: utf-8 -*- 
-#Copyright Aksyonov D.A
+# Copyright (c) Siman Development Team.
+# Distributed under the terms of the GNU License.
 from __future__ import division, unicode_literals, absolute_import 
 import os, copy, shutil, sys
 import numpy as np
@@ -27,7 +26,7 @@ try:
     from pymatgen.analysis.ewald import EwaldSummation
 
 except:
-    print('pymatgen is not avail; run   pip install pymatgen')
+    print('analysis.py: pymatgen is not avail; run   pip install pymatgen')
 
 
 from siman import header

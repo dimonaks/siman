@@ -1,4 +1,5 @@
-#Copyright Aksyonov D.A
+# Copyright (c) Siman Development Team.
+# Distributed under the terms of the GNU License.
 from __future__ import division, unicode_literals, absolute_import 
 
 import shelve, sys, datetime, shutil, tempfile, os, json, re, glob

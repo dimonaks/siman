@@ -5390,3 +5390,79 @@ def remove_atoms(it, ise, st, el, mag = 0.6, x = None, sgs  = None,
                         db[idd].gmt()
 
     return
+
+
+
+
+
+def get_voltage_profile(objs = None, up = 0):
+    """
+    objs (dict) - dictionary of calculation objects with concetration used as keys; an example is below
+    up (bool) - update res_loop
+    """
+
+    #structures found by atat
+    if 0:
+        objs = { # concentration of vacancies, example
+        0.0   :db['xnvp.2uce.0'],
+        0.125 :db['xnvp.2uce.122'],
+        0.25  :db['xnvp.2uce.195'],
+        0.375 :db['xnvp.2uce.54'],
+        0.625 :db['xnvp.2uce.71'],
+        0.75  :db['xnvp.2uce.73'],
+        1.0   :db['xnvp.2uce.1'],
+        }
+    x1 = list(sorted(objs.keys()))
+
+
+
+    ob = 1
+
+    if ob == 1 :
+        objs = objs
+        xs = x1 # vac concentration
+        invert = 0 # invert; if concetration of Li is provided
+        ylim = (1.8, 4.7)
+
+
+    es2 = []
+    xs2 = []
+    x_prev = None
+    V_prev = None
+
+    for i in range(len(xs)):
+        x = xs[i]
+        cl = objs[xs[i]]
+        # if not hasattr(cl, 'e0'):
+        if up:
+            cl.res(up = 'up1')
+        name = 'Na'+str(1-x)+'VPO4F'
+        # print(name)
+        # cl.end.write_cif(filename = 'cif/'+name)
+
+
+    for i in range(len(xs))[:-1] :
+        x = xs[i]
+
+        V = calc_redox(objs[xs[i+1]], objs[xs[i]])['redox_pot']
+        # print(V)
+        if V_prev is not None:
+            es2.append(V_prev)
+            xs2.append(x)
+        es2.append(V)
+        xs2.append(x)
+        V_prev = V
+
+    xs2.append(1)
+    es2.append(V_prev)
+
+    if invert:
+        es_inv = list(reversed(es2))
+    else:
+        es_inv = es2
+    # xs_inv = list(reversed(xs2))
+
+    # print(es_inv)
+    # print(xs_inv)
+    return xs2, es_inv, ylim
+

@@ -414,8 +414,7 @@ def salary_inflation():
     salary2014 = 30000
     increase = salary2014/init_salary
     print( increase)
-
-# salary_inflation()
+    return
 
 def element_name_inv(el):
     el_dict = header.el_dict
@@ -945,61 +944,6 @@ def wrapper_cp_on_server(file, to, new_filename = None):
 
 
 
-
-def update_incar(parameter = None, value = None, u_ramp_step = None, write = True, f = None, run = False, st = None):    
-    """Modifications of INCAR. Take attention that *parameter* will be changed to new *value*
-    if it only already exist in INCAR.  *u_ramp_step*-current step to determine u,
-    *write*-sometimes just the return value is needed. 
-    Returns U value corresponding to *u_ramp_step*.
-    """
-
-
-    self = st 
-    u_step = None
-    if parameter == 'LDAUU':
-        #Update only non-zero elements of LDAUU with value
-
-        set_LDAUU_list = self.set.vasp_params['LDAUU']
-        new_LDAUU_list = copy.deepcopy(set_LDAUU_list)
-        
-        # print set_LDAUU_list
-        u_step = 0.0
-        for i, u in enumerate(set_LDAUU_list):
-            if u == 0:
-                continue
-            u_step = np.linspace(0, u, self.set.u_ramping_nstep)[u_ramp_step]
-            u_step = np.round(u_step, 1)
-            # new_LDAUU_list[i] = value
-            new_LDAUU_list[i] = u_step
-
-
-        new_LDAUU = 'LDAUU = '+' '.join(['{:}']*len(new_LDAUU_list)).format(*new_LDAUU_list)
-        
-        command = "sed -i.bak '/LDAUU/c\\" + new_LDAUU + "' INCAR\n"
-        #print('u_step',u_step)
-        #sys.exit()
-
-    elif parameter == 'MAGMOM':
-
-        new_incar_string = parameter + ' = ' + ' '.join(['{:}']*len(value)).format(*value)
-        command = "sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n"
-
-    # elif parameter in ['IMAGES', 'ISPIN']:
-    else:
-
-        new_incar_string = parameter + ' = ' + str(value)
-        command = "sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n"
-
-
-
-
-    if write and f:
-        f.write(command)
-
-    if run:
-        runBash(command)
-
-    return  u_step #for last element
 
 
 def check_output(filename, check_string, load):
