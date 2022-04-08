@@ -1727,6 +1727,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     except:
         max_tdrift = 0
 
+    self.force_prefix = force_prefix
     self.maxforce_list = maxforce
     self.average_list = average
 
@@ -1955,19 +1956,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
 
-    if 'fo' in show:
-        # print "Maxforce by md steps (meV/A) = %s;"%(str(maxforce)  )
-        printlog("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in maxforce ])[:]  ), imp = 'Y'  )
-        # print "\nAve. F. (meV/A) = \n%s;"%(  np.array(average)  )
-        # import inspect
-        # print inspect.getargspec(plt.plot).args
-        # print plt.plot.__doc__
-        if 'p' in show[0]:
-            plt.plot(maxforce, )
-            plt.xlabel('MD step')
-            plt.ylabel('Max. force on atom (meV/$\AA$)')
-            plt.show()
-    
+
     if 'sur' in show:
         self.sumAO = {}
         self.devAO = {}
@@ -2309,9 +2298,10 @@ def read_atat_fit_out(filename, filter_names = None, i_energy = 1):
 
 
 
-def read_structure(filename = None, format = None):
+def read_structure(filename = None, format = None, object_type = None, silent = 0):
     """
     Smart wrapper for reading files with atomic structure. New version of smart_structure_read 
+
 
     INPUT:
         - filename (str)
@@ -2320,9 +2310,12 @@ def read_structure(filename = None, format = None):
             - 'vasp'
             - 'cif'
             - 'gaussian'
+        - object_type (str)
+            - 'molecule' - based on pymatgen
+            - 'structure' - siman internal Structure() class
 
 
-    returns Structure()
+    returns Structure() if file is found and read successfully otherwise None
     """
 
     search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'vasp-phonopy': 'POSCAR*', 'cif':'*.cif'}
@@ -2331,6 +2324,13 @@ def read_structure(filename = None, format = None):
     printlog(input_geo_format,' format is detected')
 
 
+
+    file_exists = os.path.exists(filename)
+
+    if not file_exists:
+        if not silent:
+            printlog('Warning! file', filename, 'does not exist, return None')
+        return None
 
     if input_geo_format   == 'abinit':
         # cl.read_geometry(input_geo_file)
@@ -2347,26 +2347,31 @@ def read_structure(filename = None, format = None):
         # cl.read_poscar(input_geo_file)
 
     elif input_geo_format == 'xyz':
-        from siman.classes import Structure
-        #version = 1
-        # st = cl.init
-        st = Structure()
-        st = read_xyz(st, filename)
-        # cl.init = st
-        # cl.path["input_geo"] = input_geo_file
-        # cl.version = 1
+        from siman.core.structure import Structure
+        from siman.core.molecule import Molecule
+
+        if object_type == 'structure' or object_type is None:
+            st = Structure()
+            st = read_xyz(st, filename)
+        elif object_type == 'molecule':
+            # st = Molecule()
+            st = Molecule.from_file(filename)
+            st.filename = filename
+            st.name = os.path.basename(filename).split('.')[0]
+
+
 
     elif input_geo_format == 'gaussian':
         ''
         from pymatgen.io.gaussian import GaussianInput
-        from siman.core.structure import Molecule
+        from siman.core.molecule import Molecule
         gaus = GaussianInput(mol = None)
         st = gaus.from_file(filename).molecule
 
         # st = Molecule(pymatgen_molecule_object = st)
         st = Molecule.cast(st, filename)
         # print(st)
-
+        st.name = os.path.basename(filename).split('.')[0]
     else:
         printlog("Error! smart_structure_read(): File format", input_geo_format, "is unknown")
 

@@ -132,12 +132,17 @@ def gunzip_file(filename):
 
 
 
-def makedir(path):
+def makedir(path, renew_folder=False):
     """
     *path* - path to some file 
     Make dirname(path) directory if it does not exist
     """
+    import shutil as S
+
     dirname = os.path.dirname(path)
+
+    if renew_folder and os.path.exists(dirname): S.rmtree(path)
+    else: pass
 
     if dirname and not os.path.exists(dirname):
         os.makedirs(dirname)

@@ -26,13 +26,17 @@ import siman
 from siman import header
 from siman.header import print_and_log, runBash, mpl, plt
 from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt, setting_sshpass
-from siman.classes import Description, Structure
+from siman.classes import Description
+from siman.core.structure import Structure
 from siman.calculators.vasp import CalculationVasp
 from siman.calculators.aims import CalculationAims
 from siman.calculators.gaussian import CalculationGaussian
-from siman.core.structure import Molecule
+from siman.core.molecule import Molecule
 from siman.core.cluster_run_script import prepare_run, make_run
-from siman.core.cluster_batch_script import write_batch_header
+from siman.core.cluster_batch_script import write_batch_header, write_batch_body
+from siman.analyze.segregation import inloop_segreg_analysis 
+from siman.analyze.segregation import outloop_segreg_analysis 
+
 
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import determine_file_format, write_xyz, read_xyz, write_occmatrix
@@ -47,7 +51,20 @@ from siman.calculators.qe import CalculationQE
 
 printlog = print_and_log
 
-init_default_sets()
+
+# Check the default parameters
+
+# Default savefile
+try:
+    printlog('calc_manage.py, string 41, header.default_savefile ', header.default_savefile)
+except AttributeError:
+    raise RuntimeError('The variable "default_savefile" is absent! \
+        It should be initially stated in project_conf.py file as a string (example "osxc")!!! \
+        File codes are listed in the "mv_files_according_versions" function in classes.py.')
+
+
+
+
 
 
 
@@ -469,7 +486,9 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
     # header.SCHEDULE_SYSTEM    = clust['schedule']
     header.schedule_system    = clust['schedule']
     # header.CORENUM    = clust['corenum']
-    
+    # print('string 777 calc_manage.py dir(header) ',dir(header))
+    # print('string 778 calc_manage.py header.corenum ',header.corenum)
+    # print('string 779 calc_manage.py clust ',clust)
     if corenum:
         header.corenum    = corenum
 
@@ -500,8 +519,8 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
 def add_loop(it, setlist, verlist, calc = None, varset = None, 
     up = 'up2', inherit_option = None, id_from = None, inherit_args = None, confdic = None,
     i_atom_to_remove = None,
-    coord = 'direct', savefile = 'oc', show = '', comment = '', 
-    input_geo_format = None, ifolder = None, input_geo_file = None, input_st = None,
+    coord = 'direct', savefile = header.default_savefile, show = '', comment = '', 
+    input_geo_format = None, input_kpoints=None, ifolder = None, input_geo_file = None, input_st = None,
     corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
     mat_proj_cell = '',
@@ -515,7 +534,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None,
+    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -678,6 +697,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         params['show'] = show
         # if header.copy_to_cluster_flag:
         # print(params["nodes"])
+
         choose_cluster(cluster, cluster_home, corenum, params.get("nodes"))
         
         if run:
@@ -1323,7 +1343,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if ifolder:
             input_folder = ifolder
         else:
-            input_folder = header.geo_folder+header.struct_des[it].sfolder+"/"+it
+            input_folder = header.geo_folder+'/'+header.struct_des[it].sfolder+"/"+it
 
         return input_folder
 
@@ -1357,21 +1377,47 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             
             # calc[id_base].path["charge"]
             printlog('Copying CHGCAR for band structure', imp = 'y')
-            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
-
+            # print('calc_manage.py, string 1664, calc[id_base].path["charge"] ', calc[id_base].path["charge"])
+            if copy_to_server: 
+                wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
+            else:
+                shutil.copy(os.getcwd()+'/'+calc[id_base].path["charge"], calc[id].dir + '/CHGCAR')
 
         if inherit_option  == 'full_chg':
 
             # cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
             # print(calc[id_base].path)
             printlog('Copying CHGCAR ...', imp = 'y')
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
+            else:
+                pass
+        if inherit_option  == 'optic':
+            printlog('Copying WAVECAR ...', imp = 'y')
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            else:
+                pass
 
-            wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
+        if inherit_option  == 'band_hse':
+            printlog('Copying WAVECAR ...', imp = 'y')
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            else:
+                pass
 
+        if inherit_option  == 'optic_loc':
+            printlog('Copying WAVECAR ...', imp = 'y')
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            else:
+                pass
 
-
-
-
+            printlog('Copying WAVEDER ...', imp = 'y')
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVEDER'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVEDER')       
+            else:
+                pass
 
         hstring = "res_loop('{:s}', {:s}, {:s}, show = 'fo'  )     # {:s}, on {:s}  ".format(
             it, str(setlist), str(verlist), comment, str(datetime.date.today() )  )
@@ -1440,14 +1486,16 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
            
             blockdir = header.struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
 
+
             add_calculation(it,inputset,v, verlist[0], verlist[-1], 
                 input_folder, blockdir, calc, varset, up, 
                 inherit_option, prevcalcver, coord, savefile, input_geo_format, input_geo_file, 
+                input_kpoints=input_kpoints, 
                 calc_method = calc_method, 
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                run = run, input_st = input_st, check_job = check_job, params = params)
+                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, corenum = header.corenum)
             
             prevcalcver = v
 
@@ -1474,8 +1522,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 def add_calculation(structure_name, inputset, version, first_version, last_version, input_folder, blockdir, 
     calc, varset, up = "no",
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
-    input_geo_file = None, calc_method = None, u_ramping_region = None,
-    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None):
+    input_geo_file = None, input_kpoints=None, calc_method = None, u_ramping_region = None,
+    mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None, 
+    mpi = False, corenum = None):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 'none'
@@ -1805,10 +1854,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     run_on_server("mkdir -p "+cl.dir, addr = cl.cluster_address)
 
             if id[2] == first_version:
-                write_batch_header(batch_script_filename = batch_script_filename,
+                write_batch_header(cl, batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
                     path_to_job = header.project_path_cluster+'/'+cl.dir, 
-                    job_name = cl.id[0]+"."+cl.id[1], number_cores = cl.corenum  )
+                    job_name = cl.id[0]+"."+cl.id[1], corenum = corenum  )
 
 
 
@@ -1859,27 +1908,15 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             cl.write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
             
         
-            out_name = cl.write_sge_script(str(version)+".POSCAR", version, 
+            out_name = write_batch_body(cl, str(version)+".POSCAR", version, 
                 inherit_option, prevcalcver, savefile, 
                 schedule_system = cl.schedule_system, mode = 'body',
-                batch_script_filename = batch_script_filename)
+                batch_script_filename = batch_script_filename, mpi = mpi, corenum = corenum)
             
         
 
             """Filenames section"""
-
-            if params.get('calculator') == 'aims':
-                cl.path["output"] = cl.dir+cl.name+'.log'
-
-            else:
-                if out_name:
-                    cl.path["output"] = cl.dir+out_name
-                else:
-                    name_mod = ''
-                    cl.path["output"] = cl.dir+str(version)+name_mod+".OUTCAR" #set path to output
-                
-                #paths to other files
-                cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
+            cl.set_output_filenames(out_name, version)
 
 
 
@@ -1912,16 +1949,21 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     conf_file = write_configuration_file_for_cluster(cl.name, header.vasp_command, params['polaron'])
                     list_to_copy.append(conf_file)
 
-
+                if input_kpoints:
+                    list_to_copy.append(input_kpoints)
+                    shutil.copy(input_kpoints, cl.dir)
+                else:
+                    list_to_copy.extend( cl.make_kpoints_file() )  
 
 
                 
-                cl.write_sge_script(mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
-                    output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile )
+                write_batch_body(cl, mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
+                    output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile, 
+                    mpi = mpi, corenum = corenum )
                 
                 list_to_copy.extend( cl.make_incar() )
                 
-                list_to_copy.extend( cl.make_kpoints_file() )
+                # list_to_copy.extend( cl.make_kpoints_file() )
 
                 list_to_copy.append(batch_script_filename)
                 
@@ -1988,7 +2030,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     i_atom_to_remove = None, 
     id_from_st_type = 'end',
     atom_to_shift = None, shift_vector = None,
-    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, override = None, use_init = None,
+    mult_a = None, mult_b=None, mult_c = None, mult_rprimd = None,
+    it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, geo_folder='', override = None, use_init = None,
     ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
@@ -2160,7 +2203,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         st = new.init
     elif id_base_st_type == 'end':
         st = new.end
-        if not hasattr(st, 'znucl'):
+        if isinstance(st, Structure) and not hasattr(st, 'znucl'):
+            print('calc_manage.py, string 2484, Aria')
             if use_init:
                 st = new.init
                 printlog('Attention! *use_init* flag detected, init is used instead of end')
@@ -2171,7 +2215,6 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
     # print(st.select)
     # sys.exit()
-
 
     #path to new calc
     if it_folder:
@@ -2184,9 +2227,14 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         section_folder = struct_des[it_new].sfolder
 
 
-    it_new_folder = header.geo_folder + section_folder + '/' + it_new
-    new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+    it_new_folder = header.geo_folder +'/' + section_folder + '/' + it_new
 
+    if geo_folder == '':
+        new.path["input_geo"] = it_new_folder + '/' +it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+    else:
+        new.path["input_geo"] = geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new)+'.'+'geo'
+
+    
     makedir(new.path["input_geo"])
     print_and_log('Path for inherited calc =', it_new_folder)
 
@@ -2198,6 +2246,36 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         st.rprimd[1] = st_from.rprimd[1].copy()
         st.rprimd[2] = st_from.rprimd[2].copy()       
         st.update_xcart() #calculate new xcart from xred, because rprimd was changed
+
+    elif inherit_type == "isotropic":
+        des = ' Inherited from the final state of '+cl_base.name+' by isotropic compression-tension with multiply factor of rprimd '+str(mult_rprimd)
+        st.rprimd[0] = [mult_rprimd * i for i in st_from.rprimd[0].copy()]
+        st.rprimd[1] = [mult_rprimd * i for i in st_from.rprimd[1].copy()]  
+        st.rprimd[2] = [mult_rprimd * i for i in st_from.rprimd[2].copy()]
+        st.update_xcart()
+
+    elif inherit_type == "c_a":
+        des = ' Inherited from the final state of '+cl_base.name+' by multiply factors for a and c lattice parameters of rprimd '+str(mult_rprimd)
+        # new.des = struct_des[it_new].des + des
+        new.hex_a = calc_from.hex_a * mult_a
+        new.hex_c = calc_from.hex_c * mult_c 
+        st.rprimd[0] = [mult_a * i for i in st_from.rprimd[0].copy()]
+        st.rprimd[1] = [mult_a * i for i in st_from.rprimd[1].copy()]  
+        st.rprimd[2] = [mult_c * i for i in st_from.rprimd[2].copy()]
+        st.update_xcart()
+
+    elif inherit_type == "xy":
+        des = ' Inherited from the final state of '+calc[id_base].name+' by multiply factors for a and b lattice parameters of rprimd '+str(mult_a)+' and '+str(mult_b)
+        # new.des = struct_des[it_new].des + des
+        cl_cur = calc[id_base].end.rprimd
+        new.hex_a = calc[id_base].a * mult_a
+        st.rprimd[0] = [cl_cur[0][0] * mult_a, cl_cur[0][1] * mult_b, cl_cur[0][2]]
+        st.rprimd[1] = [cl_cur[1][0] * mult_a, cl_cur[1][1] * mult_b, cl_cur[1][2]]  
+        st.rprimd[2] = [cl_cur[2][0] * mult_a, cl_cur[2][1] * mult_b, cl_cur[2][2]]
+        st.update_xcart()
+        # new.end.xcart = xred2xcart(new.end.xred, new.end.rprimd) 
+        # new.write_geometry("end",des, override=override)    
+
 
 
     elif inherit_type == "r1r2r3":
@@ -2434,6 +2512,15 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
         override = True
 
+    elif inherit_type == 'band_hse':
+        des = 'Inherited from the final state of '+cl_base.name+' with the copying the wave function'
+
+
+    elif inherit_type == 'optic':
+        des = 'Inherited from the final state of '+cl_base.name+' with the copying the wave function'
+
+    elif inherit_type == 'optic_loc':
+        des = 'Inherited from the final state of '+cl_base.name+' with the copying the wave function and waveder files'
 
 
 
@@ -2451,14 +2538,12 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
     #auto addition of description
     if it_new not in struct_des: 
-        add_des(struct_des, it = it_new, it_folder = it_folder, des = 'auto '+des)
-        new.des =  struct_des[it_new].des
+            add_des(struct_des, it = it_new, it_folder = it_folder, des = 'auto '+des)
+            new.des = struct_des[it_new].des
     else:
         new.des = des + struct_des[it_new].des
         if it_folder:
             struct_des[it_new].sfolder = it_folder #update itfolder,
-
-
 
 
     if mul_matrix is not None:
@@ -2474,12 +2559,13 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     # sys.exit()
 
 
-
-    new.write_geometry('init', des, override = override)
+    if isinstance(new, Structure):
+        new.write_geometry('init', des, override = override)
     
-
-    write_xyz(st)
-
+    if geo_folder:
+        st.write_xyz(filename=geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new))
+    else:
+        st.write_xyz()
 
 
 
@@ -2588,7 +2674,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         bulk_mul - allows to scale energy and volume of bulk cell during calculation of segregation energies
 
         choose_outcar (int, starting from 1)- if calculation have associated outcars, you can check them as well, by default
-        the last one is used during creation of calculation in write_sge_script()
+        the last one is used during creation of calculation in write_batch_body()
 
         choose_image (int) - relative to NEB, allows to choose specific image for analysis, by default the middle image is used
 
@@ -2818,6 +2904,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             
 
             override_cluster_address(cl)
+            
             if readfiles and check_job:
                 if '3' in cl.check_job_state():
                     printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
@@ -2933,6 +3020,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
+
+
+
+
             if not hasattr(cl,'version'):
                 cl.version = v
 
@@ -2945,27 +3036,42 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 if '5' in cl.state:
                     continue
 
+
+                if 'fo' in show:
+                    # print "Maxforce by md steps (meV/A) = %s;"%(str(maxforce)  )
+                    np.set_printoptions(precision=0, suppress=True)
+                    if cl.maxforce_list:
+                        if isinstance(cl.maxforce_list[0], list):
+                            printlog("\n\nMax. F."+cl.force_prefix+" (meV/A) = ", np.array([m[1] for m in cl.maxforce_list ]), imp = 'Y')
+                        else:
+                            printlog("\n\nMax. F."+cl.force_prefix+" (meV/A) = ", np.array([m for m in cl.maxforce_list ]), imp = 'Y')
+
+                    if 'p' in show[0]:
+                        plt.plot(cl.maxforce_list, )
+                        plt.xlabel('MD step')
+                        plt.ylabel('Max. force on atom (meV/$\AA$)')
+                        plt.show()
+                
+
+
+
+
+
             else:
                 outst = ' output was not read '
+
+            
 
             printlog('read_results() output', outst)
 
 
 
-            if analys_type in ('e_seg', 'coseg'):
-                try:
-                    b_id[1] 
-                    b_id = (b_id[0], b_id[1], id[2] + b_ver_shift)
-                except:
-                    b_id = (b_id[0], id[1], id[2] + b_ver_shift)
-                printlog('b_id', b_id)
 
 
-            # print(id)
-            # sys.exit()
-            e   = cl.energy_sigma0
-            n_m = cl.end.nznucl[0] # number of matrix atoms
-
+            if cl.calculator == 'vasp':
+                e   = cl.energy_sigma0
+            else:
+                e = 0
 
             try:
                 v = cl.end.vol
@@ -2976,112 +3082,20 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 emin = e; 
                 id_min = id
             
-            conv[n].append(id)
-            # print base
-            conv[base].append(b_id)
 
 
             outst2 = ("db['{:s}']".format(calc[id].name)).ljust(name_field_length)
-            
-
-
             outst2+='|'
             outst_end = '' 
 
-            energies.append(cl.energy_sigma0)
 
-
-            
-            if   b_id :
-
-                # if "4" not in calc[b_id].state:
-                if readfiles:    
-                    # print(b_id)
-                    calc[b_id].read_results(loadflag, choose_outcar = choose_outcar)
-
-                # print(b_id)
-                if "4" in calc[b_id].state:    
-
-                    if calc[id].set.ngkpt != calc[b_id].set.ngkpt:
-                        print_and_log("Warning! you are trying to compare calcs with "+str(calc[id].set.ngkpt)+" and "+str(calc[b_id].set.ngkpt)+"\n")
-                        pass
-
-                    if calc[id].NKPTS != calc[b_id].NKPTS:
-                        print_and_log("Warning! you are trying to compare calcs with "+str(calc[id].NKPTS)+" and "+str(calc[b_id].NKPTS)+" kpoints \n")
-
-                    if 'gbe' in analys_type:      
-                        outst2 = gb_energy_volume(calc[id], calc[b_id])
-                
-                    elif 'e_imp' in analys_type:
-                        calc[id].e_imp = e - e_b
-                        calc[id].v_imp = v - v_b
-
-                        #calc[id].v_imp = e - e_b
-                        outst2 += ("%.3f & %.2f  & %.2f &"% (e - e_b, v - v_b, (v - v_b)/v_b*100 ) )
-                        conv['e_imp'].append(id)
-                        a    = calc[id].hex_a;                     a_b  = calc[b_id].hex_a
-                        c    = calc[id].hex_c;                     c_b  = calc[b_id].hex_c
-                        ca = c/a;                                   ca_b = c_b/a_b
-                        outst_end = " & {0:.1f} & {1:.1f} & {2:.1f} & {3:.3f}".format((a - a_b)/a_b*100,  (c - c_b)/c_b*100, (ca - ca_b)/ca_b*100, (e - e_b - e1_r) )
-
-                    elif analys_type == 'e_2imp': #"""For calculation of energies of two impurities in big cell"""
-                        calc[id].e_imp = e - e_b            
-                        outst2 += ("%.0f "% ( (e - e_b)*1000 ) )  
-                        conv[it].append(id)
-
-
-                    elif analys_type in ('e_seg', 'coseg'): #"""For calculation of segregation and cosegregation energies"""
-                        e_b = calc[b_id].energy_sigma0 * bulk_mul
-                        n_m_b = calc[b_id].end.nznucl[0]
-                        v_b = calc[b_id].end.vol * bulk_mul
-                        # diffE = e - e_b/n_m_b*n_m
-                        diffE = e - e_b
-
-                        # outst2 += ("%.0f & %.2f "% ( (e - e_b)*1000, v - v_b ) )
-                        
-                        outst2 += " {:.3f} & {:.2f} ".format( (diffE - energy_ref), (v - v_b) ).center(6)
-                        outst2 +='&'
-                        # write_xyz(calc[id].end)
-                        # write_xyz(calc[b_id].end)
-                        result_list = [diffE - energy_ref, v - v_b]
-
-
-                    elif analys_type == 'matrix_diff': #
-                        print_and_log( 'Calculating matrix_diff...')
-                        
-
-                        diffE, diffV = matrix_diff(calc[id], calc[b_id], energy_ref)
-                        outst2 += " {:.3f} & {:.2f} &".format( diffE, diffV ).center(6)
-                        result_list = [diffE, diffV]
-
-
-                    elif analys_type == 'diff': #
-                        print_and_log( 'Calculating diff...')
-                        e_b = calc[b_id].energy_sigma0
-                        v_b = calc[b_id].end.vol
-                        diffE = e - e_b
-                        
-                        outst2 += " {:.3f} & {:.2f} &".format( (diffE - energy_ref), (v - v_b) ).center(6)
-                        result_list = [diffE - energy_ref, v - v_b]
-
-
-            if analys_type == 'clusters':
-                e1  = calc[imp1].energy_sigma0
-                e2  = calc[imp2].energy_sigma0
-                e_m = calc[matr].energy_sigma0
-                n1 = calc[id].init.nznucl[1]
-                if len(calc[id].init.nznucl) == 3:
-                    n2 = calc[id].init.nznucl[2]
-                else:
-                    n2 = 0
-                # print n1,n2
-                outst2 += ("%.0f "% ( (e - n1*e1 - n2*e2 + (n1+n2-1)*e_m )*1000 / (n1+n2) ) )
-            
-
+            energies.append(e)
+          
+            outst2 = inloop_segreg_analysis(outst2, b_id, analys_type, conv, n, base)
 
             final_outstring = outst2+outst + outst_end     
-            # print ([final_outstring])         
-            print_and_log( final_outstring, end = '\n',  imp = 'Y')
+
+            printlog( final_outstring, end = '\n',  imp = 'Y')
 
         emin = 0
         
@@ -3107,171 +3121,14 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',dire, imp = 'Y')
             return {}, []
         
+        outloop_segreg_analysis(b_id, analys_type)
 
-        if b_id: 
-            bcl = calc[b_id]
-
-        if analys_type == 'gbe':
-            print_and_log("\nGrain boundary energy and excess volume fit:")
-            plot_conv( conv[n], calc, "fit_gb_volume")
-
-        elif analys_type == 'gbep':
-            print_and_log("\nGrain boundary energy and excess volume fit:")
-            # plot_conv( conv[n], calc, "fit_gb_volume")
-            final_outstring = plot_conv( conv[n], calc, "fit_gb_volume_pressure")
-
-        elif analys_type in ('e_seg', 'coseg') and len(verlist) > 3:
-
-            #Test lateral sizes
-            A   = calc[id].end.yzarea
-            A_b = calc[b_id].end.yzarea
-            
-            if A != A_b: 
-                print_and_log("Warning! you are trying to compare calcs with different lateral sizes: "+str(A)+" "+str(A_b))
-                print_and_log( "Areas are ", A, A_b," A^3")
-            
-            #Show results 
-            id1 = (it,inputset,verlist[0]) #choosen to save calculated values at first version of version set
-            
-            if readfiles and plot:           
-                #print " \n\nImpurity at the interface :"
-                e, v, emin, vmin       = plot_conv( conv[n], calc,  "fit_gb_volume2")
-                #print " \n\nImpurity in the volume    :"
-                e_b, v_b, e_bmin, v_bmin = plot_conv( conv[base], calc, "fit_gb_volume2")
-                e_segmin = (emin - e_bmin) * 1000
-                v_segmin =  vmin - v_bmin
-
-                
-                e_seg = (e - e_b * bulk_mul) * 1000
-                v_seg =  v - v_b * bulk_mul
-
-
-                # print(e_seg, e_segmin)
-
-                calc[id1].e_seg = e_seg
-                calc[id1].v_seg = v_seg
-            
-            if not hasattr(calc[id1], 'e_seg'): 
-                print_and_log( "Warning! Calculation ", id1, 'does not have e_seg and v_seg. Try to run with readfiles = True to calculate it.')
-                calc[id1].e_seg = 0; calc[id1].v_seg = 0
-            
-
-
-            natom = calc[id1].natom
-            calc[id1].X = 1./natom
-            v1 = v / natom
-            calc[id1].Xgb = v1 / A # for grain boundary with 1 A width. For other boundaries should be divided by width. 
-            #print ("__________________________________________________________________________")
-            
-            # print (" At zero pressure: segregation energy is %.0f  meV; Seg. volume is %.1f A^3; excess seg. vol. is %.2f A" %(e_seg, v_seg, v_seg/A ) )
-            print ("At min: segregation energy is %.0f  meV; Seg. volume is %.1f A^3; excess seg. vol. is %.2f A" %(e_segmin, v_segmin, v_segmin/A ) )
-            # print ("%s.fit.pe & %.0f & %.1f & %.2f & %.3f & %.1f" %(id[0]+'.'+id[1], e_seg, v_seg, v_seg/A, 1./A, 1./calc[id].natom * 100  ) )
-            
-            #Calculate distance from impurity to boundary and number of neighbours for version 2!
-            id2 =(it,inputset, 2)
-            st = calc[id2].end
-            gbpos2 = calc[id2].gbpos 
-            print_and_log( id2, 'is id2')
-            # print gbpos2
-            # print st.rprimd[0][0]/2.
-            if gbpos2 == None:
-                gbpos2 = 100
-            gbpos1 = gbpos2 - st.rprimd[0][0]/2.
-            d1 = abs(st.xcart[-2][0] - gbpos2)
-            d2 = abs(st.xcart[-1][0] - gbpos2)
-            dgb = d1; 
-            iimp = -2
-            if d2 < d1: 
-                dgb = d2
-                iimp = -1
-            
-            t = st.typat[iimp]
-            z = st.znucl[t-1]
-            segimp = element_name_inv(z) #Type of impurity closest to gb
-            # print segimp, d
-
-            id_m2   = (it+'.m',      '8'+inputset[1:], 2)
-            
-            if analys_type == 'e_seg':
-
-                #calc e_seg2 and decomposition to mechanical and chemical contributions
-
-                if id_m2 in calc: #additional analysis
-                    b_id2 = (b_id[0],inputset, 2)
-                    b_id_m2 = (b_id[0]+'.m', '8'+inputset[1:], 2)
-
-                    e_seg2 = (calc[id2].energy_sigma0 - calc[b_id2].energy_sigma0) * 1000
-                    e_m2   = (calc[id_m2].energy_sigma0 - calc[b_id_m2].energy_sigma0) * 1000
-                    e_ch2  = e_seg2 - e_m2
-                else:
-                    e_seg2 = 0
-                    e_m2   =0
-                    e_ch2  =0
-
-
-                #calculate number of close neibours around closest to gb imp
-                x_central = st.xcart[iimp]
-                st_r  = replic(st,   mul = (1,2,2), inv =  1 )
-                st_rr = replic(st_r, mul = (1,2,2), inv = -1 ) # to be sure that impurity is surrounded by atoms
-
-                dmax = 3
-                nlist = [ x  for x, t  in zip(st_rr.xcart, st_rr.typat) if np.linalg.norm(x_central - x) < dmax and t == 1]
-                nneigbours =  len(nlist)
-
-
-                final_outstring = ("%s.fit.pe & %.0f & %.1f & %.2f & %.d & %4.0f & %4.0f & %4.0f & %s " %(
-                    id2[0]+'.'+id2[1], calc[id1].e_seg, calc[id1].v_seg, dgb, nneigbours, e_seg2, e_ch2, e_m2, segimp  ))
-
-                # final_outstring = ("%s.fit.pe & %.0f & %.0f & %.1f & %.1f & %.2f & %.d & %4.0f & %4.0f & %4.0f & %s " %(
-                #     id2[0]+'.'+id2[1], calc[id1].e_seg, e_segmin, calc[id1].v_seg, v_segmin , dgb, nneigbours, e_seg2, e_ch2, e_m2, segimp  )) #e_segmin and v_segmin are minimum energy (but at some pressure) and corresponing volume
-
-
-
-                results_dic = [id2[0]+'.'+id2[1], calc[id1].e_seg, calc[id1].v_seg, dgb, nneigbours, e_seg2, e_ch2, e_m2, segimp]
-            
-            elif analys_type == 'coseg' :
-                calc[id2].e_seg = calc[id1].e_seg #save in version 2
-                calc[id2].v_seg = calc[id1].v_seg
-                final_outstring = ("%s.fit.pe & %.0f & %.1f & %.1f & %.1f" %(id[0]+'.'+id[1], calc[id2].e_seg, calc[id2].v_seg, d1, d2 ))
+        
 
 
 
 
-            print_and_log(  final_outstring)
-            print_and_log( '\\hline')
-
-
-        elif analys_type == 'e_2imp':
-            # plot_conv( conv[it], calc,  analys_type, conv_ext) #instead use plot_conv( conv['hs443OO'], calc,  'e_2imp', [conv['hs443CO'],conv['hs443CC']]) 
-            pass
-
-
-
-        elif analys_type == 'fit_ac':
-
-            print_and_log ("name %s_template          acell  %.5f  %.5f  %.5f # fit parameters are &%.5f &%.5f &%i &%i"  % (fit_hex(0.00002,0.00003,4000,6000, it, inputset, verlist, calc) )  )    
-
-        elif 'fit_a' in analys_type:
-            
-            fit_a(conv, n, description_for_archive, analys_type, show, push2archive)
-
-
-        elif analys_type == 'dimer':
-            """Fit of md steps obtained from constant speed; see vasp description for dimer"""
-            # print calc[id].list_e_sigma0
-            # calc[id].list_dE = []
-            # for E in calc[id].list_e_without_entr:
-
-            #     calc[id].list_dE.append(E - 2*calc[b_id].e_without_entr)
-
-            # print calc[id].list_e_without_entr
-            # print calc[id].list_dE
-            calc[id].e_ref = calc[b_id].e_without_entr
-
-            plot_conv( [id], calc,  "dimer")
-
-
-        elif analys_type == 'redox_pot':
+        if analys_type == 'redox_pot':
             
             if '4' not in bcl.state:
                 print_and_log("res_loop: Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
@@ -3279,8 +3136,6 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
             results_dic = calc_redox(cl, bcl, energy_ref)
             
-
-
 
         if analys_type == 'neb':
             results_dic = neb_analysis(cl, show, up, push2archive, old_behaviour, results_dic, fitplot_args, style_dic, params)

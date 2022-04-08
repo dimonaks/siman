@@ -1,7 +1,5 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
-from __future__ import division, unicode_literals, absolute_import, print_function
-
 
 import os, subprocess, sys, shelve
 try:
@@ -42,9 +40,11 @@ warnings = 'yY' # level of warnings to show: n - all, e - normal, y - important,
 FROM_ONE = None # atom numbering convention; allows to override the default behaviour of functions where atomic numbers are provided as arguments
 PATH2ARCHIVE_LOCAL  = None
 
-
 #Global variables
 final_vasp_clean     = True 
+clean_vasp_files     = []
+clean_vasp_files_ignore = []
+default_savefile = 'oc'
 copy_to_cluster_flag = True
 close_run = False # alows to control close run file automatically after each add_loop
 first_run = True  # needed to write header of run script
@@ -197,6 +197,7 @@ THz2eV = 0.00413566553853599
 kJ_mol2eV = 1.0364e-2
 J_mol_T2eV_T = 1.0364e-5
 J2eV = 6.242e+18
+cm_inv2eV = 1.23981e-4 
 h = 4.135668e-15 # eV/Hz
 F = 96485.3329 # sA/mol
 
@@ -398,7 +399,8 @@ def pickle_module_migration_script():
     import sys
     import siman
     from siman import header
-    sys.modules['set_functions'] = siman.set_functions
-    sys.modules['classes'] = siman.classes
+    # sys.modules['set_functions'] = siman.set_functions
+    # sys.modules['classes'] = siman.classes
+    # sys.modules['siman.core.structure'] = siman.core.molecule
     for key in header.db.items():
         print(header.db[key])

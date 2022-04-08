@@ -1093,6 +1093,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
                 if params.get('center_on_moving'):
                     vec = st.center_on(atom_num)
                     printlog('Centering by shifting the cell by ', vec, imp = 'y')
+                    # sys.exit()
                 else:
                     vec = np.asarray([0.,0.,0.])
                 

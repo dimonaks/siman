@@ -1,27 +1,3 @@
-# Copyright (c) Siman Development Team.
-# Distributed under the terms of the GNU License.
-import os, math, copy, glob
-from siman import header
-from siman.core.calculation import Calculation
-from siman.core.structure import Structure
-from siman.header import runBash
-
-from siman.header import printlog, print_and_log, runBash, plt
-
-from siman import set_functions
-# from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
-from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
-from siman.functions import (read_vectors, read_list, words, read_string,
-     element_name_inv, invert, calculate_voronoi, 
-    get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
-from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
-from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
-local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral, 
-rms_between_structures, rms_between_structures2)
-from siman.set_functions import InputSet, aims_keys
-
-
-
 
 class CalculationVasp(Calculation):
     """Methods for calculations made using VASP DFT code"""
@@ -29,24 +5,7 @@ class CalculationVasp(Calculation):
         super(CalculationVasp, self).__init__(inset, iid, output)
         self.len_units = 'Angstrom'
         self.calculator = 'vasp'
-        self.init = Structure()
-        self.end = Structure()
 
-
-
-    def set_output_filenames(self, out_name, version):
-        cl = self
-
-        if out_name:
-            cl.path["output"] = cl.dir+out_name
-        else:
-            name_mod = ''
-            cl.path["output"] = cl.dir+str(version)+name_mod+".OUTCAR" #set path to output
-        
-        #paths to other files
-        cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
-
-        return cl.path["output"]
 
 
     def read_poscar(self, filename, version = None):
@@ -185,65 +144,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def calculate_nbands(self, curset, path_to_potcar = None, params = None):
-        """Should be run after add_potcar()
-            updates set, including number of electrons
-        """
-        #1 add additional information to set
-        if not curset:
-            curset = self.set
-        vp = curset.vasp_params
-        st = copy.deepcopy(self.init)
-        st = st.remove_atoms(['void']) # remove voids
 
-        if path_to_potcar:
-            # path_to_potcar = self.dir+'/POTCAR'
-            self.init.zval = []
-            # print path_to_potcar
-            for line in open(path_to_potcar,'r'):
-                if "ZVAL" in line:
-                    # print line
-                    self.init.zval.append(float(line.split()[5]))
-            
-            try: 
-                curset.add_nbands
-            except AttributeError: 
-                curset.add_nbands = None
-
-            if curset.add_nbands != None:
-                tve =0
-                for i in range(st.ntypat):
-                    # print self.init.zval
-                    tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
-                    # print(self.init.zval[i], self.init.nznucl[i])
-                nbands_min = math.ceil(tve / 2.)
-                self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
-                # print(self.nbands)
-                
-
-                vp['NBANDS'] = self.nbands
-                printlog('I found that at least', nbands_min, ' bands are required. I will use', self.nbands, 'bands; add_nbands = ', curset.add_nbands)
-
-
-
-
-
-            if 'LSORBIT' in vp and vp['LSORBIT']:
-                # print (vp)
-                printlog('SOC calculation detected; increasing number of bands by two', imp = 'Y')
-                vp['NBANDS']*=2
-
-
-
-
-            if params and 'charge' in params and params['charge']:
-                vp['NELECT'] = int(tve - params['charge'])
-
-
-        else:
-            printlog('Attention! No path_to_potcar! skipping NBANDS calculation')
-
-        return
 
 
 
@@ -329,71 +230,13 @@ class CalculationVasp(Calculation):
 
 
 
-    def update_incar(self, parameter = None, value = None, u_ramp_step = None, write = True, f = None, run = False,):    
-        """Modifications of INCAR. Take attention that *parameter* will be changed to new *value*
-        if it only already exist in INCAR.  *u_ramp_step*-current step to determine u,
-        *write*-sometimes just the return value is needed. 
-        Returns U value corresponding to *u_ramp_step*.
-        """
-
-
-        # self = st 
-        u_step = None
-        if parameter == 'LDAUU':
-            #Update only non-zero elements of LDAUU with value
-
-            set_LDAUU_list = self.set.vasp_params['LDAUU']
-            new_LDAUU_list = copy.deepcopy(set_LDAUU_list)
-            
-            # print set_LDAUU_list
-            u_step = 0.0
-            for i, u in enumerate(set_LDAUU_list):
-                if u == 0:
-                    continue
-                u_step = np.linspace(0, u, self.set.u_ramping_nstep)[u_ramp_step]
-                u_step = np.round(u_step, 1)
-                # new_LDAUU_list[i] = value
-                new_LDAUU_list[i] = u_step
-
-
-            new_LDAUU = 'LDAUU = '+' '.join(['{:}']*len(new_LDAUU_list)).format(*new_LDAUU_list)
-            
-            command = "sed -i.bak '/LDAUU/c\\" + new_LDAUU + "' INCAR\n"
-            #print('u_step',u_step)
-            #sys.exit()
-
-        elif parameter == 'MAGMOM':
-
-            new_incar_string = parameter + ' = ' + ' '.join(['{:}']*len(value)).format(*value)
-            command = "sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n"
-
-        # elif parameter in ['IMAGES', 'ISPIN']:
-        else:
-
-            new_incar_string = parameter + ' = ' + str(value)
-            command = "sed -i.bak '/"+parameter+"/c\\" + new_incar_string + "' INCAR\n"
-
-
-
-
-        if write and f:
-            f.write(command)
-
-        if run:
-            runBash(command)
-
-        return  u_step #for last element
-
-
-
-
 
     
     def make_kpoints_file(self):
 
         struct_des = header.struct_des
         #Generate KPOINTS
-        kspacing = self.set.vasp_params.get('KSPACING')
+        kspacing = self.set.vasp_params['KSPACING']
 
         filename = os.path.join(self.dir, "KPOINTS")
 
@@ -422,9 +265,9 @@ class CalculationVasp(Calculation):
 
 
         elif self.set.kpoints_file:
-            if self.set.kpoints_file is True:
+            if self.set.kpoints_file == True:
 
-                print_and_log( "You said to generate KPOINTS file. set.kpoints_file =",self.set.kpoints_file," \n")
+                print_and_log( "You said to generate KPOINTS file.\n")
                 self.calc_kspacings()
                 #Generate kpoints file
 
@@ -470,7 +313,6 @@ class CalculationVasp(Calculation):
                 shutil.copyfile(self.set.kpoints_file, filename)
                 print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
 
-            self.path['kpoints'] = filename 
 
 
         else:
@@ -480,243 +322,6 @@ class CalculationVasp(Calculation):
 
 
         return [filename]
-
-
-
-    def actualize_set(self, curset = None, params = None):
-        """
-        Makes additional processing of set parameters, which also depends on calculation
-    
-        adding parameters for atat
-
-        """
-
-
-        #check if some parameters should be filled according to number of species
-        #make element list
-        el_list = [element_name_inv(el) for el in self.init.znucl]
-        if not curset:
-            curset = self.set
-        vp = curset.vasp_params
-
-        # print(['LDAU'])
-        # print(vp)
-        # print(vp['LDAU'])
-
-        if 'LDAUL' in vp and vp['LDAUL'] is not None: 
-            # print(vp['LDAU'])
-            # if 
-            for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
-                # print( vp[key])
-                try:
-                    if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
-                        print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
-                        # raise RuntimeError
-
-                    new = []
-                    for el in el_list:
-                        
-                        if el in vp[key]:
-                            val = vp[key][el]
-                            
-                            if 'S' in el_list:  # use another value in the format of Fe/S
-                                kk = el+'/S' 
-                                if kk in vp[key]:
-                                    val = vp[key][kk]
-                    
-
-
-
-
-
-                        else:
-                            if key == 'LDAUL':
-                                val = -1
-                            else:
-                                val =  0
-
-                        new.append(val)
-                    
-                    vp[key] = new
-                
-                except AttributeError:
-                    printlog('Error! LDAU* were not processed')
-                    pass
-
-        """Process magnetic moments"""
-        if self.calc_method and 'afm_ordering' in self.calc_method:
-            self.init.magmom = [None]
-
-
-
-        # print(hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom)
-        # print(self.init.magmom)
-        # print(None in self.init.magmom)
-        # sys.exit()
-        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
-
-            print_and_log('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
-
-        elif hasattr(curset, 'magnetic_moments') and curset.magnetic_moments:
-            print_and_log('actualize_set(): Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set', end = '\n')
-            print_and_log('curset.magnetic_moments = ', curset.magnetic_moments)
-            
-            mag_mom_other = 0.6 # magnetic moment for all other elements
-            magmom = []
-            for iat in range(self.init.natom):
-                typ = self.init.typat[iat]
-                el  = el_list[typ-1]
-                if el in curset.magnetic_moments:
-                    magmom.append(curset.magnetic_moments[el])
-                else:
-                    magmom.append(mag_mom_other)
-            
-
-            #convert magmom to vasp ordering
-
-            zmagmom = [[] for x in range(0,self.init.ntypat)]
-
-            # print zmagmom
-
-            for t, m in zip(self.init.typat, magmom):
-                # print "t, m = ", t, m
-                zmagmom[t-1].append(m)
-                # print t-1, zmagmom[3]
-
-            # print 'sdfsdf', zmagmom[3], 
-            poscar_ordered_magmom = [m for mag in zmagmom for m in mag  ]
-            # sys.exit()
-               
-            vp['MAGMOM'] = poscar_ordered_magmom
-
-            #check possible antiferromagnetic configurations:
-            spec_mom_is = []
-            for i, m in enumerate(magmom):
-                if m != mag_mom_other: #detected some specific moment
-                    spec_mom_is.append(i)
-
-            if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
-                print_and_log('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
-                ns = len(spec_mom_is); 
-                number_of_ord = int(math.factorial(ns) / math.factorial(0.5 * ns)**2)
-                
-                if number_of_ord > 10000:
-                    printlog('Attention! Too much orderings (1000), skipping ...')
-                else:
-                    nords = 71
-                    use_each = number_of_ord // nords  # spin() should be improved to find the AFM state based on the number of configuration 
-                    if use_each == 0:
-                        use_each = 1
-
-                    if number_of_ord > nords:
-                        print_and_log('Attention! Number of orderings is', number_of_ord, ' more than', nords, ' - I will check only each first ', imp = 'y')
-                # else:
-
-                    ls = [0]*len(spec_mom_is)
-                    # print ls
-                    orderings = []
-                    
-
-
-
-                    def spin(ls, i):
-                        """
-                        Find recursivly all possible orderings
-                        ls - initial list of mag moments
-                        i - index in ls  
-
-                        """
-                        # nonlocal i_current
-                        if len(orderings) < nords:
-
-                            for s in 1,-1:
-                                
-                                ls[i] = s
-                                
-                                if i < len(ls)-1:
-                                
-                                    spin(ls, i+1)
-                                
-                                else:
-                                    if sum(ls) == 0:
-                                        i_current['a']+=1  
-                                        # print (i_current)
-
-                                        if 1: #  i_current % use_each == 0:  # every use_each will be calculated; two slow even for sampling!
-                                            orderings.append(copy.deepcopy(ls) )  
-                                            # print (i_current)
-                        return
-
-                    i_current = {'a':0}
-                    spin(ls, 0)
-
-                    mag_orderings = []
-                    mag_orderings.append(magmom)
-                    printlog('Only '+str(nords)+' orderings equally sampled along the whole space are checked !')
-
-
-
-
-                    for j, order in enumerate(orderings):
-                        
-                        # if j >nords: # old behaviour - just first ten orderings were checked
-                        #     break
-
-                        new_magmom = copy.deepcopy(magmom)
-                        for i, s in zip(spec_mom_is, order):
-                            # print i
-                            new_magmom[i] = s * magmom[i]
-                        
-
-                        printlog(j, new_magmom,)
-                        
-                        mag_orderings.append(new_magmom)
-
-                    # print orderings
-                    print_and_log('Total number of orderings is ', len(orderings),imp = 'y')
-                    
-                    if self.calc_method and 'afm_ordering' in self.calc_method:
-                        self.magnetic_orderings = mag_orderings
-                  
-            self.init.magmom = magmom # the order is the same as for other lists in init
-
-        
-        elif 'MAGMOM' in vp and vp['MAGMOM']: #just add * to magmom tag if it is provided without it
-            print_and_log('Magnetic moments from vasp_params["MAGMOM"] are used\n')
-            
-            # if "*" not in vp['MAGMOM']:
-            #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
-        
-
-
-        # print (self.init.magmom, 'asdfaaaaaaaaaaaa')
-        
-        # sys.exit()
-
-        # number of electrons
-
-        if vp.get('MAGATOM') is not None: # for ATAT
-            # print (vp['MAGATOM'])
-            del vp['MAGMOM']
-            # self.init.magmom = [None]
-            # sys.exit()
-
-        if self.calculator == 'aims':
-            if None not in self.init.magmom:
-                ''
-                # vp['default_initial_moment'] = 0.6 # per atom - not good, since for different elements you need different moments
-
-        return
-
-
-
-
-
-
-
-
-
-
 
     def copy_to_cluster(self, list_to_copy, update):
         d = self.dir
@@ -862,9 +467,7 @@ class CalculationVasp(Calculation):
             path_to_procar = path_to_outcar.replace('OUTCAR', "PROCAR")
             path_to_locpot = path_to_outcar.replace('OUTCAR', "LOCPOT")
             path_to_kpoints = path_to_outcar.replace('OUTCAR', "KPOINTS")
-            path_to_waveder = path_to_outcar.replace('OUTCAR', "WAVEDER")          
-
-
+            path_to_waveder = path_to_outcar.replace('OUTCAR', "WAVEDER")  
         else:
             path_to_contcar = ''
             path_to_xml     = ''
@@ -935,7 +538,6 @@ class CalculationVasp(Calculation):
             
             self.get_file(os.path.basename(path_to_xml), up = load)
 
-
         if 'w' in load:
 
             self.get_file(os.path.basename(path_to_wavecar), up = load)
@@ -967,11 +569,6 @@ class CalculationVasp(Calculation):
         if 'wd' in load:
             self.get_file(os.path.basename(path_to_waveder), up = load)
             self.get_file(os.path.basename(self.dir+'/WAVEDER'), up = load)
-
-
-
-
-
 
 
 
@@ -1030,15 +627,7 @@ class CalculationVasp(Calculation):
 
 
     def get_chg_file(self, *args, **kwargs):
-        """just wrapper to get chgcar files 
-
-        - nametype (str)
-            - 'asoutcar', e.g. 1.CHGCAR
-            - '', CHGCAR
-
-        """
-        if 'nametype' not in kwargs:
-            kwargs['nametype'] = 'asoutcar'
+        """just wrapper to get chgcar files """
         if 'CHGCAR' in kwargs:
             del kwargs['CHGCAR']
         # print(self.path['charge'])
@@ -1080,8 +669,8 @@ class CalculationVasp(Calculation):
         ppc = self.project_path_cluster+'/'
         self.determine_filenames()
 
-        if header.PATH2ARCHIVE:
-            CHG_scratch_gz  = header.PATH2ARCHIVE+'/'+self.dir+'/'+v+".CHGCAR.gz"
+        # print()
+        CHG_scratch_gz  = header.PATH2ARCHIVE+'/'+self.dir+'/'+v+".CHGCAR.gz"
 
         CHG     = ppc + self.path['chgcar']
         AECCAR0 = ppc + self.path['aeccar0']
@@ -1098,10 +687,8 @@ class CalculationVasp(Calculation):
 
         command_chg_gunzip = 'gunzip '+CHG+'.gz ' # on cluster
         
-        if header.PATH2ARCHIVE:
-        
-            restore_CHG = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
-            restore_AEC = "rsync "+header.PATH2ARCHIVE+'/'+self.path['aeccar0']+' '+ header.PATH2ARCHIVE+'/'+self.path['aeccar2']+' '+path # on cluster
+        restore_CHG = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
+        restore_AEC = "rsync "+header.PATH2ARCHIVE+'/'+self.path['aeccar0']+' '+ header.PATH2ARCHIVE+'/'+self.path['aeccar2']+' '+path # on cluster
 
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
@@ -1295,6 +882,159 @@ class CalculationVasp(Calculation):
 
 
 
+    def res(self, **argv):
+        from siman.calc_manage import res_loop
+        # print(argv)
+        # sys.exit()
+        res_loop(*self.id, **argv)
+
+    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, it_suffix_del = True, *args, **kwargs):
+        """
+        Wrapper for add_loop (in development).
+        On a first run create new calculation. On a second run will try to read results.
+        All children are saved in self.children list.
+        By default uses self.end structure
+        To overwrite existing calculation 
+        use combination of parameters: add = 1, up = 'up2'.
+        Allows to use all arguments available for add_loop()
+
+
+        INPUT:
+            ise (str) - name of new set available in header.varset
+
+            iopt (str) - inherit_option
+                'full_nomag' - full without magmom
+                'full' - full with magmom
+                'full_chg' - full with magmom and including chg file
+            
+            up (str) - update key transferred to add_loop and res_loop;
+                'up1' - create new calculation if not exist
+                'up2' - recreate new calculation overwriting old; for reading results redownload output files
+
+            vers (list of int) - list of version for which the inheritance is done
+
+            i_child (int) - choose number of child in self.children to run res_loop(); can be relevant if more than one
+                calculation exists for the same set
+            
+            add (bool) - 
+                1 - overwrite existing children
+
+            it_suffix_del (bool) - needed to be false to use it_suffix with run. Provides compatibility with old behaviour; should be improved
+
+
+        RETURN:
+            cl (Calculation) - new created calculation 
+
+
+        TODO:
+        1. if ise is not provided continue in the same folder under the same name,
+        however, it is not always what is needed, therefore use inherit_xred = continue
+        """
+
+        add_flag  = add
+        if add:
+            up = 'up2'
+
+        from siman.calc_manage import add_loop
+
+        if not iopt:
+            iopt = 'full'
+
+        if iopt == 'full_nomag':
+            suffix = '.ifn'
+        if iopt == 'full':
+            suffix = '.if'
+        if iopt == 'full_chg':
+            suffix = '.ifc'
+
+
+
+
+        if 'it_suffix' in kwargs:
+            it_suffix = '.'+kwargs['it_suffix']
+        else:
+            it_suffix = ''
+        
+        if it_suffix_del:
+            if kwargs.get('it_suffix'):
+                del kwargs['it_suffix']
+
+
+        # if self.id[1] != ise:
+        if 1:
+            if not hasattr(self, 'children'):
+                self.children = []
+
+            if not add and len(self.children)>0:
+                print('Children were found in self.children:', len(self.children), ' childs, by default reading last, choose with *i_child* ')
+                
+                idd = None
+                for i in self.children:
+                    # print(i, ise, i[1], i[1] == ise)
+                    # print(i[0], self.id[0]+it_suffix)
+                    if self.id[0]+suffix+it_suffix == i[0] and i[1] == ise:
+                        # print(i)
+                        idd = i
+                        # add = True
+                        # break
+
+                if idd is None:
+                    add = True
+                    # idd  = self.children[i_child]
+                # print(idd)
+                # sys.exit()
+
+                if idd:
+                    # print('setaset')
+                    cl_son = header.calc[idd]
+                    try:
+                        res_params = kwargs['params'].get('res_params') or {}
+                    except:
+                        res_params = {}
+
+                    cl_son.res(up = up, **res_params, **kwargs)
+                    child = idd
+                    add = 0
+                else:
+                    child = None
+            
+
+            vp = header.varset[ise].vasp_params
+            ICHARG_or = 'impossible_value'
+
+            # print(add, len(self.children) )
+            # sys.exit()
+
+            if add or len(self.children) == 0:
+                
+
+                if iopt  == 'full_chg':
+                    if 'ICHARG' in vp and vp['ICHARG'] != 1:
+                        printlog('Warning! Inheritance of CHGCAR and ICHARG == 0; I change locally ICHARG to 1')
+                        ICHARG_or = vp['ICHARG']
+                        vp['ICHARG'] = 1
+                    
+
+
+                if not vers:
+                    vers = [self.id[2]]
+
+                idd = self.id
+                it_new = add_loop(idd[0],idd[1], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
+                # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
+                child = (it_new, ise, self.id[2])
+
+                if child not in self.children:
+                    self.children.append(child)
+
+
+                if ICHARG_or != 'impossible_value':
+                    vp['ICHARG'] = ICHARG_or  #return original value
+ 
+
+        return header.calc[child]
+
+
     def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None, up_res = 'up1'):
         """
         Wrapper for full optimization
@@ -1405,53 +1145,3 @@ class CalculationVasp(Calculation):
         os.chdir(cwd)
 
         return
-
-    def band(self, ylim = None):
-        """
-        Plot band structure using pymatgen. Can be applied only to band structure calculations with correct KPOINTS and vasprun.xml files
-        INPUT:
-            - ylim (2*tuple of float)
-        """
-
-        from pymatgen.io.vasp import Vasprun, BSVasprun
-        from pymatgen.electronic_structure.plotter import BSPlotter
-
-        xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
-        # print(xml_file)
-        # print(self.path['kpoints']) #os.getcwd()+'/'+
-        if ylim is None:
-            ylim = (-12,6)
-
-        # sys.exit()
-        v = BSVasprun(xml_file)
-        bs = v.get_band_structure(kpoints_filename = self.path['kpoints'], line_mode = True)
-        plt = BSPlotter(bs,)
-        ax = plt.get_plot(vbm_cbm_marker=True, ylim = ylim,)
-        # ax.legend = None
-        ax.legend().remove()
-        ax.savefig('figs/png/'+str(self.name)+'_band.png', dpi = 300)
-        ax.savefig('figs/'+str(self.name)+'_band.pdf')
-        # ax.show()
-        return
-    def get_band_info(self):
-        """
-        Vasprun.xml is expected
-
-        TODO
-        can be done with EIGENVAL, please make
-
-        """
-        from pymatgen.io.vasp import Vasprun
-        xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
-        # print('xml_file',xml_file)
-        v = Vasprun(xml_file)
-        ll = list(v.eigenvalue_band_properties)
-        print('band gap = {:.1f} eV, cbm = {:.1f} eV, vbm = {:.1f} eV, is_band_gap_direct = {:}'.format(*ll))
-
-
-
-
-
-
-
-

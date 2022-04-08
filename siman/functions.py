@@ -835,7 +835,7 @@ def read_list(token, number_of_elements, ttype, list_of_words):
     list_of_elements = []
     
     #define function dependig on type:
-
+    # print('string 839 functions.py Blind Guardian! token', token)
     if   ttype == int  : 
         def convert(a): 
             return int(a)
@@ -960,9 +960,9 @@ def check_output(filename, check_string, load):
         if check_string in out or 'un' in load:
             state = '4. Finished'
         else:
-            state = '5. Broken outcar'
+            state = '5. Broken output file'
 
     else:
-        state = '5. no OUTCAR'
+        state = '5. no output file'
 
     return state

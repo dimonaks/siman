@@ -1,3 +1,4 @@
+
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 from siman.core.calculation import Calculation
@@ -10,6 +11,13 @@ class CalculationAims(Calculation):
         self.calculator = 'aims'
         self.init = Structure()
         self.end = Structure()
+
+    def set_output_filenames(self, out_name, version):
+        cl = self
+
+        cl.path["output"] = cl.dir+cl.name+'.log'
+
+
 
     def write_structure(self, name_of_output_file, type_of_coordinates = 'dir', option = None, prevcalcver = None, path = None, state = 'init'):
 

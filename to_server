@@ -2,5 +2,6 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'qe step 1'
+git commit -m 'refactored Calculatation and Structure; added Gaussian calculator support'
 git push origin simanaks
+

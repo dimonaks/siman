@@ -3,13 +3,13 @@
 from siman import header
 from siman.header import printlog
 
-def write_batch_header(batch_script_filename = None,
-    schedule_system = None, path_to_job = None, job_name = 'SuperJob', number_cores = 1):
+def write_batch_header(cl, batch_script_filename = None,
+    schedule_system = None, path_to_job = None, job_name = 'SuperJob', corenum = None):
     """
-    cl-explanatory)
+    Write header for different schedule systems
     path_to_job (str) - absolute path to job folder 
     """
-    NC = str(number_cores)
+    NC = str(corenum)
     with open(batch_script_filename,'w', newline = '') as f:
 
 
@@ -53,7 +53,7 @@ def write_batch_header(batch_script_filename = None,
                     f.write("#PBS -l walltime=72:00:00 \n")
             
 
-            # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            # f.write("#PBS -l nodes=1:ppn="+str(corenum)+"\n")
             nodes = 1
             if 'nodes' in header.cluster:
                 nodes = header.cluster['nodes']
@@ -61,13 +61,13 @@ def write_batch_header(batch_script_filename = None,
 
 
             if header.PBS_PROCS or nodes == 0: # parameter in header
-                f.write("#PBS -l procs="+str(number_cores)+"\n")
+                f.write("#PBS -l procs="+str(corenum)+"\n")
             else: #  node option 
 
                 if type(nodes) is str:
                     f.write("#PBS -l nodes="+nodes+"\n")
                 else:
-                    f.write("#PBS -l nodes="+str(nodes)+":ppn="+str(number_cores)+"\n")
+                    f.write("#PBS -l nodes="+str(nodes)+":ppn="+str(corenum)+"\n")
             
 
 
@@ -110,11 +110,11 @@ def write_batch_header(batch_script_filename = None,
             f.write("#PBS -N "+job_name+"\n")
             if header.WALLTIME_LIMIT:
                 f.write("#PBS -l walltime=72:00:00 \n")
-            # f.write("#PBS -l nodes=1:ppn="+str(number_cores)+"\n")
+            # f.write("#PBS -l nodes=1:ppn="+str(corenum)+"\n")
             if header.PBS_PROCS:
-                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
+                f.write("#PBS -l nodes=node07:ppn="+str(corenum)+"\n")
             else: # 1 node option 
-                f.write("#PBS -l nodes=node07:ppn="+str(number_cores)+"\n")
+                f.write("#PBS -l nodes=node07:ppn="+str(corenum)+"\n")
             # f.write("#PBS -l pmem=16gb\n") #memory per processor, Skoltech
             f.write("#PBS -r n\n")
             f.write("#PBS -j eo\n")
@@ -148,11 +148,11 @@ def write_batch_header(batch_script_filename = None,
                 # f.write("#SBATCH -t 250:00:00 \n")
 
             f.write("#SBATCH -N 1\n")
-            f.write("#SBATCH -n "+str(number_cores)+"\n")
+            f.write("#SBATCH -n "+str(corenum)+"\n")
             f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
             f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
             if header.MEM_CPU:
-                f.write("#SBATCH --mem-per-cpu=7675\n")
+                f.write("#SBATCH --mem-per-cpu=7675\n") # this is mem per core
             
             # print(header.cluster)
             # sys.exit()
@@ -172,27 +172,31 @@ def write_batch_header(batch_script_filename = None,
             if header.siman_run: #only for me
                 if header.EXCLUDE_NODES:
                     f.write("#SBATCH --exclude=node-amg11\n")
-                # f.write("#SBATCH --mail-user=d.aksenov@skoltech.ru\n")
+                # f.write("#SBATCH --mail-user=\n")
                 # f.write("#SBATCH --mail-type=END\n")
             f.write("cd "+path_to_job+"\n")
             # f.write("export OMP_NUM_THREADS=1\n")
 
             if 'modules' in header.cluster:
                 f.write(header.cluster['modules']+'\n')
-            # f.write("module add prun/1.0\n")
-            # f.write("module add intel/16.0.2.181\n")
-            # f.write("module add impi/5.1.3.181\n")
             
-            # if header.siman_run: #only for me
-            lib64 = header.cluster['homepath'] + '/tools/lib64'
-            atlas = header.cluster['homepath'] + '/tools/atlas'
-            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+lib64+'\n')
-            # f.write("export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"+atlas+'\n')
-            
+           
             f.write("export PATH=$PATH:"+header.cluster['homepath'] +"/tools/\n")
-            
 
-            f.write("touch RUNNING\n")
+        
+        if schedule_system == 'simple':
+            f.write("#!/bin/bash   \n")
+            # f.write("mpirun -np "+str(corenum)+" /home/hieuvatly/vasp.5.4.4/bin/vasp_std \n")
+            print('"write_batch_header" was launched successfully!')  
+
+
+        if cl.calculator == 'gaussian':
+            f.write('export GAUSS_SCRDIR=/scr/$SLURM_JOB_USER/$SLURM_JOB_ID\n')
+
+
+        f.write("touch RUNNING\n")
+
+
 
 
     return
@@ -205,7 +209,7 @@ def write_batch_header(batch_script_filename = None,
 
 
 
-def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_mod_prev = '', write = True, 
+def prepare_input(cl, prevcalcver = None, option = None, input_geofile = None, name_mod_prev = '', write = True, 
     curver = None, copy_poscar_flag = True, f = None ):
     """1. Input files preparation
 
@@ -231,7 +235,10 @@ def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_
                 f.write('mv CHGCAR prev.CHGCAR   # inherit_option = continue\n')
             
             else:
-                f.write("cp "+input_geofile+" POSCAR\n")
+                if cl.calculator == 'vasp':
+                    f.write("cp "+input_geofile+" POSCAR\n")
+                elif cl.calculator == 'gaussian':
+                    pass
 
 
 
@@ -242,39 +249,48 @@ def prepare_input(prevcalcver = None, option = None, input_geofile = None, name_
 
 
 
-def run_command(cl, option, name, parrallel_run_command, condition = False, 
-    write = True, f = None ):
+def run_command(cl, option, name, parrallel_run_command,
+    write = True, mpi = None, corenum = None, f = None ):
     """
     Write commands used for running calculator. 
 
     INPUT:
 
         - cl (Calculation) - 
-        - condition (bool) - True - allows override additional conditions (obsolete)
+        - mpi (bool) - write mpirun command with explicit number of cores 
+
+    TODO:
+        improve mpi, cores 
 
     """ 
 
     if write:
 
-        if option == 'master':
-            f.write("vasp >"+name+".log\n")
+        if mpi is False:
 
-        elif 'monte' in cl.calc_method:
-            f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
+            if option == 'master':
+                f.write("vasp >"+name+".log\n")
 
-        elif 'polaron' in cl.calc_method:
-            f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
+            elif 'monte' in cl.calc_method:
+                f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
 
-        elif 'atat' in  cl.calc_method:
-            f.write('maps -d&\npollmach runstruct_vasp mpirun\n')
+            elif 'polaron' in cl.calc_method:
+                f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
 
-        else:
-            if cl.calculator == 'vasp':
-                f.write(parrallel_run_command +" >"+name+".log\n")
-            elif cl.calculator == 'gaussian':
-                f.write(parrallel_run_command +" < input.gau > "+name+".out\n")
+            elif 'atat' in  cl.calc_method:
+                f.write('maps -d&\npollmach runstruct_vasp mpirun\n')
+
             else:
-                printlog('Error! Calculator ', cl.calculator, 'is unknown!')
+                if cl.calculator == 'vasp':
+                    f.write(parrallel_run_command +" >"+name+".log\n")
+                elif cl.calculator == 'gaussian':
+                    f.write(parrallel_run_command +" < input.gau > "+name+".out\n")
+                else:
+                    printlog('Error! Calculator ', cl.calculator, 'is unknown!')
+
+        elif mpi == True:
+            f.write('mpirun -np '+str(cores)+' '+parrallel_run_command+" >"+name+".log\n")
+
 
         f.write("sleep 20\n")
     return
@@ -303,98 +319,88 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
     """   
     printlog('The value of savefile is', savefile)
     
+
+
     if 'polaron' in cl.calc_method:
         write = 0 # not needed, since files are automatically saved by python script
 
     pre = v + name_mod
-    contcar = pre+'.CONTCAR'
+    
+    if cl.calculator == 'vasp':
+        final_structure_file = pre+'.CONTCAR'
 
-    if write:
+        try:
+            printlog('The files to be removed are ', header.clean_vasp_files)
+        except AttributeError:
+            raise RuntimeError('The variable "clean_vasp_files" is absent! It should be initially stated in project_conf.py file as a list of file names ["NAME"]!!!')
 
-        if "o" in savefile:
+        try:
+            printlog('The files to be removed are ', header.clean_vasp_files_ignore)
+        except AttributeError:
+            raise RuntimeError('The variable "clean_vasp_files_ignore" is absent! It should be initially stated in project_conf.py file as a list of file names ["NAME"]!!!')
 
-            f.write("mv OUTCAR "          + v + name_mod +  ".OUTCAR\n")
-            f.write("mv CONTCAR "         + contcar+'\n')
+        if write:
 
-        if "i" in savefile:
-            f.write("cp INCAR "           + v + name_mod +  ".INCAR\n")
-        
-        if "v" in savefile: # v means visualization chgcar
-            chg  = pre + '.CHG'
-            f.write("mv CHG "+chg+"\n")
-            f.write("gzip -f "+chg+"\n")
-        
-        if 'c' in savefile: # 
-            fln = 'CHGCAR'
-            chgcar  = pre +'.'+fln
-            f.write('cp '+fln+' '+chgcar+'\n') #use cp, cause it may be needed for other calcs in run
-            f.write('gzip -f '+chgcar+'\n')                
+            files_key_dict = {"o": "OUTCAR",
+                              "s": "CONTCAR",
+                              "i": "INCAR",
+                              "e": "EIGENVAL",
+                              "v": "CHG",
+                              "c": "CHGCAR",
+                              "p": "PARCHG",
+                              "r": "PROCAR",
+                              "l": "LOCPOT",
+                              "d": "DOSCAR",
+                              "a0": "AECCAR0",
+                              "a2": "AECCAR2",
+                              "x": "vasprun.xml",
+                              "t": "XDATCAR",
+                              "z": "OSZICAR",
+                              "w": "WAVECAR",
+                              "f": "WAVEDER"}
 
-        if 'p' in savefile: # 
-            fln = 'PARCHG'
-            parchg  = pre +'.'+fln
-            f.write('cp '+fln+' '+parchg+'\n') #use cp, cause it may be needed for other calcs in run
-            f.write('gzip -f '+parchg+'\n') 
-
-        if 'l' in savefile: # 
-            fln = 'LOCPOT'
-            locpot  = pre +'.'+fln
-            f.write('cp '+fln+' '+locpot+'\n') #use cp, cause it may be needed for other calcs in run
-            f.write('gzip -f '+locpot+'\n') 
-
-
-        # else:
-        #     f.write("rm CHG \n") #file can be used only for visualization
-
-
-        if "d" in savefile:
-            fln = 'DOSCAR'
-            doscar  = pre +'.'+fln
-            f.write('mv '+fln+' '+doscar+'\n')
-            f.write('gzip -f '+doscar+'\n')                
-        
-
-
-        if "a" in savefile:
-            f.write("mv AECCAR0 "     + v + name_mod + ".AECCAR0\n")
-            f.write("mv AECCAR2 "     + v + name_mod + ".AECCAR2\n")
-        
-        if 'x' in savefile:
-            f.write("mv vasprun.xml " + v + name_mod + ".vasprun.xml\n")
-
-        if 't' in savefile:
-            f.write("mv XDATCAR " + v + name_mod + ".XDATCAR\n")
-
-        if 'z' in savefile:
-            f.write("mv OSZICAR " + v + name_mod + ".OSZICAR\n")
-       
-       
-       
-        if 'w' in savefile:
-            fln = 'WAVECAR'
-            wavecar  = pre +'.'+fln
-            # f.write("mv WAVECAR "     + v + name_mod + ".WAVECAR\n")
-            f.write('mv '+fln+' '+wavecar+'\n') #
-            f.write('gzip -f '+wavecar+'\n')  
-            rm_chg_wav = rm_chg_wav.replace('w','')
-        # else:
-        #     f.write("rm WAVECAR\n")
+            for i in files_key_dict.keys():
+                if i in savefile:
+                    fln = files_key_dict[i]
+                    prefln = pre+'.'+fln
+                    if i+'!' in savefile:
+                        f.write('cp '+fln+' '+prefln+'\n')
+                    else:
+                        f.write('mv '+fln+' '+prefln+'\n')
+                    if (i+'!@' in savefile) or (i+'@' in savefile): 
+                        f.write("gzip -f "+prefln+"\n")
+                    else:
+                        pass
+                else:
+                    if files_key_dict[i] in header.clean_vasp_files_ignore: 
+                        pass
+                    else: 
+                        header.clean_vasp_files.append(files_key_dict[i])                                                   
 
 
-        if 'c' in rm_chg_wav:
-            f.write("rm CHGCAR   # rm_chg_wav flag\n") #file is important for continuation
-        if 'w' in rm_chg_wav:
-            ''
-            f.write("rm WAVECAR  # rm_chg_wav flag\n") #
-        if 'v' in rm_chg_wav: #chgcar for visualization
-            ''
-            f.write("rm CHG   # rm_chg_wav flag\n") #
+
+            if 0:
+                'obsolete'
+                if 'c' in rm_chg_wav:
+                    f.write("rm CHGCAR   # rm_chg_wav flag\n") #file is important for continuation
+                if 'w' in rm_chg_wav:
+                    ''
+                    f.write("rm WAVECAR  # rm_chg_wav flag\n") #
+                if 'v' in rm_chg_wav: #chgcar for visualization
+                    ''
+                    f.write("rm CHG   # rm_chg_wav flag\n") #
+
+    elif cl.calculator == 'gaussian':
+        final_structure_file = None
+        pass
 
 
-    return contcar
 
 
-def analysis_script(write = True, f = None ):
+    return final_structure_file
+
+
+def analysis_script(cl, write = True, f = None ):
     #now only for u-ramping
     if write:
         f.write("touch ENERGIES\n")                
@@ -418,7 +424,7 @@ def name_mod_U_last(cl):
 def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_flag = True,
     final_analysis_flag = True, penult_set_name = None, 
     curset = None, f = None, prevcalcver = None, option = None,
-    input_geofile = None, parrallel_run_command = None):
+    input_geofile = None, parrallel_run_command = None, mpi = False, corenum = 1):
     """
     cl (Calculation) - calculation object
     v (int) - version
@@ -461,9 +467,9 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
         if write and copy_poscar_flag: 
             f.write("rm CHGCAR    #u-ramp init from scratch\n")                
 
-        prepare_input(prevcalcver = prevcalcver, option = option,
+        prepare_input(cl, prevcalcver = prevcalcver, option = option,
          input_geofile = input_geofile, name_mod_prev = name_mod_last, write = write_poscar, curver = version,
-         copy_poscar_flag = copy_poscar_flag)
+         copy_poscar_flag = copy_poscar_flag, f = f)
 
         if copy_poscar_flag:
             usteps = range(cl.set.u_ramping_nstep)
@@ -478,8 +484,8 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
                 continue
             name_mod   = '.U'+str(u).replace('.', '')+set_mod
            
-            run_command(option = option, name = cl.name+name_mod, 
-                parrallel_run_command = parrallel_run_command, write = write)
+            run_command(cl, option = option, name = cl.name+name_mod, 
+                parrallel_run_command = parrallel_run_command, write = write, mpi = mpi, corenum = corenum, f = f)
 
             if write: 
                 if copy_poscar_flag:
@@ -511,7 +517,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
         name_mod = name_mod, rm_chg_wav = rm_chg_wav, f = f) #save more files for last U
         
 
-        analysis_script(write = write, f=f)
+        analysis_script(cl, write = write, f=f)
         # print cl.associated
 
 
@@ -531,16 +537,17 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
 
             cl.update_incar(parameter = 'MAGMOM', value = magmom, write = write, f = f)
 
-            prepare_input(prevcalcver = prevcalcver, option = option, input_geofile = input_geofile,
-                copy_poscar_flag = copy_poscar_flag)
+            prepare_input(cl, prevcalcver = prevcalcver, option = option, input_geofile = input_geofile,
+                copy_poscar_flag = copy_poscar_flag, f = f)
             
-            run_command(option = option, name = cl.name+name_mod, parrallel_run_command = parrallel_run_command)
+            run_command(cl, option = option, name = cl.name+name_mod, 
+                parrallel_run_command = parrallel_run_command, mpi = mpi, corenum = corenum,  f = f)
 
             contcar_file = mv_files_according_versions(cl, savefile, version, name_mod = name_mod, f = f)
         
             cl.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
-        analysis_script()
+        analysis_script(cl, write = write, f=f)
     
 
     else: #simple run
@@ -554,12 +561,12 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
         name_mod   = set_mod
         name_mod_last = ''
 
-        prepare_input(prevcalcver = prevcalcver, option = option, name_mod_prev = name_mod_last,
+        prepare_input(cl, prevcalcver = prevcalcver, option = option, name_mod_prev = name_mod_last,
             input_geofile = input_geofile, write = write_poscar, curver = version,
             copy_poscar_flag = copy_poscar_flag, f = f)
 
         run_command(cl = cl, option = option, name = cl.name+name_mod, 
-            parrallel_run_command = parrallel_run_command, write = write, f = f)
+            parrallel_run_command = parrallel_run_command, write = write, mpi = mpi, corenum = corenum, f = f)
 
         if final_analysis_flag:
             rm_chg_wav = 'w' #The wavcar is removed for the sake of harddrive space
@@ -576,66 +583,68 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
     return contcar_file
 
 
+def u_ramp_prepare(cl):
+    if 'u_ramping' in cl.calc_method:
+        u = cl.update_incar(parameter = 'LDAUU', u_ramp_step = cl.set.u_ramping_nstep-1, write = False, f = f)
+        name_mod   = '.U'+str(u).replace('.', '')
+        # name_mod_last = name_mod_U_last()+'.'
+        name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
+    
+    else:
+        name_mod_last = ''
+        name_mod   = ''                
+
+    return name_mod, name_mod_last
+
+def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, set_mod = '', f = None):
+
+    if not subfolders:
+        subfolders = ['.']
+
+    
+
+    if run_tool_flag:
+        usteps = range(cl.set.u_ramping_nstep)
+    else:
+        usteps = [cl.set.u_ramping_nstep-1]  # now it the case of sequence_set for contin sets only the last U is used
+
+
+    u_last = 100
+
+    for i_u in usteps:
+
+
+        u = cl.update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = 1,  f = f)
+        if u == u_last:
+            continue
+
+        name_mod   = ver_prefix+'U'+str(u).replace('.', '')+set_mod
+
+        
+        run_command(cl, option = option, name = run_name_prefix+'.'+name_mod, 
+            parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum)
+        
+        u_last = u
+
+
+        for n_st in subfolders:
+
+            f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR'+'               #u_ramp_loop()\n' )
+            f.write('cp '+n_st+'/OUTCAR  '+n_st+'/'+name_mod+'.OUTCAR'+'  #u_ramp_loop()\n' )
+            contcar = name_mod+'.CONTCAR'
+            f.write('cp '+n_st+'/CONTCAR  '+n_st+'/'+contcar+'            #u_ramp_loop()\n' )
+
+            # cl.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
+
+
+    return contcar
+
+
 
 def write_footer(cl, set_mod = '', run_tool_flag = True, 
-    savefile = None, final_analysis_flag = True, neb_flag = None, f = None):
+    savefile = None, final_analysis_flag = True, neb_flag = None, f = None, mpi = False, corenum = 1):
     """footer"""
     
-    def u_ramp_prepare(cl):
-        if 'u_ramping' in cl.calc_method:
-            u = cl.update_incar(parameter = 'LDAUU', u_ramp_step = cl.set.u_ramping_nstep-1, write = False, f = f)
-            name_mod   = '.U'+str(u).replace('.', '')
-            # name_mod_last = name_mod_U_last()+'.'
-            name_mod_last = '.'+'U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
-        
-        else:
-            name_mod_last = ''
-            name_mod   = ''                
-
-        return name_mod, name_mod_last
-
-    def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, set_mod = '', f = None):
-
-        if not subfolders:
-            subfolders = ['.']
-
-        
-
-        if run_tool_flag:
-            usteps = range(cl.set.u_ramping_nstep)
-        else:
-            usteps = [cl.set.u_ramping_nstep-1]  # now it the case of sequence_set for contin sets only the last U is used
-
-
-        u_last = 100
-
-        for i_u in usteps:
-
-
-            u = cl.update_incar(parameter = 'LDAUU', u_ramp_step = i_u, write = 1,  f = f)
-            if u == u_last:
-                continue
-
-            name_mod   = ver_prefix+'U'+str(u).replace('.', '')+set_mod
-
-            
-            run_command(option = option, name = run_name_prefix+'.'+name_mod, 
-                parrallel_run_command = parrallel_run_command, write = True)
-            
-            u_last = u
-
-
-            for n_st in subfolders:
-
-                f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR'+'               #u_ramp_loop()\n' )
-                f.write('cp '+n_st+'/OUTCAR  '+n_st+'/'+name_mod+'.OUTCAR'+'  #u_ramp_loop()\n' )
-                contcar = name_mod+'.CONTCAR'
-                f.write('cp '+n_st+'/CONTCAR  '+n_st+'/'+contcar+'            #u_ramp_loop()\n' )
-
-                # cl.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
-
-
-        return contcar
 
     subfolders = None
     contcar_file = None
@@ -701,8 +710,8 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
         else:
 
-            run_command(option = option, name = cl.name+set_mod+'.n_'+nim_str+name_mod, 
-            parrallel_run_command = parrallel_run_command, write = True)
+            run_command(cl, option = option, name = cl.name+set_mod+'.n_'+nim_str+name_mod, 
+            parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum, f=f)
             # print(set_mod)
             # sys.exit()
             if '.' in set_mod and set_mod[0] == '.':
@@ -768,8 +777,8 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
 
 
-            run_command(option = option, name = cl.id[0]+'.'+cl.id[1]+'.100'+name_mod+'.fitted', 
-                parrallel_run_command = parrallel_run_command, write = True)
+            run_command(cl, option = option, name = cl.id[0]+'.'+cl.id[1]+'.100'+name_mod+'.fitted', 
+                parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum, f = f)
 
             # print(final_analysis_flag)
             # sys.exit()
@@ -783,9 +792,161 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
     #clean at the end
     if final_analysis_flag: 
         if header.final_vasp_clean:
-            f.write('rm LOCPOT CHGCAR CHG PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+            # print(header.clean_vasp_files)
+            uni_files = list(set(header.clean_vasp_files))
+            uni_files_string = ''
+            for i in uni_files:
+                uni_files_string += i+' '
+            # print(uni_files_string)
+            if uni_files_string:
+                f.write('rm '+uni_files_string+'\n')
+            # f.write('rm LOCPOT CHGCAR CHG PROCAR DOSCAR OSZICAR PCDAT REPORT XDATCAR vasprun.xml\n')
+        
+
+
+
         f.write('rm RUNNING\n')
 
 
 
     return contcar_file, subfolders
+
+
+
+
+
+
+
+def write_batch_body(cl, input_geofile = "header", version = 1, option = None, 
+    prevcalcver = None, savefile = None, schedule_system = None,
+    output_files_names = None,
+    mode = None,
+    batch_script_filename = None, mpi = False, corenum = None):
+    """
+    Create job script for cluster for different calculation types, such as volume scan, neb, and so on.
+    without arguments writes header, otherwise appends sequence of calculations.
+
+    INPUT:
+        - option (str) - the same as inherit_option: 
+            - 'inherit_xred' - control inheritance, or 
+            - 'master'       - run serial on master 
+        - prevcalcver (int) - version of previous calc; for the first version equal to None
+        - savefile (str) - 'cdawx', where c-charge, d-dos, a- AECCAR, w-wavefile, x-xml
+        - schedule_system (str) - type of job scheduling system:
+            - 'PBS' 
+            - 'SGE' 
+            - 'SLURM' 
+            - 'none' - just run without any system
+        - mode (str)
+            - 'body'
+            - 'footer'
+    RETURN:
+        Name of output file
+    """
+
+    self = cl
+    varset = header.varset
+    
+    f = open(batch_script_filename, 'a', newline = '')
+
+    printlog("The following output files will be saved: savefile =", savefile,)
+
+    if self.calculator == 'vasp':
+        parrallel_run_command = header.vasp_command
+
+    elif self.calculator == 'gaussian':
+        parrallel_run_command = self.cluster.get('gaussian_command') or 'please provide command for gaussian in *cluster* dict in simanrc.py'
+
+    else:
+        printlog('Error! Unknown calculator', self.calculator )
+
+
+    run_name = batch_script_filename     
+    job_name = self.id[0]+"."+self.id[1]
+    neb_flag = ('neb' in self.calc_method or 'only_neb' in self.calc_method)
+
+    if hasattr(self.set, 'set_sequence') and self.set.set_sequence and any(self.set.set_sequence):
+        sets = [self.set]+[se for se in self.set.set_sequence]
+    else:
+        sets = [self.set]
+
+
+    nsets = len(sets)
+    footer_flag = not set(self.calc_method).isdisjoint(['uniform_scale', 'neb', 'only_neb' ])
+
+
+    if mode == "body": #control part of script
+        self.associated_outcars = []
+
+    penult_set_name = None
+
+    for k, curset in enumerate(sets):
+        
+        if nsets > 1: #the incar name is modified during creation only if more than 1 set is detected
+            if mode == 'body' or footer_flag:
+                f.write('\n#sequence set: '+curset.ise+' \n')
+                f.write('cp '+curset.ise+'.INCAR  INCAR\n')
+                if hasattr(curset, 'savefile') and len(curset.savefile) > 0:
+                    savefile = curset.savefile 
+
+
+            penult_set_name = sets[-2].ise
+        
+
+        if k < nsets-1:
+            set_mod = '.'+curset.ise
+            final_analysis_flag = False
+        else: #last set
+            set_mod = '' # the last step do not use modifications of names 
+            final_analysis_flag = True #for footer
+
+
+
+        if k == 0: # additional control of prepare_input routine and footer
+            copy_poscar_flag = True # the flag is also used to detect first set
+            run_tool_flag = True
+        else:
+            copy_poscar_flag = False
+            run_tool_flag  = False
+
+        if mode == "body":
+            
+            contcar_file = write_body(self, version = str(version), savefile = savefile, 
+                set_mod = set_mod, copy_poscar_flag = copy_poscar_flag, 
+                final_analysis_flag = final_analysis_flag, 
+                penult_set_name = penult_set_name, curset = curset, 
+                f = f, prevcalcver = prevcalcver, option = option,
+                input_geofile = input_geofile, 
+                parrallel_run_command = parrallel_run_command, mpi = mpi, corenum = corenum)
+
+            
+
+        elif mode == 'footer':
+            if copy_poscar_flag: 
+                f.write('\n#Footer section: \n')
+
+
+            # print(savefile)
+            # sys.exit()
+            contcar_file, subfolders = write_footer(self, set_mod = set_mod, run_tool_flag = run_tool_flag, savefile = savefile,
+             final_analysis_flag = final_analysis_flag, neb_flag = neb_flag, f = f, mpi = mpi, corenum = corenum)
+
+        
+        if k < nsets-1 and contcar_file:
+            if 'o' in savefile:
+                if neb_flag and mode == 'footer':
+                    for n_st in subfolders:
+                        f.write('cp '+n_st+'/'+contcar_file+' '+n_st+'/POSCAR  # sequence_set: preparation of input geo for next neb set\n' )
+                else:
+                    f.write('cp '+contcar_file+' POSCAR  #sequence_set: preparation of input geo for next set\n')
+
+
+    if hasattr(self, 'associated_outcars') and  self.associated_outcars:
+        out = self.associated_outcars[-1]
+    else:
+        out = None
+    # print 'write_sge() out=', out
+    f.close()
+    
+    return  out#return OUTCAR name
+    

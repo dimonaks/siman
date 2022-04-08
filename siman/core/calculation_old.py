@@ -1,62 +1,8 @@
-# Copyright (c) Siman Development Team.
-# Distributed under the terms of the GNU License.
-import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil, random
-import re, io, json
-import pprint
-
-from textwrap import wrap
-
-import numpy as np
-
-#additional packages
-from siman import header
-
-try:
-    from tabulate import tabulate
-except:
-    print('tabulate is not available')
-    tabulate = None
-try:
-    import pandas as pd
-except:
-    print('pandas is not available')
-
-try:
-    import pymatgen
-    header.pymatgen_flag = True
-except:
-    print('calculation.py: pymatgen is not available')
-    header.pymatgen_flag = False
-
-if header.pymatgen_flag:
-    from pymatgen.io.cif import CifWriter
-    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    from pymatgen.core.surface import Slab
-    from pymatgen.core.composition import Composition
-
-from siman.header import printlog
-
-from siman.header import printlog, print_and_log, runBash, plt
-
-from siman import set_functions
-# from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
-from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
-from siman.functions import (read_vectors, read_list, words, read_string,
-     element_name_inv, invert, calculate_voronoi, 
-    get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
-from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
-from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
-local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral, 
-rms_between_structures, rms_between_structures2)
-from siman.set_functions import InputSet, aims_keys
-
-
-
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation
         List of important fields:
-            - init (Structure) - the initial structure used for calculation
-            - end  (Structure) - the structure obtained after optimization
+            - init (Structure)
+            - end  (Structure)
             - occ_matrices (dict) - occupation matrices, number of atom (starting from 0) is used as key
 
 
@@ -72,6 +18,9 @@ class Calculation(object):
         # if self.set.set_sequence:
 
 
+
+        self.init = Structure()
+        self.end = Structure()
         self.children = [] # inherited calculations 
         self.state = "0.Initialized"
         self.path = {
@@ -89,16 +38,13 @@ class Calculation(object):
         header.db[self.id] = self
         self.cluster_address = ''
         self.project_path_cluster = ''
-    
     def get_path(self,):
         path = os.path.dirname(os.getcwd()+'/'+self.path['output'])
         print( path)
         return path
 
     def read_geometry(self, filename = None):
-        """Reads geometrical data from filename file in abinit format
-            should be moved to Structure class
-        """
+        """Reads geometrical data from filename file in abinit format"""
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
 
@@ -275,12 +221,7 @@ class Calculation(object):
 
 
     def write_geometry(self, geotype = "init", description = "", override = False, atomic_units = 0):
-        """Writes geometrical data in custom siman format bases on abinit format 
-        to self.path["input_geo"]
-
-
-        TODO: move to Structure class
-        """
+        """Writes geometrical data in custom siman format bases on abinit format to self.path["input_geo"]"""
         geo_dic = {}
         geofile = self.path["input_geo"]
         geo_exists = os.path.exists(geofile)
@@ -323,6 +264,7 @@ class Calculation(object):
 
         # print (st.magmom)
         # sys.exit()
+        printlog('self.path["input_geo"] ', self.path["input_geo"], imp='y')
         with open(self.path["input_geo"],"w", newline = '') as f:
             f.write("des "+description+"\n")
             f.write("len_units "+self.len_units+"\n")
@@ -631,314 +573,27 @@ class Calculation(object):
 
 
     def occ_diff(self, cl2, li_at1 = None, li_at2 = None):
+>>>>>>> master
         """
-        difference bettween occupation matricies for atoms li_at1 from self and li_at2 from cl2
+        Convinient wrapper for add_loop()
 
-        li_at1  -  list of atom numbers from self
-        li_at2  -  list of atom numbers from cl2
-        both lists should have the same length and the differences are taken between items at the same positions in lists
+        TODO: to be finished; It is more reasonable to move this method to class; Then a new calculation is created which requires a structure
+        and set; But probably it can be here as well. It will be very simple to use. 
 
-
-        otherwise
-
-        self and cl2 should be commensurate, ideally having completly the same order of atoms
-        first five for spin up
-        then five for spin down
-
-
-
+        please make it in such a way that a res command is suggested at the end, required to read the results
         """
-        if li_at1 or li_at2:
-            TM1 = li_at1
-            TM2 = li_at2
-
-        else:
-            TM1 = self.end.get_transition_elements(fmt = 'n')
-            TM2 = self.end.get_transition_elements(fmt = 'n')
-        # print(TM)
-        max_diff = 0.01
-        nodiff  = True
-        for i_at1, i_at2 in zip(TM1, TM2):
-            occ1 = self.occ_matrices.get(i_at1)
-            occ2 = cl2.occ_matrices.get(i_at2)
-
-            if not occ1:
-                print('Warning! no', i_at1, 'in self, skipping')
-                continue
-            if not occ2:
-                print('Warning! no', i_at2, 'in cl2, skipping')
-                continue
-
-            occ1 = np.array(occ1)
-            occ2 = np.array(occ2)
-
-            # print(occ1-occ2)
-            docc = occ1-occ2
-            l05 = len(docc)//2
-
-            # print(occ1[0:l05])
-            det1 = np.linalg.det(docc[0:l05])
-            det2 = np.linalg.det(docc[l05:])
-            # m1 = np.matrix.max(np.matrix(docc))
-            m1 = max(docc.min(), docc.max(), key=abs)
-            # print(det1, det2, m1)
-            df = pd.DataFrame(docc).round(5)
-
-            if abs(m1) > max_diff:
-                nodiff = False
-                printlog('max diff larger than ', max_diff, 'was detected', imp = 'y')
-                printlog('For atom ', i_at1, 'and atom', i_at2,  'max diff is ', '{:0.2f}'.format(m1), imp = 'y')
-                printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
-        if nodiff:
-            printlog('No diffs larger than', max_diff, '; Last matrix:', imp = 'y')
-            printlog(tabulate(df, headers = ['dxy', 'dyz', 'dz2', 'dxz', 'dx2-y2'], floatfmt=".2f", tablefmt='psql'),end = '\n', imp = 'Y'  )
-        else:
-            printlog('No more diffs', imp = 'y')
-
-
         return
 
 
 
 
-    def dos(self, isym = None, el = None, i_at = None, iatoms = None, multi = None,  *args, **kwargs):
-        """
-        Plot DOS either for self or for children with dos
-
-        INPUT:
-            - isym (int) - choose symmetry position to plot DOS, otherwise use i_at
-            - i_at - number of atom from 0
-            - iatoms - list of atom numbers (from 0) to make one plot with several dos
-            - el - element for isym, otherwise first TM is used orbitals
-            - multi (dict) - special dict to make multiplots, 
-                    default is {'first':1, 'last':1, 'ax':None, 'hide_xlabels':False, 'pad':None}; see fit_and_plot()
-            - nneighbors
-
-            fit_and_plot arguments can be used
-
-        RETURN:
-
-        """
-        from siman.header import db
-        from siman.dos_functions import plot_dos
-        # print(self.children)
-
-
-        pm = kwargs
-        x_nbins = pm.get('x_nbins')
-        ylim = pm.get('ylim') or (-6,7)
-        xlim = pm.get('xlim') or (-8,6)
-        fontsize = pm.get('fontsize') or 13
-        ver_lines = pm.get('ver_lines')
-        corner_letter = pm.get('corner_letter')
-        orbitals = pm.get('orbitals')
-        efermi_origin = pm.get('efermi_origin')
-        nsmooth = pm.get('nsmooth') or 0.0001
-        linewidth = pm.get('linewidth') or 0.8
-        efermi_shift = pm.get('efermi_shift') or 0
-        labels = pm.get('labels')
-        image_name = pm.get('image_name')
-        fig_format = pm.get('fig_format') or 'pdf'
-        dostype = pm.get('dostype') or 'partial'
-        nneighbors = pm.get('nneighbors') or 6
-
-        if efermi_origin is None:
-            efermi_origin = 1
-
-
-        xlabel = '$E-E_F$, eV'
-        if multi is None:
-            multi = {'first':1, 'last':1, 'ax':None, 'hide_xlabels':False, 'pad':None}
-            ylabel = 'Total DOS, states/eV'
-        else:
-            ylabel = None
-            if multi['hide_xlabels']:
-                xlabel = None
-
-        
-
-        # print(corner_letter)
-        # sys.exit()
-
-        ifdos = False
-        if hasattr(self, 'children'):
-            for id in self.children:
-                # print(s[1])
-                if 'dos' in id[1]:
-                    printlog('Child with DOS set is found', id, imp = 'y')
-                    id_dos = id
-                    ifdos = True
-
-                    break
-            else:
-                ifdos = False 
-        if not ifdos:
-            printlog('No children were found, using self', self.id, imp = 'y')
-            id = self.id
-
-        cl = db[id]
-
-        cl.res()
-
-        if orbitals is None:
-            orbitals = ['d', 'p6']
-
-        st = cl.end
-        
-        if isym is not None:
-
-            if el:
-                n = st.get_specific_elements(required_elements = [invert(el)], fmt = 'n')
-            else:
-                n = st.get_transition_elements(fmt = 'n')
-
-            iTM = n[0]
-            el = st.get_elements()[iTM]
-            pos = determine_symmetry_positions(st, el)
-            iTM = pos[isym][0]
-            print('Choosing ', isym, 'atom ',iTM)
-        else:
-            iTM = i_at
-
-
-        if fontsize:
-            # header.mpl.rcParams.update({'font.size': fontsize+4})
-            # fontsize = 2
-            SMALL_SIZE = fontsize
-            MEDIUM_SIZE = fontsize
-            BIGGER_SIZE = fontsize
-
-            header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
-            header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-            header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-            header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-            header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-            header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
-            header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 
 
 
-        if not iatoms:
-            #just one plot
-            plot_dos(cl,  iatom = iTM+1,  
-            dostype = dostype, orbitals = orbitals, 
-            labels = labels, 
-            nsmooth = nsmooth, 
-            image_name = image_name, 
-            # invert_spins = invert_spins,
-            efermi_origin = efermi_origin,
-            efermi_shift = efermi_shift,
-            neighbors = nneighbors,
-            show = 0,  plot_param = {
-            'figsize': (6,3), 
-            'first':multi['first'], 'last':multi['last'], 'ax':multi['ax'], 'pad':multi['pad'], 'hide_xlabels':multi['hide_xlabels'],
-            'xlabel':xlabel, 'ylabel':ylabel,
-            'corner_letter':corner_letter,
-            'linewidth':linewidth, 
-            'fontsize':fontsize,
-            'ylim':ylim, 'ver':1, 'fill':1,
-            # 'ylim':(-1,1), 
-            'ver_lines':ver_lines,
-            'xlim':xlim, 
-            'x_nbins':x_nbins,
-            # 'xlim':(-0.5,0.1), 
-            'dashes':(5,1), 'fig_format':fig_format, 'fontsize':fontsize})
 
-        if iatoms:
-
-            if corner_letter is None:
-                corner_letter = 1
-
-            color_dicts = [None, {'s':'k', 'p':'r', 'p6':'#FF0018', 'd':'g'}]
-
-            total = len(iatoms)*1
-            # letters = ['(a)', '(b)', '(c)', '(d)']*10
-            letters = [str(i) for i in iatoms]
-            font = 8
-            fig, axs = plt.subplots(total,1,figsize=(6,total*3))    
-            fig.text(0.03, 0.5, 'PDOS (states/atom/eV)', size = font*1.8, ha='center', va='center', rotation='vertical')
-        
-            i = 0
-            first = 0
-            last = 0
-            hide_xlabels = 1
-            xlabel = None
-            ylabel = None
-            # i_last = 1
-
-            for iat in iatoms:
-            # for cl, iat in zip([RbVsd, KVsd, Vsd], [13, 61, 53]):
-
-                ax = axs[i]
-
-                if corner_letter:
-                    letter = letters[i]
-                else:
-                    letter = None
-                
-                # print(letter)
-                # sys.exit()
-                if i == 0:
-                    first = True
-                    last = False
-                if i == total-1:
-                    last = True
-                    hide_xlabels = 0
-                    xlabel = "Energy (eV)"
-                plot_dos(cl,  iatom = iat+1,  efermi_origin = efermi_origin,
-                dostype = 'partial', orbitals = orbitals, 
-                neighbors = nneighbors,
-                labels = ['', ''], 
-                nsmooth = 1, 
-                color_dict = color_dicts[i%2],
-                image_name = image_name, 
-
-                # invert_spins = invert_spins,
-                # show_gravity = (1, 'p6', (-10, 10)), 
-                show = 0,  plot_param = {
-                # 'figsize': (6,3), 
-                'linewidth':linewidth, 
-                'fontsize':fontsize, 'legend_fontsize':font+3,
-                'first':first, 'last':last, 'ax':ax, 'pad':1, 'hide_xlabels':hide_xlabels,
-                'xlabel':xlabel, 'ylabel':ylabel,
-                'corner_letter':letter,
-                'ylim':ylim, 'ver':1, 'fill':1,
-                # 'ylim':(-1,1), 
-                'ver_lines':ver_lines,
-                'xlim':xlim, 
-                'x_nbins':x_nbins,
-                # 'xlim':(-0.5,0.1), 
-                'dashes':(5,1), 'fig_format':fig_format})
-
-                i+=1
-
-
-
-        return 
-
-
-    def plot_locpot(self, filename = None):
-        """
-        Plot local electrostatic potential
-        """
-        from siman.chg.chg_func import chg_at_z_direct
-        from siman.picture_functions import fit_and_plot
-
-        z_coord1, elst1 =  chg_at_z_direct(self, filetype = 'LOCPOT', plot = 0)
-
-        if filename:
-            show = False
-            filename='figs/'+filename
-        else:
-            show = True
-
-        fit_and_plot(pot=(z_coord1, elst1, '-b', ),
-            xlabel = 'Z coordinate, $\AA$', 
-            ylabel = 'Potential, eV', legend = None, fontsize = 12,
-            show = show, hor_lines = [{'y':elst1[0]}],
-            filename = filename
-            )
+<<<<<<< HEAD
+=======
 
 
 
@@ -962,9 +617,7 @@ class Calculation(object):
         """
         The method updates init.ngkpt and ngkpt_dict_for_kspacings !!! as well provides possible options for it
         TODO probably the method should transfered to Structure?
-        Try to make it general for different codes
         Attention: the order should be the same as in make_kpoints_file
-
         """
         struct_des = header.struct_des
         # to_ang_local = header.to_ang
@@ -992,15 +645,9 @@ class Calculation(object):
         kspacing = self.set.vasp_params['KSPACING']
         # print(kspacing)
         # sys.exit()
-        # print (self.set.kpoints_file)
-        # sys.exit()
-        # printlog("Warning! If you use *update_set_dic* in add(), check_kpoints() works for set before update. Please fix.") #done
+        # print (struct_des)
         if ngkpt:
             N = ngkpt
-
-        elif is_string_like(self.set.kpoints_file):
-            print_and_log("External K-points file was provided", self.set.kpoints_file)
-            N = None
 
         elif kspacing in ngkpt_dict:
             N = ngkpt_dict[kspacing]
@@ -1018,6 +665,10 @@ class Calculation(object):
 
             N = N_from_kspacing
             printlog('check_kpoints(): k-points are determined from kspacing',kspacing)
+
+        elif self.set.kpoints_file:
+            print_and_log("K-points file was provided", self.set.kpoints_file)
+            N = None
 
         else:
             # print(self.dir)
@@ -1086,14 +737,351 @@ class Calculation(object):
 
         return  k
 
+    def actualize_set(self, curset = None, params = None):
+        """
+        Makes additional processing of set parameters, which also depends on calculation
+    
+        adding parameters for atat
+
+        """
+
+
+        #check if some parameters should be filled according to number of species
+        #make element list
+        el_list = [element_name_inv(el) for el in self.init.znucl]
+        if not curset:
+            curset = self.set
+        vp = curset.vasp_params
+
+        # print(['LDAU'])
+        # print(vp)
+        # print(vp['LDAU'])
+
+        if 'LDAUL' in vp and vp['LDAUL'] is not None: 
+            # print(vp['LDAU'])
+            # if 
+            for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
+                # print( vp[key])
+                try:
+                    if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
+                        print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
+                        # raise RuntimeError
+
+                    new = []
+                    for el in el_list:
+                        
+                        if el in vp[key]:
+                            val = vp[key][el]
+                            
+                            if 'S' in el_list:  # use another value in the format of Fe/S
+                                kk = el+'/S' 
+                                if kk in vp[key]:
+                                    val = vp[key][kk]
+                    
 
 
 
 
 
+                        else:
+                            if key == 'LDAUL':
+                                val = -1
+                            else:
+                                val =  0
+
+                        new.append(val)
+                    
+                    vp[key] = new
+                
+                except AttributeError:
+                    printlog('Error! LDAU* were not processed')
+                    pass
+
+        """Process magnetic moments"""
+        if self.calc_method and 'afm_ordering' in self.calc_method:
+            self.init.magmom = [None]
 
 
 
+        # print(hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom)
+        # print(self.init.magmom)
+        # print(None in self.init.magmom)
+        # sys.exit()
+        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
+
+            print_and_log('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
+
+        elif hasattr(curset, 'magnetic_moments') and curset.magnetic_moments:
+            print_and_log('actualize_set(): Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set', end = '\n')
+            print_and_log('curset.magnetic_moments = ', curset.magnetic_moments)
+            
+            mag_mom_other = 0.6 # magnetic moment for all other elements
+            magmom = []
+            for iat in range(self.init.natom):
+                typ = self.init.typat[iat]
+                el  = el_list[typ-1]
+                if el in curset.magnetic_moments:
+                    magmom.append(curset.magnetic_moments[el])
+                else:
+                    magmom.append(mag_mom_other)
+            
+
+            #convert magmom to vasp ordering
+
+            zmagmom = [[] for x in range(0,self.init.ntypat)]
+
+            # print zmagmom
+
+            for t, m in zip(self.init.typat, magmom):
+                # print "t, m = ", t, m
+                zmagmom[t-1].append(m)
+                # print t-1, zmagmom[3]
+
+            # print 'sdfsdf', zmagmom[3], 
+            poscar_ordered_magmom = [m for mag in zmagmom for m in mag  ]
+            # sys.exit()
+               
+            vp['MAGMOM'] = poscar_ordered_magmom
+
+            #check possible antiferromagnetic configurations:
+            spec_mom_is = []
+            for i, m in enumerate(magmom):
+                if m != mag_mom_other: #detected some specific moment
+                    spec_mom_is.append(i)
+
+            if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
+                print_and_log('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
+                ns = len(spec_mom_is); 
+                number_of_ord = int(math.factorial(ns) / math.factorial(0.5 * ns)**2)
+                
+                if number_of_ord > 10000:
+                    printlog('Attention! Too much orderings (1000), skipping ...')
+                else:
+                    nords = 71
+                    use_each = number_of_ord // nords  # spin() should be improved to find the AFM state based on the number of configuration 
+                    if use_each == 0:
+                        use_each = 1
+
+                    if number_of_ord > nords:
+                        print_and_log('Attention! Number of orderings is', number_of_ord, ' more than', nords, ' - I will check only each first ', imp = 'y')
+                # else:
+
+                    ls = [0]*len(spec_mom_is)
+                    # print ls
+                    orderings = []
+                    
+
+
+
+                    def spin(ls, i):
+                        """
+                        Find recursivly all possible orderings
+                        ls - initial list of mag moments
+                        i - index in ls  
+
+                        """
+                        # nonlocal i_current
+                        if len(orderings) < nords:
+
+                            for s in 1,-1:
+                                
+                                ls[i] = s
+                                
+                                if i < len(ls)-1:
+                                
+                                    spin(ls, i+1)
+                                
+                                else:
+                                    if sum(ls) == 0:
+                                        i_current['a']+=1  
+                                        # print (i_current)
+
+                                        if 1: #  i_current % use_each == 0:  # every use_each will be calculated; two slow even for sampling!
+                                            orderings.append(copy.deepcopy(ls) )  
+                                            # print (i_current)
+                        return
+
+                    i_current = {'a':0}
+                    spin(ls, 0)
+
+                    mag_orderings = []
+                    mag_orderings.append(magmom)
+                    printlog('Only '+str(nords)+' orderings equally sampled along the whole space are checked !')
+
+
+
+
+                    for j, order in enumerate(orderings):
+                        
+                        # if j >nords: # old behaviour - just first ten orderings were checked
+                        #     break
+
+                        new_magmom = copy.deepcopy(magmom)
+                        for i, s in zip(spec_mom_is, order):
+                            # print i
+                            new_magmom[i] = s * magmom[i]
+                        
+
+                        printlog(j, new_magmom,)
+                        
+                        mag_orderings.append(new_magmom)
+
+                    # print orderings
+                    print_and_log('Total number of orderings is ', len(orderings),imp = 'y')
+                    
+                    if self.calc_method and 'afm_ordering' in self.calc_method:
+                        self.magnetic_orderings = mag_orderings
+                  
+            self.init.magmom = magmom # the order is the same as for other lists in init
+
+        
+        elif 'MAGMOM' in vp and vp['MAGMOM']: #just add * to magmom tag if it is provided without it
+            print_and_log('Magnetic moments from vasp_params["MAGMOM"] are used\n')
+            
+            # if "*" not in vp['MAGMOM']:
+            #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
+        
+
+
+        # print (self.init.magmom, 'asdfaaaaaaaaaaaa')
+        
+        # sys.exit()
+
+        # number of electrons
+
+        if vp.get('MAGATOM') is not None: # for ATAT
+            # print (vp['MAGATOM'])
+            del vp['MAGMOM']
+            # self.init.magmom = [None]
+            # sys.exit()
+
+        if self.calculator == 'aims':
+            if None not in self.init.magmom:
+                ''
+                # vp['default_initial_moment'] = 0.6 # per atom - not good, since for different elements you need different moments
+
+
+
+
+        return
+
+
+    def make_run(self, schedule_system, run_name):
+        """Generate run file
+
+        INPUT:
+            schedule_system - 
+        """
+
+        with open('run','a', newline = '') as f:
+
+            if schedule_system == 'SGE':
+                #'qsub -pe 'mpi*' NCORES -l CLUSTER_TAG script.parallel.sh' for mpi-jobs which should run on CLUSTER_TAG (cmmd or cmdft)
+                #IMPORTANT: NCORES must be a multiple of 8(24) on cmdft(cmmd). 
+                # f.write("qsub -pe 'mpi*' "+str(header.corenum)+" "+header.queue+" "+run_name+"\n") #str(self.set.np) #-l cmmd; on MPIE
+                
+                f.write("qsub "+" "+run_name+"\n") 
+            
+                # f.write('sleep 5\n')
+                # runBash('chmod +x run')
+            
+            elif schedule_system in ['PBS', 'PBS_bsu']:
+                if header.PATH2PROJECT == '':
+                    header.PATH2PROJECT = '.'
+
+                f.write("cd "+header.PATH2PROJECT+'/'+self.dir+"\n")
+                f.write("qsub "+run_name.split('/')[-1]+"\n") 
+                f.write("cd -\n")
+                f.write('sleep 1\n')                        
+            elif schedule_system in ['none']:
+                if header.PATH2PROJECT == '':
+                    header.PATH2PROJECT = '.'
+
+                f.write("cd "+header.PATH2PROJECT+'/'+self.dir+"\n")
+                f.write('./'+run_name.split('/')[-1]+"\n") 
+                f.write("cd -\n")
+                # f.write('sleep 1\n')     
+
+            
+            elif schedule_system == 'SLURM':
+                f.write("squeue\n") 
+                f.write("sbatch " + run_name+"\n") 
+                # f.write("sbatch -p AMG " + run_name+"\n") 
+            elif schedule_system == 'simple':
+                pass
+            else:
+                printlog('Error! Unknown schedule_system', schedule_system)
+                
+
+
+
+        printlog("\nRun file created\n")     
+        return
+
+    def calculate_nbands(self, curset, path_to_potcar = None, params = None):
+        """Should be run after add_potcar()
+            updates set, including number of electrons
+        """
+        #1 add additional information to set
+        if not curset:
+            curset = self.set
+        vp = curset.vasp_params
+        st = copy.deepcopy(self.init)
+        st = st.remove_atoms(['void']) # remove voids
+
+        if path_to_potcar:
+            # path_to_potcar = self.dir+'/POTCAR'
+            self.init.zval = []
+            # print path_to_potcar
+            for line in open(path_to_potcar,'r'):
+                if "ZVAL" in line:
+                    # print line
+                    self.init.zval.append(float(line.split()[5]))
+            
+            try: 
+                curset.add_nbands
+            except AttributeError: 
+                curset.add_nbands = None
+
+            if curset.add_nbands != None:
+                tve =0
+                for i in range(st.ntypat):
+                    # print self.init.zval
+                    tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
+                    # print(self.init.zval[i], self.init.nznucl[i])
+                nbands_min = math.ceil(tve / 2.)
+                self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
+                # print(self.nbands)
+                
+
+                vp['NBANDS'] = self.nbands
+                printlog('I found that at least', nbands_min, ' bands are required. I will use', self.nbands, 'bands; add_nbands = ', curset.add_nbands)
+
+
+
+
+
+            if 'LSORBIT' in vp and vp['LSORBIT']:
+                # print (vp)
+                printlog('SOC calculation detected; increasing number of bands by two', imp = 'Y')
+                vp['NBANDS']*=2
+
+
+
+
+            if params and 'charge' in params and params['charge']:
+                vp['NELECT'] = int(tve - params['charge'])
+
+
+        else:
+            printlog('Attention! No path_to_potcar! skipping NBANDS calculation')
+
+        return
+
+    def show_force(self,):
+        force_prefix = ' tot '
+
+        printlog("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in self.maxforce_list ])[:]  ), imp = 'Y'  )
 
     def check_job_state(self):
         #check if job in queue or Running
@@ -1119,11 +1107,8 @@ class Calculation(object):
                 
                 elif 'none' in cl.schedule_system:
                     job_in_queue = ''
-
                 elif 'simple' in cl.schedule_system:
                     print_and_log('For SCHEDULE_SYSTEM='+cl.schedule_system+' please manually run on server! ', imp = 'y')                    
-
-
                 else:
                     print_and_log('Attention! unknown SCHEDULE_SYSTEM='+cl.schedule_system+'; Please teach me here! ', imp = 'y')
                     job_in_queue = ''
@@ -1211,51 +1196,26 @@ class Calculation(object):
         else:
             # printlog('File', path_to_file, 'was not found. Trying to update from server')
             out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = address)
-            if out:
-                printlog('File', path2file_cluster, 'was not found, trying archive:',header.PATH2ARCHIVE, imp = 'Y')
-                # printlog(out, imp  = 'Y')
+
 
         if out:
-            if header.PATH2ARCHIVE:
-                # printlog('Charge file', path_to_file, 'was not found')
-                try:
-                    pp = self.project_path_cluster.replace(self.cluster_home, '') #project path without home
-                except:
-                    pp = ''
-                # print(pp)
-                path_to_file_scratch = header.PATH2ARCHIVE+'/'+pp+'/'+path_to_file
+            printlog('File', path2file_cluster, 'was not found, trying archive:',header.PATH2ARCHIVE, imp = 'Y')
+            # printlog('Charge file', path_to_file, 'was not found')
+            try:
+                pp = self.project_path_cluster.replace(self.cluster_home, '') #project path without home
+            except:
+                pp = ''
+            # print(pp)
+            path_to_file_scratch = header.PATH2ARCHIVE+'/'+pp+'/'+path_to_file
 
-                out = get_from_server(path_to_file_scratch, os.path.dirname(path_to_file), addr = self.cluster['address'])
-                
-                if out:
-                    printlog('File', path_to_file, ' was downloaded from archive', imp = 'e')
-
-                else:
-                    printlog('File', path_to_file_scratch, 'was not found, trying local archive path', imp = 'Y')
-
-
-            else:
-                printlog('project_conf.PATH2ARCHIVE is empty, trying local archive path', imp = 'Y')
-
-
-        if out: 
-            if header.PATH2ARCHIVE_LOCAL:
-
-                path_to_file_AL= header.PATH2ARCHIVE_LOCAL+'/'+path_to_file
-                # print(path_to_file_AL)
-                if os.path.exists(path_to_file_AL):
-                    shutil.copyfile(path_to_file_AL, path_to_file)
-
-                    printlog('Succefully found in local archive and copied to the current project folder', imp = 'Y')
-                else:
-                    printlog('File', path_to_file_AL,'not found in local archive', imp = 'Y')
-
-            else:
+            out = get_from_server(path_to_file_scratch, os.path.dirname(path_to_file), addr = self.cluster['address'])
+            
+            if out:
+                printlog('File', path_to_file_scratch, 'was not found', imp = 'Y')
                 path_to_file = None
-                printlog('project_path.PATH2ARCHIVE_LOCAL is empty', imp = 'Y')
-
-
-
+           
+        printlog('File', path_to_file, ' was download', imp = 'e')
+        
         return path_to_file
 
     def run_on_server(self, command, addr = None):
@@ -1268,173 +1228,6 @@ class Calculation(object):
     def update_name(self): 
         self.name = str(self.id[0])+'.'+str(self.id[1])+'.'+str(self.id[2])
         return self.name
-
-
-    def res(self, **argv):
-        from siman.calc_manage import res_loop
-        # print(argv)
-        # sys.exit()
-        res_loop(*self.id, **argv)
-
-    def run(self, ise, iopt = 'full_nomag', up = 'up1', vers = None, i_child = -1, add = 0, it_suffix_del = True, *args, **kwargs):
-        """
-        Wrapper for add_loop (in development).
-        On a first run create new calculation. On a second run will try to read results.
-        All children are saved in self.children list.
-        By default uses self.end structure
-        To overwrite existing calculation 
-        use combination of parameters: add = 1, up = 'up2'.
-        Allows to use all arguments available for add_loop()
-
-
-        INPUT:
-            ise (str) - name of new set available in header.varset
-
-            iopt (str) - inherit_option
-                'full_nomag' - full without magmom
-                'full' - full with magmom
-                'full_chg' - full with magmom and including chg file
-            
-            up (str) - update key transferred to add_loop and res_loop;
-                'up1' - create new calculation if not exist
-                'up2' - recreate new calculation overwriting old; for reading results redownload output files
-
-            vers (list of int) - list of version for which the inheritance is done
-
-            i_child (int) - choose number of child in self.children to run res_loop(); can be relevant if more than one
-                calculation exists for the same set
-            
-            add (bool) - 
-                1 - overwrite existing children
-
-            it_suffix_del (bool) - needed to be false to use it_suffix with run. Provides compatibility with old behaviour; should be improved
-
-
-        RETURN:
-            cl (Calculation) - new created calculation 
-
-
-        TODO:
-        1. if ise is not provided continue in the same folder under the same name,
-        however, it is not always what is needed, therefore use inherit_xred = continue
-        """
-
-        add_flag  = add
-        if add:
-            up = 'up2'
-
-        from siman.calc_manage import add_loop
-
-        if not iopt:
-            iopt = 'full'
-
-        if iopt == 'full_nomag':
-            suffix = '.ifn'
-        if iopt == 'full':
-            suffix = '.if'
-        if iopt == 'full_chg':
-            suffix = '.ifc'
-
-
-
-
-        if 'it_suffix' in kwargs:
-            it_suffix = '.'+kwargs['it_suffix']
-            it_suffix_del = False
-        else:
-            it_suffix = ''
-        
-        if it_suffix_del:
-            if kwargs.get('it_suffix'):
-                del kwargs['it_suffix']
-
-
-        # if self.id[1] != ise:
-        if 1:
-            if not hasattr(self, 'children'):
-                self.children = []
-
-            if not add and len(self.children)>0:
-                print('Children were found in self.children:', len(self.children), ' childs, by default reading last, choose with *i_child* ')
-                
-                idd = None
-                for i in self.children:
-                    # print(i, ise, i[1], i[1] == ise)
-                    # print(i[0], self.id[0]+it_suffix)
-                    if self.id[0]+suffix+it_suffix == i[0] and i[1] == ise:
-                        # print(i)
-                        idd = i
-                        # add = True
-                        # break
-
-                if idd is None:
-                    add = True
-                    # idd  = self.children[i_child]
-                # print(idd)
-                # sys.exit()
-
-                if idd:
-                    # print('setaset')
-                    cl_son = header.calc[idd]
-                    try:
-                        res_params = kwargs['params'].get('res_params') or {}
-                    except:
-                        res_params = {}
-                    if kwargs.get('it_suffix'):
-                        del kwargs['it_suffix']
-                    cl_son.res(up = up, **res_params, **kwargs)
-                    child = idd
-                    add = 0
-                else:
-                    child = None
-            
-
-            vp = header.varset[ise].vasp_params
-            ICHARG_or = 'impossible_value'
-
-            # print(add, len(self.children) )
-            # sys.exit()
-
-            if add or len(self.children) == 0:
-                
-
-                if iopt  == 'full_chg':
-                    if 'ICHARG' in vp and vp['ICHARG'] != 1:
-                        printlog('Warning! Inheritance of CHGCAR and ICHARG == 0; I change locally ICHARG to 1')
-                        ICHARG_or = vp['ICHARG']
-                        vp['ICHARG'] = 1
-                    
-
-
-                if not vers:
-                    vers = [self.id[2]]
-
-                idd = self.id
-                it_new = add_loop(idd[0],idd[1], vers, ise_new = ise, up = up, inherit_option = iopt, override = 1, *args, **kwargs)
-                # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
-                child = (it_new, ise, self.id[2])
-
-                if child not in self.children:
-                    self.children.append(child)
-
-
-                if ICHARG_or != 'impossible_value':
-                    vp['ICHARG'] = ICHARG_or  #return original value
- 
-
-        return header.calc[child]
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1464,11 +1257,4 @@ class Calculation(object):
     @property
     def e0_at(self,):
         return self.e0/self.end.natom
-
-    def show_force(self,):
-        force_prefix = ' tot '
-
-        printlog("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in self.maxforce_list ])[:]  ), imp = 'Y'  )
-
-
 
