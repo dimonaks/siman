@@ -2702,7 +2702,7 @@ def create_ads_molecule(st, molecule = ['O'], mol_xc = [[0,0,0]], conf_i = [0], 
     from pymatgen.analysis.adsorption import AdsorbateSiteFinder
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     from pymatgen.io.vasp.inputs import Poscar
-
+    magmoms = copy.deepcopy(st.magmom[:])+[0.0]
     pm = st.convert2pymatgen()
     # pm = st
     asf_pm = AdsorbateSiteFinder(pm)
@@ -2733,7 +2733,8 @@ def create_ads_molecule(st, molecule = ['O'], mol_xc = [[0,0,0]], conf_i = [0], 
 
     for i in conf_i:
         p = st.update_from_pymatgen(ads_structs[i])
-
+        p.magmom = magmoms
+        # print(p.magmom)
         if fix_layers:
             p = p.fix_layers(xcart_range = fix_xc_range)
 

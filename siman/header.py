@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 #Copyright Aksyonov D.A
 #hello_man
@@ -21,7 +22,7 @@ try:
     import matplotlib as mpl
     """Global matplotlib control"""
     # size = 22 #for one coloumn figures
-    size = 26 #for DOS
+    size = 16 #for DOS
     # size = 16 #for two coloumn figures
     mpl.rc('font',family='Serif')
     # mpl.rc('xtick', labelsize= size) 
@@ -207,7 +208,8 @@ R = 8.3145 # J/mol/K
 
 
 
-TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 40, 44, 74]
+TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 30,
+40, 44, 74]
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
 TM_MAG = {'NM':0.6,

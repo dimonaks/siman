@@ -4772,12 +4772,13 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
 
         if defect_occ:
             for j, i in enumerate(defect_atoms):
-                if cl_defect.end.get_elements_z()[i_at_def] in header.TRANSITION_ELEMENTS:
-                    print('Additionally applying provided occ matrix for i=',i_at_def )
-                    cl_defect = cl_defect.set_occ_mat(i_at_def, defect_occ[j])
+                if cl_defect.end.get_elements_z()[i] in header.TRANSITION_ELEMENTS:
+                    print('Additionally applying provided occ matrix for i=',i )
+                    cl_defect = cl_defect.set_occ_mat(i, defect_occ[j])
+                    print(cl_defect.end.magmom[i])
                 else:
-                    print('Chosen element {} is not a transition metal'.format(cl_defect.end.get_el_name(i_at_def)))
-                    cl_defect = cl_defect.set_occ_mat(i_at_def, None)
+                    print('Chosen element {} is not a transition metal'.format(cl_defect.end.get_el_name(i)))
+                    cl_defect = cl_defect.set_occ_mat(i, None)
 
 
         #test

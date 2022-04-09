@@ -615,7 +615,7 @@ class Structure():
             # print(len(self.xred))
             # print(site_properties)
 
-            pm = pymatgen.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
+            pm = pymatgen.core.Structure(self.rprimd, elements, self.xred, site_properties = site_properties)
 
         oxi = None
         
