@@ -956,9 +956,10 @@ def make_sets_for_conv(isefrom,conv,list_of_parameters,varset):
 def init_default_sets(init = 0):
     """
     Pre-defined sets for Vasp
+    Initialized in read_database(scratch = False, init_sets = 0) and can be updated with init_sets arg
     """
     varset = header.varset
-    # print('init_default_sets():, init ', init)
+    #print('init_default_sets():, init ', init)
     if init:
         printlog("Initializing defaults sets")
 
@@ -993,6 +994,7 @@ def init_default_sets(init = 0):
             'PREC'      : "Normal",
             'KSPACING'  : 0.235,
             }
+        s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
 
         s.update()
@@ -1023,6 +1025,7 @@ def init_default_sets(init = 0):
             'LPLANE'    : ".TRUE.",
             'NPAR'      : 1,
             }
+        s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
 
         s.update()
@@ -1048,6 +1051,7 @@ def init_default_sets(init = 0):
             'ISMEAR'    : 2,
             'KSPACING'  : 0.2,
             }
+        s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
         
         s.update()

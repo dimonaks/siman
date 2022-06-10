@@ -698,7 +698,7 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
         else:
             
             if run_tool_flag:
-                if hasattr(cl, 'neb_external_files') and cl.neb_external_files:
+                if hasattr(cl, 'init_neb_geo_fld') and cl.init_neb_geo_fld:
                     #only 1.CONTCAR and 2.CONTCAR should be copied to start and end images
                     ff = start_folder 
                     lf = final_folder

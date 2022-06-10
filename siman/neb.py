@@ -83,7 +83,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     it_new = None, ise_new = None, i_atom_to_move = None, 
     up = 'up2',
     search_type = 'vacancy_creation',
-    external_files = None,
+    init_neb_geo_fld = None,
     images  = None, r_impurity = None, 
     calc_method = ['neb'], 
     inherit_option  = None, mag_config = None, i_void_start = None, i_void_final = None, 
@@ -111,7 +111,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - interstitial_insertion - search for two neighboring voids; use them as start and final positions
                                     by inserting atom *atom_to_insert*
         - None - just use st and st2 as initial and final
-        - external - folder with subfolders 00, 01, ... in VASP format is provided
+        - external - folder with subfolders 00, 01, ... in VASP format is provided using *init_neb_geo_fld*
 
     INPUT:
         - starting_calc (Calculation) - Calculation object with structure
@@ -141,6 +141,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         - upload_vts (bool) - if True upload Vasp.pm and nebmake.pl to server
         - run (bool)  - run on server
+        - init_neb_geo_fld - folder with initial geometry files in VASP format, automatically switch on 'external' mode 
 
         - old_behaviour (str) - choose naming behavior before some date in the past for compatibility with your projects
             '020917'
@@ -185,12 +186,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         calc_method = [calc_method]
 
 
-    if external_files:
+    if init_neb_geo_fld:
 
-        printlog('I use folder with input files for neb in VASP format:', external_files)
+        printlog('I use folder with input files for neb in VASP format:', init_neb_geo_fld, imp = 'y')
         if st or starting_calc:
             printlog('Warning! st and starting_calc are ignored')
-        neb_folders = [ f.name for f in os.scandir(external_files) if f.is_dir() ]
+        neb_folders = [ f.name for f in os.scandir(init_neb_geo_fld) if f.is_dir() ]
         images = len(neb_folders) - 2
         search_type = 'external'
 
@@ -266,13 +267,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     
     if search_type == 'external':
         from siman.calc_manage import smart_structure_read
-        st1 = smart_structure_read(external_files+'/'+neb_folders[0]+'/POSCAR')
-        st2 = smart_structure_read(external_files+'/'+neb_folders[-1]+'/POSCAR')
+        st1 = smart_structure_read(init_neb_geo_fld+'/'+neb_folders[0]+'/POSCAR')
+        st2 = smart_structure_read(init_neb_geo_fld+'/'+neb_folders[-1]+'/POSCAR')
 
         x_m = (0,0,0) # please improve, temporary
         x_del = (0,0,0)
         it = None
-        obtained_from = 'from external folder '+external_files
+        obtained_from = 'from external folder '+init_neb_geo_fld
 
 
 
@@ -849,8 +850,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     # runBash('cd xyz; mkdir '+it_new+'_all;'+"""for i in {00..04}; do cp $i/POSCAR """+ it_new+'_all/POSCAR$i; done; rm -r 00 01 02 03 04')
     
     with cd('xyz'):
-        if external_files:
-            printlog('Check neb files at', external_files, imp = 'y')
+        if init_neb_geo_fld:
+            printlog('Check neb files at', init_neb_geo_fld, imp = 'y')
         else:
            a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
            print(a)
@@ -896,7 +897,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     add_loop_dic['corenum'] = corenum
     params = {}
-    params['neb_external_files'] = external_files
+    params['init_neb_geo_fld'] = init_neb_geo_fld
     # print(add_loop_dic)
     add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, 
         params=params, 

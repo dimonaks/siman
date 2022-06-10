@@ -663,7 +663,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'res_params' - dictionary with parameters transfered to res_loop()
 
             - 'nodes' - number of nodes for sqedule system, currently works only for PBS
-            - 'neb_external_files' - path to folder with geo files for NEB in VASP format
+            - 'init_neb_geo_fld' - path to folder with geo files for NEB in VASP format
 
     Comments:
         
@@ -1955,10 +1955,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 else:
                     list_to_copy.extend( cl.make_kpoints_file() )  
 
-                if 'neb_external_files' in params:
-                    ef = params['neb_external_files']+'/' 
-                    cl.neb_external_files  = ef 
-                    neb_folders = [ f.name for f in os.scandir(params['neb_external_files']) if f.is_dir() ]
+                if 'init_neb_geo_fld' in params:
+                    ef = params['init_neb_geo_fld']+'/' 
+                    cl.init_neb_geo_fld  = ef 
+                    neb_folders = [ f.name for f in os.scandir(ef) if f.is_dir() ]
                     for fld in neb_folders:
                         ""
                         #cl.push_file(ef+fld)

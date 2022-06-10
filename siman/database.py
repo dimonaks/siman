@@ -57,7 +57,7 @@ def read_database(scratch = False, init_sets = 0):
     # if scratch == True: databasefile =   '/scratch/aksenov/calc.s'
     
     printlog("\nLaunch at "+str( datetime.datetime.today() )+'\n')
-    
+    #print("Start reading database, init_sets:", init_sets) 
     # mod = __import__("gdbm")
     # d = shelve.Shelf(mod.open(databasefile, protocol=1))
 
