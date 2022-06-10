@@ -179,6 +179,7 @@ vasp_other_keys = [
 'CORE_C',
 'EB_K',
 'LVDW_EWALD',
+'NWRITE',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -213,7 +214,8 @@ gaussian_keys = [
 'job_type',
 'optional',
 'multiplicity',
-'charge'
+'charge',
+'SCRF',
 ]
 
 
@@ -300,7 +302,7 @@ class InputSet():
         self.des   = "" # description
         self.potdir = {}
         self.units = "vasp"
-        self.calculator = calculator
+        self.calculator = calculator # 'vasp', 
 
         if self.calculator is None:
             printlog('Error! Please provide calculator type!')
@@ -352,6 +354,9 @@ class InputSet():
         Print set
 
         """
+        if hasattr(self, 'vasp_params') and self.vasp_params:
+            self.params = self.vasp_params
+            self.calculator = 'vasp'
         for key in self.params:
             if self.params[key] == None: 
                 continue
@@ -856,6 +861,12 @@ def inherit_iset(ise_new, ise_from, varset, override = False, newblockfolder = N
 
     old = varset[ise_from]
 
+    if hasattr(old, 'vasp_params') and old.vasp_params: # for compatability after renaming vasp_params to params
+        old.params = old.vasp_params
+        old.calculator = 'vasp'
+
+
+
     all_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys+aims_keys+gaussian_keys
 
     for key in all_keys: #check if new keys was added
@@ -958,7 +969,7 @@ def init_default_sets(init = 0):
         s = InputSet(setname, calculator = 'vasp') #default starting set without relaxation
         s.kpoints_file = True
         s.add_nbands = 1.25
-        s.vasp_params = {
+        s.params = {
             'NELM'      : 50,
             'IBRION'    : 1,
             'KGAMMA'    : ".TRUE.",
@@ -992,7 +1003,7 @@ def init_default_sets(init = 0):
         s = InputSet(setname, calculator = 'vasp') #default starting set without relaxation
         s.kpoints_file = True
         s.add_nbands = 1.5
-        s.vasp_params = {
+        s.params = {
             'ISTART'    : 0,
             'NELM'      : 50,
             'EDIFF'     : 1e-05,
@@ -1026,7 +1037,7 @@ def init_default_sets(init = 0):
         s = InputSet(setname, calculator = 'vasp') 
         s.kpoints_file = True
         s.add_nbands = 1.5
-        s.vasp_params = {
+        s.params = {
             'IBRION'    : 1,
             'ENCUT'     : 150,
             'EDIFFG'    : -0.05,

@@ -166,7 +166,7 @@ def push_to_server(files = None, to = None,  addr = None):
 
     if header.ssh_object:
         for file in files:
-            # print(file, to)
+            #print(file, to+'/'+os.path.basename(file))
             header.ssh_object.put(file,  to+'/'+os.path.basename(file) )
         out = ''
 

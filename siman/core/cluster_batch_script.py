@@ -343,7 +343,7 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
 
             files_key_dict = {"o": "OUTCAR",
                               "s": "CONTCAR",
-                              "i": "INCAR",
+                              # "i": "INCAR", #bad idea for INCAR
                               "e": "EIGENVAL",
                               "v": "CHG",
                               "c": "CHGCAR",
@@ -358,6 +358,13 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
                               "z": "OSZICAR",
                               "w": "WAVECAR",
                               "f": "WAVEDER"}
+
+            if 'a' in savefile:
+                savefile+='a0a2' # for compatibility with previous behavior
+
+            if header.SAVE_CONTCAR:
+                savefile+='s'
+
 
             for i in files_key_dict.keys():
                 if i in savefile:
@@ -642,7 +649,7 @@ def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, 
 
 
 def write_footer(cl, set_mod = '', run_tool_flag = True, 
-    savefile = None, final_analysis_flag = True, neb_flag = None, f = None, mpi = False, corenum = 1):
+    savefile = None, final_analysis_flag = True, neb_flag = None, f = None, mpi = False, corenum = 1, option = None,parrallel_run_command=None):
     """footer"""
     
 
@@ -668,6 +675,13 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
         start = '1'+name_mod+'.OUTCAR '
         final = '2'+name_mod+'.OUTCAR '
+        startC = start.replace('OUT','CONT')
+        finalC = final.replace('OUT','CONT')
+        start_folder = '00'
+        if nim+1 < 10: 
+            final_folder = '0'+str(nim+1)
+        else:
+            final_folder = str(nim+1)
 
 
 
@@ -684,17 +698,23 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
         else:
             
             if run_tool_flag:
-                f.write('export PATH=$PATH:'+header.cluster_home+'/tools/vts/\n') #header.project_path_cluster
+                if hasattr(cl, 'neb_external_files') and cl.neb_external_files:
+                    #only 1.CONTCAR and 2.CONTCAR should be copied to start and end images
+                    ff = start_folder 
+                    lf = final_folder
+                    f.write('cp '+ff+'/POSCAR '+ff+'/POSCAR_init\n')
+                    f.write('cp '+lf+'/POSCAR '+lf+'/POSCAR_init\n')
+                    f.write('cp '+startC+ff+'/POSCAR\n')
+                    f.write('cp '+finalC+lf+'/POSCAR\n')
+                else:
+                    f.write('export PATH=$PATH:'+header.cluster_home+'/tools/vts/\n') #header.project_path_cluster
 
-                f.write('nebmake.pl '+ start.replace('OUT','CONT') + final.replace('OUT','CONT') + nim_str +' \n')
+                    f.write('nebmake.pl '+ startC + finalC + nim_str +' \n')
 
-
-        if nim+1 < 10: 
-            nim_plus_one_str = '0'+str(nim+1)
 
         if run_tool_flag:
             f.write('cp '+start +  '00/OUTCAR\n')
-            f.write('cp '+final +  nim_plus_one_str + '/OUTCAR\n' )
+            f.write('cp '+final +  final_folder + '/OUTCAR\n' )
 
 
         cl.update_incar(parameter = 'IMAGES', value = nim, write  =1, f  = f)
@@ -929,7 +949,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
             # print(savefile)
             # sys.exit()
             contcar_file, subfolders = write_footer(self, set_mod = set_mod, run_tool_flag = run_tool_flag, savefile = savefile,
-             final_analysis_flag = final_analysis_flag, neb_flag = neb_flag, f = f, mpi = mpi, corenum = corenum)
+             final_analysis_flag = final_analysis_flag, neb_flag = neb_flag, f = f, mpi = mpi, corenum = corenum, option = option, parrallel_run_command=parrallel_run_command)
 
         
         if k < nsets-1 and contcar_file:

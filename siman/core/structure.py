@@ -921,6 +921,8 @@ class Structure():
             st = self
             oxi = []
             for j, z_val, el in zip(range(st.natom), st.get_elements_zval(), st.get_elements()):
+                # if el == 'Ni':
+                    # print(z_val, st.charges[j])
                 oxi.append( z_val - st.charges[j] )
             st.oxi_state = oxi
         

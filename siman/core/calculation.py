@@ -51,7 +51,6 @@ rms_between_structures, rms_between_structures2)
 from siman.set_functions import InputSet, aims_keys
 
 
-
 class Calculation(object):
     """Main class of siman. Objects of this class contain all information about first-principles calculation
         List of important fields:
@@ -67,7 +66,7 @@ class Calculation(object):
         if inset:
             self.set = copy.deepcopy(inset)
         else:
-            self.set = InputSet()
+            self.set = InputSet(calculator = self.calculator)
         
         # if self.set.set_sequence:
 
@@ -99,6 +98,9 @@ class Calculation(object):
         """Reads geometrical data from filename file in abinit format
             should be moved to Structure class
         """
+        from siman.classes import empty_struct
+        from siman.core.structure import Structure
+
         if self.path["input_geo"] == None:
             self.path["input_geo"] = filename
 
@@ -989,7 +991,13 @@ class Calculation(object):
 
         # if self.set.kpoints_file  == False:#self.set.vasp_params['KSPACING']:
         #     N = N_from_kspacing
+        if hasattr(self.set, 'k_band_structure'):
+            band_structure = self.set.k_band_structure
+        else:
+            band_structure = None
         kspacing = self.set.vasp_params['KSPACING']
+        # self.set.printme()
+        # print(self)
         # print(kspacing)
         # sys.exit()
         # print (self.set.kpoints_file)
@@ -1018,7 +1026,9 @@ class Calculation(object):
 
             N = N_from_kspacing
             printlog('check_kpoints(): k-points are determined from kspacing',kspacing)
-
+        elif band_structure:
+            printlog('check_kpoints(): the following path is used for band structure ',band_structure)
+            N = None
         else:
             # print(self.dir)
             N = None
@@ -1150,7 +1160,14 @@ class Calculation(object):
 
         return cl.state 
 
+    def push_file(self, file, subfolder=''):
+        """
+        Upload file to server to calculation folder into *subfolder*
+        """
 
+        push_to_server([file],  self.project_path_cluster +'/'+ self.dir + '/'+subfolder, self.cluster_address)
+
+        return  
 
     def get_file(self, filetype = '', nametype = '', up = 'up1', root = 0):
         """

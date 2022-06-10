@@ -663,6 +663,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'res_params' - dictionary with parameters transfered to res_loop()
 
             - 'nodes' - number of nodes for sqedule system, currently works only for PBS
+            - 'neb_external_files' - path to folder with geo files for NEB in VASP format
 
     Comments:
         
@@ -819,7 +820,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 for inputset in setlist:
                     for v in verlist:
                         id_base = (it,inputset,v)
-
                         inherit_icalc(inherit_option, it_new, v, id_base, calc, st_base = input_st, id_from = id_from, confdic = confdic,
                             it_folder = section_folder, occ_atom_coressp = occ_atom_coressp, i_atom_to_remove = i_atom_to_remove,
                             ortho = ortho, mul_matrix = mul_matrix, override =override, **inherit_args)
@@ -1785,7 +1785,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         cl.calc_method = calc_method
 
-
+        # print(input_st)
         if input_st:
             if not isinstance(input_st, Molecule) and not isinstance(input_st, Structure):
                 printlog('Error! input_st should be of type Structure() or Molecule')
@@ -1955,7 +1955,16 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 else:
                     list_to_copy.extend( cl.make_kpoints_file() )  
 
-
+                if 'neb_external_files' in params:
+                    ef = params['neb_external_files']+'/' 
+                    cl.neb_external_files  = ef 
+                    neb_folders = [ f.name for f in os.scandir(params['neb_external_files']) if f.is_dir() ]
+                    for fld in neb_folders:
+                        ""
+                        #cl.push_file(ef+fld)
+                    list_to_copy.extend([ef+fld for fld in neb_folders])
+                    #print(list_to_copy)
+                    #sys.exit()
                 
                 write_batch_body(cl, mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile, 
@@ -2108,6 +2117,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
     # hstring = ("%s    #on %s"% (traceback.extract_stack(None, 2)[0][3],   datetime.date.today() ) )
+    printlog('Starting inherit_icalc', imp = 'n')
+    
     hstring = "inherit_icalc(it_new = '{:s}', ver_new = {:s}, id_base = {:s}, id_from = {:s})   # on {:s}".format(
         it_new, str(ver_new), str(id_base), str(id_from), str( datetime.date.today())   )
     if hstring != header.history[-1]: 
@@ -2557,16 +2568,17 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     new.init = st
     # print(new.init.select)
     # sys.exit()
+    # print(geo_folder)
 
-
-    if isinstance(new, Structure):
+    if isinstance(st, Structure):
         new.write_geometry('init', des, override = override)
-    
+        printlog('Write_geometry using VASP object, please make more general', imp = 'n')
     if geo_folder:
         st.write_xyz(filename=geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new))
     else:
         st.write_xyz()
 
+    # sys.exit()
 
 
 

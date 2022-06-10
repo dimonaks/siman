@@ -39,6 +39,7 @@ warnings = 'yY' # level of warnings to show: n - all, e - normal, y - important,
 #Global constants, can be overriden in project_conf.py and simanrc.py
 FROM_ONE = None # atom numbering convention; allows to override the default behaviour of functions where atomic numbers are provided as arguments
 PATH2ARCHIVE_LOCAL  = None
+SAVE_CONTCAR = 1 # adds 's' to savefile argument alowing to move CONTCAR to 1.CONTCAR
 
 #Global variables
 final_vasp_clean     = True 

@@ -1,0 +1,87 @@
+SIMAN documentation, makes DFT calculation easy  
+https://siman.readthedocs.io/en/latest/ - Autodoc  
+https://pypi.org/project/siman/  - install with pip  
+Aksyonov et. al, *Understanding migration barriers for monovalent ion insertion in transition metal oxide and phosphate based cathode materials: A DFT study*, [Comp. Mat. Sci. 154, 449-458, 2018](https://doi.org/10.1016/j.commatsci.2018.07.057)  
+## Content
+
+- [Home](Home)
+- [Installation](Installation)
+- [Configuration](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/Configure.ipynb)
+- [Faq](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/FAQ.ipynb)
+- [Configuration parameters](Configuration_parameters)
+- [For developers](Develop)
+### Tutorials
+#### General
+  - [1. Making VASP calculations including optimization of lattice constants](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/create_vasp_calculation.ipynb) 
+
+  - [2. Create supercells](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/supercells.ipynb) 
+
+  - [3. DOS calculation](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/dos.ipynb) 
+
+  - [4. Band structure calculation](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/bands.ipynb) 
+
+  - [5. Bader charges calculation](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/bader.ipynb) 
+
+#### Geometrical
+- [Point defects](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/simanaks/tutorials/geo_point_surf/point_defects.ipynb)
+- [Surfaces](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/simanaks/tutorials/geo_point_surf/surface.ipynb)
+- [Build arbitrary surfaces](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/simanaks/tutorials/surfaces.ipynb)
+
+#### Advanced calculations
+  - [6. Calculate migration barriers](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/neb.ipynb) 
+  - [7. Wrapper for migration barriers (beta)](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/calc_barriers_subroutine.ipynb)
+
+  - [8. Occupation matrix control](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/OMC.ipynb)
+
+  - [9. Reconstruction of surface with Monte-Carlo method](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/simanaks/tutorials/surface_MC.ipynb)
+
+#### Specific for Li-ion cathode materials
+  - [Create deintercalated structure](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/deintercalate.ipynb) 
+
+
+#### Additional control of siman
+  - [Changing calculation parameters](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/creating_sets.ipynb) 
+ 
+  - [Choosing k-points](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/kpoints.ipynb) 
+
+  - [Reading xyz files](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/read_xyz.ipynb) 
+
+
+#### Drafts
+  - [Plotting DOS grids](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/simanaks/tutorials/DOS_grid.ipynb)
+
+#### Currently relevant only for Skoltech users
+  - [Working with CEE database](http://nbviewer.jupyter.org/github/dimonaks/siman/blob/master/tutorials/working_with_database.ipynb)
+
+
+- [TODO](TODO)
+
+
+
+
+
+Instalation:
+# For Windows Users
+- Install [Anaconda](https://www.continuum.io/downloads).
+- Run in command line *pip3 install siman*
+# For Linux and Mac Users
+- Run in command line *sudo pip3 install siman*
+- If you want to use IPython Notebook you can install just [IPython](https://ipython.org/install.html) or [Jupyter Notebook](https://jupyter.readthedocs.io/en/latest/install.html)
+
+
+# Additional packages 
+for add_neb() and void search you may need to compile C++ file findpores.cpp with make_findpores in Siman folder
+
+sudo pip3 install adjustText - required for fit_and_plot() extension
+
+
+# Installation from source for experts
+- Install python3 and numpy
+- Download latest siman package from https://github.com/dimonaks/siman/archive/master.zip
+    and unpack into your folder
+- Inside the folder run sudo pip3 install . or just add path to package in your python project
+- For full functionality install dependencies: matplotlib, [paramiko](http://www.paramiko.org/), [pymatgen](http://pymatgen.org/), [ase](https://wiki.fysik.dtu.dk/ase/), six, tabulate, pandas, scipy
+
+
+
+

@@ -1,6 +1,6 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
-import os, math, copy, glob
+import os, math, copy, glob, shutil
 from siman import header
 from siman.core.calculation import Calculation
 from siman.core.structure import Structure
@@ -26,9 +26,9 @@ from siman.set_functions import InputSet, aims_keys
 class CalculationVasp(Calculation):
     """Methods for calculations made using VASP DFT code"""
     def __init__(self, inset = None, iid = None, output = None):
+        self.calculator = 'vasp'
         super(CalculationVasp, self).__init__(inset, iid, output)
         self.len_units = 'Angstrom'
-        self.calculator = 'vasp'
         self.init = Structure()
         self.end = Structure()
 
@@ -1423,6 +1423,10 @@ class CalculationVasp(Calculation):
             ylim = (-12,6)
 
         # sys.exit()
+
+        if not self.path.get('kpoints'):
+            self.path['kpoints'] = self.dir+'/KPOINTS'
+
         v = BSVasprun(xml_file)
         bs = v.get_band_structure(kpoints_filename = self.path['kpoints'], line_mode = True)
         plt = BSPlotter(bs,)

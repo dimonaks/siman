@@ -95,8 +95,11 @@ class CalculationGaussian(Calculation):
         job_type = sp.get('job_type')
         spin_multiplicity = sp.get('multiplicity')
         charge = sp.get('charge')
+        SCRF = sp.get('SCRF')
         # route_parameters = None#{"SCF":"Tight"}
         route_parameters = {job_type:''}
+        if SCRF:
+            route_parameters[SCRF] = ''
         mem = self.cluster.get('memory')
         if not mem:
             printlog('Warning! no memory limit in cluster description, I set default of 24GB')
@@ -191,7 +194,10 @@ class CalculationGaussian(Calculation):
 
         # cl.state = check_output(filename, 'Normal termination of Gaussian', load)
         cl.state = check_output(filename, 'Elapsed time', load)
-        
+        cl.homo = 0
+        cl.lumo = 0
+        cl.dipole = 0
+
         if "4" in cl.state:
 
             cl.read_output_file()
@@ -203,16 +209,18 @@ class CalculationGaussian(Calculation):
 
             nelec = go.electrons[0]
 
-            eigen = go.eigenvalues[Spin.up]
+            # print(go.eigenvalues)
+            if go.eigenvalues:
+                eigen = go.eigenvalues[Spin.up]
 
             # print(eigen)
 
-            cl.homo = eigen[nelec-1]*to_eV
-            cl.lumo = eigen[nelec]*to_eV
-            # print(homo, lumo, homo  - lumo)
+                cl.homo = eigen[nelec-1]*to_eV
+                cl.lumo = eigen[nelec]*to_eV
+                # print(homo, lumo, homo  - lumo)
             cl.gap = cl.lumo - cl.homo 
-            # print(go.MO_coefficients)
-            # printlog(outstr)
+                # print(go.MO_coefficients)
+                # printlog(outstr)
 
             head   = 'Energy | Dipole, D | HOMO, eV | LUMO, eV | Gap, eV | basis'
             basis = cl.set.params['basis_set']

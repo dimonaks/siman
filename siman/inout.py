@@ -71,11 +71,11 @@ def read_xyz(st, filename, rprimd = None):
     """
     with open(filename,'r') as f:
         nlines = int(f.readline())
-        st.name = f.readline().strip()
+        st.name = f.readline().strip().split()[0]
         
         # try:
         if 'SG' in st.name:
-            printlog('Error! Space group record detected in xyz, please finish code', imp = 'Y')
+            printlog('Warning! Space group record detected in xyz, please finish code', imp = 'Y')
             # st.name.split('SG')
 
 

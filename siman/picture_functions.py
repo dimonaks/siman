@@ -24,7 +24,7 @@ try:
 except:
     print('mpl_toolkits or matplotlib are not avail')
 
-
+from matplotlib import gridspec 
 try:
     from adjustText import adjust_text
     adjustText_installed = True
@@ -673,9 +673,9 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
 def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
-    xlim = None, ylim = None,
+    xlim = None, ylim = None, legend = 0,
     image_name = None, title = None, bottom = 0.18, hspace = 0.15, barwidth = 0.2,
-    data1 = [],data2 = [],data3 = [],data4 = [],
+    data1 = [],data2 = [],data3 = [],data4 = [], hor_lines = None,
     **data):
 
     width = barwidth      # the width of the bars
@@ -792,12 +792,12 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
         ax2.axis('tight')
 
     elif data1 and not data2:
-        # fig = plt.figure(figsize=(10,5))   #5:7 ratio for A4, 
-        gs = gridspec.GridSpec(1,2, width_ratios =[9,1],
-                               height_ratios=[1,0])                               
-        gs.update(top=0.95, bottom=bottom, left=0.1, right=0.98, wspace=0.15, hspace=hspace)
+        fig = plt.figure(figsize=(10,5))   #5:7 ratio for A4, 
+        # gs = gridspec.GridSpec(1,2, width_ratios =[9,1])#, height_ratios=[1,1])                               
+        # gs.update(top=0.95, bottom=bottom, left=0.1, right=0.98, wspace=0.15, hspace=hspace)
 
-        ax1 = plt.subplot(gs[0])
+        # ax1 = plt.subplot(gs[0])
+        ax1 = plt.subplot()
         # ax2 = plt.subplot(gs[1])
 
         for ax, data in (ax1, data1),:
@@ -817,22 +817,31 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
             # ax.set_xticklabels(xlabels , rotation=70 )
 
             ax.set_xticks(ind+width+len(data)*width/2)
-            
-        names1 = [ n1 + '; ' + n2 for n1, n2 in  zip( data1[0][0], data1[1][0] ) ] # 
+        
+        if len(data1) == 2:
+            # names1 = [ n1 + '; ' + n2 for n1, n2 in  zip( data1[0][0], data1[1][0] ) ] # 
+            names1 = [ n1  for n1 in  data1[0][0] ] # 
+
+        else:
+            names1 = [ n1  for n1 in  data1[0][0] ] # 
 
         ax1.set_xticklabels( names1, rotation = 80 ) # Names of configurations on x axis
 
         ax1.set_ylabel(ylabel)
-
-        ax1.legend(loc=2, )
-        ax1.axis('tight')
+        if legend:
+            # ax1.legend(loc=2, )
+            ax1.legend( )
+        # ax1.axis('tight')
         # ax2.axis('tight')
-
+        if ylim:
+            ax1.set_ylim(ylim)
     # ax.set_yscale('log')
     # plt.yscale('symlog', linthreshx=0.1)
 
     # ax.set_title('Scores by group and gender')
-
+    if hor_lines:
+        for line in hor_lines:
+            ax1.axhline(**line)
 
     def autolabel(rects):
         # attach some text labels
@@ -850,7 +859,7 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
 
     # plt.tight_layout()
     # elif data1: gs.tight_layout(fig)
-
+    plt.tight_layout()
     if image_name:
         printlog( "Saving image ...", str(image_name), imp = 'y')
         plt.savefig(str(image_name)+'.png', dpi = 200, format='png')
