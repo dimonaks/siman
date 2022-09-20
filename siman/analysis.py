@@ -1,6 +1,5 @@
-
-# -*- coding: utf-8 -*- 
-#Copyright Aksyonov D.A
+# Copyright (c) Siman Development Team.
+# Distributed under the terms of the GNU License.
 from __future__ import division, unicode_literals, absolute_import 
 import os, copy, shutil, sys
 import numpy as np
@@ -27,7 +26,7 @@ try:
     from pymatgen.analysis.ewald import EwaldSummation
 
 except:
-    print('pymatgen is not avail; run   pip install pymatgen')
+    print('analysis.py: pymatgen is not avail; run   pip install pymatgen')
 
 
 from siman import header
@@ -40,6 +39,24 @@ from siman.small_functions import is_list_like, makedir
 from siman.inout import write_xyz, read_xyz, write_occmatrix
 from siman.calcul import site_repulsive_e
 
+
+def assign_oxi_states(formula, charge = 0 ):
+    """
+    Assign oxidation states for the given chemical formula
+
+    INPUT:
+        - charge (float) - total electric charge of the compound
+
+
+    RETURN:
+        - Pymatgen Composition() object with assigned oxidation states
+
+    """
+    from pymatgen.core.composition import Composition
+    c = Composition(formula)
+    c = c.add_charges_from_oxi_state_guesses(target_charge = charge)
+    print(c)
+    return c
 
 def set_oxidation_states_guess(st):
     # set from guess
@@ -56,8 +73,8 @@ def calc_oxidation_states(cl = None, st = None, silent = 1):
     if cl:
         st = cl.end
         ch = cl.charges
-    # if st:
-    #     ch  = st.charges
+    if st:
+        ch  = st.charges
     
     # print(st.get_elements() )
     # print(ch)
@@ -655,8 +672,9 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
     magn1 = []
     magn2 = []
     alphas= []
-    for id in conv[n]:
-        cl = db[id]
+    for id_i in conv[n]:
+        # print(id_i)
+        cl = db[id_i]
         st = cl.end
         alist.append(cl.end.rprimd[0][0])
         etotlist.append(cl.energy_sigma0)
@@ -1076,6 +1094,7 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
                 if params.get('center_on_moving'):
                     vec = st.center_on(atom_num)
                     printlog('Centering by shifting the cell by ', vec, imp = 'y')
+                    # sys.exit()
                 else:
                     vec = np.asarray([0.,0.,0.])
                 
@@ -1546,7 +1565,7 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
             if abs(dif) > 0:
                 el_dif[el] = int(dif) 
 
-        print('The following elements are off-stoicheometry in the slab', el_dif, 'please provide corresponding chemical potentials')
+        print('The following elements are off-stoichiometry in the slab', el_dif, 'please provide corresponding chemical potentials')
         
         E_nonst = 0
         for key in el_dif:

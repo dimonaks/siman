@@ -1588,10 +1588,16 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
             curfol = struct_des[id_base[0]].sfolder
 
 
-            id_res = (id_base[0]+'.su', ise_new, 100)
 
             it_suffix = add_loop_dic.get('it_suffix')
-            # print(id_base)
+            
+            if it_suffix:
+                id_res = (id_base[0]+'.su.'+it_suffix, ise_new, 100)
+
+            else:
+                id_res = (id_base[0]+'.su', ise_new, 100)
+            
+            # print(update, id_res, id_res not in calc, it_suffix)
             # sys.exit()
             if update or id_res not in calc:
                 printlog('Scale region is ', scale_region, imp = 'y')
@@ -1605,10 +1611,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # sys.exit()
                 # print(id_res, it_suffix)
                 res_loop(*id_res, up = up_res, readfiles= readfiles, 
-                    choose_outcar = choose_outcar, show = 'e', check_job = 0, it_suffix = it_suffix)
+                    choose_outcar = choose_outcar, show = 'e', check_job = 0)#, it_suffix = it_suffix)
                 if show_fit:
                     res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, 
-                        choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0 , it_suffix = it_suffix)
+                        choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0)# , it_suffix = it_suffix)
                 # sys.exit()
                 if '2'  in calc[id_res].state or '5' in calc[id_res].state:
                     ''
@@ -1668,7 +1674,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
         it_suffix = add_loop_dic.get('it_suffix')
         if it_suffix:
-            base_id = (base_id[0]+'.'+it_suffix, base_id[1], base_id[2])
+            ''
+            # base_id = (base_id[0]+'.'+it_suffix, base_id[1], base_id[2])
 
 
         if base_id:
@@ -2276,7 +2283,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 idA0 = optimize_cell( (itP0, dic['scaling_set.'+mode_id], curver), cat, scale_regions[new_ion], update, irun = '1')
 
             elif 'make_ds'  in mode:
-                
+
                 itP0 = remove_cations(del_ion.split(), cat, curver, update)
 
                 idA0 = optimize_cell( (itP0, dic['scaling_set.'+mode_id], curver), cat, scale_regions[del_ion.split()[-1]+'_removal'], update, irun = '1')
@@ -4475,6 +4482,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             # cl.me()
 
             if target_x == 0:
+                # print(up_scale)
+                # sys.exit()
                 a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, 
                 upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                 fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 
@@ -5274,3 +5283,209 @@ def calc_interface(substrate_cl, film_cl, sub_surface, sl, fl, mi = 0, sh = -0.5
     info = analyze(cl, info_key, st_init)
 
     return info 
+
+
+
+
+
+def replace_atoms(it, ise, st, el1, el2, mag = 0.6, x = None, sgs  = None, 
+    up = 0, test = 1, it_folder = 'replaced', n_st = 2, up_sts = 0, gmt = 0, mode = 'rep', up_res = 'up1'):
+    """
+    Wrapper for replacing atoms according to symmetry
+
+    sgs - list of space groups
+    # sgs = None will search for all possible
+    test - check structures 
+    n_st - number of structures for each symmetry
+
+    up - update everithing
+    up_sts - generate structures again
+    gmt - show magnetic moments
+    """
+    from siman.geo import replace_x_based_on_symmetry
+    
+
+    if sgs is None:
+        replace_x_based_on_symmetry(st, el1, el2, x = x, info_mode = 1, sg = sgs, silent = 0)
+    else:
+        for sg in sgs:
+
+
+            suf = '_'+el1+'_'+el2+str(x).replace('.', '')+'sg'+str(sg)
+            idd = (it+suf, ise, 1)
+            
+            if idd not in db or up or up_sts:
+                sts, atrs = replace_x_based_on_symmetry(st, el1, el2, x = x, sg = sg, silent = 0, mag = mag, mode = mode)
+            
+            for i in range(n_st):
+                if i == 0:
+                    sufn = ''
+                else:
+                    sufn = '_'+str(i+1)
+                suf2= suf+sufn
+                idd = (it+suf2, ise, 1)
+            
+                if idd not in db or up:
+                    # print(sg, sts)
+                    st1 = sts[i]
+                    st1.name+=suf2
+                    # st1.magmom = [None]
+                    if not test:
+                        add(*idd, up = 'up2', input_st = st1, it_folder = it_folder+'/'+it)
+                    else:
+                        st1.write_poscar()
+                        # st1.get_mag_tran()
+                        # st1.nn(34)
+                        # st1.get_mag_tran()
+                        # st2.get_mag_tran()
+                        # st1.jmol(r=2)
+                        # st2.jmol(r=2)
+                else:
+                    ''
+                    res(*idd, up = up_res)
+                    if gmt:
+                        db[idd].gmt()
+
+    return
+
+
+
+def remove_atoms(it, ise, st, el, mag = 0.6, x = None, sgs  = None, 
+    up = 0, test = 1, it_folder = 'removed', n_st = 2, up_sts = 0, gmt = 0, up_res = 'up1'):
+    """
+    Wrapper for removing atoms according to symmetry
+
+    sgs - list of space groups
+    # sgs = None will search for all possible
+    test - check structures 
+    n_st - number of structures for each symmetry
+
+    up - update everithing
+    up_sts - generate structures again
+    gmt - show magnetic moments
+    """
+    from siman.geo import remove_x
+    
+    sts = []
+    if sgs is None:
+        remove_x(st, el, x = x, info_mode = 1, sg = sgs, silent = 0)
+    else:
+        for sg in sgs:
+
+
+            suf = '_'+el+str(x).replace('.', '')+'sg'+str(sg)
+            idd = (it+suf, ise, 1)
+            
+            if idd not in db or up or up_sts:
+                sts = remove_x(st, el, x = x, sg = sg, silent = 0, return_sts = 1)
+            
+            # if len(sts) < n_st:
+                # n_st = len(sts)
+            for i in range(n_st):
+                if i == 0:
+                    sufn = ''
+                else:
+                    sufn = '_'+str(i+1)
+                suf2= suf+sufn
+                idd = (it+suf2, ise, 1)
+            
+                if idd not in db or up:
+                    # print(sg, sts)
+                    if i >= len(sts):
+                        continue
+                    st1 = sts[i]
+                    st1.name+=suf2
+                    # st1.magmom = [None]
+                    if not test:
+                        add(*idd, up = 'up2', input_st = st1, it_folder = it_folder+'/'+it)
+                    else:
+                        st1.write_poscar()
+                        # st1.get_mag_tran()
+                        # st1.nn(34)
+                        # st1.get_mag_tran()
+                        # st2.get_mag_tran()
+                        # st1.jmol(r=2)
+                        # st2.jmol(r=2)
+                else:
+                    ''
+                    res(*idd, up = up_res)
+                    if gmt:
+                        db[idd].gmt()
+
+    return
+
+
+
+
+
+def get_voltage_profile(objs = None, up = 0):
+    """
+    objs (dict) - dictionary of calculation objects with concetration used as keys; an example is below
+    up (bool) - update res_loop
+    """
+
+    #structures found by atat
+    if 0:
+        objs = { # concentration of vacancies, example
+        0.0   :db['xnvp.2uce.0'],
+        0.125 :db['xnvp.2uce.122'],
+        0.25  :db['xnvp.2uce.195'],
+        0.375 :db['xnvp.2uce.54'],
+        0.625 :db['xnvp.2uce.71'],
+        0.75  :db['xnvp.2uce.73'],
+        1.0   :db['xnvp.2uce.1'],
+        }
+    x1 = list(sorted(objs.keys()))
+
+
+
+    ob = 1
+
+    if ob == 1 :
+        objs = objs
+        xs = x1 # vac concentration
+        invert = 0 # invert; if concetration of Li is provided
+        ylim = (1.8, 4.7)
+
+
+    es2 = []
+    xs2 = []
+    x_prev = None
+    V_prev = None
+
+    for i in range(len(xs)):
+        x = xs[i]
+        cl = objs[xs[i]]
+        # if not hasattr(cl, 'e0'):
+        if up:
+            cl.res(up = 'up1')
+        name = 'Na'+str(1-x)+'VPO4F'
+        # print(name)
+        # cl.end.write_cif(filename = 'cif/'+name)
+
+
+    for i in range(len(xs))[:-1] :
+        x = xs[i]
+
+        V = calc_redox(objs[xs[i+1]], objs[xs[i]])['redox_pot']
+        # print(V)
+        if V_prev is not None:
+            es2.append(V_prev)
+            xs2.append(x)
+        es2.append(V)
+        xs2.append(x)
+        V_prev = V
+
+    xs2.append(1)
+    es2.append(V_prev)
+
+    if invert:
+        es_inv = list(reversed(es2))
+    else:
+        es_inv = es2
+    # xs_inv = list(reversed(xs2))
+
+    # print(es_inv)
+    # print(xs_inv)
+    return xs2, es_inv, ylim
+

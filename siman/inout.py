@@ -3,6 +3,7 @@ from __future__ import division, unicode_literals, absolute_import
 import os, io, re, math, sys
 from csv import reader
 
+
 import numpy  as np
 try:
     import pandas as pd 
@@ -25,6 +26,32 @@ from siman.geo import local_surrounding, replic
 
 
 
+def determine_file_format(input_geo_file):
+
+    supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif', 'xyz':'.xyz'} #format name:format specifier
+
+    if ('POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file) and not '.geo' in input_geo_file:
+        input_geo_format = 'vasp'
+    elif '.vasp' in input_geo_file:
+        input_geo_format = 'vasp'
+    elif '.cif' in input_geo_file:
+        input_geo_format = 'cif'
+    elif '.geo' in input_geo_file:
+        input_geo_format = 'abinit'
+    elif '.xyz' in input_geo_file:
+        input_geo_format = 'xyz'
+    elif '.gau' in input_geo_file:
+        input_geo_format = 'gaussian'
+
+
+    else:
+        printlog("Attention! File format of",input_geo_file ,"is unknown, should be from ", supported_file_formats, 'skipping')
+        input_geo_format = None
+    return input_geo_format
+
+
+
+
 def read_csv(filename, delimiter =','):
     with open(filename, 'r') as read_obj:
         # pass the file object to reader() to get the reader object
@@ -44,11 +71,11 @@ def read_xyz(st, filename, rprimd = None):
     """
     with open(filename,'r') as f:
         nlines = int(f.readline())
-        st.name = f.readline().strip()
+        st.name = f.readline().strip().split()[0]
         
         # try:
         if 'SG' in st.name:
-            printlog('Error! Space group record detected in xyz, please finish code', imp = 'Y')
+            printlog('Warning! Space group record detected in xyz, please finish code', imp = 'Y')
             # st.name.split('SG')
 
 
@@ -1703,6 +1730,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     except:
         max_tdrift = 0
 
+    self.force_prefix = force_prefix
     self.maxforce_list = maxforce
     self.average_list = average
 
@@ -1931,19 +1959,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
 
-    if 'fo' in show:
-        # print "Maxforce by md steps (meV/A) = %s;"%(str(maxforce)  )
-        printlog("\n\nMax. F."+force_prefix+" (meV/A) = \n{:};".format(np.array([m[1] for m in maxforce ])[:]  ), imp = 'Y'  )
-        # print "\nAve. F. (meV/A) = \n%s;"%(  np.array(average)  )
-        # import inspect
-        # print inspect.getargspec(plt.plot).args
-        # print plt.plot.__doc__
-        if 'p' in show[0]:
-            plt.plot(maxforce, )
-            plt.xlabel('MD step')
-            plt.ylabel('Max. force on atom (meV/$\AA$)')
-            plt.show()
-    
+
     if 'sur' in show:
         self.sumAO = {}
         self.devAO = {}
@@ -2057,7 +2073,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # plt.plot(np.array(sur[3]).round(2), tot_mag_by_atoms[-1][numb]) mag vs dist for last step
         
         # print ('Moments on all mag atoms:\n', tot_mag_by_atoms[-1][ifmaglist].round(3))
-        if 'p' in show:
+        if 'magp' in show:
             plt.plot(np.array(tot_mag_by_mag_atoms)) # magnetization vs md step
             plt.show()
             plt.clf()
@@ -2279,3 +2295,91 @@ def read_atat_fit_out(filename, filter_names = None, i_energy = 1):
             count+=1
         # print(a)
     return X, E
+
+
+
+
+
+
+def read_structure(filename = None, format = None, object_type = None, silent = 0):
+    """
+    Smart wrapper for reading files with atomic structure. New version of smart_structure_read 
+
+
+    INPUT:
+        - filename (str)
+        - format (str) - file format. Normally the format is determined automatically from the name or extension
+            - 'abinit'
+            - 'vasp'
+            - 'cif'
+            - 'gaussian'
+        - object_type (str)
+            - 'molecule' - based on pymatgen
+            - 'structure' - siman internal Structure() class
+
+
+    returns Structure() if file is found and read successfully otherwise None
+    """
+
+    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'vasp-phonopy': 'POSCAR*', 'cif':'*.cif'}
+
+    input_geo_format = determine_file_format(filename)
+    printlog(input_geo_format,' format is detected')
+
+
+
+    file_exists = os.path.exists(filename)
+
+    if not file_exists:
+        if not silent:
+            printlog('Warning! file', filename, 'does not exist, return None')
+        return None
+
+    if input_geo_format   == 'abinit':
+        # cl.read_geometry(input_geo_file)
+        ''
+    
+    elif input_geo_format == 'vasp':
+        # cl.read_poscar(input_geo_file, version = curver)
+        ''
+
+    elif input_geo_format == 'cif':
+        ''
+        # cif2poscar(input_geo_file, input_geo_file.replace('.cif', '.POSCAR'))
+        # input_geo_file = input_geo_file.replace('.cif', '.POSCAR')
+        # cl.read_poscar(input_geo_file)
+
+    elif input_geo_format == 'xyz':
+        from siman.core.structure import Structure
+        from siman.core.molecule import Molecule
+
+        if object_type == 'structure' or object_type is None:
+            st = Structure()
+            st = read_xyz(st, filename)
+        elif object_type == 'molecule':
+            # st = Molecule()
+            st = Molecule.from_file(filename)
+            st.filename = filename
+            st.name = os.path.basename(filename).split('.')[0]
+
+
+
+    elif input_geo_format == 'gaussian':
+        ''
+        from pymatgen.io.gaussian import GaussianInput
+        from siman.core.molecule import Molecule
+        gaus = GaussianInput(mol = None)
+        st = gaus.from_file(filename).molecule
+
+        # st = Molecule(pymatgen_molecule_object = st)
+        st = Molecule.cast(st, filename)
+        # print(st)
+        st.name = os.path.basename(filename).split('.')[0]
+    else:
+        printlog("Error! smart_structure_read(): File format", input_geo_format, "is unknown")
+
+
+        # printlog("Error! Input file was not properly read for some reason")
+    
+
+    return st

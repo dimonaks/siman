@@ -20,7 +20,12 @@ from siman.inout import write_xyz
 from siman.geo import local_surrounding, local_surrounding2, xcart2xred, xred2xcart
 from siman.small_functions import block_print, enable_print
 
-lib = cdll.LoadLibrary(os.path.dirname(__file__)+'/libfindpores.so')
+libfile = os.path.dirname(__file__)+'/libfindpores.so'
+if os.path.exists(libfile):
+    lib = cdll.LoadLibrary(libfile)
+else:
+    lib = None
+    printlog('Warning! libfindpores.so is not available, search of voids is not possible. Please compile it inside siman folder using makefile')
 
 
 def create_c_array(pylist, ctype):

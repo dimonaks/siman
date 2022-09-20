@@ -158,20 +158,25 @@ def get_zr_range(st, thickness, zr):
     return zr_range
 
 
-def exchange_atoms(st, xcart_voids, z2, thickness, zr = None, condition = None, ):
+def exchange_atoms(st, xcart_voids, zr = None, condition = None, params = None):
     """
     Swap two atoms 
-    xcart_voids - list of xcart of voids
-    voidz - list with z voids; actually either None or [300]
-    zr - position of surface
+
+    INPUT:
+        - st (Structure) - input structure
+        - xcart_voids (list) - xcart of voids
+        - zr (float) - reduced position of the surface
+        - condition (str) - possible additional conditions:
+            - 'no_surface_TM' - do not make swaps which reduce oxygen coordination of transition metals
+            - 'max_avdist_increase' - maximum allowed increase of TM-O distance after swapping; 
+                    (for example larger than 0.5 A allows to exclude swaps to surface) 
+
+        - params (dict) - params from json
 
 
-    condition (str) - possible additional conditions
-
-        'no_surface_TM' - do not make swaps which reduce oxygen coordination of transition metals
-            max_avdist_increase - maximum allowed increase of TM-O distance after swapping; 
-                (for example larger than 0.5 A allows to exclude swaps to surface) 
-        
+    COMMENTS:
+        voidz - list with z voids; actually either None or [300]
+        z_groups = params.get('z_groups') # z_groups for exchange, list of lists; e.g. [[300], [42]] if None than all groups are used
 
     """
 
@@ -181,17 +186,21 @@ def exchange_atoms(st, xcart_voids, z2, thickness, zr = None, condition = None, 
     else:
         voidz = None
 
-
-    z_groups = [AM, TM]
-    if voidz:
-        z_groups.append(voidz)
+    if params.get('z_groups'):
+        z_groups = params['z_groups']
+    else:
+        z_groups = [AM, TM]
+        if voidz:
+            z_groups.append(voidz)
 
 
     printlog('All Z groups are ', z_groups)
     # sys.exit()
 
-
-    zr_range = get_zr_range(st, thickness, zr)
+    if params.get('thickness'):
+        zr_range = get_zr_range(st, thickness, zr)
+    else:
+        zr_range = None
 
     for i in range(100): # try 100 attempts until the condition is satisfied, otherwise terminate
         z_groups_cp = copy.deepcopy(z_groups)
@@ -349,9 +358,10 @@ if __name__ == "__main__":
 
     vasprun_command = params.get('vasp_run') or 'vasp'
     nmcstep = params.get('mcsteps') or 2 # minimum two steps are done
-    thickness = params.get('thickness') or 6 # minimum layer 
+    thickness = params.get('thickness') # minimum thickness of layer below the surface where exchanges are performed. If None than full cell is considered active
     temperature = params.get('temp') or 1
     xcart_voids = params.get('xvoid')
+
 
 
     if params.get('external'):
@@ -397,7 +407,7 @@ if __name__ == "__main__":
         if params.get('external'):
             st_new_init = exchange_with_external(st, zr2, thickness, external = params.get('external'))
         else:
-            st_new_init = exchange_atoms(st, xcart_voids, z2, thickness, zr = zr2, condition = 'no_surface_TM')
+            st_new_init = exchange_atoms(st, xcart_voids, zr = zr2, condition = 'no_surface_TM', params = params)
 
 
 

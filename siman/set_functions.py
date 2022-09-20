@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*- 
+# Copyright (c) Siman Development Team.
+# Distributed under the terms of the GNU License.
 from __future__ import division, unicode_literals, absolute_import, print_function
-import json
+import json, sys
 import copy
 
 """
@@ -21,7 +22,7 @@ ngkpt_dict_for_kspacings - when ngkpt is used could be problems, please test.
 
 from siman import header
 from siman.header import print_and_log, printlog;
-from siman.small_functions import is_list_like, red_prec
+from siman.small_functions import is_list_like, red_prec, is_string_like
 from siman.functions import invert
 
 #Vasp keys
@@ -55,12 +56,40 @@ vasp_ionic_keys = [
 
 
 vasp_other_keys = [
+'AGGAC',
+'LUSE_VDW',
+'PARAM1',
+'PARAM2',
+'LVDW',
+'LVHAR',
+'LCALCPOL',
+'EFIELD',
+'VDW_RADIUS',
+'VDW_SCALING',
+'VDW_CNRADIUS',
+'LWANNIER90_RUN',
+'IVDW',
+'VDW_D',
+'MDALGO',
+'TEBEG',
+'TEEND',
 'SYSTEM',
 'ISTART',
 'ICHARG',
 'KGAMMA',
 'KSPACING',
+'EFIELD_PEAD',
 'LPLANE',
+'LSEPC',
+'LSEPB',
+'OMEGAMAX',
+'ENCUTGW',
+'NBANDSGW',
+'NBANDSO',
+'NBANDSV',
+'ANTIRES',
+'NOMEGA',
+'OMEGATL',
 'NCORE',
 'NPAR',
 'LSCALU',
@@ -118,31 +147,41 @@ vasp_other_keys = [
 'LDIPOL',
 'DIPOL',
 'LVTOT',
-'TEBEG',
-'LSOL',
-'EB_K',
-'LAMBDA_D_K',
-'CORE_C',
-'MAGATOM', #atat keys
-'DOSTATIC',
-'USEPOT',
-'KPPRA',
-'SUBATOM',
-'NWRITE',
-'NBLOCK',
-'KBLOCK',
+'AEXX',
+'LDIAG',
+'METAGGA',
+'CMBJB',
+'CMBJA',
+'IMIX',
+'LPEAD',
+'LEPSILON',
+'LCALCEPS',
+'CSHIFT',
+'LOPTICS',
+'LRPA',
+'LSPECTRAL',
+'LCHARG',
 'LELF',
-'IVDW',
-'LVDW_EWALD',
+'RWIGS',
 'NUPDOWN',
-'AEXX', 
-'AGGAX', 
-'AGGAC', 
 'ALDAC',
 'LAMBDA',
+'SUBATOM',
+'KPPRA',
+'LAMBDA_D_K',
+'USEPOT',
 'M_CONSTR',
 'I_CONSTRAINED_M',
 'RWIGS',
+'LSOL',
+'EB_k',
+'TAU',
+'CORE_C',
+'EB_K',
+'LVDW_EWALD',
+'NWRITE',
+'MAGATOM',
+'DOSTATIC'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -166,16 +205,34 @@ aims_keys = [
 'spin',
 ]
 
+'put here quantum espresso keys'
+qe_keys = [
+]
+
+'gaussian keys'
+gaussian_keys = [
+'functional',
+'basis_set',
+'job_type',
+'optional',
+'multiplicity',
+'charge',
+'SCRF',
+]
+
+
 def read_vasp_sets(user_vasp_sets, override_global = False):
     """
-    Read user sets and add them to project database
-    Now for VASP
-    ###INPUT:
+    Read user sets for different calculators and add them to project database
+    Works not only for VASP but other codes as well, such as Gaussian
+    
+    INPUT:
         - varset (dict) - database dict with all sets of a project
         - user_vasp_sets (list) - list of user sets that describes creation of new sets based on inheritance 
         - override - allows to recreate all sets; can be usefull than you want to add some new property to all your sets - very dangerous to do!
 
-    ###RETURN:
+    
+    RETURN:
         - user_vasp_sets (list)
 
     """
@@ -240,16 +297,20 @@ class InputSet():
 
 
     """
-    def __init__(self, ise = None, path_to_potcar = None):
+    def __init__(self, ise = None, path_to_potcar = None, calculator = None):
         #super(InputSet, self).__init__()
         self.ise = ise
         self.name = ise
         self.des   = "" # description
         self.potdir = {}
         self.units = "vasp"
-        self.vasp_params = {}
+        self.calculator = calculator # 'vasp', 
 
-        self.params = self.vasp_params  # params for any code!
+        if self.calculator is None:
+            printlog('Error! Please provide calculator type!')
+
+        self.params = {}
+        self.vasp_params = self.params # params for any code!
         self.mul_enaug = 1
         self.history = "Here is my uneasy history( :\n"    
         self.tsmear = None 
@@ -279,6 +340,9 @@ class InputSet():
         for key in aims_keys: 
             self.params[key] = None 
 
+        for key in gaussian_keys: 
+            self.params[key] = None 
+
 
         #add to varset
         # if ise not in header.varset:
@@ -288,13 +352,26 @@ class InputSet():
 
 
     def printme(self):
-        for key in self.vasp_params:
-            if self.vasp_params[key] == None: continue
-            print_and_log( "{:30s} = {:s} ".format("s.vasp_params['"+key+"']", str(self.vasp_params[key]) ), imp = 'Y', end = '\n' )
+        """
+        Print set
+
+        """
+        if hasattr(self, 'vasp_params') and self.vasp_params:
+            self.params = self.vasp_params
+            self.calculator = 'vasp'
+        for key in self.params:
+            if self.params[key] == None: 
+                continue
+            printlog( "{:30s} = {:s} ".format("s.params['"+key+"']", str(self.params[key]) ), imp = 'Y', end = '\n' )
+
 
         printlog('ngkpt:', self.ngkpt, imp = 'Y')
+        # print(self.calculator)
 
-        printlog('POTDIR:', self.potdir, imp = 'Y', end = '\n' )
+        if hasattr(self, 'calculator') and self.calculator == 'vasp':
+            printlog('POTDIR:', self.potdir, imp = 'Y', end = '\n' )
+
+        return
 
     def update(self):
         #deprecated, but still can be usefull
@@ -354,28 +431,26 @@ class InputSet():
             s = copy.deepcopy(self)
             
         for key in param:
-            
+            # print(key)
             if key in vasp_keys:
-                s.set_vaspp(key, param[key])
+                s.set_params_dict(key, param[key])
 
             elif key == 'set_potential':
                 for key2 in param[key]:
-                    # print key2, 'key2'
                     s.set_potential(key2, param[key][key2])
 
             elif key == 'add_nbands':
-                # print param[key]
-
                 s.set_add_nbands(param[key])
 
             elif key == 'ngkpt':
                 s.set_ngkpt(param[key])
 
             elif key == 'kpoints_file':
-                if param[key]:
+                if param[key] in [1, True]:
                     s.kpoints_file = True 
+                elif is_string_like(param[key]):
+                    s.kpoints_file = param[key]
                 else:
-                    ''
                     s.kpoints_file = False
 
             elif key == 'bfolder':
@@ -385,10 +460,15 @@ class InputSet():
                 s.set_attrp(key, param[key] )
 
             elif key in aims_keys:
-                s.set_vaspp(key, param[key] )
+                s.set_params_dict(key, param[key] )
+            
+            elif key in gaussian_keys:
+                # print(key )
+                s.set_params_dict(key, param[key] )
+
             
             else:
-                print_and_log('Error! Unknown key: '+key)
+                printlog('Error! Unknown key: '+key)
                 raise RuntimeError
          
 
@@ -589,9 +669,9 @@ class InputSet():
         return
 
 
-    def set_vaspp(self, token, arg, des = "see manual"):
+    def set_params_dict(self, token, arg, des = "see manual"):
         """
-        Used for setting vasp parameters.
+        Used for setting parameters for different calculators, such as VASP, Gaussian, etc
 
         """
 
@@ -605,8 +685,8 @@ class InputSet():
                 raise TypeError
 
 
-        old = self.vasp_params.get(token)
-        self.vasp_params[token] = arg
+        old = self.params.get(token)
+        self.params[token] = arg
         
         if old == arg:
             print_and_log("Warning! You did not change  "+token+"  in "+self.ise+" set\n")
@@ -627,16 +707,16 @@ class InputSet():
         if hasattr(self, token):
             old = getattr(self, token)
             if old == arg:
-                print_and_log("Warning! You did not change  "+token+"  in "+self.ise+" set\n")
+                printlog("Warning! You did not change  "+token+"  in "+self.ise+" set\n")
             else:
                 setattr(self, token, arg)
 
                 self.history += " "+token+"  was changed from "+str(old)+" to "+str(arg) + "\n"
-                print_and_log(token+"  was changed from "+str(old)+" to "+str(arg) +" - "+ des+" in set "+self.ise+" \n")
+                printlog(token+"  was changed from "+str(old)+" to "+str(arg) +" - "+ des+" in set "+self.ise+" \n")
         
         else:
             setattr(self, token, arg)
-            print_and_log("New attribute  "+token+"  added to "+self.ise+" set\n")
+            printlog("New attribute  "+token+"  added to "+self.ise+" set\n")
             self.history += " "+token+"  was added as a new attr with "+str(arg) + " value \n"
 
         return
@@ -745,7 +825,7 @@ class InputSet():
         print('spinat', '\n'.join(wrap(mag_str)) )
 
 
-
+        return
 
 
 
@@ -783,14 +863,22 @@ def inherit_iset(ise_new, ise_from, varset, override = False, newblockfolder = N
 
     old = varset[ise_from]
 
-    for key in vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys: #check if new keys was added
-        if key not in old.vasp_params: 
-            old.vasp_params[key] = None 
+    if hasattr(old, 'vasp_params') and old.vasp_params: # for compatability after renaming vasp_params to params
+        old.params = old.vasp_params
+        old.calculator = 'vasp'
+
+
+
+    all_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys+aims_keys+gaussian_keys
+
+    for key in all_keys: #check if new keys was added
+        if key not in old.params: 
+            old.params[key] = None 
 
     if override:
-        print_and_log( "\nAttention! You have chosen to override set "+ise_new+"\n")
+        printlog( "\nAttention! You have chosen to override set "+ise_new+"\n")
     elif ise_new in varset:
-        print_and_log( "\nSet "+ise_new+" already exists. I return it without changes. Be carefull not to spoil it\n")
+        printlog( "\nSet "+ise_new+" already exists. I return it without changes. Be carefull not to spoil it\n")
         return varset[ise_new]           
 
 
@@ -801,7 +889,7 @@ def inherit_iset(ise_new, ise_from, varset, override = False, newblockfolder = N
     new.des = "no description for these set, see history"
     new.conv = {}
 
-    print_and_log( "New set "+ise_new+" was inherited from set "+ise_from+"\n")
+    printlog( "New set "+ise_new+" was inherited from set "+ise_from+"\n")
     new.history = old.history + "\nSet "+ise_new+" was inherited from: "+ ise_from +"\n"
 
     if newblockfolder:
@@ -870,15 +958,21 @@ def make_sets_for_conv(isefrom,conv,list_of_parameters,varset):
 def init_default_sets(init = 0):
     """
     Pre-defined sets for Vasp
+    Initialized in read_database(scratch = False, init_sets = 0) and can be updated with init_sets arg
     """
     varset = header.varset
+    #print('init_default_sets():, init ', init)
+    if init:
+        printlog("Initializing defaults sets")
+
+
 
     setname = 'aks'
     if init or setname not in varset: #init only once
-        s = InputSet(setname) #default starting set without relaxation
+        s = InputSet(setname, calculator = 'vasp') #default starting set without relaxation
         s.kpoints_file = True
         s.add_nbands = 1.25
-        s.vasp_params = {
+        s.params = {
             'NELM'      : 50,
             'IBRION'    : 1,
             'KGAMMA'    : ".TRUE.",
@@ -902,6 +996,7 @@ def init_default_sets(init = 0):
             'PREC'      : "Normal",
             'KSPACING'  : 0.235,
             }
+        s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
 
         s.update()
@@ -909,10 +1004,10 @@ def init_default_sets(init = 0):
     
     setname = 'static'
     if init or setname not in varset: #init only once
-        s = InputSet(setname) #default starting set without relaxation
+        s = InputSet(setname, calculator = 'vasp') #default starting set without relaxation
         s.kpoints_file = True
         s.add_nbands = 1.5
-        s.vasp_params = {
+        s.params = {
             'ISTART'    : 0,
             'NELM'      : 50,
             'EDIFF'     : 1e-05,
@@ -932,6 +1027,7 @@ def init_default_sets(init = 0):
             'LPLANE'    : ".TRUE.",
             'NPAR'      : 1,
             }
+        s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
 
         s.update()
@@ -943,10 +1039,10 @@ def init_default_sets(init = 0):
     setname = 'opt'
     if init or setname not in varset: #init only once
         # sys.exit()
-        s = InputSet(setname) 
+        s = InputSet(setname, calculator = 'vasp') 
         s.kpoints_file = True
         s.add_nbands = 1.5
-        s.vasp_params = {
+        s.params = {
             'IBRION'    : 1,
             'ENCUT'     : 150,
             'EDIFFG'    : -0.05,
@@ -957,11 +1053,32 @@ def init_default_sets(init = 0):
             'ISMEAR'    : 2,
             'KSPACING'  : 0.2,
             }
+        s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
         
         s.update()
         header.varset[setname] = copy.deepcopy(s)
     # print(header.varset[setname], setname)
+
+
+
+    setname = 'gaus_sp'
+    if init or setname not in varset: #init only once
+        s = InputSet(setname, calculator = 'gaussian') #default starting set without relaxation
+        # print('Init_sets', s.calculator)
+        s.params = {
+            'functional'    : 'B3LYP',
+            'basis_set'     : '6-31G(d)',
+            'job_type'      : 'SP',
+            'optional'      : None,
+            }
+        # s.potdir = copy.deepcopy(header.nu_dict)
+
+        # s.update()
+        header.varset[setname] = copy.deepcopy(s)
+    
+
+
 
 
 

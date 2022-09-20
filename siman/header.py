@@ -1,20 +1,5 @@
-# -*- coding: utf-8 -*-
-#Copyright Aksyonov D.A
-#hello_man
-from __future__ import division, unicode_literals, absolute_import, print_function
-
-"""
-Siman - management of VASP calculations
-Author: Aksyonov D.A.
-
-
-!Internal units are Angstroms!
-Bohrs should be converted during reading!
-
-TODO:
-
-
-"""
+# Copyright (c) Siman Development Team.
+# Distributed under the terms of the GNU License.
 
 import os, subprocess, sys, shelve
 try:
@@ -46,10 +31,43 @@ history = []
 #Defaults to some project_conf values
 PBS_PROCS = False # if true than #PBS -l procs="+str(number_cores) is used
 WALLTIME_LIMIT = False # now only for PBS if True 72 hours limit is used
+CIF2CELL = False
 
 
 # warnings = 'neyY'
 warnings = 'yY' # level of warnings to show: n - all, e - normal, y - important, Y - very important
+
+#Global constants, can be overriden in project_conf.py and simanrc.py
+FROM_ONE = None # atom numbering convention; allows to override the default behaviour of functions where atomic numbers are provided as arguments
+PATH2ARCHIVE_LOCAL  = None
+SAVE_CONTCAR = 1 # adds 's' to savefile argument alowing to move CONTCAR to 1.CONTCAR
+
+#Global variables
+final_vasp_clean     = True 
+clean_vasp_files     = []
+clean_vasp_files_ignore = []
+default_savefile = 'oc'
+copy_to_cluster_flag = True
+close_run = False # alows to control close run file automatically after each add_loop
+first_run = True  # needed to write header of run script
+ssh_object = None # paramiko ssh_object
+sshpass = None # using sshpass wrapper for rsync; see functions.py/push_to_server()
+show = None
+corenum = 1
+check_job = 1 # check job by additional ssh requests
+reorganize = 0 # use this from time to time to optimize database file size
+verbose_log = 0 # in addition to normal log write verbose log in any case by openning the log_verbose each time
+cluster_address = ''
+override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
+pymatgen_flag = None
+
+
+
+
+
+
+
+
 
 #1. Read default global settings for siman package
 from siman.default_project_conf import *
@@ -156,23 +174,6 @@ class CalcDict(dict):
             return keys
 
 
-#Global variables
-final_vasp_clean     = True 
-copy_to_cluster_flag = True
-close_run = False # alows to control close run file automatically after each add_loop
-first_run = True  # needed to write header of run script
-ssh_object = None # paramiko ssh_object
-sshpass = None # using sshpass wrapper for rsync; see functions.py/push_to_server()
-show = None
-corenum = 1
-check_job = 1 # check job by additional ssh requests
-reorganize = 0 # use this from time to time to optimize database file size
-verbose_log = 0 # in addition to normal log write verbose log in any case by openning the log_verbose each time
-cluster_address = ''
-override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
-
-pymatgen_flag = None
-
 
 db = CalcDict()
 # global db
@@ -198,16 +199,18 @@ THz2eV = 0.00413566553853599
 kJ_mol2eV = 1.0364e-2
 J_mol_T2eV_T = 1.0364e-5
 J2eV = 6.242e+18
+cm_inv2eV = 1.23981e-4 
 h = 4.135668e-15 # eV/Hz
 F = 96485.3329 # sA/mol
 
 kB = 8.617e-5 # eV/K
 kB_SI = 1.380649e-23 # J/K
 R = 8.3145 # J/mol/K
+N_A = 6.02214e23
 
 
 
-TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 29, 30, 40, 42, 44, 74]
+TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 29, 30, 40, 41,42,43,44, 74]
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
 TM_MAG = {'NM':0.6,
@@ -405,7 +408,8 @@ def pickle_module_migration_script():
     import sys
     import siman
     from siman import header
-    sys.modules['set_functions'] = siman.set_functions
-    sys.modules['classes'] = siman.classes
+    # sys.modules['set_functions'] = siman.set_functions
+    # sys.modules['classes'] = siman.classes
+    # sys.modules['siman.core.structure'] = siman.core.molecule
     for key in header.db.items():
         print(header.db[key])

@@ -9,7 +9,7 @@ except:
     print('Cant import SPL_I, check paths to savelyev')
 #from plot_3d_i import Plot_3D as Pl3d
 
-def fit_hex(shag_a,shag_c,npoint_a,npoint_c,it,ise,verlist,calc,gb_volume = False ):
+def fit_hex(shag_a,shag_c,npoint_a,npoint_c,it,ise,verlist,calc,gb_volume = False, type_plot = 'contourf' ):
 
 
 
@@ -184,7 +184,28 @@ def fit_hex(shag_a,shag_c,npoint_a,npoint_c,it,ise,verlist,calc,gb_volume = Fals
     #if show_plot_3d: show = True
     #else: show = False
     #e5.plot_surface('plot_ac_cell_energ', x_setca, y_setca, z_setca, show = show, write_axes=['a_cell, A','c_cell, A','e, eV'], title_graph = 'Файл данных '+file_data)
-           
+    import matplotlib.pyplot as plt
+    from matplotlib import cm
+    from matplotlib.ticker import LinearLocator, FormatStrFormatter, MultipleLocator, AutoLocator
+    
+    fig = plt.figure()
+    if type_plot == '3dim':
+        ax = fig.gca(projection='3d')
+        surf = ax.plot_surface(x_setca, y_setca, z_setca, rstride=1, cstride=1, cmap=cm.coolwarm,
+                           linewidth=0, antialiased=False)       
+
+        ax.zaxis.set_major_locator(LinearLocator(10))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+        fig.colorbar(surf, shrink=0.5, aspect=5)
+    elif type_plot == 'contourf':
+        cs = plt.contourf(x_setca, y_setca, z_setca, locator=LinearLocator(numticks = 50), cmap=cm.rainbow)
+        cs.ax.set_xlabel('$a, \AA$')
+        cs.ax.set_ylabel('$c, \AA$')
+        cbar = plt.colorbar(format = FormatStrFormatter('%.0f'))
+        cbar.set_label('$E, eV$', fontsize = 21)
+
+    plt.show()           
         
     #return it+'.f.'+ise, e_min/calc[id1].natom, a_min, c_min, shag_a, shag_c, npoint_a, npoint_c
     return "{:s}_fit {:.4f} {:.4f} {:.4f}".format(it+'.f.'+ise, a_min, a_min, c_min, shag_a, shag_c, npoint_a, npoint_c)

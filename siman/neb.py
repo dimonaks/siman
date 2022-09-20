@@ -83,6 +83,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     it_new = None, ise_new = None, i_atom_to_move = None, 
     up = 'up2',
     search_type = 'vacancy_creation',
+    init_neb_geo_fld = None,
     images  = None, r_impurity = None, 
     calc_method = ['neb'], 
     inherit_option  = None, mag_config = None, i_void_start = None, i_void_final = None, 
@@ -110,8 +111,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - interstitial_insertion - search for two neighboring voids; use them as start and final positions
                                     by inserting atom *atom_to_insert*
         - None - just use st and st2 as initial and final
+        - external - folder with subfolders 00, 01, ... in VASP format is provided using *init_neb_geo_fld*
 
-    ###INPUT:
+    INPUT:
         - starting_calc (Calculation) - Calculation object with structure
         - st (Structure) - structure, can be used instead of Calculation
             - it_new (str) - name for calculation
@@ -139,6 +141,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
         - upload_vts (bool) - if True upload Vasp.pm and nebmake.pl to server
         - run (bool)  - run on server
+        - init_neb_geo_fld - folder with initial geometry files in VASP format, automatically switch on 'external' mode 
 
         - old_behaviour (str) - choose naming behavior before some date in the past for compatibility with your projects
             '020917'
@@ -147,12 +150,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - add_loop_dic - standart parameters of add()
         - params (dic) - provide additional parameters to add() # should be removed
 
-    ###RETURN:
+    RETURN:
         None
 
-    ###DEPENDS:
+    DEPENDS:
 
-    ###TODO
+    TODO
     1. Take care of manually provided i_atom_to_move in case of replicate flag using init_numbers 
     2. For search_type == None x_m and x_del should be determined for magnetic searching and for saving their coordinates
     to struct_des; now their just (0,0,0) 
@@ -183,8 +186,16 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         calc_method = [calc_method]
 
 
+    if init_neb_geo_fld:
 
-    if starting_calc and st:
+        printlog('I use folder with input files for neb in VASP format:', init_neb_geo_fld, imp = 'y')
+        if st or starting_calc:
+            printlog('Warning! st and starting_calc are ignored')
+        neb_folders = [ f.name for f in os.scandir(init_neb_geo_fld) if f.is_dir() ]
+        images = len(neb_folders) - 2
+        search_type = 'external'
+
+    elif starting_calc and st:
         printlog('Warning! both *starting_calc* and *st* are provided. I use *starting_calc*')
         st = copy.deepcopy(starting_calc.end)
 
@@ -252,8 +263,22 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
 
-    printlog('Search type is ', search_type)
-    if search_type == None:
+    printlog('Search type is ', search_type, imp = 'y')
+    
+    if search_type == 'external':
+        from siman.calc_manage import smart_structure_read
+        st1 = smart_structure_read(init_neb_geo_fld+'/'+neb_folders[0]+'/POSCAR')
+        st2 = smart_structure_read(init_neb_geo_fld+'/'+neb_folders[-1]+'/POSCAR')
+
+        x_m = (0,0,0) # please improve, temporary
+        x_del = (0,0,0)
+        it = None
+        obtained_from = 'from external folder '+init_neb_geo_fld
+
+
+
+
+    elif search_type == None:
         
         if st_end == None:
             printlog('Error! You have provided search_type == None, st_end should be provided!')
@@ -636,7 +661,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         # sys.exit()
         # print_and_log('The magnetic moments from set:')
         # print cl_test.init.magmom
-        if search_type != None:  # for None not implemented; x_m should be determined first for this
+        if search_type not in [None, 'external']:  # for None not implemented; x_m should be determined first for this
             #checking for closest atoms now only for Fe, Mn, Ni, Co
             sur   = local_surrounding(x_m, st1, n_neighbours = 3, control = 'atoms',
             periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
@@ -753,7 +778,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     cl = CalculationVasp()
 
     #write start position
-    if search_type is not None:
+    if search_type  not in [None, 'external']:
         struct_des[it_new].x_m_ion_start = x_m
         struct_des[it_new].xr_m_ion_start = xcart2xred([x_m], st1.rprimd)[0]
 
@@ -803,14 +828,14 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     
     cl.write_siman_geo(geotype = 'end', description = 'Final conf. for neb from '+obtained_from, override = True)
 
-    if not rep_moving_atom and search_type is not None:
+    if not rep_moving_atom and search_type  not in [None, 'external']:
         st1s = st1.replace_atoms([i1], 'Pu')
         st2s = st2.replace_atoms([i2], 'Pu')
     else:
         st1s = copy.deepcopy(st1)
         st2s = copy.deepcopy(st2)
     
-    if center_on_moving and search_type is not None:
+    if center_on_moving and search_type  not in [None, 'external']:
 
         vec = st1.center_on(i1)
         st1s = st1s.shift_atoms(vec)
@@ -825,13 +850,16 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     # runBash('cd xyz; mkdir '+it_new+'_all;'+"""for i in {00..04}; do cp $i/POSCAR """+ it_new+'_all/POSCAR$i; done; rm -r 00 01 02 03 04')
     
     with cd('xyz'):
-        a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
-        print(a)
-        dst = it_new+'_all'
-        makedir(dst+'/any')
-        for f in ['00', '01', '02', '03', '04']:
-            shutil.move(f+'/POSCAR', dst+'/POSCAR'+f)
-            shutil.rmtree(f)
+        if init_neb_geo_fld:
+            printlog('Check neb files at', init_neb_geo_fld, imp = 'y')
+        else:
+           a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
+           print(a)
+           dst = it_new+'_all'
+           makedir(dst+'/any')
+           for f in ['00', '01', '02', '03', '04']:
+              shutil.move(f+'/POSCAR', dst+'/POSCAR'+f)
+              shutil.rmtree(f)
 
 
 
@@ -868,9 +896,15 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         add_loop_dic['run'] = run
 
     add_loop_dic['corenum'] = corenum
+
+    if 'params' not in add_loop_dic:
+        add_loop_dic['params'] = {}
+
+    if init_neb_geo_fld:
+        add_loop_dic['params']['init_neb_geo_fld'] = init_neb_geo_fld
     # print(add_loop_dic)
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, 
-        # params=params, 
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', 
+        inherit_option = inherit_option, n_neb_images = images, 
         **add_loop_dic  )
     
 
