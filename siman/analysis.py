@@ -1308,7 +1308,6 @@ def polaron_analysis(cl, readfiles):
 
     mep_energies1 = []
     mep_energies2 = []
-    # print(verlist)
     for i, v in enumerate(verlist1):
         cl = db[cl.id[0], cl.id[1], v]
         cl.res(readfiles = readfiles, up='up2')
@@ -1325,6 +1324,8 @@ def polaron_analysis(cl, readfiles):
         else:
             mep_energies2.append(0)
 
+    print('verlist',verlist1, verlist2)
+    print('mep_energies',mep_energies1, mep_energies2)
     # print(len(atom_pos), len(mep_energies))
 
     if 1: 
@@ -1362,10 +1363,14 @@ def polaron_analysis(cl, readfiles):
                 # print(j, e1_fine[j])
                 e1 = e1_fine[j]
                 if e2 < e1:
-                    # e_fine.append()
+                    e_fine.append(e2)
                     e1_fine[j] = e2
+                else:
+                    e_fine.append(e1)
+
             else:
                 e1_fine.append(e2)
+                e_fine.append(e2)
                 pos1_fine.append(p2)
         if max(e1_fine) > e1_fine[int(len(e1_fine)/2)]:
             index = e1_fine.index(max(e1_fine))
@@ -1373,6 +1378,7 @@ def polaron_analysis(cl, readfiles):
             del pos1_fine[index]
             # e = e1_fine
         # print(pos1_fine, e1_fine)
+        # print(pos1_fine, e_fine)
         fit_and_plot(
         # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
             a1 = (pos1_fine, e1_fine, '-or'),

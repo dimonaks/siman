@@ -4304,7 +4304,7 @@ class Calculation(object):
 
 
 
-    def dos(self, isym = None, el = None, i_at = None, iatoms = None,  *args, **kwargs):
+    def dos(self, isym = None, el = None, i_at = None, iatoms = None, check_dos_child = 1,  *args, **kwargs):
         """
         Plot dos either for self or for children with dos
         isym (int) - choose symmetry position to plot DOS,
@@ -4346,17 +4346,18 @@ class Calculation(object):
         # sys.exit()
 
         ifdos = False
-        if hasattr(self, 'children'):
-            for id in self.children:
-                # print(s[1])
-                if 'dos' in id[1]:
-                    printlog('Child with DOS set is found', id, imp = 'y')
-                    id_dos = id
-                    ifdos = True
+        if check_dos_child:
+            if hasattr(self, 'children'):
+                for id in self.children:
+                    # print(s[1])
+                    if 'dos' in id[1]:
+                        printlog('Child with DOS set is found', id, imp = 'y')
+                        id_dos = id
+                        ifdos = True
 
-                    break
-            else:
-                ifdos = False 
+                        break
+                else:
+                    ifdos = False 
         if not ifdos:
             printlog('No children were found, using self', self.id, imp = 'y')
             id = self.id
@@ -4469,7 +4470,7 @@ class Calculation(object):
                 image_name = image_name, 
 
                 # invert_spins = invert_spins,
-                show_gravity = (1, 'p6', (-10, 10)), 
+                # show_gravity = (1, 'p6', (-10, 10)), 
                 show = 0,  plot_param = {
                 # 'figsize': (6,3), 
                 'linewidth':linewidth, 
@@ -7150,6 +7151,28 @@ class CalculationVasp(Calculation):
         os.chdir(cwd)
 
         return
+
+    def get_gap(self):
+        """
+        Method uses pmg and returns bandgap 
+    
+        
+        Author: A.Boev
+
+        """
+        from pymatgen.io.vasp.outputs import BSVasprun, Vasprun
+
+        path = self.path
+        if 'xml' not in path.keys():
+            self.get_file('vasprun.xml', nametype = 'asoutcar')
+        
+        dosrun = Vasprun(path['xml'], parse_dos=True)
+        dos = dosrun.complete_dos
+        gap = dos.get_gap()
+        print(f'Band gap is {gap:2.2f} eV')
+
+        return gap
+
 
 
 

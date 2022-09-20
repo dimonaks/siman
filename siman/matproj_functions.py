@@ -23,6 +23,10 @@ from siman.classes import CalculationVasp
 import csv
 from siman.analysis import suf_en
 
+
+# Author: A.Boev
+
+
 ###############################################3
 ### read and write pmg csv file
 #############################################

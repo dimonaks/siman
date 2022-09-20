@@ -3570,4 +3570,4 @@ def make_neutral(self, oxidation = None, at_fixed = None, mode = 'equal', return
     else:
         return st
         
->>>>>>> f50e133f77dae58e356fe2d3772d1c2fd008ee4c
+
