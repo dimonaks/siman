@@ -1,5 +1,7 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
+import os
+from siman.small_functions import list2string
 from siman import header
 from siman.header import printlog
 
@@ -649,7 +651,7 @@ def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, 
 
 
 def write_footer(cl, set_mod = '', run_tool_flag = True, 
-    savefile = None, final_analysis_flag = True, neb_flag = None, f = None, mpi = False, corenum = 1, option = None,parrallel_run_command=None):
+    savefile = None, final_analysis_flag = True, neb_flag = None, f = None, mpi = False, corenum = 1, option = None,parrallel_run_command=None, output_files_names = None):
     """footer"""
     
 
@@ -949,7 +951,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
             # print(savefile)
             # sys.exit()
             contcar_file, subfolders = write_footer(self, set_mod = set_mod, run_tool_flag = run_tool_flag, savefile = savefile,
-             final_analysis_flag = final_analysis_flag, neb_flag = neb_flag, f = f, mpi = mpi, corenum = corenum, option = option, parrallel_run_command=parrallel_run_command)
+             final_analysis_flag = final_analysis_flag, neb_flag = neb_flag, f = f, mpi = mpi, corenum = corenum, option = option, parrallel_run_command=parrallel_run_command, output_files_names = output_files_names)
 
         
         if k < nsets-1 and contcar_file:

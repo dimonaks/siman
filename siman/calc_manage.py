@@ -32,7 +32,7 @@ from siman.calculators.vasp import CalculationVasp
 from siman.calculators.aims import CalculationAims
 from siman.calculators.gaussian import CalculationGaussian
 from siman.core.molecule import Molecule
-from siman.core.cluster_run_script import prepare_run, make_run
+from siman.core.cluster_run_script import prepare_run, make_run, complete_run
 from siman.core.cluster_batch_script import write_batch_header, write_batch_body
 from siman.analyze.segregation import inloop_segreg_analysis 
 from siman.analyze.segregation import outloop_segreg_analysis 
@@ -41,7 +41,7 @@ from siman.analyze.segregation import outloop_segreg_analysis
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import determine_file_format, write_xyz, read_xyz, write_occmatrix
 from siman.picture_functions import plot_mep, fit_and_plot, plot_conv
-from siman.analysis import find_polaron, neb_analysis,polaron_analysis, calc_redox, matrix_diff, fit_a
+from siman.analysis import find_polaron, neb_analysis,polaron_analysis, calc_redox, matrix_diff
 from siman.geo import interpolate, replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 from siman.set_functions import init_default_sets
 from siman.database import push_figure_to_archive
@@ -3102,8 +3102,10 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
             energies.append(e)
-          
-            outst2 = inloop_segreg_analysis(outst2, b_id, analys_type, conv, n, base)
+
+            outst2, conv = inloop_segreg_analysis(outst2, id, b_id, cl, analys_type, conv, n, base, readfiles, loadflag, choose_outcar)
+
+
 
             final_outstring = outst2+outst + outst_end     
 
@@ -3133,7 +3135,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',dire, imp = 'Y')
             return {}, []
         
-        outloop_segreg_analysis(b_id, analys_type)
+        outloop_segreg_analysis(b_id, analys_type, conv, n, description_for_archive, show, push2archive)
 
         
 

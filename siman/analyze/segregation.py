@@ -1,9 +1,12 @@
-
-def inloop_segreg_analysis(outst, b_id, analys_type, conv, n, base):
+import sys
+from siman.analysis import fit_a
+from siman.header import db
+def inloop_segreg_analysis(outst, id, b_id, cl, analys_type, conv, n, base, readfiles, loadflag, choose_outcar):
     """
     analysis inside the res_loop; Used for grain boundary segregation project 
 
     """
+    calc = db
     outst2 = outst
     if analys_type in ('e_seg', 'coseg'):
         try:
@@ -12,7 +15,6 @@ def inloop_segreg_analysis(outst, b_id, analys_type, conv, n, base):
         except:
             b_id = (b_id[0], id[1], id[2] + b_ver_shift)
         printlog('b_id', b_id)
-
 
 
     conv[n].append(id)
@@ -30,7 +32,8 @@ def inloop_segreg_analysis(outst, b_id, analys_type, conv, n, base):
 
         # print(b_id)
         if "4" in calc[b_id].state:    
-
+            # print(id, b_id)
+            # sys.exit()
             if calc[id].set.ngkpt != calc[b_id].set.ngkpt:
                 printlog("Warning! you are trying to compare calcs with "+str(calc[id].set.ngkpt)+" and "+str(calc[b_id].set.ngkpt)+"\n")
                 pass
@@ -106,11 +109,11 @@ def inloop_segreg_analysis(outst, b_id, analys_type, conv, n, base):
         # print n1,n2
         outst2 += ("%.0f "% ( (e - n1*e1 - n2*e2 + (n1+n2-1)*e_m )*1000 / (n1+n2) ) )
 
-    return outst2
+    return outst2, conv
 
 
 
-def outloop_segreg_analysis(b_id, analys_type):
+def outloop_segreg_analysis(b_id, analys_type, conv, n, description_for_archive, show, push2archive):
 
 
     if b_id: 
@@ -257,7 +260,7 @@ def outloop_segreg_analysis(b_id, analys_type):
         printlog ("name %s_template          acell  %.5f  %.5f  %.5f # fit parameters are &%.5f &%.5f &%i &%i"  % (fit_hex(0.00002,0.00003,4000,6000, it, inputset, verlist, calc) )  )    
 
     elif 'fit_a' in analys_type:
-        
+        # print(conv)
         fit_a(conv, n, description_for_archive, analys_type, show, push2archive)
 
 

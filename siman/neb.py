@@ -896,11 +896,15 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         add_loop_dic['run'] = run
 
     add_loop_dic['corenum'] = corenum
-    params = {}
-    params['init_neb_geo_fld'] = init_neb_geo_fld
+
+    if 'params' not in add_loop_dic:
+        add_loop_dic['params'] = {}
+
+    if init_neb_geo_fld:
+        add_loop_dic['params']['init_neb_geo_fld'] = init_neb_geo_fld
     # print(add_loop_dic)
-    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', inherit_option = inherit_option, n_neb_images = images, 
-        params=params, 
+    add_loop(it_new, ise_new, verlist = [1,2], up = up, calc_method = calc_method, savefile = 'oc', 
+        inherit_option = inherit_option, n_neb_images = images, 
         **add_loop_dic  )
     
 

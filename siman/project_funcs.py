@@ -1588,10 +1588,16 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
             curfol = struct_des[id_base[0]].sfolder
 
 
-            id_res = (id_base[0]+'.su', ise_new, 100)
 
             it_suffix = add_loop_dic.get('it_suffix')
-            # print(id_base)
+            
+            if it_suffix:
+                id_res = (id_base[0]+'.su.'+it_suffix, ise_new, 100)
+
+            else:
+                id_res = (id_base[0]+'.su', ise_new, 100)
+            
+            # print(update, id_res, id_res not in calc, it_suffix)
             # sys.exit()
             if update or id_res not in calc:
                 printlog('Scale region is ', scale_region, imp = 'y')
@@ -1605,10 +1611,10 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 # sys.exit()
                 # print(id_res, it_suffix)
                 res_loop(*id_res, up = up_res, readfiles= readfiles, 
-                    choose_outcar = choose_outcar, show = 'e', check_job = 0, it_suffix = it_suffix)
+                    choose_outcar = choose_outcar, show = 'e', check_job = 0)#, it_suffix = it_suffix)
                 if show_fit:
                     res_loop(*id_res[0:2],list(range(0+1,0+8))+[100], up = up_res, readfiles= readfiles, 
-                        choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0 , it_suffix = it_suffix)
+                        choose_outcar = choose_outcar, analys_type = 'fit_a', show = 'fitfo', check_job = 0)# , it_suffix = it_suffix)
                 # sys.exit()
                 if '2'  in calc[id_res].state or '5' in calc[id_res].state:
                     ''
@@ -1668,7 +1674,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
 
         it_suffix = add_loop_dic.get('it_suffix')
         if it_suffix:
-            base_id = (base_id[0]+'.'+it_suffix, base_id[1], base_id[2])
+            ''
+            # base_id = (base_id[0]+'.'+it_suffix, base_id[1], base_id[2])
 
 
         if base_id:
@@ -2276,7 +2283,7 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                 idA0 = optimize_cell( (itP0, dic['scaling_set.'+mode_id], curver), cat, scale_regions[new_ion], update, irun = '1')
 
             elif 'make_ds'  in mode:
-                
+
                 itP0 = remove_cations(del_ion.split(), cat, curver, update)
 
                 idA0 = optimize_cell( (itP0, dic['scaling_set.'+mode_id], curver), cat, scale_regions[del_ion.split()[-1]+'_removal'], update, irun = '1')
@@ -4470,6 +4477,8 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
             # cl.me()
 
             if target_x == 0:
+                # print(up_scale)
+                # sys.exit()
                 a = calc_barriers('make_ds', el, el, up_res = up_res, show_fit = show_fit, up = up_scale, upA = up_SC, 
                 upC = p.get('up_neb'), param_dic = pd, add_loop_dic = add_loop_dic,
                 fitplot_args = fitplot_args, style_dic = style_dic, run_neb = run_neb, 

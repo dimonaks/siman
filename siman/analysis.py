@@ -672,8 +672,9 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
     magn1 = []
     magn2 = []
     alphas= []
-    for id in conv[n]:
-        cl = db[id]
+    for id_i in conv[n]:
+        # print(id_i)
+        cl = db[id_i]
         st = cl.end
         alist.append(cl.end.rprimd[0][0])
         etotlist.append(cl.energy_sigma0)

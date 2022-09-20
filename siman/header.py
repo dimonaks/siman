@@ -31,6 +31,7 @@ history = []
 #Defaults to some project_conf values
 PBS_PROCS = False # if true than #PBS -l procs="+str(number_cores) is used
 WALLTIME_LIMIT = False # now only for PBS if True 72 hours limit is used
+CIF2CELL = False
 
 
 # warnings = 'neyY'

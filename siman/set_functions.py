@@ -180,6 +180,8 @@ vasp_other_keys = [
 'EB_K',
 'LVDW_EWALD',
 'NWRITE',
+'MAGATOM',
+'DOSTATIC'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
