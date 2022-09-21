@@ -979,11 +979,14 @@ def write_occmatrix(occs, folder):
             if len(occ) == 10: # spin polarized, d orbital
                 at_spin.append(2)
                 at_ltyp.append(2)
+            elif len(occ) == 6: # spin polarized, p orbital
+                at_spin.append(2)
+                at_ltyp.append(1)
             else:
                 raise RuntimeError # please write by yourself for other cases
 
 
-        for i, l, s in zip(at_nums, at_spin, at_ltyp):
+        for i, l, s in zip(at_nums, at_ltyp, at_spin):
 
             f.write(list2string([i+1, l, s])+'    #i, l, s\n')
             # for sp in range(s):

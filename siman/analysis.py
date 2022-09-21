@@ -1317,13 +1317,13 @@ def polaron_analysis(cl, readfiles):
         verlist = verlist1 + verlist2
         atom_pos = atom_pos1 + atom_pos2
     else:
-        verlist = [1]+list(range(3, 3+images))+[2]
-
-        atom_pos = np.linspace(0,d, images+2)
+        verlist1 = [1]+list(range(3, 3+images))+[2]
+        verlist2 = verlist1
+        atom_pos1 = np.linspace(0,d, images+2)
+        atom_pos2 = list(reversed(np.linspace(0,d, len(verlist2))))
 
     mep_energies1 = []
     mep_energies2 = []
-    # print(verlist)
     for i, v in enumerate(verlist1):
         cl = db[cl.id[0], cl.id[1], v]
         cl.res(readfiles = readfiles)
@@ -1340,11 +1340,13 @@ def polaron_analysis(cl, readfiles):
         else:
             mep_energies2.append(0)
 
+    # print('verlist',verlist1, verlist2)
+    # print('mep_energies',mep_energies1, mep_energies2)
     # print(len(atom_pos), len(mep_energies))
 
     if 1: 
         #plot simple
-        n = 6
+        n = images
         pos1 = atom_pos1[0:n]
         e1   = mep_energies1[0:n]
         pos2 = atom_pos2[0:n]
@@ -1377,20 +1379,29 @@ def polaron_analysis(cl, readfiles):
                 # print(j, e1_fine[j])
                 e1 = e1_fine[j]
                 if e2 < e1:
-                    # e_fine.append()
+                    e_fine.append(e2)
                     e1_fine[j] = e2
+                else:
+                    e_fine.append(e1)
+
             else:
                 e1_fine.append(e2)
+                e_fine.append(e2)
                 pos1_fine.append(p2)
-
+        if max(e1_fine) > e1_fine[int(len(e1_fine)/2)]:
+            index = e1_fine.index(max(e1_fine))
+            del e1_fine[index]
+            del pos1_fine[index]
             # e = e1_fine
-
+        # print(pos1_fine, e1_fine)
+        # print(pos1_fine, e_fine)
         fit_and_plot(
         # a1 = (pos1_fine, e1_fine, '-or'), b1 = (pos2_fine, e2_fine, '-og'), 
             a1 = (pos1_fine, e1_fine, '-or'),
             # power = 2, 
             params = {'xlim_power':(0, 4), 'y0':1}, 
-            ylim = (-0.02, 0.2), ver = False,
+            # ylim = (-0.02, 0.2), 
+            ver = False,
             xlim = (-0.02, 0.02+max(pos1_fine)),
             filename = 'figs/'+name_without_ext,
             xlabel = 'Position, (${\AA}$)',
@@ -1655,9 +1666,11 @@ def suf_en_polar_layered(formula, cl_surf, dmu_a = 0, dmu_b = 0, dmu_c = 0, prin
 
 def ads_en(cl_slab_ads, cl_slab, ads_at = 'O'):
 
-    ads_at_dic = {'O':-1.52, 'H':-1.07}
-    ads_at_dic = {'O':-4.22, 'H':-1.07} # half E of A2 mol    -1.36 per O2 mol overestimate error
+    # ads_at_dic = {'O':-1.52, 'H':-1.07}
+    ads_at_dic = {'O':-4.22, 'H':-1.07, 'Li': -1.91, 'LCO':-5.7241 } # half E of A2 mol    -1.36 per O2 mol overestimate error
     e_ads_at = ads_at_dic[ads_at]
+    if ads_at == 'LCO':
+        e_ads_at = ads_at_dic['LCO']*4 - ads_at_dic['Li'] - ads_at_dic['O']*2
 
 
     e_ads = cl_slab_ads.energy_sigma0 - cl_slab.energy_sigma0 - e_ads_at

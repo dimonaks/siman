@@ -78,6 +78,49 @@ def image_distance(x1, x2, r, order = 1, sort_flag = True, return_n_distances = 
     else:
         return d[0], d[1] # old behaviour
 
+def image_vector(st, x1, x2,  coord_type = 'xcart'):
+    """
+    Calculate smallest vector between two atoms 
+    correctly treating periodic boundary conditions and oblique cells.
+    x1, x2 - vector[3] xcart coordinates of two atoms
+    r - rprimd of cell
+   
+    coord_type (str) 
+        - 'xred'
+        - 'xcart'
+
+    """
+    # import numpy as np
+
+    d = [] # list of distances between 1st atom and images of 2nd atom
+    x2i_list = []
+    r= st.rprimd
+    order = 1
+    # x1 = st.xcart[x1]
+    # x2 = st.xcart[x2]
+    if coord_type == 'xcart':
+        def dr(i,j,k):
+            return (r[0] * i + r[1] * j + r[2] * k)
+    if coord_type == 'xred':
+        a1=np.array([1,0,0])
+        a2=np.array([0,1,0])
+        a3=np.array([0,0,1])
+        def dr(i,j,k):
+            return (a1 * i + a2 * j + a3 * k)
+
+    for i in range(-order, order+1):
+        for j in range(-order, order+1):
+            for k in range(-order, order+1):
+                x2i = x2 +  dr(i,j,k) #determine coordinates of image of atom 2 in corresponding image cells
+                d.append(   np.linalg.norm(x1 - x2i)   )
+                x2i_list.append(x2i)
+    
+    dmin = min(d)
+    pos = d.index(dmin)
+    x2i = x2i_list[pos]
+
+    vec = (x1-x2i)/2
+    return  vec
 
 def scale_cell_uniformly(st, scale_region = None, n_scale_images = 7, parent_calc_name = None, ):
     """
@@ -1467,7 +1510,7 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
         if mag_AS1  is None and mag_AP is None:
             st_as.magmom = [None]
 
-        if mag_AS1:
+        if mag_AS1 is not None:
             st_as.magmom[i] = mag_AS1
 
         if disp_AS1:
@@ -1498,7 +1541,6 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
         st_as.name+='_'+suf
         sts.append(st_as)
         i_el1s.append(i)
-
 
     return sts, i_el1s
 
@@ -3365,6 +3407,55 @@ def symmetry_multiply(st_ideal, st, el, ops = None, rm_ovrlp = None, name = ''):
     return st 
 
 
+def rotate_align_with_vector(st1, at1, at2):
+    '''
+    The function orients the given structure by aligning the z-axis with a vector between two atoms.
+    
+    cl1 (str)  - Structure() object
+    at1 (int)  - atomic number since 0
+    at2 (int)  - atomic number since 0
+
+
+    returns a structure oriented along a vector 
+
+    Author: A.Boev
+    
+    '''
+    from siman.functions import rotation_matrix_from_vectors
+    from siman.small_functions import vec_l, angle, normal
+    from siman.geo import image_vector
+
+    # cl = cl1.copy()
+    st = st1.copy()
+    def get_vector(st, at1, at2):
+        xc1=st.xcart[at1]
+        xc2=st.xcart[at2]
+
+        vector = [i-j for i,j in zip(xc1,xc2)]
+        print(xc1,xc2, vector)
+        return vector
+
+    # vec1 = st.rprimd
+
+    vec1 = st.rprimd[2]
+    vec2 = get_vector(st, at1, at2)
+    # vec2 = image_vector(st, st.xcart[at1], st.xcart[at2])
+    # print(vec2,vec22,vec_l(vec2),vec_l(vec22))
+    m=rotation_matrix_from_vectors(vec1, vec2)
+    ang = angle(vec1,vec2)
+    if ang > 90:
+        ang = 180 - ang
+    if vec2[0] < 0:
+        vec2 = [-i for i in vec2]
+    print(vec2,normal(vec1,vec2), ang)
+
+    st1 = st.rotate(normal(vec1, vec2), ang)
+    # st1.jmol(r=3)
+    # print(st.rprimd,st1.rprimd)
+
+    # print(dir(cl),cl.id)
+    return st1
+
 def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
     """
     Removes closest lying atoms of type el  
@@ -3571,3 +3662,4 @@ def make_neutral(self, oxidation = None, at_fixed = None, mode = 'equal', return
     else:
         return st
         
+

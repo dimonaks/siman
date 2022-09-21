@@ -866,6 +866,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             existing = pm.get('polaron_status') and 'ex' in pm.get('polaron_status') 
 
+            # if pm.get('st1') and pm.get('st2'):
+
             if pm['polaron_type'] == 'electron':
                 if existing:
                     ''
@@ -884,28 +886,32 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
                     params['charge'] = +1
 
-            if pm.get('st1'):
+            if pm.get('st1') and pm.get('st2'):
                 st1 = pm['st1']
                 st2 = pm['st2']
                 st1.magmom = [None]
+                st1_vis = copy.deepcopy(st1)
+                st2_vis = copy.deepcopy(st2)
 
-            elif existing:
-                st1 = copy.deepcopy(input_st)
-                st2 = input_st.localize_polaron(pm['iend'], am)
-                st2 = st2.localize_polaron(pm['istart'], -am) # return back existing polaron to normal
 
             else:
-                st1 = input_st.localize_polaron(pm['istart'],  am)
-                st2 = input_st.localize_polaron(pm['iend'], am)
+                if existing:
+                    st1 = copy.deepcopy(input_st)
+                    st2 = input_st.localize_polaron(pm['iend'], am)
+                    st2 = st2.localize_polaron(pm['istart'], -am) # return back existing polaron to normal
+
+                else:
+                    st1 = input_st.localize_polaron(pm['istart'],  am)
+                    st2 = input_st.localize_polaron(pm['iend'], am)
 
 
 
-            st1_vis = st1.replace_atoms([pm['istart']], 'U')
-            st2_vis = st2.replace_atoms([pm['iend']], 'U')
+                st1_vis = st1.replace_atoms([pm['istart']], 'U')
+                st2_vis = st2.replace_atoms([pm['iend']], 'U')
             st1_vis.write_poscar('xyz/'+it+'/1.POSCAR')
             st2_vis.write_poscar('xyz/'+it+'/100.POSCAR')
             sts = interpolate(st1, st2, images= pm['images'], write_poscar = 3, poscar_folder = 'xyz/'+it+'/' )
-            del pm['st1'], pm['st2'] #not needed to serialize
+            # del pm['st1'], pm['st2'] #not needed to serialize
 
             inputset =setlist[0]
             mode = 'inherit'
@@ -1565,6 +1571,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     def write_configuration_file_for_cluster(name, vasp_run_com, params):
         file = cl.dir +  'conf.json'  
         pm = params
+        del pm['st1']
+        del pm['st2']
+        print(pm)
 
         pm['vasp_run'] = vasp_run_com + ' > ' + name+'.log'
         with io.open(  file, 'w', newline = '') as fp:
