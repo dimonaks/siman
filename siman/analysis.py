@@ -1300,15 +1300,12 @@ def polaron_analysis(cl, readfiles):
     name_without_ext = 'polmep.'+itise+'.U'+str(max(cl.ldauu))
 
     cl = db[cl.id[0], cl.id[1], 1]
-    cl.res(up='up2')
     cl2 = db[cl.id[0], cl.id[1], 2]
-    cl2.res(up='up2')
     images = cl.params['polaron']['images']
     iat1 = cl.params['polaron']['istart']
     iat2 = cl.params['polaron']['iend']
     mode = cl.params['polaron'].get('mode') or 'inherit'
     cl2.res(readfiles = readfiles)
-    # print(iat1, iat2)
     d = cl.end.distance(iat1, iat2)
 
     if mode == 'inherit':
@@ -1336,15 +1333,15 @@ def polaron_analysis(cl, readfiles):
             mep_energies1.append(0)
     for i, v in enumerate(verlist2):
         cl = db[cl.id[0], cl.id[1], v]
-        cl.res(readfiles = readfiles, up='up2')
+        cl.res(readfiles = readfiles)
         if '4' in cl.state:
 
             mep_energies2.append( cl.list_e_sigma0[0] )
         else:
             mep_energies2.append(0)
 
-    print('verlist',verlist1, verlist2)
-    print('mep_energies',mep_energies1, mep_energies2)
+    # print('verlist',verlist1, verlist2)
+    # print('mep_energies',mep_energies1, mep_energies2)
     # print(len(atom_pos), len(mep_energies))
 
     if 1: 
