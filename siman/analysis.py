@@ -1329,7 +1329,7 @@ def polaron_analysis(cl, readfiles):
     mep_energies2 = []
     for i, v in enumerate(verlist1):
         cl = db[cl.id[0], cl.id[1], v]
-        cl.res(readfiles = readfiles, up='up2')
+        cl.res(readfiles = readfiles)
         if '4' in cl.state:
             mep_energies1.append( cl.list_e_sigma0[0] )
         else:
