@@ -3037,7 +3037,60 @@ class Structure():
 
         return st
 
+    def localize_ox_polaron(self, i, d_a, d_tm, nn = 6, mag = None):
+        """
+        Localize small polaron at oxygen atom by adjusting distances
+        i - number of oxygen, from 0
+        d_a - shift in angstrom; positive increase Li-O bonds, negative reduce Li-O bonds 
+        d_tm - shift in angstrom; positive increase TM-O bonds, negative reduce TM-O bonds 
+        nn - number of neigbours
 
+        """
+        # nn
+
+        st = copy.deepcopy(self)
+        i_ox = st.get_el_z(i)
+        i_name = st.get_el_name(i)
+        if i_name != 'O':
+            printlog('Warning! provided element ', i_name, 'is not an oxygen.. Choose another mode. ')
+            return
+        else:
+
+            silent = 1
+            if 'n' in header.warnings or 'e' in header.warnings:
+                silent = 0
+            # silent = 0
+
+
+            dic = st.nn(i, nn, from_one = 0, silent = silent)
+            printlog('Average distances around O before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+
+            #updated xcart
+            xc = st.xcart[i]
+            for j, x in zip(dic['numbers'][1:], dic['xcart'][1:]):
+                TM = st.get_el_z(j)
+                if TM in header.TRANSITION_ELEMENTS:
+                    d = d_tm
+                else:
+                    d = d_a 
+                x1 = st.xcart[j]
+                v = xc-x
+                vn = np.linalg.norm(v)
+                mul = d/vn
+                dv = v * mul
+                st.xcart[j] = st.xcart[j] -  dv 
+
+            st.update_xred()
+
+            dic = st.nn(i, nn, from_one = 0, silent = silent)
+            printlog('Average distances around O after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+
+            st.name+='pol'+str(i+1)
+            if mag:
+                st.magmom[i] = mag
+
+            return st
+            
     def localize_polaron_dist(self, i_center, d, nn = 6, axis = None, direction = None, mode = 'axis_expand'):
         """
         
