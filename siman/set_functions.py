@@ -684,6 +684,9 @@ class InputSet():
             if type(arg) not in [float, type(None), ]:
                 raise TypeError
 
+        if not hasattr(self, 'params'):
+            self.params = self.vasp_params
+
 
         old = self.params.get(token)
         self.params[token] = arg

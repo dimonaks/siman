@@ -805,7 +805,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
             if it_suffix: # add to default behaviour; make additional key, which can allow to override default behavior
-                it_new = it_new+'.'+it_suffix
+                it_new = iti+'.'+it_suffix
                 it_suffix = None
 
 
@@ -860,7 +860,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
 
-        if 'polaron' in calc_method:
+        if ('polaron' in calc_method) or ('polaron2' in calc_method):
             pm = params['polaron']
             am = abs(pm['amp']) # amplitude of polaron, the sign is not important here
 
@@ -886,7 +886,23 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
                     params['charge'] = +1
 
-            if pm.get('st1') and pm.get('st2'):
+            
+            if pm.get('cl1') and pm.get('cl2'):
+                cl1 = pm['cl1']
+                st1 = cl1.end
+                cl2 = pm['cl2']
+                st2 = cl2.end
+                path1 = cl1.path
+                path2 = cl2.path
+                p2p = header.PATH2PROJECT
+                pm['path1'] = {'charge': '/'.join([p2p,path1['charge']]), 'output': '/'.join([p2p,path1['output']])}
+                pm['path2'] = {'charge': '/'.join([p2p,path2['charge']]), 'output': '/'.join([p2p,path2['output']])}
+                
+                st1.magmom = [None]
+                st1_vis = copy.deepcopy(st1)
+                st2_vis = copy.deepcopy(st2)
+            
+            elif pm.get('st1') and pm.get('st2'):
                 st1 = pm['st1']
                 st2 = pm['st2']
                 st1.magmom = [None]
@@ -1571,8 +1587,16 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     def write_configuration_file_for_cluster(name, vasp_run_com, params):
         file = cl.dir +  'conf.json'  
         pm = params
-        del pm['st1']
-        del pm['st2']
+        try:
+            del pm['st1']
+            del pm['st2']
+        except KeyError:
+            ''
+        try:
+            del pm['cl1']
+            del pm['cl2']
+        except KeyError:
+            ''
         print(pm)
 
         pm['vasp_run'] = vasp_run_com + ' > ' + name+'.log'
@@ -1954,7 +1978,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     monte_params_file = write_parameters_for_monte(cl.name, header.vasp_command, params)
                     list_to_copy.append(monte_params_file)
 
-                if 'polaron' in cl.calc_method:
+                if 'polaron' in cl.calc_method or 'polaron2' in cl.calc_method:
                     conf_file = write_configuration_file_for_cluster(cl.name, header.vasp_command, params['polaron'])
                     list_to_copy.append(conf_file)
 
