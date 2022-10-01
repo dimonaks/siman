@@ -224,7 +224,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         else:
             printlog('cl1: Atom', iatom, 'of type', eld1[iatom], 'is choosen', imp = 'y')
             printlog('cl1: Atom numbers:', eld1, imp = 'y')
-            printlog('cl1:', determine_symmetry_positions(cl1.end, eld1[iatom]), imp = 'y')
+            # printlog('cl1:', determine_symmetry_positions(cl1.end, eld1[iatom]), imp = 'y')
 
             # print(cl2)
             if cl2:
@@ -233,7 +233,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 printlog('cl2: Atom', iatom2, 'of type', eld2[iatom2], 'is choosen', imp = 'y')
 
 
-                printlog('cl2:', determine_symmetry_positions(cl2.end, eld2[iatom2]), imp = 'y')
+                # printlog('cl2:', determine_symmetry_positions(cl2.end, eld2[iatom2]), imp = 'y')
 
     if iatom:
         iatom-=1
