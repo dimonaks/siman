@@ -1664,6 +1664,26 @@ def suf_en_polar_layered(formula, cl_surf, dmu_a = 0, dmu_b = 0, dmu_c = 0, prin
     return gamma
 
 
+
+def gb_en_ideal(cl_gb, cl_bulk):
+    import numpy as np
+
+    st1 = cl_gb.end
+    st2 = cl_bulk.end
+
+    e1 = cl_gb.energy_sigma0
+    n1 = st1.natom
+    e2 = cl_bulk.energy_sigma0
+    n2 = st2.natom
+
+
+    A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
+
+
+    e_gb = (e1 - e2*n1/n2)/2/A * header.eV_A_to_J_m
+    print('E_gb = {} J/m2'.format(round(e_gb, 2)))
+
+
 def ads_en(cl_slab_ads, cl_slab, ads_at = 'O'):
 
     # ads_at_dic = {'O':-1.52, 'H':-1.07}
