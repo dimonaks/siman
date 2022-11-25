@@ -1,0 +1,7 @@
+#!/bin/bash
+cd "$(dirname "$0")"
+git checkout simanaks
+git add .
+git commit -m 'support of NEB with initial trajectory provided as POSCAR files'
+git push origin simanaks
+

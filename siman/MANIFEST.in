@@ -1,0 +1,3 @@
+recursive-include siman *.md
+recursive-include siman LICENSE
+recursive-include siman CHANGELOG.rst

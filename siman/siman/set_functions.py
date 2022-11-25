@@ -181,8 +181,7 @@ vasp_other_keys = [
 'LVDW_EWALD',
 'NWRITE',
 'MAGATOM',
-'DOSTATIC',
-'IWAVPRE'
+'DOSTATIC'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -298,7 +297,7 @@ class InputSet():
 
 
     """
-    def __init__(self, ise = None, path_to_potcar = None, calculator = "vasp"):
+    def __init__(self, ise = None, path_to_potcar = None, calculator = None):
         #super(InputSet, self).__init__()
         self.ise = ise
         self.name = ise
