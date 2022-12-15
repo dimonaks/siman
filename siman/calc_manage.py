@@ -1821,6 +1821,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         # print(input_st)
         if input_st:
             if not isinstance(input_st, Molecule) and not isinstance(input_st, Structure):
+                print(type(input_st), Structure, isinstance(input_st, Structure))
                 printlog('Error! input_st should be of type Structure() or Molecule')
             cl.init  = input_st
         else:
