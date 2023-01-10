@@ -1,7 +1,7 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 import os
-from siman.small_functions import list2string
+from siman.small_functions import list2string,is_list_like
 from siman import header
 from siman.header import printlog
 

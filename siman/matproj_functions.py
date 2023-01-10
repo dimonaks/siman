@@ -97,7 +97,10 @@ def read_matproj_list(path, new_list = 0, new_object = 0):
                 mp.elements = d['elements']
                 mp.sg_symbol = d['spacegroup.symbol']
                 mp.sg_crystal_str = d['spacegroup.crystal_system']
-                mp.band_gap = d['band_gap']
+                try:
+                    mp.band_gap = d['band_gap']
+                except KeyError:
+                    mp.band_gap = None
                 try:
                     mp.price_per_gramm = d['price_per_gramm']
                 except KeyError:
@@ -263,7 +266,7 @@ def get_matproj_info(criteria, properties, filename = None, price = 0, element_p
                                     # print(i)
                         except pymatgen.ext.matproj.MPRestError:
                             properties.append('warnings')
-                            string_to_writeupdate([('warnings', 'Stability MPRestError')]) 
+                            string_to_write.update([('warnings', 'Stability MPRestError')]) 
                             data.update([(st_name, string_to_write)])
 
     # write data in csv file
@@ -323,21 +326,21 @@ def get_matproj_chem_pot(atom_list =None):
 ######################################################################################################3
 
 
-def get_matproj_st(mat_in_list, folder = 'geo/'):
+def get_matproj_st(mat_in_list, path = 'geo/'):
     """
     check downloaded POSCAR files in geo/ folder
     if not POSCAR of some structure - download it from Mat Proj
 
     mat_in_list - data dict for any structure from MP,  result of get_fata('mp-...')
     """
-    
+    # print(mat_in_list)
     name = mat_in_list['material_id']+'.POSCAR'
-    if name not in os.listdir(folder):
-        os.chdir(folder)
-        st = get_structure_from_matproj(mat_proj_id = mat_in_list['material_id'], it_folder = folder)
+    if name not in os.listdir(path):
+        os.chdir(path)
+        st = get_structure_from_matproj(mat_proj_id = mat_in_list['material_id'], it_folder = path)
         os.chdir('..')
     else:
-        st = smart_structure_read(folder+name)
+        st = smart_structure_read(f'{path}/{name}')
         # print('ok')
     return st
 
@@ -400,6 +403,35 @@ def calc_bulk_list(data_list, spacegroup = '', ise_nomag = '8', ise_mag = '8m', 
                 res_loop(i['pretty_formula']+spacegroup, ise, 1, it_folder = 'bulk', up = up)
 
 
+            except KeyError:
+                print(i['total_magnetization'])
+                # add_loop(i['pretty_formula']+spacegroup, ise, 1, it_folder = 'bulk', input_st = st, corenum = corenum)
+
+
+
+def calc_bulk_list2(data_list, suf = '', ise = '8m', status = None, up =None, corenum = 1, add_loop_dic={},path=None):
+    """
+    function can add or res for set of bulk calculations
+    
+    data_list = read_pmg_info() of some csv file
+
+    ise  - set of calculation. Usually use '8' for nonmag calc and '8m' for mag calc
+    status = add or res
+    """
+
+    if suf != '': suf = f'.{suf}'
+
+
+    for i in data_list:
+        # i = db[j]
+        st = get_matproj_st(i, path=path)
+
+
+        if status == 'add': 
+            add_loop(i['pretty_formula']+suf, ise, 1, it_folder = 'bulk', input_st = st, corenum = corenum, params = add_loop_dic['params'])
+        if status == 'res': 
+            try:
+                res_loop(i['pretty_formula']+suf, ise, 1, it_folder = 'bulk', up = up)
             except KeyError:
                 print(i['total_magnetization'])
                 # add_loop(i['pretty_formula']+spacegroup, ise, 1, it_folder = 'bulk', input_st = st, corenum = corenum)
