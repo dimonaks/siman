@@ -1677,7 +1677,7 @@ def gb_en_ideal(cl_gb, cl_bulk):
     n2 = st2.natom
 
 
-    A = np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
+    A = st1.get_surface_area()#np.linalg.norm( np.cross(st1.rprimd[0] , st1.rprimd[1]) )
 
 
     e_gb = (e1 - e2*n1/n2)/2/A * header.eV_A_to_J_m
