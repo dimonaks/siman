@@ -3454,6 +3454,7 @@ def rotate_align_with_vector(st1, at1, at2):
     # print(dir(cl),cl.id)
     return st1
 
+
 def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
     """
     Removes closest lying atoms of type el  
@@ -3519,7 +3520,7 @@ def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
             del atoms[el[el_min]]   
         for el_c in el:
             for idx_c, atom_c in enumerate(atoms[el_c]):
-                if (atom_c >= idx_min):
+                if (atom_c > idx_min):
                     atoms[el_c][idx_c] -= 1
         atoms_removed[el[el_min]].append(idx_min)
         print("Atoms were removed: {} / {}".format(i+1, natoms))
@@ -3528,7 +3529,6 @@ def remove_closest(self, el, nn = 6, n = 0, x = 0.0):
         print("For element {}, atoms with indicies {} were removed".format(el_c, atoms_removed[el_c]))
     print("The final reduced formula is {}".format(st.get_reduced_formula()))
     return st
-
 
 
 def remove_vacuum(self, thickness = 0.0):
@@ -3560,7 +3560,8 @@ def remove_vacuum(self, thickness = 0.0):
     return st_new
 
 
-def make_neutral(self, oxidation = None, at_fixed = None, mode = 'equal', return_oxidation = 1, silent = 1):
+def make_neutral(self, oxidation = None, type = 'element', at_fixed = None, mode = 'equal', 
+                return_oxidation = 1, silent = 1):
     """
     Makes slab with total a charge equal to 0 
 
@@ -3568,6 +3569,11 @@ def make_neutral(self, oxidation = None, at_fixed = None, mode = 'equal', return
         st (Structure) - input structure 
         oxidation (dir integer) - list of oxidation states  
             E.g oxi_state = {"Li": 1, "La": 2, "Zr":4, "O": -2}
+        type (dir integer) - assign oxidation states based on algorythm
+            'element' - by chemical element, requires oxidation in format: 
+                E.g oxi_state = {"Li": 1, "La": 2, "Zr":4, "O": -2}
+            'position' - by position of chemical element, requires oxidation in format:
+                E.g oxi_state = {"Li": 1, "La": 2, "Zr":4, "O": -2}
         at_fixed (dir string) - list of atoms with fixed oxidation states
         mode (string) - how uncompensated charge will be redistributed between unfixed atoms    
             'equal' - equally between unfixed atoms 
@@ -3659,5 +3665,69 @@ def make_neutral(self, oxidation = None, at_fixed = None, mode = 'equal', return
         return st, oxidation
     else:
         return st
+
+
+def move_edge(self, mode="bottom", tol=0.0):
+    """
+    Removes closest lying atoms of type el  
+
+    INPUT:
+        st (Structure) - input structure 
+        mode (str) - to which edge of the cell structure shall be shifted
+        tol (float) - tolerance factor, the distance from the edge. May be used to preserve 
+                      the structure as a whole on one cell side.  
+    RETURN:
+        st (Structure) - modified structure 
+
+    COMMENT: make for all vectors
+    author - A. Burov
+    """
+    st = copy.deepcopy(self)
+    st1 = copy.deepcopy(self)
+    
+    coords = st1.xred
+    coords.sort(key=lambda x: x[2])
+    # print(coords[0][-1], coords[-1][-1])
+    coord_bot = coords[0][-1]
+    coord_top = coords[-1][-1]
+
+    if mode == "bottom":
+        st = st.shift_atoms(vector_red = -coord_bot+0.01, return2cell = 1)
+        # st = st.return_atoms_to_cell()
+        print()
+    elif mode == "top":
+        st = st.shift_atoms(vector_red = -coord_top, return2cell = 1)
+    else:
+        raise ValueError("Unknown mode, check the description")
+
+    return st
+
+
+
+def find_slab_width(self, vacuum="no"):
+    """
+        Calculate width of the sample without vacuum.
+        INPUT:
+            st - input strucutre
+            vacuum - width of the vacuum or crystal structure. Defaultly, the width of the crystal structure
+        RETURN:
+            width of the necessary structure in A 
+    """
+    st = copy.deepcopy(self)
+    c_old = st.rprimd_len()[-1]
+    
+    st_no_vacuum = st.remove_vacuum()
+    c_new = st_no_vacuum.rprimd_len()[-1]
+    
+    if (vacuum == "yes"):
+        width = c_old - c_new
+    else:
+        width = c_new
         
+    return round(width, 1)
+
+
+
+
+
 
