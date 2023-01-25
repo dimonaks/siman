@@ -568,7 +568,19 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         - savefile - controls which files are saved during VASP run on server; check
             
-            'ocvdawx' - outcar, chgcar, chg, dos, AECCAR,WAVECAR, xml
+            'ocvdawx'             
+            'o' - OUTCAR
+            'i' - INCAR
+            'v' - CHG
+            'c' - CHGCAR
+            'p' - PARCHG
+            'l' - LOCPOT
+            'd' - DOSCAR
+            'a' - AECCAR0, AECCAR2
+            'x' - vasprun.xml
+            't' - XDATCAR
+            'z' - OSZICAR
+            'w' - WAVECAR
 
         - ifolder - explicit path to folder where to search for input geo file.
 
@@ -776,6 +788,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             else:
                 iti = it
 
+            it_new = iti
             if inherit_option == 'full':
                 it_new = iti+'.if'
             
@@ -805,7 +818,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
             if it_suffix: # add to default behaviour; make additional key, which can allow to override default behavior
-                it_new = iti+'.'+it_suffix
+                it_new = it_new+'.'+it_suffix
                 it_suffix = None
 
 

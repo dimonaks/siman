@@ -175,7 +175,7 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
 
         d.close()   
 
-        if 0: #please run me from time to time to reduce the size of the database file, calc
+        if header.reorganize: #please run me from time to time to reduce the size of the database file, calc
             with dbm.open(databasefile3, 'w') as d:
                 d.reorganize()
 
@@ -343,7 +343,7 @@ def read_cvs_database(columns):
     Allows to read cvs file with experimental results
     """
 
-    dfs = pd.read_csv(r'database/literature.csv')[columns]
+    dfs = pd.read_csv(r'../lit_database/literature.csv')[columns]
     dfs.drop(0, inplace=True)
     dfs.dropna(inplace=True)
     dfs.set_index('is', inplace = True)

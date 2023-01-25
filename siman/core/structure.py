@@ -412,9 +412,12 @@ class Structure():
 
         return ifmaglist, mag_numbers
 
-    def show_mag(self, i):
-        # show magmom of i atoms, starting from 1
-        i-=1
+    def show_mag(self, i, from_one = None):
+        # show magmom of i atoms, starting from 0
+        if from_one is None:
+            from_one = 0
+        if from_one:
+            i-=1
         m = self.magmom[i]
         el = self.get_elements()[i]
         print('Mag for {:s} = {:.2f}'.format(el, m))
@@ -940,16 +943,26 @@ class Structure():
 
         return oxi
 
-    def print_oxi(self, el, silent = 0):
+    def print_oxi(self, el, silent = 0, from_one = 0):
         """
         Print oxidation states for particular element 
 
         INPUT:
             - el (str) - element
+            - from_one (bool) - show atom numbers starting from one
         """
         iel = self.get_specific_elements([invert(el)])
+
+        fo = int(from_one)
+
         if not silent:
-            print(  ' '.join( ['{:}{:}={:.1f}'.format(el,i,self.oxi_state[i]) for i in iel] ) )
+            # print(' '.join( ['{:}{:}={:.1f}'.format(el, i, self.oxi_state[i]) for i in iel] ) )
+            print(f'Element is {el}')
+            print(f'i_at    Oxidation state')
+            for i in iel:
+                ox = self.oxi_state[i]
+                print(f'{i+fo:4}   {ox:+5.1f} ')
+
 
         return [self.oxi_state[i] for i in iel]
 
@@ -2428,7 +2441,7 @@ class Structure():
 
     def distance(self, i1=None, i2=None, x1=None, x2 = None, coord_type = 'xcart'):
         """
-        Shortest distance between two atoms acounting PBC, from 0
+        Shortest distance between two atoms acounting PBC, numbers from 0
         i1 and i2 override x1 and x2
 
         coord_type - only when x1 and x2 are provided
@@ -2666,7 +2679,7 @@ class Structure():
 
 
     def nn(self, i, n = 6, ndict = None, only = None, silent = 0, 
-        from_one = True, more_info = 0, oxi_state = 0, print_average = 0):
+        from_one = None, more_info = 0, oxi_state = 0, print_average = 0):
         """
         show neigbours
 
@@ -2680,7 +2693,7 @@ class Structure():
 
         from_one - if True, strart first atom from 1, otherwise from 0
 
-        oxi_state (bool) - if 1 then showing oxidation state as well
+        oxi_state (bool) - if 1 then showing oxidation state as well, turned on automatically if self.oxi_state list is non zero
 
         print_average (bool) - print more
 
@@ -2698,8 +2711,16 @@ class Structure():
 
 
         """
-        if header.FROM_ONE is not None:
-            from_one = header.FROM_ONE
+        
+        if from_one is None:
+            from_one == True # default due to compatability with previous code
+
+            if header.FROM_ONE is not None: #overwrites default behavior
+                from_one = header.FROM_ONE
+
+        if header.FROM_ONE != from_one:
+            printlog('Warning! provided *from_one* and header.FROM_ONE are different. I am using from header')
+
 
 
         if from_one:
@@ -2734,6 +2755,10 @@ class Structure():
         # if not silent:
         
         headers = ['nn', 'No.', 'El', 'Dist, A']
+
+        if hasattr(st, 'oxi_state') and len(st.oxi_state) > 0:
+            oxi_state = 1
+
         if oxi_state:
             headers.append('Oxi state')
             i = 0 

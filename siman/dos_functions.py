@@ -153,6 +153,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals (list of str) - 
         any from 's, p, d, py, pz, px, dxy, dyz, dz2, dxz, dx2' where 'p' and 'd' are sums of projections
         also to sum around neigbours use p6 and d6 and neighbors parameter
+        p_all - sum over all atoms, p states 
+        d_all - sum over all atoms, d states
 
     up - 'up2' allows to download the file once again
     labels - two manual labels for cl1 and cl2 instead of auto
@@ -387,7 +389,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         
 
         if cl2:
-            numbers_list.append([iatom2]) # for cl2 only one atom is supported
+            numbers_list.append([iatom2, iatom2]) # for cl2 only one atom is supported
+            printlog('Warning! for cl2 p6 and d6 doesnot work and will show DOS for central atom')
             calcs.append(cl2)
 
 
@@ -622,7 +625,10 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         # color = {'s':'k', 'p':'r', 'd':'g', 'py':'g', 'pz':'b', 'px':'c', 'dxy':'m', 'dyz':'c', 'dz2':'m', 'dxz':'r', 'dx2':'g'}
         j = 0
+        # print(orbitals)
         for orb in orbitals:
+            printlog('Orbital is ', orb, imp = 'y')
+            # sys.exit()
             i = 0
             for n, l, iat, el, d in zip(names, lts, atoms,els, ds):
                 if el in ['Ti','Fe', 'Co', 'V', 'Mn', 'Ni'] and orb in ['p', 's', 'p_all']:
@@ -648,13 +654,13 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 nam+=suf
                 nam_down+=suf
 
+                printlog('Plotting for',orb, el, imp = 'y')
 
-
-                # print(nsmooth)
+                # print('debug: Label is',formula, el, suf2)
                 # sys.exit()
                 if orb == 'p':
 
-
+                    # print('debug: p is chosen')
                     if plot_spin_pol:
                         args[nam] = {'x':d.energy, 'y':mul*smoother(d.p_up[0], nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
 
@@ -668,7 +674,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
                     # now spin-polarized components could not be shown
                     if plot_spin_pol:
-                        args[nam]      = {'x':d.energy, 'y':smoother(d.p6_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el_sur+suf2+' p', 'dashes':dashes}
+                        args[nam]      = {'x':d.energy, 'y':smoother(d.p6_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el_sur+suf2+' '+orb, 'dashes':dashes}
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.p6_down, nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
 
 
@@ -742,6 +748,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 else:
                     # args[nam] = (d.energy, smoother(d.site_dos(iat, i_orb[orb]), nsmooth), color[orb]+l)
                     # print(i_orb.keys(), color.keys())
+                    # print('debug: else is chosen')
+
                     # sys.exit()
                     args[nam] = {'x':d.energy, 'y':smoother(d.site_dos(iat, i_orb[orb]), nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el+suf2+' '+orb, 'dashes':dashes}
                     
@@ -796,7 +804,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             plot_param['ver_lines'].append({'x':gc, 'c':'k', 'ls':'--'})
 
         if efermi_origin:
-            if plot_param['ver']:
+            if plot_param.get('ver'):
                 plot_param['ver_lines'].append({'x':efermi_shift, 'c':'k', 'ls':'-', 'lw':lw})
 
         else:

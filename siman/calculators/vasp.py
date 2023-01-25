@@ -748,24 +748,57 @@ class CalculationVasp(Calculation):
 
 
     def plot_energy_force(self, force_type = 'max'):
-        # print(self.maxforce)
+        """
+        Plot energy versus force for each ionic relaxation step.
+        
+        INPUT:
+            
+            - force_type (str) 
+                - 'max' - maximum force
+                - 'av'  - average force
+
+        RETURN:
+            
+            None
+
+        AUTHOR: 
+
+            Aksyonov D.A.
+        """
+
+        import numpy as np
+        from siman.picture_functions import fit_and_plot
+
         if 'max' in force_type:
-            force = [m[1] for m in self.maxforce_list ]
+            forces = [m[1] for m in self.maxforce_list ]
             lab = 'Max.'
+
         elif 'av' in force_type:
-            # print(self.average_list)
-            force = [m for m in self.average_list ]
+            forces = [m for m in self.average_list ]
             lab = 'Av.'
 
+        energies = 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) # relative energies in meV
+        numbers = list(range(len(forces)))
+        annotates = []
+        for n in numbers:
+            if n%5 == 0 or n == len(numbers)-1:
+                if n == 0:
+                    annotates.append(str(n)+' first')
+                elif n == len(numbers)-1:
+                    annotates.append(str(n)+' last')
+                else:
+                    annotates.append(n)
+            else:
+                annotates.append('')
 
-        # print(maxf)
-        plt.plot(force, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
-        # plt.xlabel('MD step')
-        # plt.ylabel('Energy per cell (eV')
-        plt.xlabel(lab+' force on atom (meV/$\AA$)')
-        plt.ylabel('Energy per cell relative to min (meV)')
 
-        plt.show()
+
+        fit_and_plot(data = {'x': forces, 'y':energies, 'fmt':'-o', 
+            'annotates': annotates, 'annotate_fontsize':10, 'annotate_arrowprops':None}, annotate = 1,
+            xlabel = lab+' force on atom (meV/$\AA$)', ylabel = 'Energy per cell relative to min (meV)',
+            show = 1)
+
+
         return
 
     def plot_energy_step(self,):
@@ -1080,7 +1113,9 @@ class CalculationVasp(Calculation):
         ppc = self.project_path_cluster+'/'
         self.determine_filenames()
 
-        if header.PATH2ARCHIVE:
+        P2A = header.PATH2ARCHIVE
+
+        if P2A:
             CHG_scratch_gz  = header.PATH2ARCHIVE+'/'+self.dir+'/'+v+".CHGCAR.gz"
 
         CHG     = ppc + self.path['chgcar']
@@ -1098,10 +1133,10 @@ class CalculationVasp(Calculation):
 
         command_chg_gunzip = 'gunzip '+CHG+'.gz ' # on cluster
         
-        if header.PATH2ARCHIVE:
+        if P2A:
         
             restore_CHG = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
-            restore_AEC = "rsync "+header.PATH2ARCHIVE+'/'+self.path['aeccar0']+' '+ header.PATH2ARCHIVE+'/'+self.path['aeccar2']+' '+path # on cluster
+            restore_AEC = "rsync "+P2A+'/'+self.path['aeccar0']+' '+ P2A+'/'+self.path['aeccar2']+' '+path # on cluster
 
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
@@ -1125,7 +1160,7 @@ class CalculationVasp(Calculation):
         if remote(no_CHG_sum): 
             printlog(  CHGCAR_sum, "does not exist. trying to calculate it ...", imp = 'Y')
             
-            if remote(no_AECCAR0) or remote(no_AECCAR2):
+            if (remote(no_AECCAR0) or remote(no_AECCAR2)) and P2A:
                 printlog(  AECCAR0, "does not exist, trying to take it from archive ...", imp = 'Y')
                 printlog(remote(restore_AEC)+'\n', imp = 'y')
 
@@ -1294,33 +1329,6 @@ class CalculationVasp(Calculation):
 
 
 
-
-    def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None, up_res = 'up1'):
-        """
-        Wrapper for full optimization
-        ise (str) - optimization set; if None then choosen from dict
-        up (int) - 0 read results if exist, 1 - update
-        fit (int) - 1 or 0
-        suf - additional suffix
-        """
-        from siman.project_funcs import optimize
-        if ise is None:
-            if 'u' in self.id[1]:
-                ise = '4uis'
-        st = self.end.copy()
-        it = self.id[0]
-        child = (it+suf+'.su', ise, 100)
-        #st.printme()
-        if not hasattr(self, 'children'):
-            self.children = []
-        if not up and child in self.children:
-            optimize(st, it+suf, ise = ise, fit = fit, add_loop_dic = add_loop_dic,up_res = up_res) # read results
-        else:
-            #run
-            optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic, up_res = up_res)
-            self.children.append(child)
-
-        return
 
 
 

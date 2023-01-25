@@ -888,6 +888,10 @@ class Calculation(object):
                     last = True
                     hide_xlabels = 0
                     xlabel = "Energy (eV)"
+                
+
+
+                # print()
                 plot_dos(cl,  iatom = iat+1,  efermi_origin = efermi_origin,
                 dostype = 'partial', orbitals = orbitals, 
                 neighbors = nneighbors,
@@ -918,6 +922,48 @@ class Calculation(object):
 
 
         return 
+
+
+
+
+    def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None, up_res = 'up1'):
+        """
+        Wrapper for full optimization
+        ise (str) - optimization set; if None then choosen from dict
+        up (int) - 0 read results if exist, 1 - update
+        fit (int) - 1 or 0
+        suf - additional suffix
+        """
+        from siman.project_funcs import optimize
+        if ise is None:
+            if 'u' in self.id[1]:
+                ise = '4uis'
+        st = self.end.copy()
+        it = self.id[0]
+        child = (it+suf+'.su', ise, 100)
+        #st.printme()
+        if not hasattr(self, 'children'):
+            self.children = []
+        if not up and child in self.children:
+            optimize(st, it+suf, ise = ise, fit = fit, add_loop_dic = add_loop_dic,up_res = up_res) # read results
+        else:
+            #run
+            optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic, up_res = up_res)
+            self.children.append(child)
+
+        return
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     def plot_locpot(self, filename = None):
