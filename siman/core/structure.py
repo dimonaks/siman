@@ -2613,11 +2613,14 @@ class Structure():
     def remove_closest(self, *args, **kwargs):
         return remove_closest(self, *args, **kwargs)
 
-
-
     def remove_vacuum(self, *args, **kwargs):
         return remove_vacuum(self, *args, **kwargs)
 
+    def move_edge(self, *args, **kwargs):
+        return move_edge(self, *args, **kwargs)
+
+    def find_slab_width(self, *args, **kwargs):
+        return find_slab_width(self, *args, **kwargs)
 
     def find_closest_atom(self, xc = None, xr = None):
         """
