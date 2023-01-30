@@ -3285,6 +3285,140 @@ class Structure():
 
         return st
 
+    def get_coordination(self, el, silent = 1):
+        """
+        Get coordination for atom *el* for all non-equivalent types
+
+        INPUT:
+
+            - el (str) - element name
+
+
+        RETURN:
+
+            - coordination_list (list of lists of str)
+
+        AUTHOR:
+
+            Aksyonov DA
+        """        
+
+        st = self
+        numbers = st.determine_symmetry_positions(el, silent = 1)
+        i = 1
+        els = st.get_elements()
+        coords = []
+        for nn in numbers:
+            elsc = [els[i] for i in st.nn(nn[0], from_one = 0, silent =1)['numbers'][1:]]
+            if not silent:
+                printlog(f'Coordination of {el}{i} is {elsc}', imp = 'y')
+            i+=1
+            coords.append(elsc)
+
+        return coords
+
+
+    def add_types_for_el(self, el):
+        """
+        Make several types for the same element. Needed to set different U and magnetic moments
+        Currently new types are created based on symmetry. New types are added at the end of typat list
+
+        INPUT:
+
+            - el (str) - element name for which new types should be created
+
+        RETURN:
+
+            - st (Structure)
+            - coords (list of lists) coordination of detected types of element *el*
+
+        TODO:
+            other methods may not work correctly with such structures. Check their 
+
+
+        AUTHOR:
+
+            Aksyonov DA
+        """
+
+        st = self.copy()
+
+        numbers = st.determine_symmetry_positions(el, silent = 1)
+        ntn = len(numbers) # new number of types for el
+        z = invert(el)
+        ntc = st.znucl.count(z) #current number of types for el
+        # print(st.ntypat, st.typat)# st.typat, st.znucl)
+        # print(numbers)
+        nt_add = ntn-ntc
+        if nt_add > 0:
+            printlog('Current number of types=', ntc, 'is smaller than the number of non-equivalent positions=', ntn, '; Additional', nt_add, 'types will be added')
+            
+            # st.ntypat += nt_add
+            nt_last = st.ntypat 
+
+            coords = self.get_coordination(el, silent = 0)
+
+            for nn in numbers[1:]: # skip first
+                st.ntypat += 1
+                st.znucl.append(z)
+                for i in nn:
+                    st.typat[i] = st.ntypat
+            # print
+            # print(st.ntypat, st.typat)# st.typat, st.znucl)
+            st.get_nznucl()
+
+            # st.printme()
+            # st.write_poscar()
+
+        else:
+            printlog('Current number of types=', ntc, 'is equal or larger than number of non-equivalent positions=', ntn, 'nothing is done', imp = 'y')
+
+        return st, coords
+
+
+
+    def get_unique_type_els(self, coordination = False):
+        """
+        Get list of unique type elements 
+
+        INPUT:
+
+            - coordination (bool) - if true than the coordination of the element is given in format 'el/el_coord', where
+            el_cood is the closest-lying coordinating element. It is done only if more than one type for one element is found
+
+        RETURN:
+
+            - els (list of str)
+
+        AUTHOR:
+
+            Aksyonov DA
+
+        """
+
+        els_type = [invert(z) for z in self.znucl] # 
+
+        els = list(set(els_type))
+
+        els_typen = {}
+
+        if coordination:
+            els_typec = els_type.copy()
+            for i, el in enumerate(els_type):
+                if els_type.count(el) > 1:
+                    if el not in els_typen:
+                        els_typen[el] = 0
+                    coords = self.get_coordination(el, silent = 1)
+                    coord_el = coords[els_typen[el]][0] #currently only first element is used
+                    els_typec[i] = els_type[i]+f'/{coord_el}'
+                    els_typen[el] +=1
+
+
+
+        return els_typec
+
+
+
     def ewald(self, ox_st = None, site = None):
         # ox_st 
         #   # 1 - oxidation states from guess

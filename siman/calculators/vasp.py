@@ -1,6 +1,6 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
-import os, math, copy, glob, shutil
+import os, math, copy, glob, shutil, sys
 from siman import header
 from siman.core.calculation import Calculation
 from siman.core.structure import Structure
@@ -489,28 +489,90 @@ class CalculationVasp(Calculation):
     
         adding parameters for atat
 
+
+        TODO: 
+            
+            if number is used after element, then it should be considered as separate type
+
+        RETURN:
+            
+            None
+
+        AUTHOR:
+
+            Aksyonov DA
         """
+        vp = curset.vasp_params
+        if not curset:
+            curset = self.set
 
 
         #check if some parameters should be filled according to number of species
         #make element list
-        el_list = [element_name_inv(el) for el in self.init.znucl]
-        if not curset:
-            curset = self.set
-        vp = curset.vasp_params
-
-        # print(['LDAU'])
-        # print(vp)
-        # print(vp['LDAU'])
+        el_list = [element_name_inv(el) for el in self.init.znucl] # length is equal to number of elements
 
         if 'LDAUL' in vp and vp['LDAUL'] is not None: 
-            # print(vp['LDAU'])
-            # if 
+
+            if 1:
+                'This block checks if more types for one element should be added to structure'
+                uels_set = vp['LDAUL'].keys()
+                # print(uels_set)
+                uels = [] # list of elements provided by set relevant for the given structure
+                uelntypat = {} # number of types for each element from the structure, for which U should be used
+                for el in el_list:
+                    for el_set in uels_set:
+                        if el == el_set.split('/')[0]: # after slash the required coordination is given.
+                            uels.append(el_set)
+                            if el not in uelntypat:
+                                uelntypat[el] = 0
+                            uelntypat[el] +=1
+                # print(uels, uelntypat)
+                anions_set = []
+                for el in uelntypat.keys(): #
+                    if uelntypat[el] > 1: # this condition shows that multitype regime was asked for
+                        printlog('LDAUL are given for the following multitype elements: ',uels, imp = 'y')
+                        for el_set in uels:
+                            if el in el_set and '/' not in el_set: # check that correct format is used
+                                printlog('Error! Element', el, f'has several types. LDAUL values should be given in format {el}/A but mixture of {el}/A and {el} was detected. Please correct')
+                            #check that required anions are present 
+                            A = el_set.split('/')[1]
+                            anions_set.append(A)
+                            # print(A)
+                            if A not in el_list:
+                                printlog(f'Warning! Anion {A} is absent in your structure but present in your set')
+
+                        printlog(f'I introduce additional types for {el}', imp = 'y')
+                        self.init, cords = self.init.add_types_for_el(el)
+                        if len(cords) == 1:
+                            printlog(f'Error! This structure has only one symmetry non-equivalent position for {el} and incompatible with the chosen set' )
+                        if len(cords) != uelntypat[el]:
+                            printlog(f'Error! Number of non-equivalent position for {el} is incompatible with the chosen set' )
+
+                        inter = list(set([item for sublist in cords for item in sublist]).intersection(set(anions_set))  ) 
+                        if len(anions_set) != len(inter):
+                            printlog('Warning! Coordinations in your structure and provided LDAUL are incompatible ')
+                        # sys.exit()
+                        # for A in anions_set:
+                        #     for cord in cords:
+                        #         print(A, cord)
+                        #         if A in cords:
+                        #             break
+                        #     else:
+
+
+            aniels = [invert(a) for a in header.ANION_ELEMENTS]
+            # set(aniels)
+            nintersections = len(set(aniels).intersection(el_list))
+            # print(nintersections, aniels, el_list)
+
+            el_list = self.init.get_unique_type_els(True) # new list after adding 
+            # sys.exit()
+
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
                 # print( vp[key])
                 try:
                     if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
-                        print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
+                        printlog('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
                         # raise RuntimeError
 
                     new = []
@@ -519,21 +581,27 @@ class CalculationVasp(Calculation):
                         if el in vp[key]:
                             val = vp[key][el]
                             
-                            if 'S' in el_list:  # use another value in the format of Fe/S
-                                kk = el+'/S' 
-                                if kk in vp[key]:
-                                    val = vp[key][kk]
-                    
+                            for A in aniels:
+                                if A in el_list:  # use another U value for other anions, provided like Fe/S 
+                                    kk = el+'/'+A 
+                                    if kk in vp[key]:
+                                        if nintersections == 1:
+                                            val = vp[key][kk]
+                                        else:
+                                            printlog(f'Error! The chosen structure has more than one anion. The given U values {el}/{A} will be used for all {el} atoms')
 
 
 
 
 
                         else:
+
                             if key == 'LDAUL':
                                 val = -1
                             else:
                                 val =  0
+                            if '/' in el:
+                                printlog(f'Warning! no value is given in {key} for element {el}')
 
                         new.append(val)
                     
@@ -569,6 +637,8 @@ class CalculationVasp(Calculation):
                 if el in curset.magnetic_moments:
                     magmom.append(curset.magnetic_moments[el])
                 else:
+                    if '/' in el:
+                        printlog(f'Warning! {el} was not found in your set, I use {mag_mom_other} for it')
                     magmom.append(mag_mom_other)
             
 
