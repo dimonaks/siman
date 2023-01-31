@@ -519,7 +519,7 @@ class CalculationVasp(Calculation):
                 # print(uels_set)
                 uels = [] # list of elements provided by set relevant for the given structure
                 uelntypat = {} # number of types for each element from the structure, for which U should be used
-                for el in el_list:
+                for el in set(el_list):
                     for el_set in uels_set:
                         if el == el_set.split('/')[0]: # after slash the required coordination is given.
                             uels.append(el_set)
@@ -541,12 +541,14 @@ class CalculationVasp(Calculation):
                             if A not in el_list:
                                 printlog(f'Warning! Anion {A} is absent in your structure but present in your set')
 
-                        printlog(f'I introduce additional types for {el}', imp = 'y')
+                        printlog(f'Checking if more types for {el} should be added ... ', imp = 'y')
                         self.init, cords = self.init.add_types_for_el(el)
                         if len(cords) == 1:
                             printlog(f'Error! This structure has only one symmetry non-equivalent position for {el} and incompatible with the chosen set' )
+                        
                         if len(cords) != uelntypat[el]:
-                            printlog(f'Error! Number of non-equivalent position for {el} is incompatible with the chosen set' )
+                            # print( len(cords), uelntypat[el] )
+                            printlog(f'Error! Number of non-equivalent position for {el} is {len(cords)}, which is incompatible  with {uelntypat[el]} coordinations provided the chosen set' )
 
                         inter = list(set([item for sublist in cords for item in sublist]).intersection(set(anions_set))  ) 
                         if len(anions_set) != len(inter):

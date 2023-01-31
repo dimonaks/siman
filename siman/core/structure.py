@@ -3350,13 +3350,14 @@ class Structure():
         # print(st.ntypat, st.typat)# st.typat, st.znucl)
         # print(numbers)
         nt_add = ntn-ntc
+        # coords = None
+        coords = self.get_coordination(el, silent = 0)
         if nt_add > 0:
             printlog('Current number of types=', ntc, 'is smaller than the number of non-equivalent positions=', ntn, '; Additional', nt_add, 'types will be added')
             
             # st.ntypat += nt_add
             nt_last = st.ntypat 
 
-            coords = self.get_coordination(el, silent = 0)
 
             for nn in numbers[1:]: # skip first
                 st.ntypat += 1
