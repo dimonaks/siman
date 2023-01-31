@@ -3353,7 +3353,7 @@ class Structure():
         # coords = None
         coords = self.get_coordination(el, silent = 0)
         if nt_add > 0:
-            printlog('Current number of types=', ntc, 'is smaller than the number of non-equivalent positions=', ntn, '; Additional', nt_add, 'types will be added')
+            printlog('Current number of types=', ntc, 'is smaller than the number of non-equivalent positions=', ntn, '; Additional', nt_add, 'types will be added', imp = 'y')
             
             # st.ntypat += nt_add
             nt_last = st.ntypat 

@@ -510,8 +510,9 @@ class CalculationVasp(Calculation):
         #check if some parameters should be filled according to number of species
         #make element list
         el_list = [element_name_inv(el) for el in self.init.znucl] # length is equal to number of elements
-
+        ldau = False
         if 'LDAUL' in vp and vp['LDAUL'] is not None: 
+            ldau = True
 
             if 1:
                 'This block checks if more types for one element should be added to structure'
@@ -633,6 +634,15 @@ class CalculationVasp(Calculation):
             
             mag_mom_other = 0.6 # magnetic moment for all other elements
             magmom = []
+            for el in curset.magnetic_moments.keys():
+                if '/' in el and ldau == False:
+                    # if ldau is true and multitype regime is true then everything is updated above
+                    # if ldau is true and multitype is false than we cant use multitype here because LDAUL will become incompatible with POSCAR 
+                    self.init, cords = self.init.add_types_for_el(el.split('/')[0])
+                    el_list = self.init.get_unique_type_els(True) # new list after adding 
+                else:
+                    ''
+
             for iat in range(self.init.natom):
                 typ = self.init.typat[iat]
                 el  = el_list[typ-1]
