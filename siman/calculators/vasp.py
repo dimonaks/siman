@@ -19,7 +19,7 @@ from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacing
 local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral, 
 rms_between_structures, rms_between_structures2)
 from siman.set_functions import InputSet, aims_keys
-
+import numpy as np
 
 
 
