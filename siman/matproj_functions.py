@@ -417,6 +417,7 @@ def calc_bulk_list2(data_list, suf = '', ise = '8m', status = None, up =None, co
 
     ise  - set of calculation. Usually use '8' for nonmag calc and '8m' for mag calc
     status = add or res
+    
     """
 
     if suf != ''
