@@ -13,7 +13,8 @@ import traceback, os, sys, datetime, glob, copy
 
 from siman import header
 from siman.header import print_and_log, printlog, geo_folder, runBash
-from siman.classes import CalculationVasp, Structure
+# from siman.classes import CalculationVasp, Structure
+from siman.core.structure import  Structure
 from siman.set_functions import InputSet
 from siman.functions import  return_atoms_to_cell, element_name_inv
 from siman.inout import write_xyz

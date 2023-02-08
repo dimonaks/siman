@@ -1664,6 +1664,43 @@ def suf_en_polar_layered(formula, cl_surf, dmu_a = 0, dmu_b = 0, dmu_c = 0, prin
     return gamma
 
 
+
+def gb_en_ideal(cl_gb, cl_bulk, n_gbs = 2):
+
+    """
+    Calculate grain boundary energy of pure material
+    GB is assumed to be normal to R3!
+
+    ###INPUT:
+    
+    - cl_gb (Calculation class object) - slab or cell with grain boundary
+    - cl_bulk (Calculation class object) - bulk cell
+    - n_gbs (int) - number of grain boundaries in the system (Default - 2)
+
+    ###RETURN:
+        e_gb (float) - grain boundary energy in eV
+
+    """
+
+    import numpy as np
+
+    st1 = cl_gb.end
+    st2 = cl_bulk.end
+
+    e1 = cl_gb.e0
+    n1 = st1.natom
+    e2 = cl_bulk.e0
+    n2 = st2.natom
+
+
+    A = st1.get_surface_area()
+
+
+    e_gb = (e1 - e2*n1/n2)/2/A * header.eV_A_to_J_m
+    print('E_gb = {} J/m2'.format(round(e_gb, 2)))
+    return e_gb
+
+
 def ads_en(cl_slab_ads, cl_slab, ads_at = 'O'):
 
     # ads_at_dic = {'O':-1.52, 'H':-1.07}

@@ -69,13 +69,10 @@ TODO:
 if test -f prev1.outcar
     cp name prev2+name
 чтобы она находила prev3 с максимальным числом, и к этому числу прибавляла единицу для нового файла
-
 NEW:
 Calculation Structure():
     *self.magmom* (list) - magnetic moments for each ion in structure; has higher preference than self.set.magnetic_moments which
     include only moments for atom types
-
-
 """
 
 
@@ -110,13 +107,11 @@ class Description():
     """
     Objects of this class include just folder and description of specific calculation.
     Mostly was needed for manual addition of new calculations
-
     self.ngkpt_dict_for_kspacings (dict of lists) - the key is kspacing; the dict
     contains k-meshes 
     for all calculations
     based on this geometry structure.
     can be useful for fine tuning of k-mesh for specific kspacing.
-
     """
     def __init__(self, sectionfolder = "forgot_folder", description = "forgot_description"):
         self.des = description
@@ -131,7 +126,6 @@ class Description():
 
 class MP_Compound():
     """This class includes information about chemical compounds from MatProj and next operations (bulk calc, slab construction etc.)
-
     db key is 'pretty_formula.MP': ('AgC.MP')
     """
     def __init__(self):
@@ -238,7 +232,6 @@ class MP_Compound():
         """
         check downloaded POSCAR files in geo/ folder
         if not POSCAR of some structure - download it from Mat Proj
-
         mat_in_list - data dict for any structure from MP,  result of get_fata('mp-...')
         """
 
@@ -261,7 +254,6 @@ class MP_Compound():
         from siman.header import db
         '''
         return cohesive energy
-
         e_box - dict{element: energy_of_element_in_box}
         '''
         

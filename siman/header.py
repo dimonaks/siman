@@ -400,7 +400,6 @@ def run_win_cmd(cmd):
         raise Exception('cmd %s failed, see above for details', cmd)
 
 
-
 def pickle_module_migration_script():
     """
     This script allows to update modules in database after moving them to siman package
@@ -410,6 +409,9 @@ def pickle_module_migration_script():
     from siman import header
     # sys.modules['set_functions'] = siman.set_functions
     # sys.modules['classes'] = siman.classes
+    # sys.modules['siman.classes'] = siman.core.structure
+    siman.classes.Structure = siman.core.structure.Structure
     # sys.modules['siman.core.structure'] = siman.core.molecule
-    for key in header.db.items():
-        print(header.db[key])
+    # for key in header.db.items():
+        # print(header.db[key])
+
