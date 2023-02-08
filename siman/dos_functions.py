@@ -238,7 +238,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     if iatom:
         iatom-=1
     
-    if cl2:
+    if cl2 and dostype not in ['total', 'diff_total']:
         if not iatom2:
             printlog('Error!, provide *iatom2*!')
         iatom2-=1

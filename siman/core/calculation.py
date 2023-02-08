@@ -1,3 +1,4 @@
+
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil, random
@@ -780,7 +781,7 @@ class Calculation(object):
 
         cl = db[id]
 
-        cl.res()
+        cl.res(show='')
 
         if orbitals is None:
             orbitals = ['d', 'p6']
