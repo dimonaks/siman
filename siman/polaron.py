@@ -18,7 +18,6 @@ SP - single point
 """
 
 import sys, json, os, glob, copy
-print('Python version is', sys.version)
 from shutil import copyfile
 import random
 
@@ -69,6 +68,7 @@ if __name__ == "__main__":
     header.warnings = 'yY'
     # header.warnings = 'neyY'
     header.verbose_log = 1
+    printlog('Python version is', sys.version)
 
     printlog('\n\n\nStarting Polaron hop script!\n', imp = 'y')
     
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     vasprun_command = params.get('vasp_run') or 'vasp'
     images = params.get('images') or 3 # number of images
-    mode   = params.get('mode') or 'inherit' # number of images
+    mode   = params.get('mode') or 'inherit' # mode type
     magmom = params.get('magmom') or None
 
     printlog('Choosing mode', mode, imp = 'y')
@@ -113,19 +113,19 @@ if __name__ == "__main__":
         
         for v in range(3, 3+images):
 
-            vasp_step(v, 'Intermediate position'+str(v), 1 )
+            vasp_step(v, 'Intermediate position '+str(v), 1 )
 
     elif mode =='inherit':
 
         #from initial to last
-        cl2 = vasp_step(2, 'Final position', 1 )
+        cl2 = vasp_step(2, 'End position', 1 )
         cl1 = vasp_step(1, 'Start position', 0)
         # copyfile(str(v)+'.POSCAR', 'POSCAR')
         update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
         
         interpolate(cl1.end, cl2.end, images, 21, omit_edges = 0)
         for v in range(21, 21+images):
-            vasp_step(v, 'Intermediate position'+str(v), rm = 0 )
+            vasp_step(v, 'Intermediate position '+str(v), rm = 0 )
 
         runBash('rm CHGCAR WAVECAR; gunzip 2.CHGCAR.gz; mv 2.CHGCAR CHGCAR')
 

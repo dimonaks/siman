@@ -1,5 +1,5 @@
 #!/bin/bash
 squeue
-sbatch -p AMG /home/d.aksenov//Bi2Se3//Bi2Se3.ifn.ion_relax/Bi2Se3.ifn.ion_relax.run
+sbatch /home/d.aksenov//LiFePO4/PH///LiFePO4.PHtest.1u/LiFePO4.PHtest.1u.run
 squeue
 mv run last_run
