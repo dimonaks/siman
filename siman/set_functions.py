@@ -182,7 +182,9 @@ vasp_other_keys = [
 'NWRITE',
 'MAGATOM',
 'DOSTATIC',
-'IWAVPRE'
+'IWAVPRE',
+'MIXPRE',
+
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 

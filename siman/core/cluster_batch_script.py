@@ -1,6 +1,6 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
-import os
+import os, sys
 from siman.small_functions import list2string
 from siman import header
 from siman.header import printlog
@@ -156,8 +156,6 @@ def write_batch_header(cl, batch_script_filename = None,
             if header.MEM_CPU:
                 f.write("#SBATCH --mem-per-cpu=7675\n") # this is mem per core
             
-            # print(header.cluster)
-            # sys.exit()
             if 'partition' in hc:
                 f.write('#SBATCH -p '+hc['partition']+'\n')
 
@@ -266,8 +264,8 @@ def run_command(cl, option, name, parrallel_run_command,
 
     """ 
 
-    if write:
 
+    if write:
         if mpi is False:
 
             if option == 'master':
@@ -295,8 +293,8 @@ def run_command(cl, option, name, parrallel_run_command,
         elif mpi == True:
             f.write('mpirun -np '+str(cores)+' '+parrallel_run_command+" >"+name+".log\n")
 
-
-        f.write("sleep 20\n")
+        if f:
+            f.write("sleep 20\n")
     return
 
 
@@ -471,7 +469,6 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
             name_mod_last += '.'+penult_set_name #however, for multiset run, the structure for u=00 exists only
                                               #for penult set or maybe even for the first only set
             # print (name_mod_last, penult_set_name)
-            # sys.exit()
             
         # print 'prevcalver', prevcalcver
 
@@ -607,8 +604,9 @@ def u_ramp_prepare(cl):
 
     return name_mod, name_mod_last
 
-def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, set_mod = '', f = None):
-
+def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, set_mod = '', f = None, run_tool_flag = None, option = None, parrallel_run_command = None, mpi = None, corenum = None):
+    #print(f)
+    #sys.exit()
     if not subfolders:
         subfolders = ['.']
 
@@ -633,7 +631,7 @@ def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, 
 
         
         run_command(cl, option = option, name = run_name_prefix+'.'+name_mod, 
-            parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum)
+            parrallel_run_command = parrallel_run_command, f = f,  write = True, mpi = mpi, corenum = corenum)
         
         u_last = u
 
@@ -726,10 +724,9 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
         if 'u_ramping' in cl.calc_method:
 
-
             contcar_file = u_ramp_loop(cl, subfolders = subfolders, 
                 run_name_prefix = cl.name+'.n_'+nim_str, 
-                set_mod = set_mod, f = f)
+                set_mod = set_mod, f = f, run_tool_flag = run_tool_flag, option = option, parrallel_run_command = parrallel_run_command, mpi = mpi, corenum = corenum)
       
 
         else:
@@ -787,9 +784,10 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
         
         if 'u_ramping' in cl.calc_method:
             
-
+            #print(f)
+            #sys.exit()
             contcar_file = u_ramp_loop(cl, ver_prefix = '100.', 
-                run_name_prefix = cl.id[0]+'.fitted', set_mod = set_mod, f = f)
+                run_name_prefix = cl.id[0]+'.fitted', set_mod = set_mod, f = f, run_tool_flag = run_tool_flag, mpi = mpi, corenum = corenum, parrallel_run_command = parrallel_run_command, )
 
         else:
             if final_analysis_flag:

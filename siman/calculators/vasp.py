@@ -1,6 +1,7 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 import os, math, copy, glob, shutil, sys
+import numpy as np
 from siman import header
 from siman.core.calculation import Calculation
 from siman.core.structure import Structure
