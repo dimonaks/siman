@@ -375,16 +375,16 @@ class Structure():
         return int(sum(zvals))
 
 
-    def determine_symmetry_positions(self, element, silent = 0):
+    def determine_symmetry_positions(self, *args, **kwargs):
         from siman.geo import determine_symmetry_positions
 
-        return determine_symmetry_positions(self, element, silent)
+        return determine_symmetry_positions(self, *args, **kwargs)
 
-    def get_symmetry_positions(self, element):
+    def get_symmetry_positions(self, *args, **kwargs):
         #just another name
         from siman.geo import determine_symmetry_positions
 
-        return determine_symmetry_positions(self, element)
+        return determine_symmetry_positions(self, *args, **kwargs)
 
 
     def get_maglist(self):
@@ -3285,13 +3285,16 @@ class Structure():
 
         return st
 
-    def get_coordination(self, el, silent = 1):
+    def get_coordination(self, el, silent = 1, symprec = 0.1):
         """
         Get coordination for atom *el* for all non-equivalent types
 
         INPUT:
 
             - el (str) - element name
+            - silent (bool)
+            - symprec (float) - tolerance for symmetry finding, here a more crude value of 0.1 is used
+
 
 
         RETURN:
@@ -3304,7 +3307,7 @@ class Structure():
         """        
 
         st = self
-        numbers = st.determine_symmetry_positions(el, silent = 1)
+        numbers = st.determine_symmetry_positions(el, silent = 1, symprec = symprec)
         i = 1
         els = st.get_elements()
         coords = []
@@ -3318,7 +3321,7 @@ class Structure():
         return coords
 
 
-    def add_types_for_el(self, el):
+    def add_types_for_el(self, el, symprec = None):
         """
         Make several types for the same element. Needed to set different U and magnetic moments
         Currently new types are created based on symmetry. New types are added at the end of typat list
@@ -3326,6 +3329,7 @@ class Structure():
         INPUT:
 
             - el (str) - element name for which new types should be created
+            - symprec (float) - tolerance for symmetry finding, default is 0.01
 
         RETURN:
 
@@ -3343,7 +3347,7 @@ class Structure():
 
         st = self.copy()
 
-        numbers = st.determine_symmetry_positions(el, silent = 1)
+        numbers = st.determine_symmetry_positions(el, silent = 1, symprec = symprec)
         ntn = len(numbers) # new number of types for el
         z = invert(el)
         ntc = st.znucl.count(z) #current number of types for el
@@ -3351,7 +3355,7 @@ class Structure():
         # print(numbers)
         nt_add = ntn-ntc
         # coords = None
-        coords = self.get_coordination(el, silent = 0)
+        coords = self.get_coordination(el, silent = 0, symprec = symprec)
         if nt_add > 0:
             printlog('Current number of types=', ntc, 'is smaller than the number of non-equivalent positions=', ntn, '; Additional', nt_add, 'types will be added', imp = 'y')
             
@@ -3378,7 +3382,7 @@ class Structure():
 
 
 
-    def get_unique_type_els(self, coordination = False):
+    def get_unique_type_els(self, coordination = False, symprec = 0.1):
         """
         Get list of unique type elements 
 
@@ -3386,6 +3390,7 @@ class Structure():
 
             - coordination (bool) - if true than the coordination of the element is given in format 'el/el_coord', where
             el_cood is the closest-lying coordinating element. It is done only if more than one type for one element is found
+            - symprec (float) - tolerance for symmetry finding, here a more crude symprec of 0.1 is used
 
         RETURN:
 
@@ -3409,7 +3414,7 @@ class Structure():
                 if els_type.count(el) > 1:
                     if el not in els_typen:
                         els_typen[el] = 0
-                    coords = self.get_coordination(el, silent = 1)
+                    coords = self.get_coordination(el, silent = 1, symprec = symprec)
                     coord_el = coords[els_typen[el]][0] #currently only first element is used
                     els_typec[i] = els_type[i]+f'/{coord_el}'
                     els_typen[el] +=1

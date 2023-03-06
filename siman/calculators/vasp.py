@@ -487,13 +487,17 @@ class CalculationVasp(Calculation):
     def actualize_set(self, curset = None, params = None):
         """
         Makes additional processing of set parameters, which also depends on calculation
-    
-        adding parameters for atat
+        e.g. adding parameters for atat, etc.
+
+        INPUT:
+
+            - curset (str) - name of the current set
+            - params (dict) - dictionary with additional parameters from add_loop()
 
 
         TODO: 
             
-            if number is used after element, then it should be considered as separate type
+            if number is used after element, then it should be considered as a separate type
 
         RETURN:
             
@@ -512,6 +516,9 @@ class CalculationVasp(Calculation):
         #make element list
         el_list = [element_name_inv(el) for el in self.init.znucl] # length is equal to number of elements
         ldau = False
+        default_symprec = params.get('symprec') or 0.1
+        # print('default_symprec', default_symprec)
+        # default_symprec = 0.1
         if 'LDAUL' in vp and vp['LDAUL'] is not None: 
             ldau = True
 
@@ -544,7 +551,7 @@ class CalculationVasp(Calculation):
                                 printlog(f'Warning! Anion {A} is absent in your structure but present in your set')
 
                         printlog(f'Checking if more types for {el} should be added ... ', imp = 'y')
-                        self.init, cords = self.init.add_types_for_el(el)
+                        self.init, cords = self.init.add_types_for_el(el, symprec = default_symprec)
                         if len(cords) == 1:
                             printlog(f'Error! This structure has only one symmetry non-equivalent position for {el} and incompatible with the chosen set' )
                         
@@ -569,7 +576,8 @@ class CalculationVasp(Calculation):
             nintersections = len(set(aniels).intersection(el_list))
             # print(nintersections, aniels, el_list)
 
-            el_list = self.init.get_unique_type_els(True) # new list after adding 
+
+            el_list = self.init.get_unique_type_els(True, symprec = default_symprec) # new list after adding 
             # sys.exit()
 
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
@@ -640,7 +648,7 @@ class CalculationVasp(Calculation):
                     # if ldau is true and multitype regime is true then everything is updated above
                     # if ldau is true and multitype is false than we cant use multitype here because LDAUL will become incompatible with POSCAR 
                     self.init, cords = self.init.add_types_for_el(el.split('/')[0])
-                    el_list = self.init.get_unique_type_els(True) # new list after adding 
+                    el_list = self.init.get_unique_type_els(True, symprec = default_symprec) # new list after adding 
                 else:
                     ''
 

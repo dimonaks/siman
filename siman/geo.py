@@ -1147,21 +1147,34 @@ def cubic_supercell(st, ortho_sizes):
     return create_supercell(st, mul_matrix)
 
 
-def determine_symmetry_positions(st, element, silent = 0):
+def determine_symmetry_positions(st, element, silent = 0, symprec = 0.01, angle_tolerance = 5.0):
     """
-    determine non-equivalent positions for atoms of type *element*
+    Determine non-equivalent positions for atoms of type *element* using pymatgen library
 
-    element (str) - name of element, for example Li
+    INPUT:
 
-    return list of lists -  atom numbers for each non-equivalent position
+        - st (Structure)
+        - element (str) - name of element, for example Li
+        - silent (bool) 
+        - symprec (float) - tolerance for symmetry finding
+        - angle_tolerance - Angle tolerance for symmetry finding
+
+    RETURN: 
+
+        - list of lists -  atom numbers for each non-equivalent position
+
+    AUTHOR:
+
+        D. Aksyonov
     """
 
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 
     stp = st.convert2pymatgen()
-
-    spg = SpacegroupAnalyzer(stp)
+    # print(st, symprec, angle_tolerance)
+    # sys.exit()
+    spg = SpacegroupAnalyzer(stp, symprec, angle_tolerance)
 
     info = spg.get_symmetry_dataset()
 
