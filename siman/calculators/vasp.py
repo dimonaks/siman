@@ -526,10 +526,13 @@ class CalculationVasp(Calculation):
                 'This block checks if more types for one element should be added to structure'
                 uels_set = vp['LDAUL'].keys()
                 # print(uels_set)
-                uels = [] # list of elements provided by set relevant for the given structure
+                uels = [] # list of elements provided by set relevant for the given structure depending on anion
                 uelntypat = {} # number of types for each element from the structure, for which U should be used
+                nslashes = 0
                 for el in set(el_list):
                     for el_set in uels_set:
+                        if '/' in el_set:
+                            nslashes+=1
                         if el == el_set.split('/')[0]: # after slash the required coordination is given.
                             uels.append(el_set)
                             if el not in uelntypat:
@@ -543,7 +546,7 @@ class CalculationVasp(Calculation):
                         printlog('LDAUL are given for the following multitype elements: ',uels, imp = 'y')
                         for el_set in uels:
                             if el in el_set and '/' not in el_set: # check that correct format is used
-                                printlog('Error! Element', el, f'has several types. LDAUL values should be given in format {el}/A but mixture of {el}/A and {el} was detected. Please correct')
+                                printlog('Warning! Element', el, f'has several types. LDAUL values should be given in format {el}/A but mixture of {el}/A and {el} was detected. Please check that U are assigned as you intend')
                             #check that required anions are present 
                             A = el_set.split('/')[1]
                             anions_set.append(A)
@@ -570,35 +573,43 @@ class CalculationVasp(Calculation):
                         #         if A in cords:
                         #             break
                         #     else:
+                
+                if nslashes > 0:
+                    el_list = self.init.get_unique_type_els(True, symprec = default_symprec) # new list of elements in M/A format for multielement regime
 
 
-            aniels = [invert(a) for a in header.ANION_ELEMENTS]
+            # aniels = [invert(a) for a in header.ANION_ELEMENTS]
             # set(aniels)
-            nintersections = len(set(aniels).intersection(el_list))
+            # nintersections = len(set(aniels).intersection(el_list)) #
             # print(nintersections, aniels, el_list)
 
 
-            el_list = self.init.get_unique_type_els(True, symprec = default_symprec) # new list after adding 
             # print(el_list)
             # sys.exit()
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
                 # print( vp[key])
                 set_els = vp[key].keys()
+                # print(set_els)
 
                 try:
                     if set(set_els).isdisjoint(set(el_list)): #no common elements at all
-                        printlog('\n\n\nWarning! The '+str(key)+f'={set_els} doesnt not contain explicit entries for any of your {set(el_list)} elements! Setting to zero\n\n\n')
+                        printlog('\n\n\nWarning! The '+str(key)+f'={set_els} doesnt not contain explicit entries for any of your {set(el_list)} elements! Setting to zero or assigning implicitly\n\n\n')
                         # raise RuntimeError
 
                     new = []
                     for el in el_list:
                         
+                        el_bare = el.split('/')[0]
                         if el in vp[key]:
                             val = vp[key][el]
+                        elif el_bare in vp[key]:
+                            val = vp[key][el_bare]
+                            printlog(f'Warning! I assign {key} of {el_bare} to {el}')
+
                             # print(aniels)
                             # sys.exit()
                             # for A in aniels:
-                            #     if A in el_list:  # use another U value for other anions, provided like Fe/S 
+                            #     if A in el_list:  # use another U value for other anions, provided like Fe/S - commented from April 1st 2023
                             #         kk = el+'/'+A 
                             #         if kk in vp[key]:
                             #             if nintersections == 1:
@@ -617,7 +628,8 @@ class CalculationVasp(Calculation):
                             else:
                                 val =  0
                             for set_el in set_els:
-                                if el in set_el:
+                                # print(el, set_el)
+                                if el == set_el or el == set_el.split('/')[0]:
                                     printlog(f'Warning! no value is given in {key} for element {el}')
 
                         new.append(val)
@@ -660,11 +672,16 @@ class CalculationVasp(Calculation):
             for iat in range(self.init.natom):
                 typ = self.init.typat[iat]
                 el  = el_list[typ-1]
+                el_bare = el.split('/')[0]
+
                 if el in curset.magnetic_moments:
                     magmom.append(curset.magnetic_moments[el])
+                elif el_bare in curset.magnetic_moments:
+                    magmom.append(curset.magnetic_moments[el])
+                    printlog(f'Warning! {el} was not found in your set, I use magmom={curset.magnetic_moments[el]} from {el_bare} for it')
                 else:
-                    if '/' in el:
-                        printlog(f'Warning! {el} was not found in your set, I use {mag_mom_other} for it')
+                    # if '/' in el:
+                    printlog(f'{el} was not found in your set, I use magmom={mag_mom_other} for it', imp = 'n')
                     magmom.append(mag_mom_other)
             
 
