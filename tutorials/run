@@ -1,5 +1,0 @@
-#!/bin/bash
-squeue
-sbatch /home/d.aksenov//LiFePO4/PH///LiFePO4.PHtest.1u/LiFePO4.PHtest.1u.run
-squeue
-mv run last_run

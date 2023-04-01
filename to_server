@@ -2,6 +2,6 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'symprec added to determine_symmetry_positions and to params of add_loop, the default is 0.1 for coodination determination'
+git commit -m 'localize_polaron for any ligands'
 git push origin simanaks
 

@@ -2703,6 +2703,8 @@ class Structure():
         RETURN
             dict with the following keys:
             'av(A-O,F)'
+            'av' - average distance to surrounding atoms
+            'el' - list of surrounding elements
             'numbers'
             'dist'
             'xcart'
@@ -2788,8 +2790,9 @@ class Structure():
         el = st.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
         info['av(A-O,F)'] = local_surrounding(x, st, n, 'av', True, only_elements = [8,9], round_flag = 0)
+        info['av'] = local_surrounding(x, st, n, 'av', True, round_flag = 0)
 
-        print
+        # print
 
         if more_info:
             info['avsq(A-O,F)'] = local_surrounding2(x, st, n, 'avsq', True, only_elements = [8,9])
@@ -3017,13 +3020,23 @@ class Structure():
 
     def localize_polaron(self, i, d, nn = 6):
         """
-        Localize small polaron at transition metal by adjusting TM-O distances
-        i - number of transition atom, from 0
-        d - shift in angstrom; positive increase TM-O, negative reduce TM-O distance
-        nn - number of neigbours
+        Localize small polaron at transition metal by adjusting TM-A distances
+
+        INPUT:
+            - i (int) - number of transition atom, from 0
+            - d (float) - shift in angstrom; positive increase TM-O, negative reduce TM-O distance
+            - nn (int) - number of neigbours
+
+        RETURN:
+
+            - st (Structure) - structure with localized polaron at atom i
+
+        AUTHOR:
+
+            Aksyonov DA
+        
 
         """
-        # nn
 
         st = copy.deepcopy(self)
         TM = st.get_el_z(i)
@@ -3034,11 +3047,17 @@ class Structure():
         silent = 1
         if 'n' in header.warnings or 'e' in header.warnings:
             silent = 0
-        # silent = 0
 
+        dic = st.nn(i, nn, from_one = 0, silent = silent)
+        els = dic['el'][1:]
+        unique_neighbours_els = set(els)
+        for A in unique_neighbours_els:
+            z = invert(A)
+            if z not in header.ANION_ELEMENTS:
+                printlog('Warning! provided element ', z, 'is not an anion element, I hope you know what you are doing. ')
 
-        dic = st.nn(i, nn, from_one = 0, silent = silent, only = [8,9])
-        printlog('Average TM-O distance before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+        # print(els)
+        printlog('Average '+TM_name+'-'+str(unique_neighbours_els)+' distance before localization is {:.2f} A'.format(dic['av']), imp = 'n')
 
         #updated xcart
         xc = st.xcart[i]
@@ -3058,8 +3077,8 @@ class Structure():
 
         st.update_xred()
 
-        dic = st.nn(i, nn, from_one = 0, silent = silent, only = [8,9])
-        printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+        dic = st.nn(i, nn, from_one = 0, silent = silent)
+        printlog('Average '+TM_name+'-'+str(unique_neighbours_els)+' distance after localization is {:.2f} A'.format(dic['av']), imp = 'n')
 
         st.name+='pol'+str(i+1)
 
