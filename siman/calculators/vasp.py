@@ -535,7 +535,8 @@ class CalculationVasp(Calculation):
                             if el not in uelntypat:
                                 uelntypat[el] = 0
                             uelntypat[el] +=1
-                # print(uels, uelntypat)
+                # print('uels, uelntypat', uels, uelntypat)
+                # sys.exit()
                 anions_set = []
                 for el in uelntypat.keys(): #
                     if uelntypat[el] > 1: # this condition shows that multitype regime was asked for
@@ -553,15 +554,15 @@ class CalculationVasp(Calculation):
                         printlog(f'Checking if more types for {el} should be added ... ', imp = 'y')
                         self.init, cords = self.init.add_types_for_el(el, symprec = default_symprec)
                         if len(cords) == 1:
-                            printlog(f'Error! This structure has only one symmetry non-equivalent position for {el} and incompatible with the chosen set' )
+                            printlog(f'Warning! This structure has only one symmetry non-equivalent position for {el} and may be incompatible with the chosen set that have several definitions for {el}' )
                         
-                        if len(cords) != uelntypat[el]:
+                        if len(cords) > uelntypat[el]:
                             # print( len(cords), uelntypat[el] )
-                            printlog(f'Error! Number of non-equivalent position for {el} is {len(cords)}, which is incompatible  with {uelntypat[el]} coordinations provided the chosen set' )
+                            printlog(f'Warning! The number of non-equivalent position for {el} is {len(cords)}, which is more than the {uelntypat[el]} coordinations provided the chosen set' )
 
                         inter = list(set([item for sublist in cords for item in sublist]).intersection(set(anions_set))  ) 
                         if len(anions_set) != len(inter):
-                            printlog('Warning! Coordinations in your structure and provided LDAUL are incompatible ')
+                            printlog('Warning! Number of coordinations in your structure and provided LDAUL are different. This should not be a problem, but be carefull')
                         # sys.exit()
                         # for A in anions_set:
                         #     for cord in cords:
@@ -578,13 +579,15 @@ class CalculationVasp(Calculation):
 
 
             el_list = self.init.get_unique_type_els(True, symprec = default_symprec) # new list after adding 
+            # print(el_list)
             # sys.exit()
-
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
                 # print( vp[key])
+                set_els = vp[key].keys()
+
                 try:
-                    if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
-                        printlog('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
+                    if set(set_els).isdisjoint(set(el_list)): #no common elements at all
+                        printlog('\n\n\nWarning! The '+str(key)+f'={set_els} doesnt not contain explicit entries for any of your {set(el_list)} elements! Setting to zero\n\n\n')
                         # raise RuntimeError
 
                     new = []
@@ -592,15 +595,16 @@ class CalculationVasp(Calculation):
                         
                         if el in vp[key]:
                             val = vp[key][el]
-                            
-                            for A in aniels:
-                                if A in el_list:  # use another U value for other anions, provided like Fe/S 
-                                    kk = el+'/'+A 
-                                    if kk in vp[key]:
-                                        if nintersections == 1:
-                                            val = vp[key][kk]
-                                        else:
-                                            printlog(f'Error! The chosen structure has more than one anion. The given U values {el}/{A} will be used for all {el} atoms')
+                            # print(aniels)
+                            # sys.exit()
+                            # for A in aniels:
+                            #     if A in el_list:  # use another U value for other anions, provided like Fe/S 
+                            #         kk = el+'/'+A 
+                            #         if kk in vp[key]:
+                            #             if nintersections == 1:
+                            #                 val = vp[key][kk]
+                            #             else:
+                            #                 printlog(f'Warning! The chosen structure has more than one anion. The given U values {el}/{A} will be used for all {el} atoms')
 
 
 
@@ -612,8 +616,9 @@ class CalculationVasp(Calculation):
                                 val = -1
                             else:
                                 val =  0
-                            if '/' in el:
-                                printlog(f'Warning! no value is given in {key} for element {el}')
+                            for set_el in set_els:
+                                if el in set_el:
+                                    printlog(f'Warning! no value is given in {key} for element {el}')
 
                         new.append(val)
                     

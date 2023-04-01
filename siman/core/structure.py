@@ -3408,7 +3408,7 @@ class Structure():
         INPUT:
 
             - coordination (bool) - if true than the coordination of the element is given in format 'el/el_coord', where
-            el_cood is the closest-lying coordinating element. It is done only if more than one type for one element is found
+            el_cood is the closest-lying coordinating element. It is done for all elements
             - symprec (float) - tolerance for symmetry finding, here a more crude symprec of 0.1 is used
 
         RETURN:
@@ -3427,10 +3427,11 @@ class Structure():
 
         els_typen = {}
 
+        els_typec = els_type.copy()
         if coordination:
-            els_typec = els_type.copy()
             for i, el in enumerate(els_type):
-                if els_type.count(el) > 1:
+                # if els_type.count(el) > 1:
+                if True: # now for all elements it is given in the form el/A
                     if el not in els_typen:
                         els_typen[el] = 0
                     coords = self.get_coordination(el, silent = 1, symprec = symprec)

@@ -2,6 +2,6 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'localize_polaron for any ligands'
+git commit -m 'correcting U setup for multiple types'
 git push origin simanaks
 
