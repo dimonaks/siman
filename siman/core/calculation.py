@@ -1,4 +1,3 @@
-
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 import itertools, os, copy, math, glob, re, shutil, sys, pickle, gzip, shutil, random
@@ -704,7 +703,7 @@ class Calculation(object):
 
 
 
-    def dos(self, isym = None, el = None, i_at = None, iatoms = None, multi = None,  *args, **kwargs):
+    def dos(self, isym = None, el = None, i_at = None, iatoms = None, multi = None, res_show ='fomag', *args, **kwargs):
         """
         Plot DOS either for self or for children with dos
 
@@ -781,7 +780,7 @@ class Calculation(object):
 
         cl = db[id]
 
-        cl.res(show='')
+        cl.res(show=res_show)
 
         if orbitals is None:
             orbitals = ['d', 'p6']

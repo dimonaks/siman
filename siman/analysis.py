@@ -73,7 +73,7 @@ def calc_oxidation_states(cl = None, st = None, silent = 1):
     if cl:
         st = cl.end
         ch = cl.charges
-    if st:
+    elif st:
         ch  = st.charges
     
     # print(st.get_elements() )

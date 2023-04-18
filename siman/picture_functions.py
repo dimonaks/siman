@@ -22,7 +22,7 @@ try:
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
     import matplotlib
-    matplotlib.use( 'tkagg' )
+    # matplotlib.use('tkagg')
 except:
     print('mpl_toolkits or matplotlib are not avail')
 

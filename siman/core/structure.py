@@ -313,10 +313,10 @@ class Structure():
         return self.get_elements()[i]
 
     def get_elements_z(self):
-        #return list of elements names
+        #return list of elements z-numbers
         return [self.znucl[t-1] for t in self.typat]
     def get_el_z(self, i):
-        #return name of element
+        #return z-number of element
         return self.get_elements_z()[i]
     def get_natom(self):
         #get number of real atoms, excluding voids
@@ -333,7 +333,7 @@ class Structure():
         return zvals
 
     def get_elements_by_el_name(self, el_name):
-        #return list of at numbers of el_name
+        #return list of numbers of elements with *el_name*
         elements = self.get_elements()
         el_list = [n for n,x in enumerate(elements) if x==el_name]
         # el_list = elements.index(el_name)
@@ -492,10 +492,37 @@ class Structure():
         return magnetic_all
 
 
+    def get_mag(self, silent = 0):
+        #show formatted magnetic moments grouped by elements
+
+        el_list = self.get_elements()
+        mag_list = self.magmom
+        el_names = list(set(el_list))
+        mag_grouped = {}
+        for el_name in el_names:
+            el_magmom_list = []
+            for el_i, mag_i in zip(el_list, mag_list):
+                if el_i == el_name: 
+                    el_magmom_list.append(mag_i)
+            mag_grouped[el_name] = el_magmom_list
+
+        # print(mag_grouped)
+
+        # formatted output
+        if not silent:
+            for el in mag_grouped:
+                mag_str = ''
+                for mag_i in mag_grouped[el]:
+                    if '-' in str(mag_i): 
+                        mag_str+=f'  {mag_i:5.2f}'
+                    else: 
+                        mag_str+=f'   {mag_i:4.2f}'
+                print(f'{el:3s}:\n{mag_str}')
+
+        return mag_grouped
 
 
-
-
+        
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -3301,7 +3328,8 @@ class Structure():
 
         makedir(filename)
 
-        printlog('Starting writing Quantum Espresso', filename)
+        printlog('Starting writing Quantum Espresso', filename,imp = 'y')
+
 
         with io.open(filename,'w', newline = '') as f:
             f.write('ATOMIC_POSITIONS\n')

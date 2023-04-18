@@ -179,6 +179,8 @@ vasp_other_keys = [
 'CORE_C',
 'EB_K',
 'LVDW_EWALD',
+'VDW_C6',
+'VDW_R0',
 'NWRITE',
 'MAGATOM',
 'DOSTATIC',

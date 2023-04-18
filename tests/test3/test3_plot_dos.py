@@ -18,17 +18,18 @@ from siman import header
 
 header.warnings = ''
 
-cl = CalculationVasp(output = 'LCO_Mn/1.OUTCAR')
-cl.read_results(show='')
-# cl.end.printme()
 
+# printlog might be general function for all the developed tests
 def printlog(test_name,local_test_name, status):
     print(f'{test_name:30s} -> {local_test_name:30s} - {status:10}')
     
 
 
-def test_method_dos(cl, test_name = 'test_method_dos'):
-    print('Starting ...')
+def test1(cl):
+    test_name = 'test_method_dos'
+    # testing method self.dos() of Calculation() object
+    
+    print(f'\n\nStarting {test_name}...')
     
     #1
     local_test_name = 'i_at test'
@@ -61,10 +62,11 @@ def test_method_dos(cl, test_name = 'test_method_dos'):
     printlog(test_name,local_test_name, status)
 
 
-test_method_dos(cl)
 
-def test_function_plot_dos(cl,test_name = 'test_function_plot_dos'):
-    print('Starting ...')
+def test2(cl):
+    test_name = 'test_function_plot_dos'
+    # testing the function plot_dos() from siman.dos_functions
+    print(f'\n\nStarting {test_name}...')
     
     # 1
     local_test_name = 'dostype total'
@@ -120,9 +122,12 @@ def test_function_plot_dos(cl,test_name = 'test_function_plot_dos'):
         printlog(test_name,local_test_name, status)
 
 
-# plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
-#     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
-#     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
-#     lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, 
-#     efermi_origin = True, efermi_shift = 0, invert_spins  = 0, name_suffix = '', image_name = None, color_dict = None):
-test_function_plot_dos(cl)
+
+
+if __name__=="__main__":
+    
+    cl = CalculationVasp(output = 'LCO_Mn/1.OUTCAR')
+    cl.read_results(show='')
+
+    test1(cl)
+    test2(cl)
