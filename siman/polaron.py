@@ -33,7 +33,7 @@ from siman.header import ALKALI_ION_ELEMENTS as AM
 from siman.header import TRANSITION_ELEMENTS as TM
 from siman.classes import CalculationVasp, Structure
 from siman.inout import read_poscar
-from siman.functions import invert, update_incar
+from siman.functions import invert
 from siman.analysis import suf_en
 from siman.monte import vasp_run
 from siman.geo import interpolate
@@ -85,6 +85,10 @@ if __name__ == "__main__":
     images = params.get('images') or 3 # number of images
     mode   = params.get('mode') or 'inherit' # mode type
     magmom = params.get('magmom') or None
+    istart = params.get('istart')
+    iend = params.get('iend')
+    magmom_polaron1 = pm.get('magmom_polaron1') # magnetic moment on TM atom after creation of polaron
+    magmom_polaron2 = pm.get('magmom_polaron2') # magnetic moment on TM atom after creation of polaron
 
     printlog('Choosing mode', mode, imp = 'y')
 
@@ -93,9 +97,21 @@ if __name__ == "__main__":
     if mode =='independent':
         if 1:
             """1. Calculate (relax) initial and final positions """
-            
+            if magmom_polaron1:
+                magmom1 = cl1.end.magmom
+                magmom1[istart] = magmom_polaron1
+                cl1.update_incar(parameter = 'MAGMOM', value = magmom1, run = 1, write = 0)
+                runBash('cp INCAR INCAR1')
+
 
             cl1 = vasp_step(1, 'Start position', 1)
+
+            if magmom_polaron2:
+                magmom2 = cl2.end.magmom
+                magmom2[iend] = magmom_polaron2
+                cl2.update_incar(parameter = 'MAGMOM', value = magmom2, run = 1, write = 0)
+                runBash('cp INCAR INCAR2')
+
             cl2 = vasp_step(2, 'End position', 1 )
             
         else:
@@ -109,7 +125,7 @@ if __name__ == "__main__":
         printlog('Interpolation was successful!\n', imp = 'y')
 
         """3. Calculate energies of intermediate steps"""
-        update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
+        cl1.update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
         
         for v in range(3, 3+images):
 
@@ -121,7 +137,7 @@ if __name__ == "__main__":
         cl2 = vasp_step(2, 'End position', 1 )
         cl1 = vasp_step(1, 'Start position', 0)
         # copyfile(str(v)+'.POSCAR', 'POSCAR')
-        update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
+        cl1.update_incar(parameter = 'NSW', value = 0, run = 1, write = 0)
         
         interpolate(cl1.end, cl2.end, images, 21, omit_edges = 0)
         for v in range(21, 21+images):

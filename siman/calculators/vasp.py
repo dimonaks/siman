@@ -211,12 +211,18 @@ class CalculationVasp(Calculation):
             except AttributeError: 
                 curset.add_nbands = None
 
-            if curset.add_nbands != None:
-                tve =0
-                for i in range(st.ntypat):
-                    # print self.init.zval
-                    tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
+
+            tve =0 # total number of valence electrons
+            for i in range(st.ntypat):
+                # print self.init.zval
+                tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
                     # print(self.init.zval[i], self.init.nznucl[i])
+            if params and 'charge' in params and params['charge']:
+                vp['NELECT'] = int(tve - params['charge'])
+
+
+            if curset.add_nbands != None:
+
                 nbands_min = math.ceil(tve / 2.)
                 self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
                 # print(self.nbands)
@@ -237,8 +243,7 @@ class CalculationVasp(Calculation):
 
 
 
-            if params and 'charge' in params and params['charge']:
-                vp['NELECT'] = int(tve - params['charge'])
+
 
 
         else:
@@ -546,7 +551,7 @@ class CalculationVasp(Calculation):
                         printlog('LDAUL are given for the following multitype elements: ',uels, imp = 'y')
                         for el_set in uels:
                             if el in el_set and '/' not in el_set: # check that correct format is used
-                                printlog('Warning! Element', el, f'has several types. LDAUL values should be given in format {el}/A but mixture of {el}/A and {el} was detected. Please check that U are assigned as you intend')
+                                printlog('Error! Element', el, f'has several types. LDAUL values should be given in format {el}/A but mixture of {el}/A and {el} was detected. Please check that U are assigned as you intend')
                             #check that required anions are present 
                             A = el_set.split('/')[1]
                             anions_set.append(A)

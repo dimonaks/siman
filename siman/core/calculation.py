@@ -743,6 +743,7 @@ class Calculation(object):
         fig_format = pm.get('fig_format') or 'pdf'
         dostype = pm.get('dostype') or 'partial'
         nneighbors = pm.get('nneighbors') or 6
+        legend = pm.get('legend') or 'best'
 
         if efermi_origin is None:
             efermi_origin = 1
@@ -839,6 +840,7 @@ class Calculation(object):
             'corner_letter':corner_letter,
             'linewidth':linewidth, 
             'fontsize':fontsize,
+            'legend':legend,
             'ylim':ylim, 'ver':1, 'fill':1,
             # 'ylim':(-1,1), 
             'ver_lines':ver_lines,
@@ -910,6 +912,7 @@ class Calculation(object):
                 'xlabel':xlabel, 'ylabel':ylabel,
                 'corner_letter':letter,
                 'ylim':ylim, 'ver':1, 'fill':1,
+                'legend':legend,
                 # 'ylim':(-1,1), 
                 'ver_lines':ver_lines,
                 'xlim':xlim, 

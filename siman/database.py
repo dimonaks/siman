@@ -124,8 +124,6 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
     size = os.path.getsize
 
 
-    
-
 
 
     if os.path.isfile(databasefile3) and os.path.isfile('calc_copy.gdbm3'):

@@ -715,9 +715,12 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
             # plt.clf()
             # plt.close('all')
             if 'fit' in show:
-                mpl.rcParams.update({'font.size': 14})
+                mpl.rcParams.update({'font.size': 12})
 
-                eos.plot(savedpath, show = True)
+                if 'fitns' in show:
+                    eos.plot(savedpath, show = False)
+                else:
+                    eos.plot(savedpath, show = True)
                 printlog('fit results are saved in ',savedpath, imp = 'y')
         except:
             printlog('Warning!, no minimum or something is wrong')

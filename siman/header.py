@@ -26,6 +26,13 @@ except:
     plt = None
     print('Warning! matplotlib is not installed! Some functions will not work!')
 
+try:
+    import matplotlib.pyplot as plt
+except:
+    plt = None
+
+
+
 history = []
 
 #Defaults to some project_conf values
@@ -106,10 +113,6 @@ else:
 
 
 
-try:
-    import matplotlib.pyplot as plt
-except:
-    plt = None
 
 calc_database = 'only_calc.gdbm3'
 

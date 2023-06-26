@@ -660,7 +660,7 @@ class Structure():
     def get_formula(self):
         ''
         # pm = self.convert2pymatgen()
-        # cm = Composition(pm.formula)
+        # cm = Composition(pm.formula)cd 
         # cm = Composition(self.get_elements())
         return self.convert2pymatgen().formula
 
@@ -3018,7 +3018,7 @@ class Structure():
 
 
 
-    def localize_polaron(self, i, d, nn = 6):
+    def localize_polaron(self, i, d, nn = 6, magmom = None):
         """
         Localize small polaron at transition metal by adjusting TM-A distances
 
@@ -3026,6 +3026,7 @@ class Structure():
             - i (int) - number of transition atom, from 0
             - d (float) - shift in angstrom; positive increase TM-O, negative reduce TM-O distance
             - nn (int) - number of neigbours
+            - magmom (float) - magnetic moment on atom with polaron
 
         RETURN:
 
@@ -3081,6 +3082,11 @@ class Structure():
         printlog('Average '+TM_name+'-'+str(unique_neighbours_els)+' distance after localization is {:.2f} A'.format(dic['av']), imp = 'n')
 
         st.name+='pol'+str(i+1)
+
+        if magmom and len(st.magmom) == st.natom:
+            print(st.magmom)
+            st.magmom[i] = magmom
+
 
         return st
 
