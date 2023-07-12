@@ -39,7 +39,7 @@ from siman.analyze.segregation import outloop_segreg_analysis
 
 
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
-from siman.inout import determine_file_format, write_xyz, read_xyz, write_occmatrix, smart_structure_read
+from siman.inout import determine_file_format, write_xyz, read_xyz, write_occmatrix
 from siman.picture_functions import plot_mep, fit_and_plot, plot_conv
 from siman.analysis import find_polaron, neb_analysis,polaron_analysis, calc_redox, matrix_diff
 from siman.geo import interpolate, replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
@@ -212,7 +212,6 @@ def cif2poscar(cif_file, poscar_file):
 
 
 
-<<<<<<< HEAD
 def get_file_by_version(geofilelist, version):
 
     """
@@ -261,7 +260,7 @@ def get_file_by_version(geofilelist, version):
                 printlog('Failed to determine version, skipping')
         else:
             curv = None
-        print(curv, version)
+
         if curv == version:
             # print('curv = ',curv,' version = ',version)
             printlog('match', curv, version)
@@ -276,6 +275,107 @@ def get_file_by_version(geofilelist, version):
 
 
     return input_geofile
+
+
+
+
+
+def smart_structure_read(filename = None, curver = 1, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None, ):
+    """
+    Wrapper for reading geometry files (use new reader read_structure() from siman.inout )
+    calcul (Calculation()) - object to which the path and version read
+
+    curver (int) - version of file to be read
+    input_geo_file or filename (str) - explicitly provided input file, has higher priority
+    input_folder (str)   - folder with several input files, the names doesnot matter only versions
+    input_geo_format (str) - explicitly provided format of input file 
+
+
+
+    returns Structure()
+    """
+
+    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'vasp-phonopy': 'POSCAR*', 'cif':'*.cif'}
+
+    if filename:
+        input_geo_file = filename
+
+    if input_geo_file:
+
+        printlog("You provided the following geo file explicitly ", input_geo_file, 
+            '; Version of file does not matter, I use *curver*=',curver, 'as a new version' )
+        
+    elif input_folder:
+
+        print_and_log("I am searching for geofiles in folder "+input_folder+"\n" )
+
+        if input_geo_format: 
+            geofilelist = glob.glob(input_folder+'/'+search_templates[input_geo_format]) #Find input_geofile of specific format
+        else:
+            geofilelist = glob.glob(input_folder+'/*') 
+
+        geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
+
+        printlog('List of files:', geofilelist)
+
+        input_geo_file = get_file_by_version(geofilelist, curver)
+        # sys.exit()
+
+        printlog('The result of getting by version', input_geo_file)
+
+        if input_geo_file:
+            printlog('File ', input_geo_file, 'was found')
+        else:
+            printlog('Error! No input file with version ', curver, 'was found in', input_folder)
+    
+    else:
+        printlog('Neither *input_geo_file* nor *input_folder* were provided')
+
+
+    input_geo_format = determine_file_format(input_geo_file)
+    printlog(input_geo_format,' format is detected')
+
+
+    if calcul:
+        cl = calcul
+    else:
+        cl = CalculationVasp()
+
+
+    if input_geo_format   == 'abinit':
+        cl.read_geometry(input_geo_file)
+
+    
+    elif input_geo_format == 'vasp':
+        cl.read_poscar(input_geo_file, version = curver)
+
+
+    elif input_geo_format == 'cif':
+        
+        cif2poscar(input_geo_file, input_geo_file.replace('.cif', '.POSCAR'))
+        input_geo_file = input_geo_file.replace('.cif', '.POSCAR')
+        cl.read_poscar(input_geo_file)
+
+    elif input_geo_format == 'xyz':
+        #version = 1
+        st = cl.init
+        st = read_xyz(st, input_geo_file)
+        cl.init = st
+        cl.path["input_geo"] = input_geo_file
+        cl.version = 1
+
+    else:
+        print_and_log("Error! smart_structure_read(): File format", input_geo_format, "is unknown")
+
+
+    if cl.path["input_geo"] == None: 
+        printlog("Error! Input file was not properly read for some reason")
+    
+
+    return cl.init
+
+
+
 
 
 
@@ -948,7 +1048,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     def add_loop_scale():
 
         struct_des = header.struct_des
-        nonlocal it, verlist, setlist, input_st, it_suffix, scale_region, input_geo_format
+        nonlocal it, verlist, setlist, input_st, it_suffix, scale_region
         u_scale_flag = False
         fitted_v100_id = None
 
@@ -1009,20 +1109,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     inherit_ngkpt(it_new, it, varset[inputset])
 
                 id_s = (it,inputset,v)
-                
-                if input_st:
-                    it_l = it_new
-                else:
-                    it_l = it 
-                if header.SIMAN_WEB:
-                    suf = '.'+id_s[1]
-                    input_folder = struct_des[it_l].sfolder+'/'+it_l+suf
-                    xyz_folder = struct_des[it_l].sfolder+'/'+it_new+suf
-                
-                else:
-                    suf = ''
-                    input_folder = struct_des[it_l].sfolder+'/'+it_l+suf
-                    xyz_folder = None
+
+
 
 
                 if input_st:
@@ -1042,15 +1130,14 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     pname = str(id_s)
                 else:
                     printlog('add_loop_scale(): starting to read input file')
-                    
-                    st = smart_structure_read(curver = v, input_folder = input_folder, 
+                    st = smart_structure_read(curver = v, input_folder = struct_des[it].sfolder+'/'+it, 
                         input_geo_format = input_geo_format, input_geo_file = input_geo_file)
                     pname = st.name
 
                 st = copy.deepcopy(st)
                 st.magmom = [None] # added on 24.06.2017
 
-                write_xyz(st, file_name = st.name+'_used_for_scaling', path = xyz_folder)
+                write_xyz(st, file_name = st.name+'_used_for_scaling',path = '.'.join([it_new,id_s[1]])) #AB_HERE
                 # print(scale_region)
                 # sys.exit()
                 if scale_region is None:
@@ -1082,11 +1169,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 except:
                     cl_temp = CalculationVasp(varset[inputset], id_s)
 
-
-
-
-
-
                 for i, s in enumerate(sts):
                     ver_new = i+ 1 # start from 1; before it was v+i
                     s.name = it_new+'.'+s.name
@@ -1095,13 +1177,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     # cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
                                                 # it_new+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'
                     cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
-                                                it_new+suf+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'
-
+                                                it_new+'.'+id_s[1]+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'  #AB_here
                     cl_temp.write_siman_geo(geotype = "init", 
                         description = s.des, override = True)
-                    
-                    write_xyz(s, path = xyz_folder)
-                    
+                    write_xyz(s, path = '.'.join([it_new,id_s[1]]))   #AB_here
                     verlist_new.append(ver_new)
                     # sys.exit()
 
@@ -1141,8 +1220,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             it      = it_new
             if ise_new:
                 setlist = [ise_new]
-
-            input_geo_format = 'abinit'
             # sys.exit()
         return u_scale_flag, fitted_v100_id
 
@@ -1307,17 +1384,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
 
-    def add_loop_choose_input_folder(ifolder, inputset):
+    def add_loop_choose_input_folder():
         
-        if header.SIMAN_WEB:
-            suf = '.'+inputset
-        else:
-            suf = ''
-
         if ifolder:
             input_folder = ifolder
         else:
-            input_folder = header.geo_folder+'/'+header.struct_des[it].sfolder+"/"+it+suf
+            input_folder = header.geo_folder+'/'+header.struct_des[it].sfolder+"/"+it
 
         return input_folder
 
@@ -1446,10 +1518,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     """Main Loop by setlist and verlist"""
     output_files_names = []
-
+    input_folder = add_loop_choose_input_folder()
     for inputset in setlist:
-
-        input_folder = add_loop_choose_input_folder(ifolder, inputset)
 
         prevcalcver = None # version of previous calculation in verlist
 
@@ -1778,7 +1848,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             cl.init  = input_st
         else:
             print(cl.path, cl.dir,input_geo_file)
-            input_folder =  cl.dir #AB_here
+            input_folder =  cl.dir
             # sys.exit()
             cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
                 input_geo_format = input_geo_format, input_geo_file = input_geo_file)
@@ -1863,11 +1933,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             if cl.path["input_geo"] != calc_geofile_path: # copy initial geo file and other files to calc folder
 
                 makedir(calc_geofile_path)
-
-                if header.SIMAN_WEB:
-                    ''
-                else:
+                try:  #AB_here
                     shutil.copyfile(cl.path["input_geo"] , calc_geofile_path)
+                except shutil.SameFileError:
+                    ''
+
 
                 #copy OCCMATRIX file as well             
                 dir_1 = os.path.dirname(cl.path["input_geo"] )
@@ -2144,7 +2214,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
             cl_temp = CalculationVasp()
             input_folder = struct_des[id_base[0]].sfolder+'/'+id_base[0]
-            printlog('Searching for id_base', id_base, 'in ',input_folder, 'please correct for SIMAN_WEB')
+            printlog('Searching for id_base', id_base, 'in ',input_folder)
 
             cl_temp.init = smart_structure_read( curver = id_base[2], input_folder = input_folder)
             cl_temp.end = copy.deepcopy(cl_temp.init)
@@ -2568,7 +2638,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     if geo_folder:
         st.write_xyz(filename=geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new))
     else:
-        st.write_xyz()
+        st.write_xyz()#path=path) AB_here
 
     # sys.exit()
 

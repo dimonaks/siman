@@ -1,6 +1,6 @@
 #Copyright Aksyonov D.A
 from __future__ import division, unicode_literals, absolute_import 
-import os, io, re, math, sys
+import os, io, re, math, sys, glob
 from csv import reader
 
 
@@ -17,13 +17,12 @@ except:
 
 
 
-from siman import header
+# from siman import header
 from siman.header import printlog, runBash, plt
 from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
 from siman.small_classes import empty_struct
 from siman.geo import local_surrounding, replic
-
 
 
 def determine_file_format(input_geo_file):
@@ -48,6 +47,180 @@ def determine_file_format(input_geo_file):
         printlog("Attention! File format of",input_geo_file ,"is unknown, should be from ", supported_file_formats, 'skipping')
         input_geo_format = None
     return input_geo_format
+
+
+
+
+
+def get_file_by_version(geofilelist, version):
+
+    """
+    Find file with needed version from filelist according to certain rules
+    """
+    curv = None
+    
+    matched_files = []
+    # print(geofilelist)
+
+    for input_geofile in geofilelist: 
+        
+        input_geofile = os.path.normpath(input_geofile)
+
+
+        input_geo_format = determine_file_format(input_geofile)
+        # sys.exit()
+
+        printlog('For file', input_geofile, input_geo_format, ' format was detected', imp = 'n')
+
+        if input_geo_format in ['abinit',]: #version determined from token 
+            # curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
+            
+            with open(input_geofile, 'r') as f:
+                for line in f:
+                    if 'version' in line:
+                        curv = int(line.split()[1])
+
+
+        elif input_geo_format == 'vasp': #from filename
+            if '-' in input_geofile:
+                # print('create calculation for structure',input_geofile)
+                curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+                # print('create calculation for structure with version',curv)
+            # try: 
+            #     curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
+            # except:
+            #     printlog('Error! Could not determine version of poscar file')
+
+        elif input_geo_format == 'cif': #from filename
+            printlog('I found cif file ', input_geofile)
+            try:
+                curv = int(os.path.basename(input_geofile).split('.')[0] )
+            except:
+                curv = None
+                printlog('Failed to determine version, skipping')
+        else:
+            curv = None
+
+        if curv == version:
+            # print('curv = ',curv,' version = ',version)
+            printlog('match', curv, version)
+            matched_files.append(input_geofile)
+
+    if len(matched_files) > 1:
+        printlog('get_file_by_version(): Error! Several files have same versions:', matched_files)
+    elif len(matched_files) == 0:
+        input_geofile = None
+    else:
+        input_geofile = matched_files[0]
+
+
+    return input_geofile
+
+
+
+
+
+def smart_structure_read(filename = None, curver = 1, calcul = None, input_folder = None, input_geo_format = None, input_geo_file = None, ):
+    """
+    Wrapper for reading geometry files (use new reader read_structure() from siman.inout )
+    calcul (Calculation()) - object to which the path and version read
+
+    curver (int) - version of file to be read
+    input_geo_file or filename (str) - explicitly provided input file, has higher priority
+    input_folder (str)   - folder with several input files, the names doesnot matter only versions
+    input_geo_format (str) - explicitly provided format of input file 
+
+
+
+    returns Structure()
+    """
+
+    search_templates =       {'abinit':'*.geo*', 'vasp':'*POSCAR*', 'vasp-phonopy': 'POSCAR*', 'cif':'*.cif'}
+
+    if filename:
+        input_geo_file = filename
+
+    if input_geo_file:
+
+        printlog("You provided the following geo file explicitly ", input_geo_file, 
+            '; Version of file does not matter, I use *curver*=',curver, 'as a new version' )
+        
+    elif input_folder:
+
+        printlog("I am searching for geofiles in folder "+input_folder+"\n" )
+
+        if input_geo_format: 
+            geofilelist = glob.glob(input_folder+'/'+search_templates[input_geo_format]) #Find input_geofile of specific format
+        else:
+            geofilelist = glob.glob(input_folder+'/*') 
+
+        geofilelist = [file for file in geofilelist if os.path.basename(file)[0] != '.'   ]  #skip hidden files
+
+        printlog('List of files:', geofilelist)
+
+        input_geo_file = get_file_by_version(geofilelist, curver)
+        # sys.exit()
+
+        printlog('The result of getting by version', input_geo_file)
+
+        if input_geo_file:
+            printlog('File ', input_geo_file, 'was found')
+        else:
+            printlog('Error! No input file with version ', curver, 'was found in', input_folder)
+    
+    else:
+        printlog('Neither *input_geo_file* nor *input_folder* were provided')
+
+
+    input_geo_format = determine_file_format(input_geo_file)
+    printlog(input_geo_format,' format is detected')
+
+    from siman.calculators.vasp import CalculationVasp
+    if calcul:
+        cl = calcul
+    else:
+        cl = CalculationVasp()
+
+
+    if input_geo_format   == 'abinit':
+        cl.read_geometry(input_geo_file)
+
+    
+    elif input_geo_format == 'vasp':
+        cl.read_poscar(input_geo_file, version = curver)
+
+
+    elif input_geo_format == 'cif':
+        
+        cif2poscar(input_geo_file, input_geo_file.replace('.cif', '.POSCAR'))
+        input_geo_file = input_geo_file.replace('.cif', '.POSCAR')
+        cl.read_poscar(input_geo_file)
+
+    elif input_geo_format == 'xyz':
+        #version = 1
+        st = cl.init
+        st = read_xyz(st, input_geo_file)
+        cl.init = st
+        cl.path["input_geo"] = input_geo_file
+        cl.version = 1
+
+    else:
+        print_and_log("Error! smart_structure_read(): File format", input_geo_format, "is unknown")
+
+
+    if cl.path["input_geo"] == None: 
+        printlog("Error! Input file was not properly read for some reason")
+    
+
+    return cl.init
+
+
+
+
+
+
+
+
 
 
 
@@ -506,6 +679,7 @@ def write_jmol(xyzfile, pngfile, scriptfile = None, atomselection = None, topvie
     
     # print(header.PATH2JMOL)
     # sys.exit()
+    from siman import header
     printlog( runBash(header.PATH2JMOL+' -ions '+scriptfile) )
     # print runBash('convert '+pngfile+' -shave 0x5% -trim '+pngfile) #cut by 5% from up and down (shave) and that trim left background
     printlog( pngfile )
@@ -2186,6 +2360,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     printlog("Reading of results completed\n\n", imp = 'n')
     self.end.outfile = path_to_outcar
     
+    from siman import header
 
     if header.pymatgen_flag:
         ''
