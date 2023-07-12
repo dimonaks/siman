@@ -387,21 +387,27 @@ class Structure():
         return determine_symmetry_positions(self, *args, **kwargs)
 
 
-    def get_maglist(self):
+    def get_maglist(self, zels = None):
         """
         return bool list of which  elements are magnetic (here all transition metals are searched!)
         and dictionary with numbers in lists for each transition metal
         
+        INPUT:
+            - zels (list) - list of elements z, which should be returned in addition to transition elements
+
+
         RETURN:
             ifmaglist (list of bool) - magnetic or not
             mag_numbers (dict of int) - for each element using z, their numbers
         """
 
+        if not zels:
+            zels = []
         ifmaglist = []
         zlist = self.get_elements_z()
         mag_numbers = {}
         for i, z in enumerate(zlist): #
-            if z in header.TRANSITION_ELEMENTS:
+            if z in header.TRANSITION_ELEMENTS + zels:
                 if z not in mag_numbers:
                     mag_numbers[z] = []
                 ifmaglist.append(True)
@@ -455,7 +461,7 @@ class Structure():
         #show formatted mag moments of transition metals 
         #to_ox - convert to oxidation state, substract from to_ox
         # if to_ox is negative, then m-to_ox
-        l, mag_numbers = self.get_maglist()
+        l, mag_numbers = self.get_maglist([8])
 
         keys = list(mag_numbers.keys())#[0]
         print('The following TM are found:', keys)

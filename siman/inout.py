@@ -1284,8 +1284,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
                 if any(v > 1e-3 for v in low+high):
-                    printlog("W(q)/X(q) are too high, check output!\n", 'Y')
+                    printlog("W(q)/X(q) are too high, check output!\n", 'Y') # see here https://www.vasp.at/wiki/index.php/ROPT
                     printlog('Low + high = ', low+high, imp = 'Y' )
+                    printlog('see here https://www.vasp.at/wiki/index.php/ROPT', imp = 'Y' )
                     printlog([v > 1e-3 for v in low+high], imp = 'Y' )
             
             if "direct lattice vectors" in line:

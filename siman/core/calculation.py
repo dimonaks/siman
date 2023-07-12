@@ -735,7 +735,7 @@ class Calculation(object):
         corner_letter = pm.get('corner_letter')
         orbitals = pm.get('orbitals')
         efermi_origin = pm.get('efermi_origin')
-        nsmooth = pm.get('nsmooth') or 0.0001
+        nsmooth = pm.get('nsmooth') or 1#0.0001
         linewidth = pm.get('linewidth') or 0.8
         efermi_shift = pm.get('efermi_shift') or 0
         labels = pm.get('labels')
@@ -898,7 +898,7 @@ class Calculation(object):
                 dostype = 'partial', orbitals = orbitals, 
                 neighbors = nneighbors,
                 labels = ['', ''], 
-                nsmooth = 1, 
+                nsmooth = nsmooth, 
                 color_dict = color_dicts[i%2],
                 image_name = image_name, 
 
