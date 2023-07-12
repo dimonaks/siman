@@ -862,7 +862,6 @@ class Calculation(object):
             font = 8
             fig, axs = plt.subplots(total,1,figsize=(6,total*3))    
             fig.text(0.03, 0.5, 'PDOS (states/atom/eV)', size = font*1.8, ha='center', va='center', rotation='vertical')
-        
             i = 0
             first = 0
             last = 0
@@ -874,7 +873,10 @@ class Calculation(object):
             for iat in iatoms:
             # for cl, iat in zip([RbVsd, KVsd, Vsd], [13, 61, 53]):
 
-                ax = axs[i]
+                if len(iatoms) > 1:
+                    ax = axs[i]
+                else:
+                    ax = axs
 
                 if corner_letter:
                     letter = letters[i]

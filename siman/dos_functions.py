@@ -391,8 +391,21 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         if cl2:
             numbers_list.append([iatom2, iatom2]) # for cl2 only one atom is supported
             printlog('Warning! for cl2 p6 and d6 doesnot work and will show DOS for central atom')
-            calcs.append(cl2)
+            if type(iatom) == int: #for the cases when we need to build surrounding around specific atom in this calculation - just use number of atom
+                t = cl2.end.typat[iatom2]
+                z = cl2.end.znucl[t-1]
+                el = element_name_inv(z)
+                printlog('Typat of chosen imp atom in cl2 is ', el, imp = 'y')
+                surround_center = cl2.end.xcart[iatom2]
+            else: #for the case when coordinates of arbitary point are provided.
+                surround_center = iatom2
+                el = 'undef'
 
+            local_atoms2 = local_surrounding(surround_center, cl2.end, neighbors, control = 'atoms', periodic = True)
+
+            numbers2 = local_atoms2[2]
+            numbers_list.append(numbers2) # for cl2 only one atom is supported
+            calcs.append(cl2)
 
         for cl, d, numbers in zip(calcs, dos, numbers_list):
             
@@ -486,6 +499,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             #sum by surrounding atoms atoms
             n_sur = len(numbers)-1 # number of surrounding atoms
             printlog('Number of surrounding atoms:', n_sur, imp = 'Y')
+
             # sys.exit()
             for i in numbers: #Now for central and surrounding atoms in numbers list:
 
@@ -534,7 +548,6 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 else:
                     dlist = [d.site_dos(i, l)  for l in (4,5,6,7,8) ] #
                     d.d.append(  [ sum(x) for x in zip(*dlist) ] )
-
 
 
             d.p6 = [ sum(pi[1:])/n_sur for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
@@ -676,6 +689,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                     if plot_spin_pol:
                         args[nam]      = {'x':d.energy, 'y':smoother(d.p6_up, nsmooth), 'c':color[orb], 'ls':l, 'label':formula+' '+el_sur+suf2+' '+orb, 'dashes':dashes}
                         args[nam_down] = {'x':d.energy, 'y':-smoother(d.p6_down, nsmooth), 'c':color[orb], 'ls':l, 'label':None, 'dashes':dashes}
+                        color[orb] = 'k'
 
 
                     else:

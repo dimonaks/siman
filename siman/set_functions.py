@@ -300,7 +300,8 @@ class InputSet():
 
 
     """
-    def __init__(self, ise = None, path_to_potcar = None, calculator = "vasp"):
+    def __init__(self, ise = None, path_to_potcar = None, calculator = 'vasp'):
+
         #super(InputSet, self).__init__()
         self.ise = ise
         self.name = ise

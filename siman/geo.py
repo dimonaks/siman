@@ -1,5 +1,3 @@
-
-
 import sys, re, copy, itertools, math
 from operator import itemgetter
 
