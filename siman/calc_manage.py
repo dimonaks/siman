@@ -260,7 +260,7 @@ def get_file_by_version(geofilelist, version):
                 printlog('Failed to determine version, skipping')
         else:
             curv = None
-
+        print(curv, version)
         if curv == version:
             # print('curv = ',curv,' version = ',version)
             printlog('match', curv, version)
@@ -1059,8 +1059,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             #sys.exit()
             if 'uniform_scale' in calc_method:
                 u_scale_flag = True
-
                 it_new = it+'.su' #scale uniformly  
+
             elif 'c_scale' in calc_method:
                 it_new = it+'.sc' #scale along c
                 u_scale_flag = True
@@ -1137,7 +1137,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 st = copy.deepcopy(st)
                 st.magmom = [None] # added on 24.06.2017
 
-                write_xyz(st, file_name = st.name+'_used_for_scaling')
+                write_xyz(st, file_name = st.name+'_used_for_scaling', path = header.geo_folder+ struct_des[it_new].sfolder+'/'+'.'.join([it_new,id_s[1]])) #AB_HERE
                 # print(scale_region)
                 # sys.exit()
                 if scale_region is None:
@@ -1150,6 +1150,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 if 'uniform_scale' in calc_method:
 
                     sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
+                    
                 elif 'c_scale' in calc_method:
                     #print('scale_start')
                     #sys.exit()
@@ -1173,19 +1174,20 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     s.name = it_new+'.'+s.name
                     cl_temp.init = s
                     cl_temp.version = ver_new
+                    # cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
+                                                # it_new+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'
                     cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
-                                                it_new+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'
-
+                                                it_new+'.'+id_s[1]+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'  #AB_here
                     cl_temp.write_siman_geo(geotype = "init", 
                         description = s.des, override = True)
-                    write_xyz(s)
+                    write_xyz(s, path = struct_des[it_new].sfolder+'/'+'.'.join([it_new,id_s[1]]))   #AB_here
                     verlist_new.append(ver_new)
+                    # sys.exit()
 
 
 
                 if 'uniform_scale' in calc_method or 'c_scale' in calc_method:
                     #print('Create 100')
-                    #sys.exit()
                     #make version 100
                     cl_temp.version = 100
                     cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
@@ -1517,8 +1519,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     """Main Loop by setlist and verlist"""
     output_files_names = []
     input_folder = add_loop_choose_input_folder()
-
-
     for inputset in setlist:
 
         prevcalcver = None # version of previous calculation in verlist
@@ -1529,6 +1529,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             
            
             blockdir = header.struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
+            
 
 
             add_calculation(it,inputset,v, verlist[0], verlist[-1], 
@@ -1738,7 +1739,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         params['update_set_dic'] = {}
 
 
-
     if id in calc: 
         cl = calc[id]
         status = "exist"
@@ -1847,6 +1847,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 printlog('Error! input_st should be of type Structure() or Molecule')
             cl.init  = input_st
         else:
+            print(cl.path, cl.dir,input_geo_file)
+            input_folder =  cl.dir #AB_here
+            # sys.exit()
             cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
                 input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
@@ -1930,8 +1933,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             if cl.path["input_geo"] != calc_geofile_path: # copy initial geo file and other files to calc folder
 
                 makedir(calc_geofile_path)
+                try:  #AB_here
+                    shutil.copyfile(cl.path["input_geo"] , calc_geofile_path)
+                except shutil.SameFileError:
+                    ''
 
-                shutil.copyfile(cl.path["input_geo"] , calc_geofile_path)
 
                 #copy OCCMATRIX file as well             
                 dir_1 = os.path.dirname(cl.path["input_geo"] )
