@@ -1402,7 +1402,7 @@ class Structure():
         return slab.dipole
 
 
-    def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, 
+    def add_atoms(self,   atoms_xcart  = None, element = 'Pu', return_ins = False, selective = None, 
         atoms_xred = None, mag = None, add2end = False):
         """
         Appends atoms of type *element* at the end if the element is new. Otherwise insert according to VASP conventions if *add2end* is False.

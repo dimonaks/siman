@@ -124,7 +124,7 @@ def test2(cl):
 
 
 
-if __name__=="__main__":
+if __name__== "__main__":
     
     cl = CalculationVasp(output = 'LCO_Mn/1.OUTCAR')
     cl.read_results(show='')
