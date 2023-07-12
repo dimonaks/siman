@@ -39,7 +39,7 @@ history = []
 PBS_PROCS = False # if true than #PBS -l procs="+str(number_cores) is used
 WALLTIME_LIMIT = False # now only for PBS if True 72 hours limit is used
 CIF2CELL = False
-
+SIMAN_WEB = False
 
 # warnings = 'neyY'
 warnings = 'yY' # level of warnings to show: n - all, e - normal, y - important, Y - very important
@@ -89,13 +89,13 @@ if os.path.exists(simanrc):
 
 #3. Read project specific
 if os.path.exists('./project_conf.py'):
-    print('Reading ./project_conf.py')
+    print('Reading project_conf.py from', os.getcwd())
 
     from project_conf import *
     siman_run = True
     log = open('log','a')
 else:
-    # print('Some module is used separately; default_project_conf.py is used')
+    print('Some module is used separately; default_project_conf.py is used')
     if mpl and not os.path.exists(simanrc):
         mpl.use('agg') #switch matplotlib on or off; for running script using ssh
     siman_run = False
