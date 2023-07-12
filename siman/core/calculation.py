@@ -735,7 +735,7 @@ class Calculation(object):
         corner_letter = pm.get('corner_letter')
         orbitals = pm.get('orbitals')
         efermi_origin = pm.get('efermi_origin')
-        nsmooth = pm.get('nsmooth') or 0.0001
+        nsmooth = pm.get('nsmooth') or 1#0.0001
         linewidth = pm.get('linewidth') or 0.8
         efermi_shift = pm.get('efermi_shift') or 0
         labels = pm.get('labels')
@@ -743,6 +743,7 @@ class Calculation(object):
         fig_format = pm.get('fig_format') or 'pdf'
         dostype = pm.get('dostype') or 'partial'
         nneighbors = pm.get('nneighbors') or 6
+        legend = pm.get('legend') or 'best'
 
         if efermi_origin is None:
             efermi_origin = 1
@@ -839,6 +840,7 @@ class Calculation(object):
             'corner_letter':corner_letter,
             'linewidth':linewidth, 
             'fontsize':fontsize,
+            'legend':legend,
             'ylim':ylim, 'ver':1, 'fill':1,
             # 'ylim':(-1,1), 
             'ver_lines':ver_lines,
@@ -890,11 +892,15 @@ class Calculation(object):
                     last = True
                     hide_xlabels = 0
                     xlabel = "Energy (eV)"
+                
+
+
+                # print()
                 plot_dos(cl,  iatom = iat+1,  efermi_origin = efermi_origin,
                 dostype = 'partial', orbitals = orbitals, 
                 neighbors = nneighbors,
                 labels = ['', ''], 
-                nsmooth = 1, 
+                nsmooth = nsmooth, 
                 color_dict = color_dicts[i%2],
                 image_name = image_name, 
 
@@ -908,6 +914,7 @@ class Calculation(object):
                 'xlabel':xlabel, 'ylabel':ylabel,
                 'corner_letter':letter,
                 'ylim':ylim, 'ver':1, 'fill':1,
+                'legend':legend,
                 # 'ylim':(-1,1), 
                 'ver_lines':ver_lines,
                 'xlim':xlim, 
@@ -920,6 +927,48 @@ class Calculation(object):
 
 
         return 
+
+
+
+
+    def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None, up_res = 'up1'):
+        """
+        Wrapper for full optimization
+        ise (str) - optimization set; if None then choosen from dict
+        up (int) - 0 read results if exist, 1 - update
+        fit (int) - 1 or 0
+        suf - additional suffix
+        """
+        from siman.project_funcs import optimize
+        if ise is None:
+            if 'u' in self.id[1]:
+                ise = '4uis'
+        st = self.end.copy()
+        it = self.id[0]
+        child = (it+suf+'.su', ise, 100)
+        #st.printme()
+        if not hasattr(self, 'children'):
+            self.children = []
+        if not up and child in self.children:
+            optimize(st, it+suf, ise = ise, fit = fit, add_loop_dic = add_loop_dic,up_res = up_res) # read results
+        else:
+            #run
+            optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic, up_res = up_res)
+            self.children.append(child)
+
+        return
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     def plot_locpot(self, filename = None):

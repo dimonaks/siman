@@ -184,7 +184,9 @@ vasp_other_keys = [
 'NWRITE',
 'MAGATOM',
 'DOSTATIC',
-'IWAVPRE'
+'IWAVPRE',
+'MIXPRE',
+
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -403,7 +405,7 @@ class InputSet():
         if self.tolmxf and self.tolmxf < 0:
             self.tolmxf*=-1
 
-        self.toldfe = vp.get('EDIFF')
+        self.toldfe = vp.get('EDIFF') or 1e-4
         # self.vasp_params['EDIFF'] = self.toldfe * c1
         # self.vasp_params['NELM'] = self.nstep
         # self.vasp_params['NSW'] = self.ntime
@@ -524,6 +526,7 @@ class InputSet():
                         pass
 
                     self.vasp_params[token.strip()] = value
+        self.add_nbands = 1.0
         # self.update()
 
 

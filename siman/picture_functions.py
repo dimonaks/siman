@@ -137,13 +137,13 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     # print()
 
     if 'fig_format' not in fitplot_args:
-        fitplot_args['fig_format'] = 'eps'
+        fitplot_args['fig_format'] = 'pdf'
 
     if 'xlim' not in fitplot_args:
         fitplot_args['xlim'] = (-0.05, None  )
 
     if 'xlabel' not in fitplot_args:
-        fitplot_args['xlabel'] = 'Reaction coordinate ($\AA$)'
+        fitplot_args['xlabel'] = 'Reaction coordinate (${\\rm \AA}$)'
 
 
     if 'ylabel' not in fitplot_args:
@@ -151,7 +151,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     path2saved = None
     if plot:
-        # print(image_name)
+        # print(style_dic.get('color'))
         path2saved = fit_and_plot(orig = {'x':mep_pos, 'y':eners, 'fmt':style_dic['p'], 'label':style_dic['label'], 'color':style_dic.get('color')}, 
             spline = {'x':xnew, 'y':ynew, 'fmt':style_dic['l'], 'label':None, 'color':style_dic.get('color')}, 
         image_name =  image_name, filename = filename, show = show, 
@@ -204,7 +204,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     xlog = False,ylog = False, scatter = False, 
     legend = False, ncol = 1, 
     fontsize = None, legend_fontsize=None, markersize = None,  
-    linewidth = None, hor = False, ver = False, fig_format = 'eps', dpi = 300,
+    linewidth = None, hor = False, ver = False, fig_format = 'pdf', dpi = 300,
     ver_lines = None, hor_lines = None, xy_line = None, x_nbins = None,
     alpha = 0.8, fill = False,
     first = True, last = True, 
@@ -213,71 +213,64 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     params = None,
     **data):
     """
-    Plot multiple plots on one axes using *data*
+    Produce complex plots using arbirtary number of axes and arbirtary number of curves on each axis. 
+    See tutorial with examples (to be created). 
     
-    return filename of saved plot
+    INPUT: 
 
-    ax (axes) - matplotlib axes object - to create multiple axes plots
-
-    data - each entry should be 
-        (X, Y, fmt) 
-        or 
-        (X, Y, fmt, label) 
-        or
-        {'x':,'y':, 'fmt':, 'label', 'xticks' }    not implemented for powers and scatter yet
-        or
-        (X, Y, R, fmt) - for scatter = 1, R - size of spots
-
-    first, last - allows to call this function multiple times to put several plots on one axes. Use first = 1, last = 0 for the first plot, 0, 0 for intermidiate, and 0, 1 for last
-
-    power (int) - the power of polynom, turn on fitting
-
-    scatter (bool) - plot scatter points - the data format is slightly different - see *data*
-
-    convex (bool) - plot convex hull around points like in ATAT
-
-    fill (bool) - fill under the curves
-
-    filename (str) - name of file with figure, image_name - deprecated
-    fig_format (str) - format of saved file.
-    dpi    - resolution of saved file
-
-
-    ver_lines - list of dic args for  vertical lines {'x':, 'c', 'lw':, 'ls':}
-    hor_lines
-    ver - vertical line at 0
-    hor - horizontal line at 0
-
-
-    hide_ylabels - just hide numbers
-
-    ncol - number of legend columns
-
-    corner_letter - letter in the corner of the plot
-    corner_letter_pos (list*2 float) - list with [x,y] corner position, default left upper corner is set
-
-    pad - additional padding, if dict than the same keys as in plt.subplots_adjust() are used
-
-    annotate - annotate each point, 'annotates' list should be in data dic!
-
-    linewidth - was 3 !
-    markersize - was 10
-
-    x_nbins - number of ticks
-
-
-    params - dictionary with parameters 
-        - 'xlim_power' - xlim for power
-        - 'y0' - move plot to have y = 0
-        - 'xnbins' - number of bins x
+        - ax (axes) - matplotlib axes object - to create multiple axes plots. If None than single axes is used
+        - data (tuple or dict) - each entry should be 
+            - (X, Y, fmt) 
+            - (X, Y, fmt, label) 
+            - (X, Y, R, fmt) - for scatter = 1, R - size of spots; 
+            - {'x':,'y':, 'fmt':, ..., *any argument valid for pyplot.plot()* }  not implemented for powers and scatter yet
+                - 'label' (str) - 
+                - 'xticks' (list) - 
+                - 'annotate_fontsize' (str)
+                - 'annotate_arrowprops' (dict)
+        - first, last (int) - allows to call this function multiple times to put several axes on one impage. Use first = 1, last = 0 for the first axes, 0, 0 for intermidiate, and 0, 1 for last axes.
+        - power (int) - the power of polynom, turns on fitting
+        - scatter (bool) - plot scatter points - the data format is slightly different - see *data*
+        - convex (bool) - plot convex hull around points like in ATAT
+        - fill (bool) - fill under the curves
+        - filename (str) - name of file with figure, image_name - deprecated
+        - fig_format (str) - format of saved file.
+        - dpi    - resolution of saved file
+        - ver_lines - list of dic args for  vertical lines {'x':, 'c', 'lw':, 'ls':}
+        - hor_lines
+        - ver - vertical line at 0
+        - hor - horizontal line at 0
+        - hide_ylabels - just hide numbers
+        - ncol - number of legend columns
+        - corner_letter - letter in the corner of the plot
+        - corner_letter_pos (list*2 float) - list with [x,y] corner position, default left upper corner is set
+        - pad - additional padding, if dict than the same keys as in plt.subplots_adjust() are used
+        - annotate - annotate each point, 'annotates' list should be in data dic!
+        - linewidth - was 3 !
+        - markersize - was 10
+        - x_nbins - number of ticks
+        - params (dict) - dictionary with parameters, should be used instead of new arguments
+            - 'xlim_power' - xlim for power
+            - 'y0' - move plot to have y = 0
+            - 'xnbins' - number of bins x
 
     TODO:
-    remove some arguments that can be provided in data dict
-    move all rare arguments to params
+
+        - remove some arguments that can be provided in data dict
+        - move all rare arguments to params
+
+
+    RETURN: 
+
+        filename of the saved image
+    
+    AUTHOR:
+
+        Aksyonov D.A.
+
 
     """
 
-    # sys.exit()
 
     if image_name == None:
         image_name  = filename
@@ -409,6 +402,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 xyf = [con[0], con[1], fmt]
                 con = {'label':label} #fmt -color style
                 # print('con1', con)
+                # del con['fmt']
+
             elif type(con) == dict:
                 if 'fmt' not in con:
                     con['fmt'] = ''
@@ -425,6 +420,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                     del con['xticks']
 
                 xyf = [con['x'], con['y'], con['fmt']]
+                del con['fmt']
 
                 # if 'lw' in 
             if linewidth:
@@ -444,10 +440,11 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
 
-            con_other_args = copy.deepcopy(con)
+            con_other_args = copy.deepcopy(con) # given to plot
             # print('con_copy', con_other_args)
             # sys.exit()
-            for k in ['x', 'x2', 'x2label', 'y', 'fmt', 'annotates', 'x2_func', 'x2_func_inv']:
+            for k in ['x', 'x2', 'x2label', 'y', 'fmt', 'annotates', 'x2_func', 'x2_func_inv', 
+            'annotate_fontsize', 'annotate_arrowprops']:
                 if k in con_other_args:
                     del con_other_args[k]
             if 'color' in con_other_args:
@@ -463,7 +460,11 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             if shift:
                 xyf[1] = list(np.array(xyf[1])-shift)
 
-
+            # print(con_other_args)
+            if 'ls' in con_other_args:
+                ''
+                del xyf[-1]
+            # print(xyf)
             ax.plot(*xyf, alpha = alpha, **con_other_args)
 
 
@@ -503,33 +504,43 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
 
-
+            adjustText_installed =0 
             if annotate:
-                if adjustText_installed:
+                fs = con.get('annotate_fontsize') or fontsize
+                arrowprops = con.get('annotate_arrowprops')
+                if 'annotate_arrowprops' not in con:
+                    arrowprops = dict(arrowstyle='->', connectionstyle='arc3,rad=0.5', color='black')
 
+
+                if adjustText_installed:
+                    # sys.exit()
                     ts = []
                     for t, x, y in zip(con['annotates'], con['x'], con['y']):
-                        ts.append(ax.text(x, y, t, size = 10, alpha = 0.5, color = con['fmt'][0]))
-                    adjust_text(ts, ax = ax,
-                        # force_points=10, force_text=10, force_objects = 0.5, 
-                        expand_text=(2, 2), 
-                        expand_points=(2, 2), 
-                        # lim = 150,
-                        expand_align=(2, 2), 
-                        # expand_objects=(0, 0),
-                        text_from_text=1, text_from_points=1,
-                        # arrowprops=dict(arrowstyle='->', color='black')
-                        )
+                        ''
+                        # print(x,y,t)
+                        ts.append(ax.text(x, y, t, size = fs, alpha = 1, color = con['fmt'][0]))
+                    # ax.text(6, 6, 'h', size = 10, alpha = 0.5, color = 'k')
+                    if 1:
+                        adjust_text(ts, ax = ax,
+                            # force_points=10, force_text=10, force_objects = 0.5, 
+                            expand_text=(2, 2), 
+                            expand_points=(2, 2), 
+                            # lim = 150,
+                            expand_align=(2, 2), 
+                            # expand_objects=(0, 0),
+                            text_from_text=1, text_from_points=0.5,
+                            # arrowprops=dict(arrowstyle='->', color='black')
+                            )
 
 
                 else:
                     for name, x, y in zip(con['annotates'], con['x'], con['y']):
                         ax.annotate(name, xy=(x, y),
-                            xytext=(-20, 20), fontsize = fontsize,
-                        textcoords='offset points', ha='center', va='bottom',
+                        xytext = (-fs//2, fs//2), fontsize = fs, color = 'r',
+                        textcoords = 'offset points', ha='center', va='bottom',
                         # bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
-                        arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5', 
-                                        color='black'))            
+                        arrowprops = arrowprops
+                        )            
 
 
 
@@ -539,7 +550,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             # print(con)
             if fill:
                 ''
-                print('fill', xyf[0], xyf[1])
+                # print('fill', xyf[0], xyf[1])
                 # ax.fill(xyf[0], xyf[1], facecolor = con['c'], alpha = 0.6)
                 ax.fill_between(xyf[0], xyf[1], y2=0, facecolor = con['c'], alpha = 0.6)
 
@@ -571,11 +582,30 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         for line in hor_lines:
             ax.axhline(**line)
 
+    if xlim: 
+        ax.set_xlim(xlim)
+
+    if ylim:
+        ax.set_ylim(ymin=ylim[0])
+        if ylim[1]: 
+            ax.set_ylim(ymax=ylim[1])
+
+
+
+    if xlog: 
+        ax.set_xscale('log')
+
+    if ylog: 
+        if "sym" in str(ylog):
+            ax.set_yscale('symlog', linthreshx=0.1)
+        else:
+            ax.set_yscale('log')
 
     if xy_line:
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
-        # print(ylim)
+        # print(xlim, ylim)
+        # sys.exit()
         x = np.linspace(*xlim)
         y = np.linspace(*ylim)
 
@@ -590,23 +620,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         ax.locator_params(nbins=x_nbins, axis='x')
 
 
-    if xlim: 
-        ax.set_xlim(xlim)
 
-    if ylim:
-        ax.set_ylim(ymin=ylim[0])
-        if ylim[1]: 
-            ax.set_ylim(ymax=ylim[1])
-
-
-    if xlog: 
-        ax.set_xscale('log')
-
-    if ylog: 
-        if "sym" in str(ylog):
-            ax.set_yscale('symlog', linthreshx=0.1)
-        else:
-            ax.set_yscale('log')
 
     if hide_ylabels:
         ax.yaxis.set_major_formatter(plt.NullFormatter())
@@ -635,8 +649,8 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         ax.xaxis.set_ticks(np.arange(start+params.get('step_shift'), end+params.get('step_shift'), params.get('xticks_step')))
 
 
-
     plt.tight_layout()
+
     if pad:
         # pad =0.13
         if type(pad) == dict:
@@ -655,7 +669,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
             path2saved, path2saved_png = process_fig_filename(image_name, fig_format)
 
-            plt.savefig(path2saved, dpi = dpi, format=fig_format,bbox_inches = "tight")
+            plt.savefig(path2saved, dpi = dpi, format=fig_format, bbox_inches = "tight")
             plt.savefig(path2saved_png, dpi = 300)
             
             printlog("Image saved to ", path2saved, imp = 'y')
@@ -673,6 +687,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     return path2saved
 
+fitplot = fit_and_plot
 
 def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
     xlim = None, ylim = None, legend = 0,
@@ -874,7 +889,7 @@ def plot_bar(xlabel = "xlabel", ylabel = "ylabel",
 
 
 
-def plot_and_annotate(power = 2, xlabel = "xlabel", ylabel = "ylabel", image_name = None,
+def plot_and_annotate(power = 2, xlabel = "xlabel", ylabel = "ylabel", filename = None,
     xlim = None, ylim = None, title = None, fit = None,
     legend = None, 
     **data):
@@ -897,6 +912,7 @@ def plot_and_annotate(power = 2, xlabel = "xlabel", ylabel = "ylabel", image_nam
     #x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
     #y_min  = fit_func2(x_min)
     
+    image_name = filename
     if 1:
         # x_range = np.linspace(min(x2), max(x2))
         # fit_y1 = fit_func1(x_range); 

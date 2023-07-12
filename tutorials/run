@@ -1,5 +1,0 @@
-#!/bin/bash
-squeue
-sbatch -p AMG /home/d.aksenov//Bi2Se3//Bi2Se3.ifn.ion_relax/Bi2Se3.ifn.ion_relax.run
-squeue
-mv run last_run

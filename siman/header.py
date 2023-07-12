@@ -26,6 +26,13 @@ except:
     plt = None
     print('Warning! matplotlib is not installed! Some functions will not work!')
 
+try:
+    import matplotlib.pyplot as plt
+except:
+    plt = None
+
+
+
 history = []
 
 #Defaults to some project_conf values
@@ -106,10 +113,6 @@ else:
 
 
 
-try:
-    import matplotlib.pyplot as plt
-except:
-    plt = None
 
 calc_database = 'only_calc.gdbm3'
 
@@ -207,9 +210,10 @@ kB = 8.617e-5 # eV/K
 kB_SI = 1.380649e-23 # J/K
 R = 8.3145 # J/mol/K
 N_A = 6.02214e23
+e_SI = 1.602176634e-19 #C
+me_SI = 9.1093837015e-31 #kg
 
-
-
+ANION_ELEMENTS = [6,7,8,9,16,17,34,35,53]
 TRANSITION_ELEMENTS = [22, 23, 24, 25, 26, 27, 28, 29, 30, 40, 41,42,43,44, 74]
 ALKALI_ION_ELEMENTS = [3, 11, 19, 37]
 MAGNETIC_ELEMENTS = [26, 27, 28]
@@ -323,8 +327,8 @@ def printlog(*logstrings, **argdic):
     if 'Error!' in mystring:
         print (mystring)
         print ('Error! keyword was detected in message; invoking RuntimeError ')
-        # sys.exit()
-        raise RuntimeError
+        sys.exit()
+        # raise RuntimeError
 
     return
 

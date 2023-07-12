@@ -48,6 +48,7 @@ def smoother(x, n, mul = 1, align = 1):
     # algo = 'my'
 
     if algo == 'my':
+        #average on interval
         x_smooth = []
         L = len(x)
         store = np.zeros((n,1),float)

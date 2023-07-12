@@ -1,6 +1,7 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
-import os, math, copy, glob, shutil
+import os, math, copy, glob, shutil, sys
+import numpy as np
 from siman import header
 from siman.core.calculation import Calculation
 from siman.core.structure import Structure
@@ -210,12 +211,18 @@ class CalculationVasp(Calculation):
             except AttributeError: 
                 curset.add_nbands = None
 
-            if curset.add_nbands != None:
-                tve =0
-                for i in range(st.ntypat):
-                    # print self.init.zval
-                    tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
+
+            tve =0 # total number of valence electrons
+            for i in range(st.ntypat):
+                # print self.init.zval
+                tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
                     # print(self.init.zval[i], self.init.nznucl[i])
+            if params and 'charge' in params and params['charge']:
+                vp['NELECT'] = int(tve - params['charge'])
+
+
+            if curset.add_nbands != None:
+
                 nbands_min = math.ceil(tve / 2.)
                 self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
                 # print(self.nbands)
@@ -236,8 +243,7 @@ class CalculationVasp(Calculation):
 
 
 
-            if params and 'charge' in params and params['charge']:
-                vp['NELECT'] = int(tve - params['charge'])
+
 
 
         else:
@@ -486,54 +492,150 @@ class CalculationVasp(Calculation):
     def actualize_set(self, curset = None, params = None):
         """
         Makes additional processing of set parameters, which also depends on calculation
-    
-        adding parameters for atat
+        e.g. adding parameters for atat, etc.
 
+        INPUT:
+
+            - curset (str) - name of the current set
+            - params (dict) - dictionary with additional parameters from add_loop()
+
+
+        TODO: 
+            
+            if number is used after element, then it should be considered as a separate type
+
+        RETURN:
+            
+            None
+
+        AUTHOR:
+
+            Aksyonov DA
         """
+        vp = curset.vasp_params
+        if not curset:
+            curset = self.set
 
 
         #check if some parameters should be filled according to number of species
         #make element list
-        el_list = [element_name_inv(el) for el in self.init.znucl]
-        if not curset:
-            curset = self.set
-        vp = curset.vasp_params
-
-        # print(['LDAU'])
-        # print(vp)
-        # print(vp['LDAU'])
-
+        el_list = [element_name_inv(el) for el in self.init.znucl] # length is equal to number of elements
+        ldau = False
+        default_symprec = params.get('symprec') or 0.1
+        # print('default_symprec', default_symprec)
+        # default_symprec = 0.1
         if 'LDAUL' in vp and vp['LDAUL'] is not None: 
-            # print(vp['LDAU'])
-            # if 
+            ldau = True
+
+            if 1:
+                'This block checks if more types for one element should be added to structure'
+                uels_set = vp['LDAUL'].keys()
+                # print(uels_set)
+                uels = [] # list of elements provided by set relevant for the given structure depending on anion
+                uelntypat = {} # number of types for each element from the structure, for which U should be used
+                nslashes = 0
+                for el in set(el_list):
+                    for el_set in uels_set:
+                        if '/' in el_set:
+                            nslashes+=1
+                        if el == el_set.split('/')[0]: # after slash the required coordination is given.
+                            uels.append(el_set)
+                            if el not in uelntypat:
+                                uelntypat[el] = 0
+                            uelntypat[el] +=1
+                # print('uels, uelntypat', uels, uelntypat)
+                # sys.exit()
+                anions_set = []
+                for el in uelntypat.keys(): #
+                    if uelntypat[el] > 1: # this condition shows that multitype regime was asked for
+                        printlog('LDAUL are given for the following multitype elements: ',uels, imp = 'y')
+                        for el_set in uels:
+                            if el in el_set and '/' not in el_set: # check that correct format is used
+                                printlog('Error! Element', el, f'has several types. LDAUL values should be given in format {el}/A but mixture of {el}/A and {el} was detected. Please check that U are assigned as you intend')
+                            #check that required anions are present 
+                            A = el_set.split('/')[1]
+                            anions_set.append(A)
+                            # print(A)
+                            if A not in el_list:
+                                printlog(f'Warning! Anion {A} is absent in your structure but present in your set')
+
+                        printlog(f'Checking if more types for {el} should be added ... ', imp = 'y')
+                        self.init, cords = self.init.add_types_for_el(el, symprec = default_symprec)
+                        if len(cords) == 1:
+                            printlog(f'Warning! This structure has only one symmetry non-equivalent position for {el} and may be incompatible with the chosen set that have several definitions for {el}' )
+                        
+                        if len(cords) > uelntypat[el]:
+                            # print( len(cords), uelntypat[el] )
+                            printlog(f'Warning! The number of non-equivalent position for {el} is {len(cords)}, which is more than the {uelntypat[el]} coordinations provided the chosen set' )
+
+                        inter = list(set([item for sublist in cords for item in sublist]).intersection(set(anions_set))  ) 
+                        if len(anions_set) != len(inter):
+                            printlog('Warning! Number of coordinations in your structure and provided LDAUL are different. This should not be a problem, but be carefull')
+                        # sys.exit()
+                        # for A in anions_set:
+                        #     for cord in cords:
+                        #         print(A, cord)
+                        #         if A in cords:
+                        #             break
+                        #     else:
+                
+                if nslashes > 0:
+                    el_list = self.init.get_unique_type_els(True, symprec = default_symprec) # new list of elements in M/A format for multielement regime
+
+
+            # aniels = [invert(a) for a in header.ANION_ELEMENTS]
+            # set(aniels)
+            # nintersections = len(set(aniels).intersection(el_list)) #
+            # print(nintersections, aniels, el_list)
+
+
+            # print(el_list)
+            # sys.exit()
             for key in ['LDAUL', 'LDAUU', 'LDAUJ']:
                 # print( vp[key])
+                set_els = vp[key].keys()
+                # print(set_els)
+
                 try:
-                    if set(vp[key].keys()).isdisjoint(set(el_list)): #no common elements at all
-                        print_and_log('\n\n\nAttention! The '+str(key)+' doesnt not contain values for your elements! Setting to zero\n\n\n')
+                    if set(set_els).isdisjoint(set(el_list)): #no common elements at all
+                        printlog('\n\n\nWarning! The '+str(key)+f'={set_els} doesnt not contain explicit entries for any of your {set(el_list)} elements! Setting to zero or assigning implicitly\n\n\n')
                         # raise RuntimeError
 
                     new = []
                     for el in el_list:
                         
+                        el_bare = el.split('/')[0]
                         if el in vp[key]:
                             val = vp[key][el]
-                            
-                            if 'S' in el_list:  # use another value in the format of Fe/S
-                                kk = el+'/S' 
-                                if kk in vp[key]:
-                                    val = vp[key][kk]
-                    
+                        elif el_bare in vp[key]:
+                            val = vp[key][el_bare]
+                            printlog(f'Warning! I assign {key} of {el_bare} to {el}')
+
+                            # print(aniels)
+                            # sys.exit()
+                            # for A in aniels:
+                            #     if A in el_list:  # use another U value for other anions, provided like Fe/S - commented from April 1st 2023
+                            #         kk = el+'/'+A 
+                            #         if kk in vp[key]:
+                            #             if nintersections == 1:
+                            #                 val = vp[key][kk]
+                            #             else:
+                            #                 printlog(f'Warning! The chosen structure has more than one anion. The given U values {el}/{A} will be used for all {el} atoms')
 
 
 
 
 
                         else:
+
                             if key == 'LDAUL':
                                 val = -1
                             else:
                                 val =  0
+                            for set_el in set_els:
+                                # print(el, set_el)
+                                if el == set_el or el == set_el.split('/')[0]:
+                                    printlog(f'Warning! no value is given in {key} for element {el}')
 
                         new.append(val)
                     
@@ -563,12 +665,28 @@ class CalculationVasp(Calculation):
             
             mag_mom_other = 0.6 # magnetic moment for all other elements
             magmom = []
+            for el in curset.magnetic_moments.keys():
+                if '/' in el and ldau == False:
+                    # if ldau is true and multitype regime is true then everything is updated above
+                    # if ldau is true and multitype is false than we cant use multitype here because LDAUL will become incompatible with POSCAR 
+                    self.init, cords = self.init.add_types_for_el(el.split('/')[0])
+                    el_list = self.init.get_unique_type_els(True, symprec = default_symprec) # new list after adding 
+                else:
+                    ''
+
             for iat in range(self.init.natom):
                 typ = self.init.typat[iat]
                 el  = el_list[typ-1]
+                el_bare = el.split('/')[0]
+
                 if el in curset.magnetic_moments:
                     magmom.append(curset.magnetic_moments[el])
+                elif el_bare in curset.magnetic_moments:
+                    magmom.append(curset.magnetic_moments[el])
+                    printlog(f'Warning! {el} was not found in your set, I use magmom={curset.magnetic_moments[el]} from {el_bare} for it')
                 else:
+                    # if '/' in el:
+                    printlog(f'{el} was not found in your set, I use magmom={mag_mom_other} for it', imp = 'n')
                     magmom.append(mag_mom_other)
             
 
@@ -748,24 +866,57 @@ class CalculationVasp(Calculation):
 
 
     def plot_energy_force(self, force_type = 'max'):
-        # print(self.maxforce)
+        """
+        Plot energy versus force for each ionic relaxation step.
+        
+        INPUT:
+            
+            - force_type (str) 
+                - 'max' - maximum force
+                - 'av'  - average force
+
+        RETURN:
+            
+            None
+
+        AUTHOR: 
+
+            Aksyonov D.A.
+        """
+
+        import numpy as np
+        from siman.picture_functions import fit_and_plot
+
         if 'max' in force_type:
-            force = [m[1] for m in self.maxforce_list ]
+            forces = [m[1] for m in self.maxforce_list ]
             lab = 'Max.'
+
         elif 'av' in force_type:
-            # print(self.average_list)
-            force = [m for m in self.average_list ]
+            forces = [m for m in self.average_list ]
             lab = 'Av.'
 
+        energies = 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) # relative energies in meV
+        numbers = list(range(len(forces)))
+        annotates = []
+        for n in numbers:
+            if n%5 == 0 or n == len(numbers)-1:
+                if n == 0:
+                    annotates.append(str(n)+' first')
+                elif n == len(numbers)-1:
+                    annotates.append(str(n)+' last')
+                else:
+                    annotates.append(n)
+            else:
+                annotates.append('')
 
-        # print(maxf)
-        plt.plot(force, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
-        # plt.xlabel('MD step')
-        # plt.ylabel('Energy per cell (eV')
-        plt.xlabel(lab+' force on atom (meV/$\AA$)')
-        plt.ylabel('Energy per cell relative to min (meV)')
 
-        plt.show()
+
+        fit_and_plot(data = {'x': forces, 'y':energies, 'fmt':'-o', 
+            'annotates': annotates, 'annotate_fontsize':10, 'annotate_arrowprops':None}, annotate = 1,
+            xlabel = lab+' force on atom (meV/$\AA$)', ylabel = 'Energy per cell relative to min (meV)',
+            show = 1)
+
+
         return
 
     def plot_energy_step(self,):
@@ -1080,7 +1231,9 @@ class CalculationVasp(Calculation):
         ppc = self.project_path_cluster+'/'
         self.determine_filenames()
 
-        if header.PATH2ARCHIVE:
+        P2A = header.PATH2ARCHIVE
+
+        if P2A:
             CHG_scratch_gz  = header.PATH2ARCHIVE+'/'+self.dir+'/'+v+".CHGCAR.gz"
 
         CHG     = ppc + self.path['chgcar']
@@ -1098,10 +1251,10 @@ class CalculationVasp(Calculation):
 
         command_chg_gunzip = 'gunzip '+CHG+'.gz ' # on cluster
         
-        if header.PATH2ARCHIVE:
+        if P2A:
         
             restore_CHG = "rsync "+CHG_scratch_gz+' '+path+' ; gunzip '+CHG+'.gz ' # on cluster
-            restore_AEC = "rsync "+header.PATH2ARCHIVE+'/'+self.path['aeccar0']+' '+ header.PATH2ARCHIVE+'/'+self.path['aeccar2']+' '+path # on cluster
+            restore_AEC = "rsync "+P2A+'/'+self.path['aeccar0']+' '+ P2A+'/'+self.path['aeccar2']+' '+path # on cluster
 
 
         mv = v+".bader.log; mv ACF.dat "+v+".ACF.dat; mv AVF.dat "+v+".AVF.dat; mv BCF.dat "+v+".BCF.dat; cat "+v+".bader.log"
@@ -1125,7 +1278,7 @@ class CalculationVasp(Calculation):
         if remote(no_CHG_sum): 
             printlog(  CHGCAR_sum, "does not exist. trying to calculate it ...", imp = 'Y')
             
-            if remote(no_AECCAR0) or remote(no_AECCAR2):
+            if (remote(no_AECCAR0) or remote(no_AECCAR2)) and P2A:
                 printlog(  AECCAR0, "does not exist, trying to take it from archive ...", imp = 'Y')
                 printlog(remote(restore_AEC)+'\n', imp = 'y')
 
@@ -1294,33 +1447,6 @@ class CalculationVasp(Calculation):
 
 
 
-
-    def full(self, ise = None, up = 0, fit = 1, suf = '', add_loop_dic  = None, up_res = 'up1'):
-        """
-        Wrapper for full optimization
-        ise (str) - optimization set; if None then choosen from dict
-        up (int) - 0 read results if exist, 1 - update
-        fit (int) - 1 or 0
-        suf - additional suffix
-        """
-        from siman.project_funcs import optimize
-        if ise is None:
-            if 'u' in self.id[1]:
-                ise = '4uis'
-        st = self.end.copy()
-        it = self.id[0]
-        child = (it+suf+'.su', ise, 100)
-        #st.printme()
-        if not hasattr(self, 'children'):
-            self.children = []
-        if not up and child in self.children:
-            optimize(st, it+suf, ise = ise, fit = fit, add_loop_dic = add_loop_dic,up_res = up_res) # read results
-        else:
-            #run
-            optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic, up_res = up_res)
-            self.children.append(child)
-
-        return
 
 
 

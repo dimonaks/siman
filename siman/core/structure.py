@@ -375,33 +375,39 @@ class Structure():
         return int(sum(zvals))
 
 
-    def determine_symmetry_positions(self, element, silent = 0):
+    def determine_symmetry_positions(self, *args, **kwargs):
         from siman.geo import determine_symmetry_positions
 
-        return determine_symmetry_positions(self, element, silent)
+        return determine_symmetry_positions(self, *args, **kwargs)
 
-    def get_symmetry_positions(self, element):
+    def get_symmetry_positions(self, *args, **kwargs):
         #just another name
         from siman.geo import determine_symmetry_positions
 
-        return determine_symmetry_positions(self, element)
+        return determine_symmetry_positions(self, *args, **kwargs)
 
 
-    def get_maglist(self):
+    def get_maglist(self, zels = None):
         """
         return bool list of which  elements are magnetic (here all transition metals are searched!)
         and dictionary with numbers in lists for each transition metal
         
+        INPUT:
+            - zels (list) - list of elements z, which should be returned in addition to transition elements
+
+
         RETURN:
             ifmaglist (list of bool) - magnetic or not
             mag_numbers (dict of int) - for each element using z, their numbers
         """
 
+        if not zels:
+            zels = []
         ifmaglist = []
         zlist = self.get_elements_z()
         mag_numbers = {}
         for i, z in enumerate(zlist): #
-            if z in header.TRANSITION_ELEMENTS:
+            if z in header.TRANSITION_ELEMENTS + zels:
                 if z not in mag_numbers:
                     mag_numbers[z] = []
                 ifmaglist.append(True)
@@ -412,9 +418,12 @@ class Structure():
 
         return ifmaglist, mag_numbers
 
-    def show_mag(self, i):
-        # show magmom of i atoms, starting from 1
-        i-=1
+    def show_mag(self, i, from_one = None):
+        # show magmom of i atoms, starting from 0
+        if from_one is None:
+            from_one = 0
+        if from_one:
+            i-=1
         m = self.magmom[i]
         el = self.get_elements()[i]
         print('Mag for {:s} = {:.2f}'.format(el, m))
@@ -452,7 +461,7 @@ class Structure():
         #show formatted mag moments of transition metals 
         #to_ox - convert to oxidation state, substract from to_ox
         # if to_ox is negative, then m-to_ox
-        l, mag_numbers = self.get_maglist()
+        l, mag_numbers = self.get_maglist([8])
 
         keys = list(mag_numbers.keys())#[0]
         print('The following TM are found:', keys)
@@ -684,7 +693,7 @@ class Structure():
     def get_formula(self):
         ''
         # pm = self.convert2pymatgen()
-        # cm = Composition(pm.formula)
+        # cm = Composition(pm.formula)cd 
         # cm = Composition(self.get_elements())
         return self.convert2pymatgen().formula
 
@@ -967,16 +976,26 @@ class Structure():
 
         return oxi
 
-    def print_oxi(self, el, silent = 0):
+    def print_oxi(self, el, silent = 0, from_one = 0):
         """
         Print oxidation states for particular element 
 
         INPUT:
             - el (str) - element
+            - from_one (bool) - show atom numbers starting from one
         """
         iel = self.get_specific_elements([invert(el)])
+
+        fo = int(from_one)
+
         if not silent:
-            print(  ' '.join( ['{:}{:}={:.1f}'.format(el,i,self.oxi_state[i]) for i in iel] ) )
+            # print(' '.join( ['{:}{:}={:.1f}'.format(el, i, self.oxi_state[i]) for i in iel] ) )
+            print(f'Element is {el}')
+            print(f'i_at    Oxidation state')
+            for i in iel:
+                ox = self.oxi_state[i]
+                print(f'{i+fo:4}   {ox:+5.1f} ')
+
 
         return [self.oxi_state[i] for i in iel]
 
@@ -2455,7 +2474,7 @@ class Structure():
 
     def distance(self, i1=None, i2=None, x1=None, x2 = None, coord_type = 'xcart'):
         """
-        Shortest distance between two atoms acounting PBC, from 0
+        Shortest distance between two atoms acounting PBC, numbers from 0
         i1 and i2 override x1 and x2
 
         coord_type - only when x1 and x2 are provided
@@ -2696,7 +2715,7 @@ class Structure():
 
 
     def nn(self, i, n = 6, ndict = None, only = None, silent = 0, 
-        from_one = True, more_info = 0, oxi_state = 0, print_average = 0):
+        from_one = None, more_info = 0, oxi_state = 0, print_average = 0):
         """
         show neigbours
 
@@ -2710,13 +2729,15 @@ class Structure():
 
         from_one - if True, strart first atom from 1, otherwise from 0
 
-        oxi_state (bool) - if 1 then showing oxidation state as well
+        oxi_state (bool) - if 1 then showing oxidation state as well, turned on automatically if self.oxi_state list is non zero
 
         print_average (bool) - print more
 
         RETURN
             dict with the following keys:
             'av(A-O,F)'
+            'av' - average distance to surrounding atoms
+            'el' - list of surrounding elements
             'numbers'
             'dist'
             'xcart'
@@ -2728,8 +2749,16 @@ class Structure():
 
 
         """
-        if header.FROM_ONE is not None:
-            from_one = header.FROM_ONE
+        
+        if from_one is None:
+            from_one == True # default due to compatability with previous code
+
+            if header.FROM_ONE is not None: #overwrites default behavior
+                from_one = header.FROM_ONE
+
+        if header.FROM_ONE != from_one:
+            printlog('Warning! provided *from_one* and header.FROM_ONE are different. I am using from header')
+
 
 
         if from_one:
@@ -2764,6 +2793,10 @@ class Structure():
         # if not silent:
         
         headers = ['nn', 'No.', 'El', 'Dist, A']
+
+        if hasattr(st, 'oxi_state') and len(st.oxi_state) > 0:
+            oxi_state = 1
+
         if oxi_state:
             headers.append('Oxi state')
             i = 0 
@@ -2790,8 +2823,9 @@ class Structure():
         el = st.get_elements()
         info['el'] = [el[i] for i in out_or[2]]
         info['av(A-O,F)'] = local_surrounding(x, st, n, 'av', True, only_elements = [8,9], round_flag = 0)
+        info['av'] = local_surrounding(x, st, n, 'av', True, round_flag = 0)
 
-        print
+        # print
 
         if more_info:
             info['avsq(A-O,F)'] = local_surrounding2(x, st, n, 'avsq', True, only_elements = [8,9])
@@ -3017,15 +3051,26 @@ class Structure():
 
 
 
-    def localize_polaron(self, i, d, nn = 6):
+    def localize_polaron(self, i, d, nn = 6, magmom = None):
         """
-        Localize small polaron at transition metal by adjusting TM-O distances
-        i - number of transition atom, from 0
-        d - shift in angstrom; positive increase TM-O, negative reduce TM-O distance
-        nn - number of neigbours
+        Localize small polaron at transition metal by adjusting TM-A distances
+
+        INPUT:
+            - i (int) - number of transition atom, from 0
+            - d (float) - shift in angstrom; positive increase TM-O, negative reduce TM-O distance
+            - nn (int) - number of neigbours
+            - magmom (float) - magnetic moment on atom with polaron
+
+        RETURN:
+
+            - st (Structure) - structure with localized polaron at atom i
+
+        AUTHOR:
+
+            Aksyonov DA
+        
 
         """
-        # nn
 
         st = copy.deepcopy(self)
         TM = st.get_el_z(i)
@@ -3036,11 +3081,17 @@ class Structure():
         silent = 1
         if 'n' in header.warnings or 'e' in header.warnings:
             silent = 0
-        # silent = 0
 
+        dic = st.nn(i, nn, from_one = 0, silent = silent)
+        els = dic['el'][1:]
+        unique_neighbours_els = set(els)
+        for A in unique_neighbours_els:
+            z = invert(A)
+            if z not in header.ANION_ELEMENTS:
+                printlog('Warning! provided element ', z, 'is not an anion element, I hope you know what you are doing. ')
 
-        dic = st.nn(i, nn, from_one = 0, silent = silent, only = [8,9])
-        printlog('Average TM-O distance before localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+        # print(els)
+        printlog('Average '+TM_name+'-'+str(unique_neighbours_els)+' distance before localization is {:.2f} A'.format(dic['av']), imp = 'n')
 
         #updated xcart
         xc = st.xcart[i]
@@ -3060,10 +3111,15 @@ class Structure():
 
         st.update_xred()
 
-        dic = st.nn(i, nn, from_one = 0, silent = silent, only = [8,9])
-        printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+        dic = st.nn(i, nn, from_one = 0, silent = silent)
+        printlog('Average '+TM_name+'-'+str(unique_neighbours_els)+' distance after localization is {:.2f} A'.format(dic['av']), imp = 'n')
 
         st.name+='pol'+str(i+1)
+
+        if magmom and len(st.magmom) == st.natom:
+            print(st.magmom)
+            st.magmom[i] = magmom
+
 
         return st
 
@@ -3286,6 +3342,147 @@ class Structure():
 
 
         return st
+
+    def get_coordination(self, el, silent = 1, symprec = 0.1):
+        """
+        Get coordination for atom *el* for all non-equivalent types
+
+        INPUT:
+
+            - el (str) - element name
+            - silent (bool)
+            - symprec (float) - tolerance for symmetry finding, here a more crude value of 0.1 is used
+
+
+
+        RETURN:
+
+            - coordination_list (list of lists of str)
+
+        AUTHOR:
+
+            Aksyonov DA
+        """        
+
+        st = self
+        numbers = st.determine_symmetry_positions(el, silent = 1, symprec = symprec)
+        i = 1
+        els = st.get_elements()
+        coords = []
+        for nn in numbers:
+            elsc = [els[i] for i in st.nn(nn[0], from_one = 0, silent =1)['numbers'][1:]]
+            if not silent:
+                printlog(f'Coordination of {el}{i} is {elsc}', imp = 'y')
+            i+=1
+            coords.append(elsc)
+
+        return coords
+
+
+    def add_types_for_el(self, el, symprec = None):
+        """
+        Make several types for the same element. Needed to set different U and magnetic moments
+        Currently new types are created based on symmetry. New types are added at the end of typat list
+
+        INPUT:
+
+            - el (str) - element name for which new types should be created
+            - symprec (float) - tolerance for symmetry finding, default is 0.01
+
+        RETURN:
+
+            - st (Structure)
+            - coords (list of lists) coordination of detected types of element *el*
+
+        TODO:
+            other methods may not work correctly with such structures. Check their 
+
+
+        AUTHOR:
+
+            Aksyonov DA
+        """
+
+        st = self.copy()
+
+        numbers = st.determine_symmetry_positions(el, silent = 1, symprec = symprec)
+        ntn = len(numbers) # new number of types for el
+        z = invert(el)
+        ntc = st.znucl.count(z) #current number of types for el
+        # print(st.ntypat, st.typat)# st.typat, st.znucl)
+        # print(numbers)
+        nt_add = ntn-ntc
+        # coords = None
+        coords = self.get_coordination(el, silent = 0, symprec = symprec)
+        if nt_add > 0:
+            printlog('Current number of types=', ntc, 'is smaller than the number of non-equivalent positions=', ntn, '; Additional', nt_add, 'types will be added', imp = 'y')
+            
+            # st.ntypat += nt_add
+            nt_last = st.ntypat 
+
+
+            for nn in numbers[1:]: # skip first
+                st.ntypat += 1
+                st.znucl.append(z)
+                for i in nn:
+                    st.typat[i] = st.ntypat
+            # print
+            # print(st.ntypat, st.typat)# st.typat, st.znucl)
+            st.get_nznucl()
+
+            # st.printme()
+            # st.write_poscar()
+
+        else:
+            printlog('Current number of types=', ntc, 'is equal or larger than number of non-equivalent positions=', ntn, 'nothing is done', imp = 'y')
+
+        return st, coords
+
+
+
+    def get_unique_type_els(self, coordination = False, symprec = 0.1):
+        """
+        Get list of unique type elements 
+
+        INPUT:
+
+            - coordination (bool) - if true than the coordination of the element is given in format 'el/el_coord', where
+            el_cood is the closest-lying coordinating element. It is done for all elements
+            - symprec (float) - tolerance for symmetry finding, here a more crude symprec of 0.1 is used
+
+        RETURN:
+
+            - els (list of str)
+
+        AUTHOR:
+
+            Aksyonov DA
+
+        """
+
+        els_type = [invert(z) for z in self.znucl] # 
+
+        els = list(set(els_type))
+
+        els_typen = {}
+
+        els_typec = els_type.copy()
+        if coordination:
+            for i, el in enumerate(els_type):
+                # if els_type.count(el) > 1:
+                if True: # now for all elements it is given in the form el/A
+                    if el not in els_typen:
+                        els_typen[el] = 0
+                    coords = self.get_coordination(el, silent = 1, symprec = symprec)
+                    coord_el = coords[els_typen[el]][0] #currently only first element is used
+                    els_typec[i] = els_type[i]+f'/{coord_el}'
+                    els_typen[el] +=1
+
+
+
+        return els_typec
+
+
 
     def ewald(self, ox_st = None, site = None):
         # ox_st 

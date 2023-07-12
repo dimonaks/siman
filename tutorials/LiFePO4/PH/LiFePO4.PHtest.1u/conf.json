@@ -1,0 +1,1 @@
+{"images": 7, "istart": 24, "iend": 25, "polaron_type": "hole", "amp": 0.12, "vasp_run": "mpirun vasp_std > LiFePO4.PHtest.1u.1.log"}

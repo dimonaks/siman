@@ -568,7 +568,19 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         - savefile - controls which files are saved during VASP run on server; check
             
-            'ocvdawx' - outcar, chgcar, chg, dos, AECCAR,WAVECAR, xml
+            'ocvdawx'             
+            'o' - OUTCAR
+            'i' - INCAR
+            'v' - CHG
+            'c' - CHGCAR
+            'p' - PARCHG
+            'l' - LOCPOT
+            'd' - DOSCAR
+            'a' - AECCAR0, AECCAR2
+            'x' - vasprun.xml
+            't' - XDATCAR
+            'z' - OSZICAR
+            'w' - WAVECAR
 
         - ifolder - explicit path to folder where to search for input geo file.
 
@@ -622,6 +634,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'monte' - Monte-Carlo functionality
 
             - 'polaron' - polaron hopping, only input_st is supported
+                - put here all parameters
 
             - 'atat' - create all input for ATAT
                 params['atat']
@@ -776,6 +789,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             else:
                 iti = it
 
+            it_new = iti
             if inherit_option == 'full':
                 it_new = iti+'.if'
             
@@ -805,7 +819,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
             if it_suffix: # add to default behaviour; make additional key, which can allow to override default behavior
-                it_new = iti+'.'+it_suffix
+                it_new = it_new+'.'+it_suffix
                 it_suffix = None
 
 
@@ -861,11 +875,19 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
         if ('polaron' in calc_method) or ('polaron2' in calc_method):
+            """
+            if existing then magmom_polaron1 and magmom_polaron2 are not working 
+
+
+            """
             pm = params['polaron']
             am = abs(pm['amp']) # amplitude of polaron, the sign is not important here
 
-            existing = pm.get('polaron_status') and 'ex' in pm.get('polaron_status') 
+            magmom_polaron1 = pm.get('magmom_polaron1') # magnetic moment on TM atom after creation of polaron
+            magmom_polaron2 = pm.get('magmom_polaron2') # magnetic moment on TM atom after creation of polaron
 
+            existing = pm.get('polaron_status') and 'ex' in pm.get('polaron_status') 
+            nn = pm.get('nn') or 6
             # if pm.get('st1') and pm.get('st2'):
 
             if pm['polaron_type'] == 'electron':
@@ -913,12 +935,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             else:
                 if existing:
                     st1 = copy.deepcopy(input_st)
-                    st2 = input_st.localize_polaron(pm['iend'], am)
-                    st2 = st2.localize_polaron(pm['istart'], -am) # return back existing polaron to normal
+                    st2 = input_st.localize_polaron(pm['iend'], am, nn)
+                    st2 = st2.localize_polaron(pm['istart'], -am, nn) # return back existing polaron to normal
 
                 else:
-                    st1 = input_st.localize_polaron(pm['istart'],  am)
-                    st2 = input_st.localize_polaron(pm['iend'], am)
+                    st1 = input_st.localize_polaron(pm['istart'],  am, nn, magmom_polaron1 )
+                    st2 = input_st.localize_polaron(pm['iend'], am, nn, magmom_polaron2)
 
 
 
@@ -2714,6 +2736,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             - efav - energy average force 
             - est - energy per step
             - time - time per electronic iteration is seconds
+            - fit - save figure and show volume scan and fit in case of *analys_type* = 'fit_a'
+            - fitns - save figure of volume scan and fit in case of *analys_type* = 'fit_a'
 
         energy_ref - energy in eV; substracted from energy diffs
         
@@ -3601,7 +3625,8 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
         path2poscar = it_folder+'/'+it+'/'+groundstate_st_id+".POSCAR-"+str(ver)
         makedir(path2poscar)
     else:
-        path2poscar = groundstate_st_id+".POSCAR"
+        # path2poscar = groundstate_st_id+".POSCAR"
+        path2poscar = it_folder+'/'+groundstate_st_id+".POSCAR" if it_folder else groundstate_st_id+".POSCAR"
 
     
     Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True, )
