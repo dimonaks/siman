@@ -1677,6 +1677,7 @@ def suf_en_polar_layered(formula, cl_surf, dmu_a = 0, dmu_b = 0, dmu_c = 0, prin
 def gb_en_ideal(cl_gb, cl_bulk, n_gbs = 2):
 
     """
+    Calculate grain boundary energy of a pure material
     GB is assumed to be normal to R3! The stoichiometry should be the same!
 
     INPUT:
