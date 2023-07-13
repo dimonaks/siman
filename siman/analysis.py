@@ -685,8 +685,13 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
         alphas.append(alpha)
         print('alpha, energy: {:4.2f}, {:6.3f}'.format(alpha, cl.energy_sigma0))
 
+    if header.SIMAN_WEB:
+        path_l = cl.path['output'].replace('100.OUTCAR','')
+    else:
+        path_l = 'figs/'
+
     fit_and_plot(U1 = (alphas, etotlist, 'o-r'), 
-        image_name = 'figs/angle', ylabel = 'Total energy, eV', xlabel = 'Angle, deg', xlim = (89, 92.6))
+        image_name = f'{path_l}/angle', ylabel = 'Total energy, eV', xlabel = 'Angle, deg', xlim = (89, 92.6))
 
     if ase_flag:
         if 'angle' in analysis_type:
@@ -706,7 +711,8 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
             E0 = {2} eV
             B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
 
-            savedpath = 'figs/'+cl.name+'.png'
+            
+            savedpath = f'{path_l}{cl.name}.png'
             makedir(savedpath)
 
 

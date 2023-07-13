@@ -212,70 +212,9 @@ def cif2poscar(cif_file, poscar_file):
 
 
 
-<<<<<<< HEAD
-def get_file_by_version(geofilelist, version):
-
-    """
-    Find file with needed version from filelist according to certain rules
-    """
-    curv = None
-    
-    matched_files = []
-    # print(geofilelist)
-
-    for input_geofile in geofilelist: 
-        
-        input_geofile = os.path.normpath(input_geofile)
 
 
-        input_geo_format = determine_file_format(input_geofile)
-        # sys.exit()
 
-        printlog('For file', input_geofile, input_geo_format, ' format was detected', imp = 'n')
-
-        if input_geo_format in ['abinit',]: #version determined from token 
-            # curv = int( runBash("grep version "+str(input_geofile) ).split()[1] )
-            
-            with open(input_geofile, 'r') as f:
-                for line in f:
-                    if 'version' in line:
-                        curv = int(line.split()[1])
-
-
-        elif input_geo_format == 'vasp': #from filename
-            if '-' in input_geofile:
-                # print('create calculation for structure',input_geofile)
-                curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
-                # print('create calculation for structure with version',curv)
-            # try: 
-            #     curv = int(input_geofile.split('-')[-1] ) #!Applied only for phonopy POSCAR-n naming convention
-            # except:
-            #     printlog('Error! Could not determine version of poscar file')
-
-        elif input_geo_format == 'cif': #from filename
-            printlog('I found cif file ', input_geofile)
-            try:
-                curv = int(os.path.basename(input_geofile).split('.')[0] )
-            except:
-                curv = None
-                printlog('Failed to determine version, skipping')
-        else:
-            curv = None
-        print(curv, version)
-        if curv == version:
-            # print('curv = ',curv,' version = ',version)
-            printlog('match', curv, version)
-            matched_files.append(input_geofile)
-
-    if len(matched_files) > 1:
-        printlog('get_file_by_version(): Error! Several files have same versions:', matched_files)
-    elif len(matched_files) == 0:
-        input_geofile = None
-    else:
-        input_geofile = matched_files[0]
-
-
-    return input_geofile
 
 
 
@@ -525,7 +464,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'u_ramping'    - realizes U ramping approach #Phys Rev B 82, 195128
             - 'afm_ordering' - 
             - 'uniform_scale' - creates uniformly scaled copies of the provided calculations
-			- 'c_scale' - scale across c axis
+            - 'c_scale' - scale across c axis
             - 'scale' - arbitrary scale according to mul_matrix
             using *scale_region*  and *n_scale_images* (see *scale_cell_uniformly()*)
             The copies are available as versions from 1 to *n_scale_images* and
@@ -959,8 +898,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             #sys.exit()
             if 'uniform_scale' in calc_method:
                 u_scale_flag = True
-                it_new = it+'.su' #scale uniformly  
 
+                it_new = it+'.su' #scale uniformly  
             elif 'c_scale' in calc_method:
                 it_new = it+'.sc' #scale along c
                 u_scale_flag = True
@@ -1063,7 +1002,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 if 'uniform_scale' in calc_method:
 
                     sts = scale_cell_uniformly(st, scale_region = scale_region, n_scale_images = n_scale_images, parent_calc_name = pname)
-                    
                 elif 'c_scale' in calc_method:
                     #print('scale_start')
                     #sys.exit()
@@ -1092,8 +1030,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     s.name = it_new+'.'+s.name
                     cl_temp.init = s
                     cl_temp.version = ver_new
-                    # cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
-                                                # it_new+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'
                     cl_temp.path["input_geo"] = header.geo_folder + struct_des[it_new].sfolder + '/' + \
                                                 it_new+suf+"/"+it_new+'.auto_created_scaled_image'+'.'+str(ver_new)+'.'+'geo'
 
@@ -1103,12 +1039,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     write_xyz(s, path = xyz_folder)
                     
                     verlist_new.append(ver_new)
-                    # sys.exit()
 
 
 
                 if 'uniform_scale' in calc_method or 'c_scale' in calc_method:
                     #print('Create 100')
+                    #sys.exit()
                     #make version 100
                     cl_temp.version = 100
                     cl_temp.des = 'fitted with fit_tool.py on cluster, init is incorrect'
@@ -1447,6 +1383,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     """Main Loop by setlist and verlist"""
     output_files_names = []
 
+
     for inputset in setlist:
 
         input_folder = add_loop_choose_input_folder(ifolder, inputset)
@@ -1459,7 +1396,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             
            
             blockdir = header.struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
-            
 
 
             add_calculation(it,inputset,v, verlist[0], verlist[-1], 
@@ -1669,6 +1605,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         params['update_set_dic'] = {}
 
 
+
     if id in calc: 
         cl = calc[id]
         status = "exist"
@@ -1773,13 +1710,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         # print(input_st)
         if input_st:
             if not isinstance(input_st, Molecule) and not isinstance(input_st, Structure):
-
                 printlog('Error! input_st should be of type Structure() or Molecule')
             cl.init  = input_st
         else:
-            print(cl.path, cl.dir,input_geo_file)
-            input_folder =  cl.dir #AB_here
-            # sys.exit()
             cl.init = smart_structure_read(curver = cl.id[2], calcul = cl, input_folder = input_folder, 
                 input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
@@ -3623,4 +3556,3 @@ def manually_remove_from_struct_des(struct_des, key):
 
 add = add_loop
 res = res_loop
-
