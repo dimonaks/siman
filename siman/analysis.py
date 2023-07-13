@@ -73,7 +73,7 @@ def calc_oxidation_states(cl = None, st = None, silent = 1):
     if cl:
         st = cl.end
         ch = cl.charges
-    if st:
+    elif st:
         ch  = st.charges
     
     # print(st.get_elements() )
@@ -685,8 +685,13 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
         alphas.append(alpha)
         print('alpha, energy: {:4.2f}, {:6.3f}'.format(alpha, cl.energy_sigma0))
 
+    if header.SIMAN_WEB:
+        path_l = cl.path['output'].replace('100.OUTCAR','')
+    else:
+        path_l = 'figs/'
+
     fit_and_plot(U1 = (alphas, etotlist, 'o-r'), 
-        image_name = 'figs/angle', ylabel = 'Total energy, eV', xlabel = 'Angle, deg', xlim = (89, 92.6))
+        image_name = f'{path_l}/angle', ylabel = 'Total energy, eV', xlabel = 'Angle, deg', xlim = (89, 92.6))
 
     if ase_flag:
         if 'angle' in analysis_type:
@@ -706,7 +711,8 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
             E0 = {2} eV
             B  = {3} eV/A^3'''.format(v0, v0**(1./3), e0, B), imp = 'Y'  )
 
-            savedpath = 'figs/'+cl.name+'.png'
+            
+            savedpath = f'{path_l}{cl.name}.png'
             makedir(savedpath)
 
 
@@ -1671,17 +1677,18 @@ def suf_en_polar_layered(formula, cl_surf, dmu_a = 0, dmu_b = 0, dmu_c = 0, prin
 def gb_en_ideal(cl_gb, cl_bulk, n_gbs = 2):
 
     """
-    Calculate grain boundary energy of pure material
-    GB is assumed to be normal to R3!
+    GB is assumed to be normal to R3! The stoichiometry should be the same!
 
-    ###INPUT:
+    INPUT:
     
     - cl_gb (Calculation class object) - slab or cell with grain boundary
-    - cl_bulk (Calculation class object) - bulk cell
+    - cl_bulk (Calculation class object) - bulk cell 
     - n_gbs (int) - number of grain boundaries in the system (Default - 2)
 
-    ###RETURN:
-        e_gb (float) - grain boundary energy in eV
+    RETURN:
+        e_gb (float) - grain boundary energy in J/m2
+
+    AUTHOR: Boev A.
 
     """
 
@@ -1700,7 +1707,7 @@ def gb_en_ideal(cl_gb, cl_bulk, n_gbs = 2):
 
 
     e_gb = (e1 - e2*n1/n2)/2/A * header.eV_A_to_J_m
-    print('E_gb = {} J/m2'.format(round(e_gb, 2)))
+    print('E_gb = {} J/m2; Check manually that stoichiometry is the same in cl_gb and cl_bulk'.format(round(e_gb, 2)))
     return e_gb
 
 
