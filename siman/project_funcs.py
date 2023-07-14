@@ -21,12 +21,12 @@ from siman.table_functions import table_geometry, table_potentials, generate_lat
 from siman.small_functions import merge_dics as md, makedir
 from siman.small_functions import list2string, cwd, return_xred, get_mismatch
 from siman.functions import invert
-from siman.calc_manage import add, res, add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive, smart_structure_read
+from siman.calc_manage import add, res, add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive
 from siman.neb import add_neb
 from siman.classes import Calculation
 from siman.analysis import calc_redox,  matrix_diff, interface_en
 from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions, create_single_antisite
-from siman.inout import write_occmatrix
+from siman.inout import write_occmatrix, smart_structure_read
 from siman.database import add_to_archive_database
 from siman.impurity import insert_atom
 from siman.analysis import find_polaron
@@ -651,7 +651,7 @@ def workflow():
     # add_loop('Li2.s333', ['ion'], [1], inherit_option = 'make_vacancy', i_atom_to_remove = 0, run = 1, override = 1)
 
     # res_loop('Li2.s333.vac', ['ion'], [1], up = 'up2', show = 'fo', analys_type = 'matrix_diff', b_id = ('Li2.s333', 'ion', 1))
-    from impurity import add_impurity
+    from siman.impurity import add_impurity
     # add_impurity('Li2.s333.oct', 'Li', calc = calc, it_to = 'Li2.s333', put_exactly_to = (0, 1/6, 1/6))
 
     # add_loop('Li2.s333.tet', ['ion'], [1], run = 1, override = 1)
@@ -659,7 +659,7 @@ def workflow():
     # add_loop('Li2.s333.oct', ['ion'], [1], run = 1, override = 1)
     # res_loop('Li2.s333.oct', ['ion'], [1], show = 'fo', analys_type = 'matrix_diff', b_id = ('Li2.s333', 'ion', 1))
 
-    from impurity import find_pores
+    from siman.impurity import find_pores
     # st = calc['Li2.s333', 'ion', 1].end
     # st_pores = find_pores(calc['Li2.s333', 'ion', 1].end, r_matrix = 1.0, r_impurity = 0.5, fine = 1, calctype = 'all_pores')
     # write_xyz(st.add_atoms(st_pores.xcart, 'H'), file_name = st.name+'_possible_positions')
@@ -775,7 +775,7 @@ def workflow():
 
 
 
-    from analysis import calc_redox
+    from siman.analysis import calc_redox
 
 
     # calc_redox(calc['KVPO4F.Pna21.s10.su','4uis',100], calc['VPO4F.Pna21.id.su.s10.su','4uis',100])
@@ -783,7 +783,7 @@ def workflow():
 
 
 
-    from geo import determine_symmetry_positions
+    from siman.geo import determine_symmetry_positions
 
     # st = calc['NaFePO4F.id1.su.s10.su','4uis',100].end
     # st = calc[('KVPO4F.Pna21', '1u', 1)].end
@@ -792,7 +792,7 @@ def workflow():
 
 
 
-    from geo import create_antisite_defect2
+    from siman.geo import create_antisite_defect2
 
     st1 = calc['NaFePO4F.id1.su.s10.su','4uis',100].init
     st2 = calc['NaFePO4F.id2.su.s10.su','4uis',100].end
@@ -808,7 +808,7 @@ def workflow():
 
 
 
-    from calc_manage import smart_structure_read
+    from siman.inout import smart_structure_read
 
 
 

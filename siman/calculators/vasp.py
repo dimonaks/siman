@@ -512,10 +512,14 @@ class CalculationVasp(Calculation):
 
             Aksyonov DA
         """
-        vp = curset.vasp_params
+
         if not curset:
             curset = self.set
 
+        vp = curset.vasp_params
+
+        if params is None:
+            params = {}
 
         #check if some parameters should be filled according to number of species
         #make element list

@@ -20,7 +20,6 @@ except:
 if pymatgen_flag:
     from pymatgen.ext.matproj import MPRester
     from pymatgen.io.vasp.inputs import Poscar
-    from pymatgen.io.cif import CifParser
 
 import siman
 from siman import header
@@ -165,57 +164,6 @@ def update_des(struct_des, des_list):
             add_des(struct_des, *des)
 
     return create_additional(struct_des)
-
-
-# def cif2poscar(cif_file, poscar_file):
-
-
-
-#     # print(header.CIF2CELL)
-#     if pymatgen_flag and not header.CIF2CELL:
-#         # print(cif_file)
-#         parser = CifParser(cif_file)
-#         # s = parser.get_structures(primitive = True)[0]
-#         s = parser.get_structures(primitive = 0)[0]
-        
-
-#         si = s._sites[0]
-
-#         # print(dir(si))
-#         # print(si.specie)
-
-#         # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-#         # sf = SpacegroupAnalyzer(s, ) #
-#         # sc = sf.get_conventional_standard_structure() # magmom are set to None
-#         # print(sc)
-
-
-
-#         Poscar(s).write_file(poscar_file)
-#         printlog('File',poscar_file, 'created.')
-    
-#     elif header.CIF2CELL: #using cif2cell for conversion
-
-#         print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
-#         printlog('File',poscar_file, 'created.')
-
-#         #check
-#         if not os.path.exists(poscar_file):
-#             print_and_log("Error! cif2cell failed")
-
-#     else:
-#         printlog('Error! Support of cif files requires pymatgen or cif2cell; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
-
-
-#     return
-
-
-
-
-
-
-
-
 
 
 

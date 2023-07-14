@@ -18,7 +18,7 @@ except:
 
 
 from siman import header
-from siman.header import print_and_log,printlog, runBash, plt
+from siman.header import printlog,printlog, runBash, plt
 # from siman.calc_manage import cif2poscar
 from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
@@ -29,11 +29,10 @@ try:
     import pymatgen
     pymatgen_flag = True 
 except:
-    print('calc_manage.py: pymatgen is not available')
+    print('inout.py: pymatgen is not available')
     pymatgen_flag = False 
 
 if pymatgen_flag:
-    from pymatgen.ext.matproj import MPRester
     from pymatgen.io.vasp.inputs import Poscar
     from pymatgen.io.cif import CifParser
 
@@ -160,12 +159,12 @@ def cif2poscar(cif_file, poscar_file):
     
     elif header.CIF2CELL: #using cif2cell for conversion
 
-        print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
+        printlog( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
         printlog('File',poscar_file, 'created.')
 
         #check
         if not os.path.exists(poscar_file):
-            print_and_log("Error! cif2cell failed")
+            printlog("Error! cif2cell failed")
 
     else:
         printlog('Error! Support of cif files requires pymatgen or cif2cell; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
@@ -261,7 +260,7 @@ def smart_structure_read(filename = None, curver = 1, calcul = None, input_folde
         cl.version = 1
 
     else:
-        print_and_log("Error! smart_structure_read(): File format", input_geo_format, "is unknown")
+        printlog("Error! smart_structure_read(): File format", input_geo_format, "is unknown")
 
 
     if cl.path["input_geo"] == None: 

@@ -4,7 +4,8 @@ from siman import header
 
 from siman.header import db
 from siman.geo import  create_surface2, stoichiometry_criteria
-from siman.calc_manage import  get_structure_from_matproj, smart_structure_read
+from siman.calc_manage import  get_structure_from_matproj
+from siman.inout import  smart_structure_read
 from siman.calc_manage   import (clean_history_file, prepare_run,  manually_remove_from_struct_des, update_des, inherit_icalc, add_loop, res_loop, complete_run, add_des )
 
 try:

@@ -266,7 +266,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     printlog('Search type is ', search_type, imp = 'y')
     
     if search_type == 'external':
-        from siman.calc_manage import smart_structure_read
+        from siman.inout import smart_structure_read
         st1 = smart_structure_read(init_neb_geo_fld+'/'+neb_folders[0]+'/POSCAR')
         st2 = smart_structure_read(init_neb_geo_fld+'/'+neb_folders[-1]+'/POSCAR')
 
