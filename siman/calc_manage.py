@@ -167,47 +167,47 @@ def update_des(struct_des, des_list):
     return create_additional(struct_des)
 
 
-def cif2poscar(cif_file, poscar_file):
+# def cif2poscar(cif_file, poscar_file):
 
 
 
-    # print(header.CIF2CELL)
-    if pymatgen_flag and not header.CIF2CELL:
-        # print(cif_file)
-        parser = CifParser(cif_file)
-        # s = parser.get_structures(primitive = True)[0]
-        s = parser.get_structures(primitive = 0)[0]
+#     # print(header.CIF2CELL)
+#     if pymatgen_flag and not header.CIF2CELL:
+#         # print(cif_file)
+#         parser = CifParser(cif_file)
+#         # s = parser.get_structures(primitive = True)[0]
+#         s = parser.get_structures(primitive = 0)[0]
         
 
-        si = s._sites[0]
+#         si = s._sites[0]
 
-        # print(dir(si))
-        # print(si.specie)
+#         # print(dir(si))
+#         # print(si.specie)
 
-        # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-        # sf = SpacegroupAnalyzer(s, ) #
-        # sc = sf.get_conventional_standard_structure() # magmom are set to None
-        # print(sc)
+#         # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+#         # sf = SpacegroupAnalyzer(s, ) #
+#         # sc = sf.get_conventional_standard_structure() # magmom are set to None
+#         # print(sc)
 
 
 
-        Poscar(s).write_file(poscar_file)
-        printlog('File',poscar_file, 'created.')
+#         Poscar(s).write_file(poscar_file)
+#         printlog('File',poscar_file, 'created.')
     
-    elif header.CIF2CELL: #using cif2cell for conversion
+#     elif header.CIF2CELL: #using cif2cell for conversion
 
-        print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
-        printlog('File',poscar_file, 'created.')
+#         print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
+#         printlog('File',poscar_file, 'created.')
 
-        #check
-        if not os.path.exists(poscar_file):
-            print_and_log("Error! cif2cell failed")
+#         #check
+#         if not os.path.exists(poscar_file):
+#             print_and_log("Error! cif2cell failed")
 
-    else:
-        printlog('Error! Support of cif files requires pymatgen or cif2cell; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
+#     else:
+#         printlog('Error! Support of cif files requires pymatgen or cif2cell; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
 
 
-    return
+#     return
 
 
 
@@ -464,7 +464,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             - 'u_ramping'    - realizes U ramping approach #Phys Rev B 82, 195128
             - 'afm_ordering' - 
             - 'uniform_scale' - creates uniformly scaled copies of the provided calculations
-			- 'c_scale' - scale across c axis
+            - 'c_scale' - scale across c axis
             - 'scale' - arbitrary scale according to mul_matrix
             using *scale_region*  and *n_scale_images* (see *scale_cell_uniformly()*)
             The copies are available as versions from 1 to *n_scale_images* and
@@ -3556,4 +3556,3 @@ def manually_remove_from_struct_des(struct_des, key):
 
 add = add_loop
 res = res_loop
-

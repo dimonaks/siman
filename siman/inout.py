@@ -17,12 +17,25 @@ except:
 
 
 
-# from siman import header
-from siman.header import printlog, runBash, plt
+from siman import header
+from siman.header import print_and_log,printlog, runBash, plt
+# from siman.calc_manage import cif2poscar
 from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
 from siman.small_classes import empty_struct
 from siman.geo import local_surrounding, replic
+try:
+    # pmg config --add VASP_PSP_DIR $VASP_PSP_DIR MAPI_KEY $MAPI_KEY
+    import pymatgen
+    pymatgen_flag = True 
+except:
+    print('calc_manage.py: pymatgen is not available')
+    pymatgen_flag = False 
+
+if pymatgen_flag:
+    from pymatgen.ext.matproj import MPRester
+    from pymatgen.io.vasp.inputs import Poscar
+    from pymatgen.io.cif import CifParser
 
 
 def determine_file_format(input_geo_file):
@@ -116,6 +129,49 @@ def get_file_by_version(geofilelist, version):
 
     return input_geofile
 
+
+
+def cif2poscar(cif_file, poscar_file):
+
+
+
+    # print(header.CIF2CELL)
+    if pymatgen_flag and not header.CIF2CELL:
+        # print(cif_file)
+        parser = CifParser(cif_file)
+        # s = parser.get_structures(primitive = True)[0]
+        s = parser.get_structures(primitive = 0)[0]
+        
+
+        si = s._sites[0]
+
+        # print(dir(si))
+        # print(si.specie)
+
+        # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+        # sf = SpacegroupAnalyzer(s, ) #
+        # sc = sf.get_conventional_standard_structure() # magmom are set to None
+        # print(sc)
+
+
+
+        Poscar(s).write_file(poscar_file)
+        printlog('File',poscar_file, 'created.')
+    
+    elif header.CIF2CELL: #using cif2cell for conversion
+
+        print_and_log( runBash("cif2cell "+cif_file+"  -p vasp -o "+poscar_file)  )
+        printlog('File',poscar_file, 'created.')
+
+        #check
+        if not os.path.exists(poscar_file):
+            print_and_log("Error! cif2cell failed")
+
+    else:
+        printlog('Error! Support of cif files requires pymatgen or cif2cell; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
+
+
+    return
 
 
 

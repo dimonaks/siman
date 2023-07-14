@@ -45,15 +45,22 @@ def get_mismatch(a, b):
     b = np.array(b)
     return np.linalg.norm(b) / np.linalg.norm(a) - 1
 
+def get_vector(a, b):
+    a = np.array(a)
+    b = np.array(b)
+    vec = np.subtract(a,b)
+    return vec
+
 def get_vec(a, b):
     a = np.array(a)
     b = np.array(b)
-    vec = np.linalg.norm(a-b)
-    return vec
+    l = np.linalg.norm(a-b)
+    return l
+
 def vec_l(vec):
     #length of vector
-    mag = np.linalg.norm(vec)
-    return mag
+    l = np.linalg.norm(vec)
+    return l
 
 def red_prec(value, precision = 100.):
     #

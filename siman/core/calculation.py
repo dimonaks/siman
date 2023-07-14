@@ -703,7 +703,7 @@ class Calculation(object):
 
 
 
-    def dos(self, isym = None, el = None, i_at = None, iatoms = None, multi = None,  *args, **kwargs):
+    def dos(self, isym = None, el = None, i_at = None, iatoms = None, multi = None, res_show ='fomag', *args, **kwargs):
         """
         Plot DOS either for self or for children with dos
 
@@ -781,7 +781,7 @@ class Calculation(object):
 
         cl = db[id]
 
-        cl.res()
+        cl.res(show=res_show)
 
         if orbitals is None:
             orbitals = ['d', 'p6']

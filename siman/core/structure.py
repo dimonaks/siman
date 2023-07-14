@@ -51,11 +51,11 @@ from siman.small_functions import return_xred, makedir, angle, is_string_like, c
 from siman.functions import (read_vectors, read_list, words, read_string,
      element_name_inv, invert, calculate_voronoi, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
-from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
 from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
 local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral, 
 rms_between_structures, rms_between_structures2)
 from siman.set_functions import InputSet, aims_keys
+from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
 
 
 
@@ -313,10 +313,10 @@ class Structure():
         return self.get_elements()[i]
 
     def get_elements_z(self):
-        #return list of elements names
+        #return list of elements z-numbers
         return [self.znucl[t-1] for t in self.typat]
     def get_el_z(self, i):
-        #return name of element
+        #return z-number of element
         return self.get_elements_z()[i]
     def get_natom(self):
         #get number of real atoms, excluding voids
@@ -333,7 +333,7 @@ class Structure():
         return zvals
 
     def get_elements_by_el_name(self, el_name):
-        #return list of at numbers of el_name
+        #return list of numbers of elements with *el_name*
         elements = self.get_elements()
         el_list = [n for n,x in enumerate(elements) if x==el_name]
         # el_list = elements.index(el_name)
@@ -501,10 +501,37 @@ class Structure():
         return magnetic_all
 
 
+    def get_mag(self, silent = 0):
+        #show formatted magnetic moments grouped by elements
+
+        el_list = self.get_elements()
+        mag_list = self.magmom
+        el_names = list(set(el_list))
+        mag_grouped = {}
+        for el_name in el_names:
+            el_magmom_list = []
+            for el_i, mag_i in zip(el_list, mag_list):
+                if el_i == el_name: 
+                    el_magmom_list.append(mag_i)
+            mag_grouped[el_name] = el_magmom_list
+
+        # print(mag_grouped)
+
+        # formatted output
+        if not silent:
+            for el in mag_grouped:
+                mag_str = ''
+                for mag_i in mag_grouped[el]:
+                    if '-' in str(mag_i): 
+                        mag_str+=f'  {mag_i:5.2f}'
+                    else: 
+                        mag_str+=f'   {mag_i:4.2f}'
+                print(f'{el:3s}:\n{mag_str}')
+
+        return mag_grouped
 
 
-
-
+        
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -1394,7 +1421,7 @@ class Structure():
         return slab.dipole
 
 
-    def add_atoms(self, atoms_xcart = None, element = 'Pu', return_ins = False, selective = None, 
+    def add_atoms(self,   atoms_xcart  = None, element = 'Pu', return_ins = False, selective = None, 
         atoms_xred = None, mag = None, add2end = False):
         """
         Appends atoms of type *element* at the end if the element is new. Otherwise insert according to VASP conventions if *add2end* is False.
@@ -3498,7 +3525,8 @@ class Structure():
 
         makedir(filename)
 
-        printlog('Starting writing Quantum Espresso', filename)
+        printlog('Starting writing Quantum Espresso', filename,imp = 'y')
+
 
         with io.open(filename,'w', newline = '') as f:
             f.write('ATOMIC_POSITIONS\n')
@@ -3877,7 +3905,8 @@ class Structure():
         # print(r, filename)
         # sys.exit()
         if 'jmol' in program :
-            runBash(header.PATH2JMOL+' -j \"background white\" '+filename, detached = True)
+            # runBash(header.PATH2JMOL+' -j \"background white\" '+filename, detached = True)
+            runBash(header.PATH2JMOL+' '+filename, detached = True)
         elif 'vesta' in program:
             runBash(header.PATH2VESTA+' '+filename, detached = True)
 
