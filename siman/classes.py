@@ -235,7 +235,8 @@ class MP_Compound():
         mat_in_list - data dict for any structure from MP,  result of get_fata('mp-...')
         """
 
-        from siman.calc_manage import  get_structure_from_matproj, smart_structure_read
+        from siman.calc_manage import  get_structure_from_matproj
+        from siman.inout import  smart_structure_read
         
         
         name = self.material_id+'.POSCAR'

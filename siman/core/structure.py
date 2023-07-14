@@ -51,11 +51,11 @@ from siman.small_functions import return_xred, makedir, angle, is_string_like, c
 from siman.functions import (read_vectors, read_list, words, read_string,
      element_name_inv, invert, calculate_voronoi, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
-from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
 from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
 local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral, 
 rms_between_structures, rms_between_structures2)
 from siman.set_functions import InputSet, aims_keys
+from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
 
 
 
@@ -3905,7 +3905,8 @@ class Structure():
         # print(r, filename)
         # sys.exit()
         if 'jmol' in program :
-            runBash(header.PATH2JMOL+' -j \"background white\" '+filename, detached = True)
+            # runBash(header.PATH2JMOL+' -j \"background white\" '+filename, detached = True)
+            runBash(header.PATH2JMOL+' '+filename, detached = True)
         elif 'vesta' in program:
             runBash(header.PATH2VESTA+' '+filename, detached = True)
 
