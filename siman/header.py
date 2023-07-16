@@ -1,35 +1,12 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 
+
+# Warning! Do not add new global variables in this file. 
+# Instead create several dictionaries, which will contain all requied information!
+# Then gradually move all variables and constants to these dictionaries.
 import os, subprocess, sys, shelve
-try:
-    import matplotlib as mpl
-    """Global matplotlib control"""
-    # size = 22 #for one coloumn figures
-    size = 26 #for DOS
-    # size = 16 #for two coloumn figures
-    mpl.rc('font',family='Serif')
-    # mpl.rc('xtick', labelsize= size) 
-    # mpl.rc('ytick', labelsize= size) 
-    # mpl.rc('axes', labelsize = size) 
-    # mpl.rc('legend', fontsize= size) 
-    # mpl.rc('Axes.annotate', fontsize= size) #does not work
-    mpl.rcParams.update({'font.size': size})
-    mpl.rcParams.update({'mathtext.fontset': "stix"})
-    # plt.rcParams['mathtext.fontset'] = "stix"
 
-    #paths to libraries needed by siman
-    # sys.path.append('/home/dim/Simulation_wrapper/ase') #
-    # plt = None
-except:
-    mpl = None
-    plt = None
-    print('Warning! matplotlib is not installed! Some functions will not work!')
-
-try:
-    import matplotlib.pyplot as plt
-except:
-    plt = None
 
 
 
@@ -48,6 +25,9 @@ warnings = 'yY' # level of warnings to show: n - all, e - normal, y - important,
 FROM_ONE = None # atom numbering convention; allows to override the default behaviour of functions where atomic numbers are provided as arguments
 PATH2ARCHIVE_LOCAL  = None
 SAVE_CONTCAR = 1 # adds 's' to savefile argument alowing to move CONTCAR to 1.CONTCAR
+EXCLUDE_NODES = False
+MEM_CPU = None
+
 
 #Global variables
 final_vasp_clean     = True 
@@ -67,8 +47,9 @@ verbose_log = 0 # in addition to normal log write verbose log in any case by ope
 cluster_address = ''
 override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUSTERS[cluster]['address'], usefull when switching between proxy and back of the same cluster
 pymatgen_flag = None
-
-
+open_terminal = False #used in runBash
+siman_run = False #
+calc_database = 'only_calc.gdbm3' # name for calculation database, db dict
 
 
 
@@ -79,42 +60,91 @@ pymatgen_flag = None
 #1. Read default global settings for siman package
 from siman.default_project_conf import *
 
-#2. Read user-related settings for siman
-simanrc = os.path.expanduser("~/simanrc.py")
-if os.path.exists(simanrc):
-    # if 'n' in war
-    print(simanrc, 'was read')
-    sys.path.insert(0, os.path.dirname(simanrc))
-    from simanrc import *
+if 0:
+    #outdated code used before version 1.3.7
+    #2. Read user-related settings for siman
+    simanrc = os.path.expanduser("~/simanrc.py")
+    if os.path.exists(simanrc):
+        # if 'n' in war
+        print(simanrc, 'was read')
+        sys.path.insert(0, os.path.dirname(simanrc))
+        from simanrc import *
 
-#3. Read project specific
-if os.path.exists('./project_conf.py'):
-    print('Reading project_conf.py from', os.getcwd())
+    #3. Read project specific
+    if os.path.exists('./project_conf.py'):
+        print('Reading project_conf.py from', os.getcwd())
 
-    from project_conf import *
-    siman_run = True
-    log = open('log','a')
-else:
-    print('Some module is used separately; default_project_conf.py is used')
-    if mpl and not os.path.exists(simanrc):
-        mpl.use('agg') #switch matplotlib on or off; for running script using ssh
-    siman_run = False
-    history.append('separate run')
-
-
-
-
+        from project_conf import *
+        siman_run = True
+        log = open('log','a')
+    else:
+        print('Some module is used separately; default_project_conf.py is used')
+        if mpl and not os.path.exists(simanrc):
+            mpl.use('agg') #switch matplotlib on or off; for running script using ssh
+        siman_run = False
+        history.append('separate run')
 
 
 
 
+def _update_configuration(filename, pfolder = None):
+    """
+    A service function to update header parameters for specific user/project, such as provided in project_conf.py
+    or global parameters, such as provided in simanrc.py
+
+
+    INPUT:
+        - filename (str) - full path to the file with configuration parameters, such as simanrc.py or project_conf.py
+        - pfolder (str) - full path to a folder with specific project. 
+            Taken automatically from the *filename* if config file has a project_conf.py name
+            if simanrc.py is read, then not needed
+    """
+    from siman import header
+    global siman_run, project_folder
+
+    if pfolder:
+        project_folder = pfolder
+    elif 'project_conf.py' in filename:
+        project_folder = os.path.dirname(filename)
+    else:
+        pass
+
+    if project_folder:
+        siman_run = 1 # means that siman is used as an application to run tasks, not just a library
+
+
+
+    import importlib.util, sys
+    spec = importlib.util.spec_from_file_location('project_conf', filename)
+    project_conf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(project_conf)
+    # print(dir(project_conf))
+    config_vars = ['CIF2CELL', 'DEFAULT_CLUSTER', 'EXCLUDE_NODES', 
+    'NEW_BATCH', 'PATH2ARCHIVE', 'PATH2DATABASE', 'PATH2JMOL', 'PATH2NEBMAKE', 
+    'PATH2PHONOPY', 'PATH2POTENTIALS', 'PATH2PROJECT', 'PBS_PROCS', 
+    'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
+    'geo_folder', 'path_to_images', 'path_to_paper', 
+    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS',]
+
+    for var in config_vars:
+        try: 
+            value = getattr(project_conf, var)
+            # print(type(value))
+            setattr(header, var, value)
+            # exec(var + " = " + str(value))
+        except AttributeError:
+            print('Warning! Your project_conf.py doesnot contain', var)
+            pass
+        # print(var, value)
+    # CLUSTERS = getattr(project_conf, 'CLUSTERS')
+
+    # print(CLUSTERS)
+
+    return
 
 
 
 
-
-
-calc_database = 'only_calc.gdbm3'
 
 class CalcDict(dict):
     def __getitem__(self, key):
@@ -184,7 +214,6 @@ calc = db
 conv = {};
 varset = {};
 struct_des = {};
-
 sets = varset
 
 
@@ -255,8 +284,6 @@ nu_dict = {300:'void', 200:'octa', 0:'n', 1:'H', 2:'He', 3:'Li', 4:'Be', 5:'B', 
 #void 300 is not written to poscar
 nme_list = ['H', 'He', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Si', 'P', 'S', 'Cl', 'Ar', 'As', 'Se', 'Br', 'Kr', 'Te', 'I', 'Xe', 'At', 'Rn', 'Ts', 'Og']
 
-EXCLUDE_NODES = False
-MEM_CPU = None
 
 
 def printlog(*logstrings, **argdic):
@@ -272,6 +299,8 @@ def printlog(*logstrings, **argdic):
         'y' - important - major actions
         'Y' - super important, or output asked by user
     """
+    
+    global siman_run
     end = '\n\n'# no argument for end, make one separate line
     
     debug_level  = 'e' #empty
@@ -317,10 +346,11 @@ def printlog(*logstrings, **argdic):
     #         print (mystring,  end = "")
 
     if siman_run:
-        log.write(mystring)
+        with open(project_folder+'/log','a') as log:
+            log.write(mystring)
     
     if verbose_log:
-        with open('verbose_log','a') as f:
+        with open(project_folder+'/verbose_log','a') as f:
             f.write(mystring)
 
 
@@ -333,7 +363,7 @@ def printlog(*logstrings, **argdic):
     return
 
 print_and_log = printlog
-open_terminal = False
+
 
 
 def runBash(cmd, env = None, detached = False, cwd = None):

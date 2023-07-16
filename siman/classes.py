@@ -37,11 +37,10 @@ if header.pymatgen_flag:
     from pymatgen.core.composition import Composition
 
 
-# import matplotlib.pyplot as plt
 
 #siman packages
 
-from siman.header import printlog, print_and_log, runBash, plt
+from siman.header import printlog, runBash
 
 from siman import set_functions
 # from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass

@@ -30,7 +30,7 @@ except:
 
 
 from siman import header
-from siman.header import printlog, print_and_log, mpl, db
+from siman.header import printlog, db
 from siman.functions import element_name_inv, invert, get_from_server
 from siman.picture_functions import plot_mep, fit_and_plot
 from siman.geo import determine_symmetry_positions, local_surrounding, find_moving_atom, image_distance, rms_pos_diff, interpolate
@@ -153,7 +153,7 @@ def determine_barrier(positions = None, energies = None):
 
 
     else:
-        print_and_log('Warning! no roots')
+        printlog('Warning! no roots')
         # diff_barrier = 0
         sign = 1
 
@@ -369,6 +369,8 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
     fit_power - power of fit polynomial
     """
 
+    from siman.picture_functions import mpl
+
     if xs is None:
         xs = sorted(objs.keys())
 
@@ -441,7 +443,7 @@ def voltage_profile(objs, xs = None, invert = 1, xlabel = 'x in K$_{1-x}$TiPO$_4
             # 'weight' : 'boolld',
             'size'   : 14}
 
-    header.mpl.rc('font', **font)
+    mpl.rc('font', **font)
 
     xi = [f(xi) for xi in x]
     print(xi )
@@ -664,6 +666,7 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
     """
     # e, v, emin, vmin       = plot_conv( conv[n], calc,  "fit_gb_volume2")
 
+    from siman.picture_functions import mpl
 
 
     alist = []
@@ -981,12 +984,12 @@ def neb_analysis(cl, show, up = None, push2archive = None, old_behaviour = None,
             if readfiles:
                 print(outst2+'|'+cl_i.read_results(loadflag, show = show, choose_outcar = choose_outcar) )
             else:
-                print_and_log(outst2+' | File was not read')
+                printlog(outst2+' | File was not read')
             
 
             if cl_i.id in calc: #move creation of calcs with images to add_neb
                 ''
-                # print_and_log('Please test code below this message to save prev calcs')
+                # printlog('Please test code below this message to save prev calcs')
                 # if cl_i != calc[cl_i.id]
                 #     if hasattr(calc[cl_i.id], 'prev') and calc[cl_i.id].prev:
                 #         prevlist = calc[cl_i.id].prev

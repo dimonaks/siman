@@ -7,7 +7,7 @@ from siman.core.calculation import Calculation
 from siman.core.structure import Structure
 from siman.header import runBash
 
-from siman.header import printlog, print_and_log, runBash, plt
+from siman.header import printlog, runBash
 
 from siman import set_functions
 # from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
@@ -72,20 +72,20 @@ class CalculationVasp(Calculation):
         if version:
             self.version = version
         else:
-            print_and_log('Trying to find version at the end of filename POSCAR-v ...')
+            printlog('Trying to find version at the end of filename POSCAR-v ...')
             try:
                 ver = int(filename.split('-')[-1])
-                print_and_log('OK\n')
+                printlog('OK\n')
 
             except:
-                print_and_log('\nTrying to find version at the begenning of filename v.POSCAR...')
+                printlog('\nTrying to find version at the begenning of filename v.POSCAR...')
 
                 try:
                     ver = int(os.path.basename(filename).split('.')[0] )
-                    print_and_log('OK\n')
+                    printlog('OK\n')
                
                 except:
-                    print_and_log('No version, using 1\n')
+                    printlog('No version, using 1\n')
                     ver = 1
 
             self.version = ver
@@ -109,7 +109,7 @@ class CalculationVasp(Calculation):
         #units
         # try:
         #     if "ang" in self.len_units or "Ang" in self.len_units: 
-        #         global to_ang; to_ang = 1.0; print_and_log("Conversion multiplier to_ang is "+str(to_ang) )
+        #         global to_ang; to_ang = 1.0; printlog("Conversion multiplier to_ang is "+str(to_ang) )
         # except AttributeError:
         #     pass
 
@@ -326,7 +326,7 @@ class CalculationVasp(Calculation):
 
 
 
-            print_and_log(incar_filename, "was generated\n")
+            printlog(incar_filename, "was generated\n")
         
             incar_list.append(incar_filename)
         
@@ -430,31 +430,31 @@ class CalculationVasp(Calculation):
         elif self.set.kpoints_file:
             if self.set.kpoints_file is True:
 
-                print_and_log( "You said to generate KPOINTS file. set.kpoints_file =",self.set.kpoints_file," \n")
+                printlog( "You said to generate KPOINTS file. set.kpoints_file =",self.set.kpoints_file," \n")
                 self.calc_kspacings()
                 #Generate kpoints file
 
                 #
                 if hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') and kspacing in struct_des[it].ngkpt_dict_for_kspacings:
                     N =    struct_des[it].ngkpt_dict_for_kspacings[kspacing]
-                    print_and_log( 'Attention! ngkpt = ',N, 
+                    printlog( 'Attention! ngkpt = ',N, 
                         ' is adopted from struct_des which you provided for it ',it, ' and kspacing = ',kspacing)
                     nk1 = N[0]; nk2 = N[1]; nk3 = N[2]
                     self.set.ngkpt = N
 
                 elif self.set.ngkpt:
                     nk1 = self.set.ngkpt[0]; nk2 = self.set.ngkpt[1]; nk3 = self.set.ngkpt[2];
-                    print_and_log( "Attention! ngkpt was used for kpoints file\n")
+                    printlog( "Attention! ngkpt was used for kpoints file\n")
 
                 
                 elif kspacing:
-                    print_and_log( "Attention! ngkpt for kpoints file are created from kspacing; ngkpt is empty\n")
+                    printlog( "Attention! ngkpt for kpoints file are created from kspacing; ngkpt is empty\n")
                     N = self.check_kpoints()
                     self.set.ngkpt = N
                     nk1 = N[0]; nk2 = N[1]; nk3 = N[2]
                 
                 else:
-                    print_and_log( "Error! could not find information about k-points\n")
+                    printlog( "Error! could not find information about k-points\n")
 
 
 
@@ -469,18 +469,18 @@ class CalculationVasp(Calculation):
                     f.write('%i %i %i \n'%(nk1, nk2, nk3) )
                     f.write("0 0 0\n") # optional shift
 
-                print_and_log( "KPOINTS was generated\n")
+                printlog( "KPOINTS was generated\n")
             
             else:
                 # print()
                 shutil.copyfile(self.set.kpoints_file, filename)
-                print_and_log( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
+                printlog( "KPOINTS was copied from"+self.set.kpoints_file+"\n")
 
             self.path['kpoints'] = filename 
 
 
         else:
-            print_and_log( "This set is without KPOINTS file.\n")
+            printlog( "This set is without KPOINTS file.\n")
             filename = ''
 
 
@@ -661,11 +661,11 @@ class CalculationVasp(Calculation):
         # sys.exit()
         if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
 
-            print_and_log('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
+            printlog('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
         elif hasattr(curset, 'magnetic_moments') and curset.magnetic_moments:
-            print_and_log('actualize_set(): Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set', end = '\n')
-            print_and_log('curset.magnetic_moments = ', curset.magnetic_moments)
+            printlog('actualize_set(): Magnetic moments are determined using siman key "magnetic_moments" and corresponding dict in set', end = '\n')
+            printlog('curset.magnetic_moments = ', curset.magnetic_moments)
             
             mag_mom_other = 0.6 # magnetic moment for all other elements
             magmom = []
@@ -718,7 +718,7 @@ class CalculationVasp(Calculation):
                     spec_mom_is.append(i)
 
             if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
-                print_and_log('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
+                printlog('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
                 ns = len(spec_mom_is); 
                 number_of_ord = int(math.factorial(ns) / math.factorial(0.5 * ns)**2)
                 
@@ -731,7 +731,7 @@ class CalculationVasp(Calculation):
                         use_each = 1
 
                     if number_of_ord > nords:
-                        print_and_log('Attention! Number of orderings is', number_of_ord, ' more than', nords, ' - I will check only each first ', imp = 'y')
+                        printlog('Attention! Number of orderings is', number_of_ord, ' more than', nords, ' - I will check only each first ', imp = 'y')
                 # else:
 
                     ls = [0]*len(spec_mom_is)
@@ -795,7 +795,7 @@ class CalculationVasp(Calculation):
                         mag_orderings.append(new_magmom)
 
                     # print orderings
-                    print_and_log('Total number of orderings is ', len(orderings),imp = 'y')
+                    printlog('Total number of orderings is ', len(orderings),imp = 'y')
                     
                     if self.calc_method and 'afm_ordering' in self.calc_method:
                         self.magnetic_orderings = mag_orderings
@@ -804,7 +804,7 @@ class CalculationVasp(Calculation):
 
         
         elif 'MAGMOM' in vp and vp['MAGMOM']: #just add * to magmom tag if it is provided without it
-            print_and_log('Magnetic moments from vasp_params["MAGMOM"] are used\n')
+            printlog('Magnetic moments from vasp_params["MAGMOM"] are used\n')
             
             # if "*" not in vp['MAGMOM']:
             #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
@@ -927,6 +927,7 @@ class CalculationVasp(Calculation):
         # print(self.maxforce)
         # maxf = [m[1] for m in self.maxforce_list ]
         # print(maxf)
+        from siman.picture_functions import plt
         steps = range(len(self.list_e_sigma0))
         plt.plot(steps, 1000*(np.array(self.list_e_sigma0)-self.energy_sigma0) , '-o')
         # plt.xlabel('MD step')
@@ -941,6 +942,8 @@ class CalculationVasp(Calculation):
         # print(self.maxforce)
         # maxf = [m[1] for m in self.maxforce_list ]
         # print(maxf)
+        from siman.picture_functions import plt
+
         en = self.list_e_conv[10:]
         steps = range(len(en))
         plt.plot(steps, (np.array(en)-self.energy_sigma0) , '-o')
@@ -1043,7 +1046,7 @@ class CalculationVasp(Calculation):
             
             # self.u_ramping_u_values = np.arange(*self.u_ramping_list)
             # print 'associated_energies:', self.associated_energies
-        print_and_log('read_results() path to outcar', path_to_outcar)
+        printlog('read_results() path to outcar', self.project_path_cluster+path_to_outcar)
         # sys.exit()
 
 
@@ -1439,11 +1442,11 @@ class CalculationVasp(Calculation):
         imp_partial_chg = imp_valence_chg - float(ACF[numbers[0]].split()[4])
 
         mat_partial_chg = [mat_valence_chg - float(ACF[i].split()[4]) for i in numbers[1:] ]
-        print_and_log( "Partial charge of impurity ", imp_partial_chg, imp = 'Y' )
-        print_and_log( "Partial charges of neibouring Ti atoms", " ".join("{:.2f}".format(m) for m in mat_partial_chg), imp = 'Y' )
-        print_and_log( "Partial charge of matrix", sum(mat_partial_chg), imp = 'Y' )
+        printlog( "Partial charge of impurity ", imp_partial_chg, imp = 'Y' )
+        printlog( "Partial charges of neibouring Ti atoms", " ".join("{:.2f}".format(m) for m in mat_partial_chg), imp = 'Y' )
+        printlog( "Partial charge of matrix", sum(mat_partial_chg), imp = 'Y' )
         
-        print_and_log( "Sum of mat and imp charges:", sum(mat_partial_chg)+imp_partial_chg, imp = 'Y' )
+        printlog( "Sum of mat and imp charges:", sum(mat_partial_chg)+imp_partial_chg, imp = 'Y' )
 
         return path_to_file
 
@@ -1545,6 +1548,9 @@ class CalculationVasp(Calculation):
 
         from pymatgen.io.vasp import Vasprun, BSVasprun
         from pymatgen.electronic_structure.plotter import BSPlotter
+
+        from siman.picture_functions import plt
+
 
         xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
         # print(xml_file)

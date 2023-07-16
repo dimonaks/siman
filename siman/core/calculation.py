@@ -34,9 +34,8 @@ if header.pymatgen_flag:
     from pymatgen.core.surface import Slab
     from pymatgen.core.composition import Composition
 
-from siman.header import printlog
 
-from siman.header import printlog, print_and_log, runBash, plt
+from siman.header import printlog
 
 from siman import set_functions
 # from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
@@ -119,7 +118,7 @@ class Calculation(object):
                 
                 self.build = empty_struct()                
                 if 'BEGIN BUILD INFORMATION' in line:
-                    print_and_log("File contain build information! Start to read", imp = 'n')
+                    printlog("File contain build information! Start to read", imp = 'n')
                     # self.build = Structure()
                     # # self.build.rprimd = None
                     # # self.build.xred = None
@@ -144,7 +143,7 @@ class Calculation(object):
                     self.build.nadded = read_list("nadded", 1, int, gen_words)[0] #total number of added atoms after building structure
                     self.build.listadded = read_list("listadded", self.build.nadded, int, gen_words) #list of added atoms corresponding to xred 
 
-                    print_and_log("Build information has been read")
+                    printlog("Build information has been read")
 
 
 
@@ -163,7 +162,7 @@ class Calculation(object):
 #             self.natom_str = s1
 #             if s1=='':
 #                 self.natom = 0
-#                 print_and_log( """Warning! In filename """+filename+""" not found natom! set to zero.
+#                 printlog( """Warning! In filename """+filename+""" not found natom! set to zero.
 #                 It is very likely that other parameters was not 
 #                 found too, Calculation completely unusable!!!""")
 #                 raise RuntimeError
@@ -185,7 +184,7 @@ class Calculation(object):
             self.ntypat = read_list("ntypat", 1, int, gen_words)[0]
             self.typat = read_list("typat", self.natom, int, gen_words)
             if 0 in self.typat:
-                print_and_log('Error; 0 in typat is not allowed')
+                printlog('Error; 0 in typat is not allowed')
                 raise RuntimeError
 
             self.nznucl = []
@@ -201,11 +200,11 @@ class Calculation(object):
             #print self.xred
             # print(self.xcart)
             if self.xred is [None]:
-                print_and_log("Convert xcart to xred")
+                printlog("Convert xcart to xred")
                 self.xred = xcart2xred(self.xcart, self.rprimd)
             
             if self.xcart is [None]:
-                print_and_log("Convert xred to xcart")
+                printlog("Convert xred to xcart")
                 self.xcart = xred2xcart(self.xred, self.rprimd)
 
             self.hex_a = read_list("hex_a", 1, float, gen_words)[0]
@@ -268,7 +267,7 @@ class Calculation(object):
 
         #file.close();
 
-        print_and_log( "If no warnings, geometry has been succesfully read from file "+filename+" \n")
+        printlog( "If no warnings, geometry has been succesfully read from file "+filename+" \n")
 
         return
 
@@ -299,9 +298,9 @@ class Calculation(object):
 
         if geo_exists:
             if override:
-                print_and_log("Warning! File "+geofile+" was replaced"); 
+                printlog("Warning! File "+geofile+" was replaced"); 
             else: 
-                print_and_log("Error! File "+geofile+" exists. To replace it set parameter override"); 
+                printlog("Error! File "+geofile+" exists. To replace it set parameter override"); 
                 return False
                 #raise RuntimeError
         # print "geofile name, classes:",  geofile
@@ -317,10 +316,10 @@ class Calculation(object):
             # if not hasattr(st, 'ntypat'): st.ntypat = self.init.ntypat
             # if not hasattr(st, 'typat'): st.typat = self.init.typat
             # if not hasattr(st, 'znucl'): st.znucl = self.init.znucl 
-        else: print_and_log("Error! Unknown geotype \n"); raise RuntimeError                                  
+        else: printlog("Error! Unknown geotype \n"); raise RuntimeError                                  
 
         if st.natom != len(st.xred) != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
-            print_and_log("Error! write_geometry: check your arrays.", imp = 'Y')
+            printlog("Error! write_geometry: check your arrays.", imp = 'Y')
             raise RuntimeError
 
         # print (st.magmom)
@@ -383,13 +382,13 @@ class Calculation(object):
 
             f.write("xred  ")
             #print st.xred
-            if len(st.xred) != st.natom: print_and_log("Warning! write_geometry(): xred is empty or overfull\n");raise RuntimeError 
+            if len(st.xred) != st.natom: printlog("Warning! write_geometry(): xred is empty or overfull\n");raise RuntimeError 
             for v in st.xred:
                 f.write("%.12f %.12f %.12f \n"%(v[0], v[1], v[2])  )
 
             f.write("xcart  ")
             if len(st.xcart) != st.natom: 
-                print_and_log("Warning! write_geometry(): xcart is empty or overfull, I make it from xred\n");#raise RuntimeError
+                printlog("Warning! write_geometry(): xcart is empty or overfull, I make it from xred\n");#raise RuntimeError
                 st.xcart = xred2xcart(st.xred, st.rprimd) 
             for v in st.xcart:
                 f.write("%.12f %.12f %.12f \n"%(v[0]*le, v[1]*le, v[2]*le)  )
@@ -723,6 +722,7 @@ class Calculation(object):
         """
         from siman.header import db
         from siman.dos_functions import plot_dos
+        from siman.picture_functions import plt
         # print(self.children)
 
 
@@ -1028,7 +1028,7 @@ class Calculation(object):
         #         to_ang_local = 1
         #         #print "units angs"
         # except AttributeError:
-        #     print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n") 
+        #     printlog("Warning! no len_units for "+self.name+" calculation, I use Bohr \n") 
         
         N_from_kspacing = []
 
@@ -1058,7 +1058,7 @@ class Calculation(object):
             N = ngkpt
 
         elif is_string_like(self.set.kpoints_file):
-            print_and_log("External K-points file was provided", self.set.kpoints_file)
+            printlog("External K-points file was provided", self.set.kpoints_file)
             N = None
 
         elif kspacing in ngkpt_dict:
@@ -1084,7 +1084,7 @@ class Calculation(object):
             # print(self.dir)
             N = None
             if self.set.periodic:
-                print_and_log("Error! check_kpoints(): no information about k-points for periodic calculation\n")
+                printlog("Error! check_kpoints(): no information about k-points for periodic calculation\n")
 
 
 
@@ -1095,23 +1095,23 @@ class Calculation(object):
             printlog('check_kpoints(): I added ',N,'as a k-grid for',kspacing,'in struct_des of', it)
 
 
-        print_and_log("check_kpoints(): Kpoint   mesh is: ", N, imp = 'Y')
+        printlog("check_kpoints(): Kpoint   mesh is: ", N, imp = 'Y')
 
 
         if not hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') or  kspacing not in struct_des[it].ngkpt_dict_for_kspacings:
-            print_and_log('Several other options instead of automatically determined ngkpt = ',N,np.array(self.calc_kspacings(N) ).round(2), ':', end = '\n', imp = 'y')
-            print_and_log('ngkpt              |    actual kspacings       ', end = '\n', imp = 'y' )
+            printlog('Several other options instead of automatically determined ngkpt = ',N,np.array(self.calc_kspacings(N) ).round(2), ':', end = '\n', imp = 'y')
+            printlog('ngkpt              |    actual kspacings       ', end = '\n', imp = 'y' )
             
             if N:
                 for ngkpt in itertools.product([N[0]-1, N[0], N[0]+1], [N[1]-1, N[1], N[1]+1], [N[2]-1, N[2], N[2]+1]):
-                    print_and_log(ngkpt, np.array(self.calc_kspacings(ngkpt) ).round(2), end = '\n', imp = 'y' )
+                    printlog(ngkpt, np.array(self.calc_kspacings(ngkpt) ).round(2), end = '\n', imp = 'y' )
 
             # user_ngkpt = input('Provide ngkpt:')
             # print(user_ngkpt)
             # sys.exit()
 
         else:
-            print_and_log("check_kpoints(): The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2), imp = 'Y')
+            printlog("check_kpoints(): The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2), imp = 'Y')
         return N
 
 
@@ -1123,7 +1123,7 @@ class Calculation(object):
         #         to_ang_local = 1
         #         #print "units angs"
         # except AttributeError:
-        #     print_and_log("Warning! no len_units for "+self.name+" calculation, I use Bohr \n")
+        #     printlog("Warning! no len_units for "+self.name+" calculation, I use Bohr \n")
         
 
         if sttype == 'init':
@@ -1182,15 +1182,15 @@ class Calculation(object):
                     job_in_queue = ''
 
                 elif 'simple' in cl.schedule_system:
-                    print_and_log('For SCHEDULE_SYSTEM='+cl.schedule_system+' please manually run on server! ', imp = 'y')                    
+                    printlog('For SCHEDULE_SYSTEM='+cl.schedule_system+' please manually run on server! ', imp = 'y')                    
 
 
                 else:
-                    print_and_log('Attention! unknown SCHEDULE_SYSTEM='+cl.schedule_system+'; Please teach me here! ', imp = 'y')
+                    printlog('Attention! unknown SCHEDULE_SYSTEM='+cl.schedule_system+'; Please teach me here! ', imp = 'y')
                     job_in_queue = ''
 
 
-            if file_exists_on_server(os.path.join(cl.dir, 'RUNNING'), addr = cl.cluster['address']) and job_in_queue: 
+            if file_exists_on_server(os.path.join(cl.project_path_cluster +'/'+cl.dir, 'RUNNING'), addr = cl.cluster['address']) and job_in_queue: 
                 
                 cl.state = '3. Running'
 

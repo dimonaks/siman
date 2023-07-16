@@ -39,12 +39,9 @@ if header.pymatgen_flag:
     from pymatgen.core.composition import Composition
 
 
-# import matplotlib.pyplot as plt
 
 #siman packages
-
-from siman.header import printlog, print_and_log, runBash, plt
-
+from siman.header import printlog, runBash
 from siman import set_functions
 # from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
 from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
@@ -1811,7 +1808,7 @@ class Structure():
         """
 
 
-        # print_and_log('Warning! Method del_atoms() was not carefully tested ')
+        # printlog('Warning! Method del_atoms() was not carefully tested ')
         st = copy.deepcopy(self)
         # print(st.nznucl)
 
@@ -1908,11 +1905,11 @@ class Structure():
     def leave_only(self, atom_type = None):
         #Remove all atoms except *atom_type*(str, mendeleev element name)
         
-        print_and_log('Starting leave_only()', imp = 'n')
+        printlog('Starting leave_only()', imp = 'n')
 
         st = copy.deepcopy(self)
         
-        print_and_log('    N of atoms before = ',st.natom, imp = 'n')
+        printlog('    N of atoms before = ',st.natom, imp = 'n')
 
 
         z = element_name_inv(atom_type)
@@ -1949,7 +1946,7 @@ class Structure():
 
         # print st.xred
 
-        print_and_log('    N of atoms after  = ',st.natom, imp = 'n')
+        printlog('    N of atoms after  = ',st.natom, imp = 'n')
 
 
         return st
@@ -2256,7 +2253,7 @@ class Structure():
 
         st.xcart = xred2xcart(st.xred, st.rprimd)
 
-        # print_and_log(str(n)+" atoms were returned to cell.\n")
+        # printlog(str(n)+" atoms were returned to cell.\n")
         #print st.xred
         return st
 
@@ -3701,7 +3698,7 @@ class Structure():
 
 
             if "car" in coord_type:
-                print_and_log("Warning! Cartesian regime of coordination may be obsolete and incorrect !!!", imp = 'Y')
+                printlog("Warning! Cartesian regime of coordination may be obsolete and incorrect !!!", imp = 'Y')
                 f.write("Cartesian\n")
                 for xcart in zxcart:
                     for x in xcart:
@@ -3734,7 +3731,7 @@ class Structure():
                 pass
 
             else:
-                print_and_log("Error! The type of coordinates should be 'car' or 'dir' ")
+                printlog("Error! The type of coordinates should be 'car' or 'dir' ")
                 raise NameError
 
 
@@ -3761,7 +3758,7 @@ class Structure():
         #     path = os.getcwd()+'/'+filename
         # else:
         path = filename
-        print_and_log("POSCAR was written to", path, imp = 'y')
+        printlog("POSCAR was written to", path, imp = 'y')
         return path
 
 

@@ -6,7 +6,7 @@ from pymatgen.core.structure import Molecule as Molecule_pymatgen
 from siman import header
 from siman.inout import read_structure
 from siman.small_functions import makedir
-from siman.header import printlog, runBash, plt
+from siman.header import printlog, runBash
 
 class Molecule(Molecule_pymatgen):
     """Class for molecule structure representation based on pymatgen Molecule """

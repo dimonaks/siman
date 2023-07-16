@@ -18,7 +18,7 @@ except:
 
 
 from siman import header
-from siman.header import printlog,printlog, runBash, plt
+from siman.header import printlog, runBash
 # from siman.calc_manage import cif2poscar
 from siman.functions import element_name_inv, unique_elements, smoother
 from siman.small_functions import makedir, is_list_like, list2string, red_prec
@@ -1253,6 +1253,8 @@ def write_geometry_aims(st, filename, coord_type = 'cart', periodic = True):
 
 def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to_outcar = '', path_to_contcar = '', ):
     """Try to read xred from CONCAR and calculate xcart"""
+
+    from siman.picture_functions import plt
 
     self = cl
 

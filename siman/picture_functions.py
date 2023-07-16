@@ -18,15 +18,53 @@ try:
     from scipy.interpolate import  CubicSpline
 except:
     print('scipy.interpolate.CubicSpline is not avail')
+
+
+
+
+try:
+    import matplotlib as mpl
+    """Global matplotlib control"""
+    # size = 22 #for one coloumn figures
+    size = 26 #for DOS
+    # size = 16 #for two coloumn figures
+    mpl.rc('font',family='Serif')
+    # mpl.rc('xtick', labelsize= size) 
+    # mpl.rc('ytick', labelsize= size) 
+    # mpl.rc('axes', labelsize = size) 
+    # mpl.rc('legend', fontsize= size) 
+    # mpl.rc('Axes.annotate', fontsize= size) #does not work
+    mpl.rcParams.update({'font.size': size})
+    mpl.rcParams.update({'mathtext.fontset': "stix"})
+    # plt.rcParams['mathtext.fontset'] = "stix"
+
+    #paths to libraries needed by siman
+    # sys.path.append('/home/dim/Simulation_wrapper/ase') #
+    # plt = None
+except:
+    mpl = None
+    plt = None
+    print('Warning! matplotlib is not installed! Some functions will not work!')
+
+try:
+    import matplotlib.pyplot as plt
+except:
+    plt = None
+
+
+
+
+
+
 try:
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
     import matplotlib
     # matplotlib.use('tkagg')
+    from matplotlib import gridspec 
 except:
     print('mpl_toolkits or matplotlib are not avail')
 
-from matplotlib import gridspec 
 try:
     from adjustText import adjust_text
     adjustText_installed = True

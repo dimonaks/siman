@@ -23,7 +23,7 @@ if pymatgen_flag:
 
 import siman
 from siman import header
-from siman.header import print_and_log, runBash, mpl, plt
+from siman.header import printlog, runBash
 from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt, setting_sshpass
 from siman.classes import Description
 from siman.core.structure import Structure
@@ -47,8 +47,6 @@ from siman.database import push_figure_to_archive
 
 from siman.calculators.qe import CalculationQE
 
-
-printlog = print_and_log
 
 
 # Check the default parameters
@@ -130,11 +128,11 @@ def add_des(struct_des, it, it_folder, des = 'Lazy author has not provided descr
             if hstring != header.history[-1]: header.history.append( hstring  )
         except:
             header.history.append( hstring  )
-        print_and_log("New structure name "+it+ " added to struct_des dict"+"\n")
+        printlog("New structure name "+it+ " added to struct_des dict"+"\n")
 
 
     else:
-        print_and_log("Attention! "+it+' already exist in struct_des, skipping; use override = True if you really need it; or first remove using manually_remove_from_struct_des()')
+        printlog("Attention! "+it+' already exist in struct_des, skipping; use override = True if you really need it; or first remove using manually_remove_from_struct_des()')
         # raise RuntimeError
 
 
@@ -547,7 +545,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         if ifolder: 
             if it not in ifolder: # just to be consistent with names
-                print_and_log('Check ifolder !!! it is not in ifolder')
+                printlog('Check ifolder !!! it is not in ifolder')
                 raise RuntimeError
 
 
@@ -631,12 +629,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
             if ise_new:
-                print_and_log('Inherited calculation uses set', ise_new)
+                printlog('Inherited calculation uses set', ise_new)
 
                 setlist = [ise_new,]
 
             else:
-                print_and_log('Inherited calculation uses the same sets', setlist)
+                printlog('Inherited calculation uses the same sets', setlist)
 
 
             it = it_new
@@ -867,15 +865,15 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
             # if up != 'up3':
-            print_and_log('add_loop_scale(): Preparing   scale  calculation ... ', imp = 'Y')
+            printlog('add_loop_scale(): Preparing   scale  calculation ... ', imp = 'Y')
 
             if len(verlist) > 1:
-                print_and_log('Error! Currently   scale  is allowed only for one version')
+                printlog('Error! Currently   scale  is allowed only for one version')
             
 
 
             if it_new not in struct_des:
-                if it_folder:
+                if it_folder is not None:
                     section_folder = it_folder
                 else:
                     section_folder = struct_des[it].sfolder
@@ -901,15 +899,20 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     it_l = it_new
                 else:
                     it_l = it 
+                
+                # print(header.SIMAN_WEB)
+
                 if header.SIMAN_WEB:
                     suf = '.'+id_s[1]
                     input_folder = struct_des[it_l].sfolder+'/'+it_l+suf
                     xyz_folder = struct_des[it_l].sfolder+'/'+it_new+suf
-                
+                    # print(xyz_folder)
+                    # sys.exit()
                 else:
                     suf = ''
                     input_folder = struct_des[it_l].sfolder+'/'+it_l+suf
                     xyz_folder = None
+                    # sys.exit()
 
 
                 if input_st:
@@ -1016,7 +1019,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
                 verlist = verlist_new
 
-                print_and_log(len(sts), 'scale images have been created.', imp = 'y')
+                printlog(len(sts), 'scale images have been created.', imp = 'y')
             
 
 
@@ -1044,9 +1047,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             input_geo_format = 'mat_proj'
 
         if input_geo_format == 'mat_proj':
-            print_and_log("Taking structure "+it+" from materialsproject.org ...", imp = 'Y')
+            printlog("Taking structure "+it+" from materialsproject.org ...", imp = 'Y')
             if it_folder == None:
-                print_and_log('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
+                printlog('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
             
             st = get_structure_from_matproj(it, it_folder, verlist[0], mat_proj_cell, mat_proj_id)
             mat_proj_st_id = st.mat_proj_st_id
@@ -1056,7 +1059,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         elif input_geo_format == 'cee_database':
             
             if it_folder == None:
-                print_and_log('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
+                printlog('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
 
             get_structure_from_cee_database(it, it_folder, verlist[0], **cee_args) #will transform it to vasp
             input_geo_format = 'vasp'
@@ -1074,12 +1077,12 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 n_neb_images = varset[curset.vasp_params['IMAGES']]
 
             if not n_neb_images:
-                print_and_log('Error! You did not provide number of NEB images nor in *n_neb_images* nor in your set!')
+                printlog('Error! You did not provide number of NEB images nor in *n_neb_images* nor in your set!')
                 raise RuntimeError
 
 
             if header.corenum % n_neb_images > 0:
-                print_and_log('Error! add_loop_neb(): Number of cores should be dividable by number of IMAGES', header.corenum, n_neb_images)
+                printlog('Error! add_loop_neb(): Number of cores should be dividable by number of IMAGES', header.corenum, n_neb_images)
                 raise RuntimeError
 
             nebsets = [curset]
@@ -1093,7 +1096,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 s.vasp_params['IMAGES'] = n_neb_images
             #     print s.vasp_params['IMAGES']
             # sys.exit()
-            print_and_log('Attention, I update number of images in the set to', n_neb_images, 'for this calculation; ', imp = 'y')
+            printlog('Attention, I update number of images in the set to', n_neb_images, 'for this calculation; ', imp = 'y')
         return neb_flag, nebsets
 
 
@@ -1101,9 +1104,9 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         if neb_flag:
 
             if len(setlist) > 1:
-                print_and_log('In "neb" mode only one set is allowed' )
+                printlog('In "neb" mode only one set is allowed' )
                 raise RuntimeError
-            print_and_log('Preparing   neb  calculation ... ')
+            printlog('Preparing   neb  calculation ... ')
 
             #create necessary calculations without
             nimages = varset[setlist[0]].vasp_params['IMAGES']
@@ -1131,7 +1134,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
                 cl_i.path["output"] = cl_i.dir + n_st + "/OUTCAR"
-                print_and_log(i , cl_i.path["output"], 'overwritten in database')
+                printlog(i , cl_i.path["output"], 'overwritten in database')
 
                 cl_i.associated_outcars = list([a.replace('2.', '', 1) for a in cl.associated_outcars])
 
@@ -1143,7 +1146,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 if cl_i.id in calc: # for 'continue' mode the add_calculation() takes care, but here it should be
                                     # repeated. Again think about using only add_calculation and  write_batch_list
                     ''
-                    # print_and_log('Please test code below this message to save prev calcs')
+                    # printlog('Please test code below this message to save prev calcs')
                     # if cl_i != calc[cl_i.id]
                     #     if hasattr(calc[cl_i.id], 'prev') and calc[cl_i.id].prev:
                     #         prevlist = calc[cl_i.id].prev
@@ -1286,7 +1289,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
         if up not in ('up1','up2','up3'): 
-            print_and_log("Warning! You are in the test mode, to add please change up to up1; "); 
+            printlog("Warning! You are in the test mode, to add please change up to up1; "); 
             sys.exit()
         
         if run: #
@@ -1593,7 +1596,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
     else:
         status = "new"
-        print_and_log( "There is no calculation with id "+ str(id)+". I create new with set "+str(inputset)+"\n" )        
+        printlog( "There is no calculation with id "+ str(id)+". I create new with set "+str(inputset)+"\n" )        
 
 
 
@@ -1604,10 +1607,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         if status in ["exist","compl"]: 
-            print_and_log("You asked to update existing calculation with id "+ str(id)+"; results are overwritten" )         
+            printlog("You asked to update existing calculation with id "+ str(id)+"; results are overwritten" )         
 
         if status == 'compl' and inherit_option == 'continue':
-            print_and_log(id, 'is completed, I will make its copy in self.prev[]', imp = 'Y' )         
+            printlog(id, 'is completed, I will make its copy in self.prev[]', imp = 'Y' )         
 
             cl_prev = copy.deepcopy(calc[id])
 
@@ -1685,11 +1688,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
         if hasattr(cl.set, 'u_ramping_nstep') and cl.set.u_ramping_nstep:
-            print_and_log("Attention! U ramping method is detected from set\n\n")
+            printlog("Attention! U ramping method is detected from set\n\n")
             cl.calc_method.append('u_ramping')
 
         if hasattr(cl.set, 'afm_ordering'):
-            print_and_log("Attention! afm_ordering method is detected from set\n\n")
+            printlog("Attention! afm_ordering method is detected from set\n\n")
             cl.calc_method.append('afm_ordering')
 
 
@@ -1886,7 +1889,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             cl.state = '2. Can be completed but was reinitialized' #new behavior 30.08.2016
 
 
-        print_and_log("\nCalculation db["+str(id)+"] successfully created\n\n", imp = 'Y')
+        printlog("\nCalculation db["+str(id)+"] successfully created\n\n", imp = 'Y')
 
 
 
@@ -2039,14 +2042,14 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
     if id_from:
         if type(id_from) == str: # if string - treated like file name
-            print_and_log("I detect *id_from* path provided; taking some information from:", id_from)
+            printlog("I detect *id_from* path provided; taking some information from:", id_from)
 
             calc_from = CalculationVasp();
             calc_from.read_geometry(id_from)
             calc_from.end = calc_from.init
             calc_from_name = id_from
         else:
-            print_and_log("I detect *id_from* Calculation(); taking some information from:", id_from, id_from_st_type)
+            printlog("I detect *id_from* Calculation(); taking some information from:", id_from, id_from_st_type)
             
 
             calc_from = calc[id_from]
@@ -2060,15 +2063,15 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
         if cl_base.len_units != calc_from.len_units:
-            print_and_log("Calculations have different len_units"); raise RuntimeError
+            printlog("Calculations have different len_units"); raise RuntimeError
 
         if it_new == id_from[0] and ver_new == id_from[2]:
-            print_and_log("Warning! check your versions, you are trying to overwrite existing from structures, nothing done")
+            printlog("Warning! check your versions, you are trying to overwrite existing from structures, nothing done")
             raise RuntimeError 
 
 
     if it_new == cl_base.id[0] and ver_new == cl_base.id[2]:
-        print_and_log("Warning! check your versions, you are trying to overwrite existing base structures, nothing done")
+        printlog("Warning! check your versions, you are trying to overwrite existing base structures, nothing done")
         raise RuntimeError
   
 
@@ -2120,7 +2123,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
     
     makedir(new.path["input_geo"])
-    print_and_log('Path for inherited calc =', it_new_folder)
+    printlog('Path for inherited calc =', it_new_folder)
 
 
 
@@ -2175,7 +2178,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
     elif inherit_type in ["full", ]:
-        # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
+        # printlog("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
         des = 'Fully inherited from the final state of '+cl_base.name
 
 
@@ -2186,49 +2189,49 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         # The file is copied in add_loop_finalize !!!
 
     elif inherit_type == "full_nomag":
-        # print_and_log("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
+        # printlog("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
         des = 'Fully inherited from the final state of '+cl_base.name+'; "magmom" set to [None]'
         st.magmom = [None]
 
     elif inherit_type == "occ":
         des = 'Fully inherited from the final state of '+cl_base.name+'; occupation matrix is taken from '+calc_from_name
 
-        print_and_log('Inherit option: "occ", reading occupation matrices from',calc_from_name)
+        printlog('Inherit option: "occ", reading occupation matrices from',calc_from_name)
         
         if not calc_from.occ_matrices:
-            print_and_log('Error! calc_from.occ_matrices is empty')
+            printlog('Error! calc_from.occ_matrices is empty')
             raise RuntimeError
 
 
         #additional control to which atoms should be applied
         #if cells are different
-        print_and_log('You can use *occ_atom_coressp* to control for which atoms you inherit occupations')
+        printlog('You can use *occ_atom_coressp* to control for which atoms you inherit occupations')
 
 
 
         if calc_from.end.natom != new.natom or occ_atom_coressp:
             
             if calc_from.end.natom != new.natom:
-                print_and_log('Attention! Numbers of atoms are different. Please use *occ_atom_coressp* or I will try to use most closest to alkali ion d-atoms ')
+                printlog('Attention! Numbers of atoms are different. Please use *occ_atom_coressp* or I will try to use most closest to alkali ion d-atoms ')
 
             if not occ_atom_coressp:
                 # raise RuntimeError
-                print_and_log('Please run res_loop(show = "occ") for *id_base*=',id_base, ' and *id_from*=',id_from, 'to save self.dist_numb')
+                printlog('Please run res_loop(show = "occ") for *id_base*=',id_base, ' and *id_from*=',id_from, 'to save self.dist_numb')
 
 
                 occ_atom_coressp = {}
                 occ_atom_coressp[calc_from.dist_numb[0][1] ] = new.dist_numb[0][1] 
             
             
-            print_and_log('The occ matrices will be inherited from atom # in id_from to atom # in id_base:', end = '\n')
+            printlog('The occ matrices will be inherited from atom # in id_from to atom # in id_base:', end = '\n')
             occs = {}
                 
             for iat_from in occ_atom_coressp: # key is atom number in id_from 
                 iat_new = occ_atom_coressp[iat_from] #new is based on id_base
                 occs[ iat_new ] = calc_from.occ_matrices[iat_from]
-                print_and_log('        occ:',iat_from+1,'-->', iat_new+1)
+                printlog('        occ:',iat_from+1,'-->', iat_new+1)
         else:
-            print_and_log('The cells seems to be consistent; full inheritence of occ_matrices')
+            printlog('The cells seems to be consistent; full inheritence of occ_matrices')
             occs = calc_from.occ_matrices
         
         # sys.exit()
@@ -2245,8 +2248,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
     elif inherit_type == 'supercell':
         from siman.geo import ortho_vec, create_supercell
-        print_and_log('       inherit_icalc(): starting supercell mode ...', imp = 'Y')
-        # print_and_log('rprimd is \n', st.rprimd)
+        printlog('       inherit_icalc(): starting supercell mode ...', imp = 'Y')
+        # printlog('rprimd is \n', st.rprimd)
         
         if mul_matrix is None: #if *mul_matrix* is not provided, try to use *ortho*
             mul_matrix = ortho_vec(st.rprimd, ortho_sizes = ortho)
@@ -2254,7 +2257,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         else:
             printlog('*mul_matrix* was explicitly provided')
 
-        print_and_log('Mul matrix is\n',mul_matrix)
+        printlog('Mul matrix is\n',mul_matrix)
         st = create_supercell(st, mul_matrix)
         # sc.mul_matrix = mul_matrix.copy()
         # new.init = sc
@@ -2307,7 +2310,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         """Remove  atom 'i_atom_to_remove' from final state of id_base"""
 
 
-        print_and_log('Warning! Please check inherit_type == "make_vacancy", typat can be wrong  if more than one element present in the system\n ',
+        printlog('Warning! Please check inherit_type == "make_vacancy", typat can be wrong  if more than one element present in the system\n ',
             'Use del_atom() method ')
         # raise RuntimeError
 
@@ -2347,17 +2350,17 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         znucl = st.znucl
         
         if z_replace not in znucl: 
-            print_and_log("Error! Calc "+new.name+" does not have atoms of this type")
+            printlog("Error! Calc "+new.name+" does not have atoms of this type")
             raise RuntimeError
 
         if atom_to_replace not in id_base[0] or atom_new not in it_new:
-            print_and_log("Error! inherit_icalc(): Something wrong with names of atom types")
+            printlog("Error! inherit_icalc(): Something wrong with names of atom types")
             raise RuntimeError            
-        print_and_log( "replace ", z_replace, "by", z_new)
+        printlog( "replace ", z_replace, "by", z_new)
 
         znucl = [int(z) for z in znucl] # convert to int
         i_r = znucl.index(z_replace)
-        print_and_log( "index ", i_r)
+        printlog( "index ", i_r)
         znucl[i_r] = z_new
 
         if znucl[-2] == znucl[-1]: #just for special case
@@ -2365,7 +2368,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
             for i, t in enumerate(st.typat):
                 if t == st.ntypat:
-                    print_and_log( "found ntypat" ,t)
+                    printlog( "found ntypat" ,t)
                     st.typat[i]-=1
                     #print t
             st.ntypat-=1
@@ -2411,7 +2414,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
     else:
-        print_and_log("Error! Unknown type of Calculation inheritance")
+        printlog("Error! Unknown type of Calculation inheritance")
 
 
 
@@ -2608,6 +2611,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
     """Setup"""
 
+    from siman.picture_functions import plt
+
 
 
     if not is_list_like(verlist):
@@ -2696,7 +2701,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                     e_b = calc[b_id].energy_sigma0
                     v_b = calc[b_id].end.vol
                 else:
-                    print_and_log('Warning! Calculation ',b_id, 'was not finished; please check, now skipping ...', important = 'y')
+                    printlog('Warning! Calculation ',b_id, 'was not finished; please check, now skipping ...', important = 'y')
         else:
             printlog('Attention! res_loop(): b_id', b_id, 'does not exist. return {} []')
             # return {}, []
@@ -2709,7 +2714,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         # if '4' not in calc[r_id].state:
         #     print "Start to read reference:"
         if readfiles:
-            print_and_log( calc[r_id].read_results(loadflag, choose_outcar = choose_outcar)  )
+            printlog( calc[r_id].read_results(loadflag, choose_outcar = choose_outcar)  )
         e_r = calc[r_id].energy_sigma0 #reference calc
         nat_r = calc[r_id].end.natom # reference calc
         e1_r = e_r/nat_r # energy per one atom
@@ -3007,7 +3012,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 dire = cl.dir
             except:
                 dire = ''
-            print_and_log( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',dire, imp = 'Y')
+            printlog( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',dire, imp = 'Y')
             return {}, []
         
         outloop_segreg_analysis(b_id, analys_type, conv, n, description_for_archive, show, push2archive)
@@ -3020,7 +3025,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         if analys_type == 'redox_pot':
             
             if '4' not in bcl.state:
-                print_and_log("res_loop: Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
+                printlog("res_loop: Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
                 return {}, []
 
             results_dic = calc_redox(cl, bcl, energy_ref)
@@ -3157,7 +3162,7 @@ def read_phonopy_data(filename, key = "free_energy", convert = False):
 
     fit_and_plot(d1 = (T, F, 'b-', 'orig'), d2 = (T_range, fit_func(T_range), 'r--', 'fit'), show = 1)
 
-    print_and_log( 'I return', key)
+    printlog( 'I return', key)
 
     return T_range, fit_func
 
@@ -3214,7 +3219,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
 
          
         #run phonopy
-        print_and_log(
+        printlog(
             runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; rm POSCAR-*;'+header.path_to_phonopy 
             +confname+' -c '+posname+' -d --tolerance=0.01'), imp = 'y' )
 
@@ -3281,8 +3286,8 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
             if not os.path.exists("FORCE_SETS"):
                 #run phonopy; read forces
                 ndis = len( glob.glob('*.vasprun.xml') )
-                print_and_log( ndis, ' displacement files was Found')
-                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; '+header.path_to_phonopy 
+                printlog( ndis, ' displacement files was Found')
+                printlog( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; '+header.path_to_phonopy 
                     +'  -f {1..'+str(ndis)+'}.vasprun.xml --tolerance=0.01'), imp = 'Y' )
 
             #calculate thermal prop
@@ -3290,7 +3295,7 @@ def for_phonopy(new_id, from_id = None, calctype = 'read', mp = [10, 10, 10], ad
             if not os.path.exists(result):
 
                 posname = 'SPOSCAR'
-                print_and_log( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; '+header.path_to_phonopy 
+                printlog( runBash('export PYTHONPATH=~/installed/phonopy-1.9.5/lib/python:$PYTHONPATH; '+header.path_to_phonopy 
                     +confname+' -c '+posname+' -t -p -s --tolerance=0.01'), imp = 'y' )
 
                 shutil.copyfile('thermal_properties.yaml', result)
@@ -3322,7 +3327,7 @@ def get_structure_from_cee_database(it, it_folder, ver, section = 'CEStorage', c
 
     """
     it_base = it.split('.')[0]
-    print_and_log("Taking structure "+it_base+" from CEE CREI database of Skoltech ...", imp = 'Y')
+    printlog("Taking structure "+it_base+" from CEE CREI database of Skoltech ...", imp = 'Y')
 
     # database_server = 'aksenov@10.30.100.28'
     database_server = 'sd'
@@ -3447,7 +3452,7 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
 
     
     Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True, )
-    print_and_log('Structure', groundstate_st_id, 'downloaded from materialsproject.org\n',
+    printlog('Structure', groundstate_st_id, 'downloaded from materialsproject.org\n',
         'File '+path2poscar+" was written", imp = 'y')
 
     st = smart_structure_read(input_geo_file = path2poscar)
@@ -3492,7 +3497,7 @@ def manually_remove_from_struct_des(struct_des, key):
     
     """
     del struct_des[key]
-    print_and_log('Attention! Entry '+key+' was removed from struct_des dict/\n')
+    printlog('Attention! Entry '+key+' was removed from struct_des dict/\n')
 
 
 

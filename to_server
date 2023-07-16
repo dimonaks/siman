@@ -2,6 +2,6 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'auto'
+git commit -m 'new system for project_conf.py importing'
 git push origin simanaks
 
