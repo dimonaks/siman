@@ -47,7 +47,8 @@ def read_database(scratch = False, init_sets = 0):
 
     # databasefile = 'calc.s' #was used with python2
     # databasefile = 'calc.gdbm'
-    databasefile3 = 'calc.gdbm3'
+    # databasefile3 = 'calc.gdbm3'
+    databasefile3 = header.PATH2SHELVE_DBSUP
     # if header.RAMDISK:
     #     databasefile3 = header.RAMDISK+databasefile3
 
@@ -117,8 +118,9 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
     #size_on_finish = sys.getsizeof(dbase)
     #if size_on_finish != size_on_start:
     # runBash("cp calc.s calc_copy.s") #create copy before writing
-    databasefile3 = 'calc.gdbm3'
-
+    # databasefile3 = 'calc.gdbm3'
+    databasefile3 = header.PATH2SHELVE_DBSUP
+    databasefile3_copy = databasefile3+'_copy'
     # if header.RAMDISK:
     #     databasefile3 = header.RAMDISK+databasefile3
     size = os.path.getsize
@@ -126,15 +128,15 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
 
 
 
-    if os.path.isfile(databasefile3) and os.path.isfile('calc_copy.gdbm3'):
-        if size(databasefile3) < size('calc_copy.gdbm3') - 200000:
+    if os.path.isfile(databasefile3) and os.path.isfile(databasefile3_copy):
+        if size(databasefile3) < size(databasefile3_copy) - 200000:
 
-            print(size(databasefile3), size('calc_copy.gdbm3'))
+            print(size(databasefile3), size(databasefile3_copy))
             printlog('Error! actual database file is smaller than reserve copy, something is wrong! Check')
 
         else:
             ''
-            shutil.copyfile(databasefile3, 'calc_copy.gdbm3')
+            shutil.copyfile(databasefile3, databasefile3_copy)
     
 
 
@@ -178,9 +180,9 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
                 d.reorganize()
 
 
-        printlog('Opening ', header.calc_database, 'for writing')
+        printlog('Opening ', header.PATH2SHELVE_DB, 'for writing')
 
-        with shelve.Shelf(dbm.open(header.calc_database, 'c'), protocol = 3) as d:
+        with shelve.Shelf(dbm.open(header.PATH2SHELVE_DB, 'c'), protocol = 3) as d:
             for key in header.db:
                 printlog('saving key:', key, imp = '')
                 # print(key)
@@ -188,7 +190,7 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
                 d[str(key)] = header.db[key]
         
         if header.reorganize: #please run me from time to time to reduce the size of the database file
-            with dbm.open(header.calc_database, 'w') as d:
+            with dbm.open(header.PATH2SHELVE_DB, 'w') as d:
                 d.reorganize()
 
 
@@ -200,8 +202,8 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
         pass
 
     #Update history file
-    with  open('history','w') as his:
-        #print history
+    with  open(header.PATH2HISTORYFILE,'w') as his:
+        printlog('Writing history file', header.PATH2HISTORYFILE)
         for i in header.history:
             #print i
             his.write(i+"\n")

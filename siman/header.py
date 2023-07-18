@@ -49,8 +49,9 @@ override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUS
 pymatgen_flag = None
 open_terminal = False #used in runBash
 siman_run = False #
-calc_database = 'only_calc.gdbm3' # name for calculation database, db dict
-
+PATH2SHELVE_DBSUP = 'calc.gdbm3' # supporting database
+PATH2SHELVE_DB = 'only_calc.gdbm3' # name for calculation database, db dict
+PATH2HISTORYFILE = 'history' 
 
 
 
@@ -124,7 +125,7 @@ def _update_configuration(filename, pfolder = None):
     'PATH2PHONOPY', 'PATH2POTENTIALS', 'PATH2PROJECT', 'PBS_PROCS', 
     'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
     'geo_folder', 'path_to_images', 'path_to_paper', 
-    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS',]
+    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE']
 
     for var in config_vars:
         try: 
@@ -162,7 +163,7 @@ class CalcDict(dict):
             val = dict.__getitem__(self, key)
         
         else:
-            with shelve.open(calc_database, protocol = 3) as d:
+            with shelve.open(PATH2SHELVE_DB, protocol = 3) as d:
                 try:
                     val = d[str(key)]
                     dict.__setitem__(self, key, val)
@@ -186,7 +187,7 @@ class CalcDict(dict):
             return True
         
         else:
-            with shelve.open(calc_database, protocol = 3) as d:
+            with shelve.open(PATH2SHELVE_DB, protocol = 3) as d:
                 # print('checking if key',key, 'is in db:', str(key) in d)
                 # print(self)
                 return str(key) in d
@@ -195,7 +196,7 @@ class CalcDict(dict):
 
         keys = []
 
-        with shelve.open(calc_database, protocol = 3) as d:
+        with shelve.open(PATH2SHELVE_DB, protocol = 3) as d:
             for key in d:
                 key = key.replace("'", "").replace('(', '').replace(')', '') #remove unnessary symbols from string
                 l = key.split(',') # go back to tuple

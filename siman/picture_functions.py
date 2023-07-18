@@ -310,6 +310,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     """
 
 
+
     if image_name == None:
         image_name  = filename
 
@@ -325,13 +326,13 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         MEDIUM_SIZE = fontsize
         BIGGER_SIZE = fontsize
 
-        header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
-        header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-        header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-        header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-        header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
-        header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+        mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
+        mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+        mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+        mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+        mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+        mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 
         # font = {'family' : 'normal',
@@ -349,7 +350,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     if legend_fontsize:
         ''
-        header.mpl.rc('legend', fontsize= legend_fontsize) 
+        mpl.rc('legend', fontsize= legend_fontsize) 
 
     if corner_letter_pos is None:
         corner_letter_pos = [0.05,0.8]
@@ -401,7 +402,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     if corner_letter:
         # print(corner_letter)
         ''
-        sz = header.mpl.rcParams['font.size']
+        sz = mpl.rcParams['font.size']
         ax.text(corner_letter_pos[0],corner_letter_pos[1], corner_letter, size = sz*1.5, transform=ax.transAxes) # transform = None - by default in data coordinates!
 
         # text(x, y, s, bbox=dict(facecolor='red', alpha=0.5))

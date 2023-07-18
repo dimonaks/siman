@@ -2,6 +2,6 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'new system for project_conf.py importing'
+git commit -m 'paths to shelve database'
 git push origin simanaks
 
