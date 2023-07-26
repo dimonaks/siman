@@ -44,6 +44,10 @@ def make_run(cl_dir, schedule_system, run_name):
         - schedule_system (str) - ['SGE', 'PBS', 'SLURM', 'none']
     """
 
+    printlog('make_run():', schedule_system, run_name, imp = 'n')
+    # sys.exit()
+
+
     with open('run','a', newline = '') as f:
 
         if schedule_system == 'SGE':
