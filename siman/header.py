@@ -108,7 +108,10 @@ def _update_configuration(filename, pfolder = None):
     elif 'project_conf.py' in filename:
         project_folder = os.path.dirname(filename)
     else:
+        project_folder = None
         pass
+
+    configfile_name = os.path.basename(filename)
 
     if project_folder:
         siman_run = 1 # means that siman is used as an application to run tasks, not just a library
@@ -120,7 +123,7 @@ def _update_configuration(filename, pfolder = None):
     project_conf = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(project_conf)
     # print(dir(project_conf))
-    config_vars = ['CIF2CELL', 'DEFAULT_CLUSTER', 'EXCLUDE_NODES', 
+    config_vars = ['MEM_CPU','CIF2CELL', 'DEFAULT_CLUSTER', 'EXCLUDE_NODES', 
     'NEW_BATCH', 'PATH2ARCHIVE', 'PATH2DATABASE', 'PATH2JMOL', 'PATH2NEBMAKE', 
     'PATH2PHONOPY', 'PATH2POTENTIALS', 'PATH2PROJECT', 'PBS_PROCS', 
     'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
@@ -134,7 +137,7 @@ def _update_configuration(filename, pfolder = None):
             setattr(header, var, value)
             # exec(var + " = " + str(value))
         except AttributeError:
-            print('Warning! Your project_conf.py doesnot contain', var)
+            print('Warning! Your '+ configfile_name +' doesnot contain', var)
             pass
         # print(var, value)
     # CLUSTERS = getattr(project_conf, 'CLUSTERS')
