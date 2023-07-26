@@ -1413,6 +1413,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         ifmaglist = None
         for line in outcarlines:
 
+
             #Check bands
 
             # if 'band No.' in line:
@@ -1863,6 +1864,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                         if 'f  =' in line:
                             freq.append(float(line.split()[3]) ) #THz
                             # print(line)
+                    self.freq = freq
 
 
             if 'TOTAL ELASTIC MODULI' in line:
@@ -1882,6 +1884,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 w, v = np.linalg.eig(eltensor)
                 printlog('Eigenvalues are:', w, imp = 'y')
                         # eltensor
+                self.eltensor = eltensor
 
             if 'average eigenvalue GAMMA=' in line:
                 # print(line)
@@ -2377,8 +2380,11 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # print(fw)
         for f in freq:
             # print(f)
-            i = int( np.round( (f-fmin)/ fw * 999 ,0) )
-            dos[i] += 1
+            try:
+                i = int( np.round( (f-fmin)/ fw * 999 ,0) )
+                dos[i] += 1
+            except ZeroDivisionError:
+                pass
             # print(i, finefreq[i], f)
         
 
@@ -2405,11 +2411,22 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         plt.xlabel('Frequency, THz')
         plt.ylabel('DOS' )
         # plt.plot(finefreq, y, '-') 
-        filename = 'figs/'+str(self.id)+'.pdf'
-        plt.savefig(filename)
-        printlog('Freq file saved to ', filename, imp = 'y')
-        plt.show()
-        plt.clf()
+        # filename = 'figs/'+str(self.id)+'.pdf'
+        from siman import header
+        if header.SIMAN_WEB:
+            path_l = cl.path['output'].replace('400.OUTCAR','')
+            plt.tight_layout()
+            filename = path_l+str(self.name)+'.png'
+            plt.savefig(filename)
+            printlog('Freq file saved to ', filename, imp = 'y')
+
+        else:
+            path_l = 'figs/'
+            filename = path_l+str(self.id)+'.pdf'
+            plt.savefig(filename)
+            printlog('Freq file saved to ', filename, imp = 'y')
+            plt.show()
+            plt.clf()
 
     # sys.exit()
 
