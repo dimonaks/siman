@@ -16,3 +16,4 @@ dist/
 siman.egg-info/
 siman/libfindpores.so
 siman_10_09_2021
+build
