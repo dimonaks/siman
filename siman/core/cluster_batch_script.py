@@ -287,6 +287,8 @@ def run_command(cl, option, name, parrallel_run_command,
                     f.write(parrallel_run_command +" >"+name+".log\n")
                 elif cl.calculator == 'gaussian':
                     f.write(parrallel_run_command +" < input.gau > "+name+".out\n")
+                elif cl.calculator == 'qe':
+                    f.write(parrallel_run_command +" < scf.in > "+name+".log\n")
                 else:
                     printlog('Error! Calculator ', cl.calculator, 'is unknown!')
 
@@ -399,11 +401,9 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
                     ''
                     f.write("rm CHG   # rm_chg_wav flag\n") #
 
-    elif cl.calculator == 'gaussian':
+    elif cl.calculator == 'gaussian' or cl.calculator == 'qe':
         final_structure_file = None
         pass
-
-
 
 
     return final_structure_file
@@ -879,6 +879,9 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
     elif self.calculator == 'gaussian':
         parrallel_run_command = self.cluster.get('gaussian_command') or 'please provide command for gaussian in *cluster* dict in simanrc.py'
 
+    elif self.calculator == 'qe':
+        parrallel_run_command = self.cluster.get('qe_command') or 'please provide command for qe in *cluster* dict in simanrc.py'
+        
     else:
         printlog('Error! Unknown calculator', self.calculator )
 

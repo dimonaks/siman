@@ -494,6 +494,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
         params['show'] = show
+        print(params) # tmp call 
         # if header.copy_to_cluster_flag:
         # print(params["nodes"])
 
@@ -511,6 +512,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             calc = header.calc
             db = header.db
             varset = header.varset
+        print(varset, db)
+        print(dir(db))
 
 
 
@@ -829,7 +832,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             'DOSTATIC':''}
 
 
-
     def add_loop_scale():
 
         struct_des = header.struct_des
@@ -1032,10 +1034,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             input_geo_format = 'abinit'
             # sys.exit()
         return u_scale_flag, fitted_v100_id
-
-
-
-
 
 
     def add_loop_take_from_database():
@@ -1623,7 +1621,10 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             elif params.get('calculator') == 'qe':
                 'Quantum Espresso'
+                print(varset[id[1]])
+                print(dir(varset[id[1]]))
                 cl = CalculationQE( varset[id[1]] )
+                print(dir(cl))
         else:
 
             if input_st and isinstance(input_st, Molecule):
@@ -1637,6 +1638,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             else:
                 #by default Vasp
                 cl = CalculationVasp( varset[id[1]] )
+                
         
 
 
@@ -1771,7 +1773,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         # if cl.des:
         cl.des = ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
-
 
 
 
@@ -2620,7 +2621,6 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
     if not is_list_like(setlist):
         setlist = [setlist]
-
 
     if not calc:
         calc = header.calc
