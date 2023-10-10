@@ -239,10 +239,8 @@ def prepare_input(cl, prevcalcver = None, option = None, input_geofile = None, n
                     f.write("cp "+input_geofile+" POSCAR\n")
                 elif cl.calculator == 'gaussian':
                     pass
-
-
-
-
+                elif cl.calculator == 'qe':
+                    f.write("cat INCAR "+input_geofile+"  > scf.in\n")
     return
 
 
@@ -777,10 +775,12 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
             outputs = [ os.path.basename(out) for out in output_files_names ]
             # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
             # f.write('/home/aksenov/tools/fit_tool.py '+list2string(outputs)+'\n' )
-            f.write('python '+header.cluster_home+'/tools/fit_tool.py '+list2string(outputs)+'\n' )
-            
-
-            f.write('cp 100.POSCAR POSCAR \n')
+            if cl.calculator == 'qe':
+                f.write('python '+header.cluster_home+'/tools/fit_tool_qe.py '+list2string(outputs)+'\n' )
+                f.write('cat INCAR 100.POSCAR > scf.in  \n')
+            else:
+                f.write('python '+header.cluster_home+'/tools/fit_tool.py '+list2string(outputs)+'\n' )
+                f.write('cp 100.POSCAR POSCAR \n')
         
         if 'u_ramping' in cl.calc_method:
             

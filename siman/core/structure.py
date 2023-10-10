@@ -3530,7 +3530,7 @@ class Structure():
             for i in 0, 1, 2:
                 f.write('{:10.6f} {:10.6f} {:10.6f}'.format(st.rprimd[i][0],st.rprimd[i][1],st.rprimd[i][2]) )
                 f.write("\n")
-            f.write('ATOMIC_POSITIONS\n')
+            f.write('ATOMIC_POSITIONS crystal\n')
             for el, x in zip(st.get_elements(), st.xred):
                 f.write(" {:2s}   {:12.10f}  {:12.10f}  {:12.10f} \n".format(el, x[0], x[1], x[2]) )
 

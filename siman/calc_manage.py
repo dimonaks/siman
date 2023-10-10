@@ -512,8 +512,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             calc = header.calc
             db = header.db
             varset = header.varset
-        print(varset, db)
-        print(dir(db))
 
 
 
@@ -1802,7 +1800,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-            if id == id_first:
+            if id == id_first or cl.calculator == 'qe':
                 path_to_potcar = cl.add_potcar()
             
             for curset in setseq: #for each set
