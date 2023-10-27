@@ -1046,7 +1046,7 @@ class Calculation(object):
             band_structure = self.set.k_band_structure
         else:
             band_structure = None
-        kspacing = self.set.vasp_params['KSPACING']
+        kspacing = self.set.vasp_params['KSPACING'] 
         # self.set.printme()
         # print(self)
         # print(kspacing)

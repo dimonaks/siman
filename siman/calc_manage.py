@@ -1619,10 +1619,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             elif params.get('calculator') == 'qe':
                 'Quantum Espresso'
-                print(varset[id[1]])
-                print(dir(varset[id[1]]))
                 cl = CalculationQE( varset[id[1]] )
-                print(dir(cl))
         else:
 
             if input_st and isinstance(input_st, Molecule):
@@ -1802,6 +1799,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             if id == id_first or cl.calculator == 'qe':
                 path_to_potcar = cl.add_potcar()
+            
+            print(setseq)
             
             for curset in setseq: #for each set
                 cl.calculate_nbands(curset, calc[id_first].path['potcar'], params = params)

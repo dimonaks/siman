@@ -128,28 +128,43 @@ class CalculationQE(Calculation):
         return path_to_outcar
 
     def make_incar(self):
-        path2input = f"{self.dir}/INCAR"
-        path2incar = f"{self.dir}/qe_input.incar.in"
-        # Generate Head (system/electron/ion)
-        try:
-            self.read_input_file(input_filename="./INCAR")
-            printlog("QE input  found")
-        except:
-            printlog("QE input not found; attempting to create one from scratch")
-            self._init_defualt()
-        self.input_params["system"]["nat"] = self.st.natom
-        self.input_params["system"]["ntyp"] = len([z for z in self.st.znucl])
-        self.write_input_file(output_filename=path2incar)
-        self.list_tmp.append(path2incar)
+        incar_list = []
+        setseq = [self.set]
+        if hasattr(self.set, 'set_sequence') and self.set.set_sequence:
+            for s in self.set.set_sequence:
+                setseq.append(s)
+        nsets = len(setseq)
+        for i, curset in enumerate(setseq):
+            if nsets == 1:
+                name_mod = ''
+            else:
+                name_mod = curset.ise+'.'
+            path2input = f"{self.dir}/{name_mod}INCAR"
+            path2incar = f"{self.dir}/{name_mod}qe_input.incar.in"
+            # Generate Head (system/electron/ion)
+            # try:
+            #     self.read_input_file(input_filename="./INCAR")
+            #     printlog("QE input  found")
+            # except:
+            #     printlog("QE input not found; attempting to create one from scratch")
+            #     # self._init_defualt()
+            # print('info set')
+            # print(curset.params)
+            self.input_params = curset.params
+            self.input_params["system"]["nat"] = self.st.natom
+            self.input_params["system"]["ntyp"] = len([z for z in self.st.znucl])
+            self.write_input_file(output_filename=path2incar)
+            self.list_tmp.append(path2incar)
 
-        # Generate INPUT
-        print(self.list_tmp[::-1])
-        with open(path2input, "w") as outfile:
-            for fname in self.list_tmp[::-1]:
-                with open(fname) as infile:
-                    outfile.write(infile.read())
-                os.remove(fname)
-        return [path2input]
+            # Generate INPUT
+            print(self.list_tmp[::-1])
+            with open(path2input, "w") as outfile:
+                for fname in self.list_tmp[::-1]:
+                    with open(fname) as infile:
+                        outfile.write(infile.read())
+                    os.remove(fname)
+            incar_list.append(path2input)
+        return incar_list
 
     def _init_defualt(self):
         default_input_params = {
@@ -186,6 +201,10 @@ class CalculationQE(Calculation):
         self.input_params[section][key] = value
 
     def write_input_file(self, output_filename="./scf.in"):
+        if "KPOINTS" in self.input_params.keys():
+            del self.input_params["KPOINTS"]
+        elif  "KSPACING" in self.input_params.keys():
+            del self.input_params["KSPACING"]
         with open(output_filename, "w") as f:
             for section, params in self.input_params.items():
                 f.write(f"&{section}\n")
@@ -363,6 +382,10 @@ class CalculationQE(Calculation):
             text = outcar.read().decode(errors="replace")
             outcarlines = str(text).split("\n")
         for line in outcarlines:
+            
+            if 'Total force' in line:
+                 self.force = float(line.split()[3])
+                
             if "!" in line:
                 self.energy_sigma0 = float(line.split()[4])
                 self.e0 = self.energy_sigma0

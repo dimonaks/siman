@@ -211,7 +211,9 @@ aims_keys = [
 ]
 
 'put here quantum espresso keys'
+
 qe_keys = [
+     "calculation" ,"restart_mode", "prefix", "pseudo_dir", "outdir", "tprnfor","ibrav","nat","ntyp","ecutwfc","occupations","smearing","degauss"
 ]
 
 'gaussian keys'
@@ -269,8 +271,6 @@ def read_vasp_sets(user_vasp_sets, override_global = False):
         header.varset = varset
 
     return varset
-
-
 
 
 class InputSet():
@@ -347,7 +347,9 @@ class InputSet():
             self.params[key] = None 
 
         for key in gaussian_keys: 
-            self.params[key] = None 
+            self.params[key] = None
+        # for key in qe_keys:
+        #     self.params[key] = None
 
 
         #add to varset
@@ -424,6 +426,27 @@ class InputSet():
         else:
             self.spin_polarized = False
 
+        if self.calculator == 'qe':
+            print(self.calculator)
+            self.params
+            
+
+    def qe_read(self,param):
+        for section in param:
+            if section in self.params.keys():
+                for key in param[section]:
+                    self.params[section][key]=param[section][key]
+            elif section == 'KPOINTS':
+                self.set_ngkpt(param[section])
+            else:
+                self.params[section]={}
+                for key in param[section]:
+                    self.params[section][key]=param[section][key]
+        # require fix
+        if 'KPOINTS' not in self.params.keys() and 'KSPACING' not in self.params.keys():
+            self.vasp_params['KSPACING'] = 0.2
+        elif 'KSPACING' in self.params.keys():
+            self.vasp_params['KSPACING'] = self.params['KSPACING']['value']
 
     def load(self,param, inplace = False):
         """
@@ -435,79 +458,84 @@ class InputSet():
             s = self
         else:
             s = copy.deepcopy(self)
-            
-        for key in param:
-            # print(key)
-            if key in vasp_keys:
-                s.set_params_dict(key, param[key])
-
-            elif key == 'set_potential':
-                for key2 in param[key]:
-                    s.set_potential(key2, param[key][key2])
-
-            elif key == 'add_nbands':
-                s.set_add_nbands(param[key])
-
-            elif key == 'ngkpt':
-                s.set_ngkpt(param[key])
-
-            elif key == 'kpoints_file':
-                if param[key] in [1, True]:
-                    s.kpoints_file = True 
-                elif is_string_like(param[key]):
-                    s.kpoints_file = param[key]
+        if self.calculator == 'qe':
+            for section in param:
+                if section in self.params.keys():
+                    for key in param[section]:
+                        self.params[section][key]=param[section][key]
                 else:
-                    s.kpoints_file = False
-
-            elif key == 'bfolder':
-                print_and_log( 'New blockfolder', param[key])
-
-            elif key in siman_keys:
-                s.set_attrp(key, param[key] )
-
-            elif key in aims_keys:
-                s.set_params_dict(key, param[key] )
+                    self.params[section]={}
+                    for key in param[section]:
+                        self.params[section][key]={}
+                        self.params[section][key]=param[section][key]
+            if 'KSPACING' in self.params.keys():
+                self.vasp_params['KSPACING'] = self.params['KSPACING']['value']
+            # print(self.params)
+        else:
             
-            elif key in gaussian_keys:
-                # print(key )
-                s.set_params_dict(key, param[key] )
+            for key in param:
+                # print(key)
+                if key in vasp_keys:
+                    s.set_params_dict(key, param[key])
 
+                elif key == 'set_potential':
+                    for key2 in param[key]:
+                        s.set_potential(key2, param[key][key2])
+
+                elif key == 'add_nbands':
+                    s.set_add_nbands(param[key])
+
+                elif key == 'ngkpt':
+                    s.set_ngkpt(param[key])
+
+                elif key == 'kpoints_file':
+                    if param[key] in [1, True]:
+                        s.kpoints_file = True 
+                    elif is_string_like(param[key]):
+                        s.kpoints_file = param[key]
+                    else:
+                        s.kpoints_file = False
+
+                elif key == 'bfolder':
+                    print_and_log( 'New blockfolder', param[key])
+
+                elif key in siman_keys:
+                    s.set_attrp(key, param[key] )
+
+                elif key in aims_keys:
+                    s.set_params_dict(key, param[key] )
+
+                elif key in gaussian_keys:
+                    # print(key )
+                    s.set_params_dict(key, param[key] )    
+                else:
+                    printlog('Error! Unknown key: '+key)
+                    raise RuntimeError
             
-            else:
-                printlog('Error! Unknown key: '+key)
-                raise RuntimeError
-         
 
-            if key == 'set_sequence':
-                sets = []
-                for se in s.set_sequence:
-                    sets.append(copy.deepcopy(header.varset[se]))
+                if key == 'set_sequence':
+                    sets = []
+                    for se in s.set_sequence:
+                        sets.append(copy.deepcopy(header.varset[se]))
 
-                s.set_sequence = sets  #put objects instead of names
+                    s.set_sequence = sets  #put objects instead of names
 
-            # if hasattr(s, 'set_sequence') and s.set_sequence:
-            #     sets = []
-            #     for se in s.set_sequence:
-            #         if type(se) == str:
-            #             sets.append(copy.deepcopy(varset[se]))
-            #         else:
-            #             sets.append(copy.deepcopy(se))
+                # if hasattr(s, 'set_sequence') and s.set_sequence:
+                #     sets = []
+                #     for se in s.set_sequence:
+                #         if type(se) == str:
+                #             sets.append(copy.deepcopy(varset[se]))
+                #         else:
+                #             sets.append(copy.deepcopy(se))
 
-            #     s.set_sequence = sets  #put objects instead of names
+                #     s.set_sequence = sets  #put objects instead of names
         return s
-
-
-
-
-
 
     def read_universal(self, filename):
         #read any file to univeral parameter
         with open(filename, 'r') as f:
             fil = f.read()
             self.params['universal'] = fil        
-
-
 
     def read_incar(self, filename):
         with open(filename, 'r') as f:
@@ -528,7 +556,6 @@ class InputSet():
                     self.vasp_params[token.strip()] = value
         self.add_nbands = 1.0
         # self.update()
-
 
     def add_conv_kpoint(self,arg):
         if type(arg) is not str:
@@ -579,12 +606,10 @@ class InputSet():
         print_and_log( "Name "+arg+" was added to self.conv["+type_of_conv+"] of set "+self.ise+" \n")
         self.update()
 
-
     def set_compare_with(self,arg):
         if type(arg) is not str:
             raise TypeError ("\nset_compare_with error\n")
         self.compare_with += arg+" "
-
 
     def set_potential(self,znucl, arg = ''):
         # print arg
@@ -609,8 +634,6 @@ class InputSet():
 
         # self.update()
         return
-
-
 
     def set_relaxation_type(self,type_of_relaxation):
         name = "Type of relaxation ISIF"
@@ -675,7 +698,6 @@ class InputSet():
         self.history += "ngkpt was changed from "+str(old)+" to "+str(arg) + " and KPOINTS file was swithed on\n"
         return
 
-
     def set_params_dict(self, token, arg, des = "see manual"):
         """
         Used for setting parameters for different calculators, such as VASP, Gaussian, etc
@@ -731,12 +753,9 @@ class InputSet():
 
         return
 
-
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, 
                 sort_keys=True, indent=4)
-
-
 
     def toabinit(self, st):
         """
@@ -1086,6 +1105,39 @@ def init_default_sets(init = 0):
 
         # s.update()
         header.varset[setname] = copy.deepcopy(s)
+    
+    setname = 'qe'
+    if init or setname not in varset: #init only once
+        s.kpoints_file = True
+        s = InputSet(setname, calculator = 'qe') #default starting set without relaxation
+        # print('Init_sets', s.calculator)
+        s.params  = {
+            "control": {
+                "calculation": '"scf"',
+                "restart_mode": '"from_scratch"',
+                "prefix": '"lno"',
+                "pseudo_dir": '"./"',
+                "outdir": '"./outdir"',
+                "tprnfor": ".TRUE.",
+            },
+            "system": {
+                "ibrav": "0",
+                "nat": "1",
+                "ntyp": "1",
+                "ecutwfc": "30",
+                "occupations": "'smearing'",
+                "smearing": "'marzari-vanderbilt'",
+                "degauss": "0.01",
+                # 'nspin':'2',
+                # 'starting_magnetization(2)' : '0.5',
+            },
+            "electrons": {},
+            "ions": {},
+            "cell": {"cell_dofree": "'ibrav'"},
+        }
+        
+        header.varset[setname] = copy.deepcopy(s)
+    
     
 
 
