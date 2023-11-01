@@ -293,8 +293,10 @@ def read_csv(filename, delimiter =','):
 def read_xyz(st, filename, rprimd = None):
     """
     Read xyz file into st
-
-    rprimd (list of lists) - if None or [None, ] then Tv are read; if Tv does not exist then create automatically 
+    INPUT:
+        st (Structure) 
+        filename (str) - path to file with xyz data
+        rprimd (list of lists) - if None or [None, ] then Tv are read; if Tv does not exist then create automatically 
 
     """
     with open(filename,'r') as f:
@@ -321,7 +323,7 @@ def read_xyz(st, filename, rprimd = None):
 
             else:
                 elements.append(xc[0])
-                st.xcart.append(np.asarray(xc[1:], dtype = float) )
+                st.xcart.append(np.asarray(xc[1:4], dtype = float) )
 
         st.natom = len(st.xcart)
         
@@ -1628,7 +1630,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if "g(Stress)" in line:
                 #print line
-                gstress.append( round( float(line.split()[4])*1000 *100, 3 )  )
+                gstress.append( round( float(line.split('=')[2])*1000 *100, 3 )  )
             #if "Total" in line:
                 #gstress.append( red_prec(float(line.split()[4])*1000 *100, 1000 )  )
             if "volume of cell" in line:
@@ -1858,12 +1860,18 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                     freq = []
 
                     i = 0
-                    while 'ELASTIC MODULI CONTR FROM IONIC RELAXATION' not in line:
+                    while 'ELASTIC MODULI' not in line:
                         i+=1
-                        line = outcarlines[i_line+i]
+                        try:
+                            line = outcarlines[i_line+i]
+                        except:
+                            break
                         if 'f  =' in line:
                             freq.append(float(line.split()[3]) ) #THz
+                        elif 'f/i=' in line:
+                            freq.append(-float(line.split()[2]) ) #THz
                             # print(line)
+
                     self.freq = freq
 
 

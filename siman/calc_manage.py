@@ -426,7 +426,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     - 'active_atoms' - now dictionary of elements, which can be substituted by what e.g. {'Li':'Vac'}
                     please improve that Li0 can be used, to consider only symmetrically non-equivalent position for this element
                     - 'exclude_atoms_n' - exclude specific atoms from cluster expansion
-                    - 'subatom' -  a string for choosing different POTCAR, e.g. 's/K/K_pv/g'
+                    - 'subatom' -  a string for choosing different POTCAR, e.g. 's/K/K_pv/g' or 's/K/K_pv/g\nSUBATOM = s/Nb/Nb_pv/g'
 
 
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
@@ -965,11 +965,14 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     id_s = (it,inputset,v)
 
                 #cl_temp = db[id_s].copy()
-                #sys.exit()
                 try:
                     cl_temp = db[id_s].copy()
                 except:
                     cl_temp = CalculationVasp(varset[inputset], id_s)
+                # print('here', cl_temp.id, )
+                # print(cl_temp.calculator)
+
+                # sys.exit()
 
 
 
@@ -2959,7 +2962,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
-
+            if not hasattr(cl, 'calculator'):
+               cl.calculator = 'vasp' 
+            
             if cl.calculator == 'vasp':
                 e   = cl.energy_sigma0
             else:

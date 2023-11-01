@@ -2,6 +2,11 @@
 from __future__ import division, unicode_literals, absolute_import 
 import os, math, re, sys
 import numpy as np
+try:
+    from collections import Iterable
+except:
+    from collections.abc import Iterable
+
 import shutil, gzip
 import traceback
 from contextlib import contextmanager

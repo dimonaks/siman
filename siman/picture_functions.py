@@ -83,13 +83,15 @@ from siman.geo import replic
 # from dos.functions import plot_dos
 # from ase.utils.eos import EquationOfState
 
-def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, plot = 1, fitplot_args = None, style_dic = None):
+def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, 
+    plot = 1, fitplot_args = None, style_dic = None, datafile = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path or just coordinates along one line (for polarons)
     mep_energies (list) - full energies of the system corresponding to atom_pos
 
     image_name - deprecated, use filename
+    datafile - name of file with data in textfile
     style_dic - dictionary with styles
         'p' - style of points
         'l' - style of labels
@@ -196,8 +198,8 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
         **fitplot_args)
 
         # print(image_name, filename)
-        if 0:
-            with open(filename+'.txt', 'w') as f:
+        if datafile:
+            with open(datafile+'.txt', 'w') as f:
                 f.write('DFT points:\n')
                 for m, e in zip(mep_pos, eners):
                     f.write('{:10.5f}, {:10.5f} \n'.format(m, e))

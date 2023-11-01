@@ -139,7 +139,8 @@ def _update_configuration(filename, pfolder = None, clusters=None):
             setattr(header, var, value)
             # exec(var + " = " + str(value))
         except AttributeError:
-            print('Warning! Your '+ configfile_name +' doesnot contain', var)
+            ''
+            # print('Warning! Your '+ configfile_name +' doesnot contain', var)
             pass
         # print(var, value)
     # CLUSTERS = getattr(project_conf, 'CLUSTERS')

@@ -810,14 +810,16 @@ class Calculation(object):
             SMALL_SIZE = fontsize
             MEDIUM_SIZE = fontsize
             BIGGER_SIZE = fontsize
-
-            header.mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
-            header.mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-            header.mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-            header.mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-            header.mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-            header.mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
-            header.mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+            
+            from siman.picture_functions import mpl
+            
+            mpl.rc('font', size=SMALL_SIZE)          # controls default text sizes
+            mpl.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+            mpl.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+            mpl.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+            mpl.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+            mpl.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+            mpl.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 
 
@@ -956,7 +958,7 @@ class Calculation(object):
             optimize(st, it+suf, ise = ise, add = 1, add_loop_dic = add_loop_dic, up_res = up_res)
             self.children.append(child)
 
-        return
+        return child
 
 
 
@@ -1280,7 +1282,7 @@ class Calculation(object):
             # printlog('File', path_to_file, 'was not found. Trying to update from server')
             out = get_from_server(path2file_cluster, os.path.dirname(path_to_file), addr = address)
             if out:
-                printlog('File', path2file_cluster, 'was not found, trying archive:',header.PATH2ARCHIVE, imp = 'Y')
+                printlog('File', path2file_cluster, 'was not found! checking remote and local archives ...', imp = 'Y')
                 # printlog(out, imp  = 'Y')
 
         if out:
@@ -1296,14 +1298,14 @@ class Calculation(object):
                 out = get_from_server(path_to_file_scratch, os.path.dirname(path_to_file), addr = self.cluster['address'])
                 
                 if out:
-                    printlog('File', path_to_file, ' was downloaded from archive', imp = 'e')
+                    printlog('File', path_to_file_scratch, 'was not found, trying local archive path', imp = 'n')
 
                 else:
-                    printlog('File', path_to_file_scratch, 'was not found, trying local archive path', imp = 'Y')
+                    printlog('File', path_to_file, ' was downloaded from archive', imp = 'Y')
 
 
             else:
-                printlog('project_conf.PATH2ARCHIVE is empty, trying local archive path', imp = 'Y')
+                printlog('project_conf.PATH2ARCHIVE is empty, trying local archive path', imp = 'n')
 
 
         if out: 
@@ -1316,11 +1318,11 @@ class Calculation(object):
 
                     printlog('Succefully found in local archive and copied to the current project folder', imp = 'Y')
                 else:
-                    printlog('File', path_to_file_AL,'not found in local archive', imp = 'Y')
+                    printlog('File', path_to_file_AL,'not found in local archive', imp = 'n')
 
             else:
                 path_to_file = None
-                printlog('project_path.PATH2ARCHIVE_LOCAL is empty', imp = 'Y')
+                printlog('project_path.PATH2ARCHIVE_LOCAL is empty, skipping', imp = 'n')
 
 
 
