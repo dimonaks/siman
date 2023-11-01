@@ -1103,14 +1103,19 @@ class Structure():
 
         return st
 
-    def get_refined_structure(self, ):
+    def get_refined_structure(self, symprec = 0.01):
         """
         Get the refined structure based on detected symmetry. 
         The refined structure is a conventional cell setting with atoms moved to the expected symmetry positions.
+        
+        INPUT:
+            - symprec (float) - symmetry precision
+
+
         """
         st_mp = self.convert2pymatgen()
 
-        sf = SpacegroupAnalyzer(st_mp, ) #symprec = 0.1
+        sf = SpacegroupAnalyzer(st_mp, symprec = symprec) #symprec = 0.1
 
         sc = sf.get_refined_structure() # magmom are set to None
         # sc = sf.get_symmetrized_structure() # magmom are set to None
@@ -1688,6 +1693,9 @@ class Structure():
 
         if 'alphabet' in order:
             order =  list(sorted(set(els)))
+            # if 'K' in order: # it seems that ATAT uses alphabetical order
+            #     order.remove('K')
+            #     order.insert(0, 'K')
         # print(unique_sorted)
         # sys.exit()
 
@@ -2336,6 +2344,16 @@ class Structure():
         st = st.update_from_pymatgen(pm)
         return st
 
+    def symmetrize(self):
+        """
+        Symmetrize 
+        use self.get_refined_structure()
+        """
+        # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
+        # get_symmetrized_structure()
+
+
     def find_atom_num_by_xcart(self, x_tar, prec = 1e-6, search_by_xred = 1 ):
         """take into account periodic conditions
 
@@ -2459,6 +2477,22 @@ class Structure():
         st.update_xred()
 
         return st
+
+
+    def ortho(self):
+        """
+        Orthoganalize by zeroing all non diagonal components of rprimd
+        """
+        st = self.copy()
+        for i in [0,1,2]:
+            for j in [0,1,2]:
+                if i != j: 
+                    st.rprimd[i][j] = 0 
+        st.update_xcart()
+        return st
+
+
+
 
     def replic(self, *args, **kwargs):
 
