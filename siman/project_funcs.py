@@ -4128,7 +4128,7 @@ def neb_wrapper( param_dic = None, paths = None, run_neb = 0, read = 0, plot = 0
 
 
 
-def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = None ):
+def calc_charged(cl, del_dic, name = None, add = 0, ise = '4uis', it_folder = None ):
 
     """
     create charged by removing specific sets of atoms provided in del_dic manually starting from 1
@@ -4136,7 +4136,8 @@ def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = No
     """
 
     # if not del_dic:
-        
+    if not name:
+        name = cl.id[0]+'.rem'
     if not it_folder:
         it_folder = name+'/'
 
@@ -4144,7 +4145,7 @@ def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = No
         del_pos = del_dic[key]
         it_new = name+'.c'+str(key)
 
-        if run: 
+        if add: 
             st = cl.end.remove_atoms(del_pos, from_one = 1)
             st.name+='c'+str(key)
             # st_halfLi.write_xyz()
@@ -4154,7 +4155,8 @@ def calc_charged(cl, del_dic, name = None, run = 0, ise = '4uis', it_folder = No
 
         else:
             idd = (it_new+'.su', ise, 100)
-            res_loop(*idd, show = 'maga', up = 'up1')#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
+            res_loop(*idd[0:2], list(range(1,8))+[100], up = 'up1', analys_type = 'fit_a', show = 'fitfo')
+            # res_loop(*idd, show = 'mag', up = 'up1')#list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfo', up = '1')
             # st = calc[idd].end
             # print(st.get_space_group_info())
             # alpha, beta, gamma = st.get_angles()
@@ -4201,6 +4203,8 @@ def optimize(st, name = None, add = 0, ise = '4uis', it_folder = None, fit = 0, 
     else:
         idd = (it_new+suf, ise, 100)
         if fit:
+            # print(idd)
+            # sys.exit()
             res_loop(*idd[0:2], list(range(1,8))+[100], analys_type = 'fit_a', show = 'fitfomag', up = up_res)
 
         else:

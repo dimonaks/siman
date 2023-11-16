@@ -2,7 +2,11 @@
 from __future__ import division, unicode_literals, absolute_import 
 import os, math, re, sys
 import numpy as np
-from collections import Iterable
+try:
+    from collections import Iterable
+except:
+    from collections.abc import Iterable
+
 import shutil, gzip
 import traceback
 from contextlib import contextmanager
@@ -15,6 +19,11 @@ except:
         string_types = basestring #for python 2.7
     except NameError:
         string_types = str # for python 3
+        
+try:
+    from collections.abc import Iterable # for python >=3.10
+except ImportError:
+    from collections import Iterable # for python < 3.10
 
 from siman import header
 from siman.header import printlog

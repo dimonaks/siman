@@ -281,8 +281,9 @@ def xcart2xred(xcart, rprimd):
         Output: xred - list of numpy arrays"""
     xred = []
     gprimd = np.asarray( np.matrix(rprimd).I.T ) #Transpose of the inverse matrix of rprimd
-    #print gprimd
+    # print(gprimd)
     for xc in xcart:
+        # print(xc)
         xred.append(  np.dot( gprimd , xc)  ) #dot product
     #print xred
     return xred

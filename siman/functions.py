@@ -351,13 +351,19 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
 
         out = download(file, to_file_l)
 
-        if out and trygz:
+        if out and trygz and not header.SIMAN_WEB:
 
             printlog('File', file, 'does not exist, trying gz', imp = 'n')
             # run_on_server
             files = run_on_server(' ls '+file+'*', addr)
+            if 'No such file' in files:
+                printlog('    No gz either!', imp = 'n')
+
+                break
             file = files.split()[-1]
             # print(file)
+            printlog('From the list files', files, 'the last file is taken:', file, '', imp = 'n')
+
             nz = file.count('gz')
             ext = '.gz'*nz
 
