@@ -1858,12 +1858,15 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                     freq = []
 
                     i = 0
-                    while 'ELASTIC MODULI CONTR FROM IONIC RELAXATION' not in line:
+                    while 'ELASTIC MODULI' not in line:
                         i+=1
                         line = outcarlines[i_line+i]
                         if 'f  =' in line:
                             freq.append(float(line.split()[3]) ) #THz
+                        if 'f/i=' in line:
+                            freq.append(-float(line.split()[2]) ) #THz
                             # print(line)
+
                     self.freq = freq
 
 

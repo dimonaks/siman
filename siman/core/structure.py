@@ -744,7 +744,7 @@ class Structure():
         
         st.get_nznucl()
 
-        # print(st.ntypat, st.typat, st.nznucl, st.znucl)
+        print(st.ntypat, st.typat, st.nznucl, st.znucl)
 
         return st
 
@@ -1710,8 +1710,9 @@ class Structure():
                     typat.append(t)
                     xcart.append(st.xcart[i])
                     old_numbers.append(i)
-                    if None not in st.magmom:
-                        magmom.append(st.magmom[i])
+                    if st.magmom != []:
+                        if None not in st.magmom:
+                            magmom.append(st.magmom[i])
             t+=1
 
         if len(magmom) == 0:

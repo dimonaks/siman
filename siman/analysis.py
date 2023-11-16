@@ -1706,7 +1706,6 @@ def gb_en_ideal(cl_gb, cl_bulk, n_gbs = 2):
     e2 = cl_bulk.e0
     n2 = st2.natom
 
-
     A = st1.get_surface_area()
 
 
