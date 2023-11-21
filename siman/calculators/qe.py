@@ -5,22 +5,26 @@ from siman.set_functions import InputSet, qe_keys
 from siman.small_functions import makedir, list2string
 from siman.header import printlog
 from siman import header
-from siman.functions import (
-    read_vectors,
-    read_list,
-    words,
-    read_string,
-    element_name_inv,
-    invert,
-    get_from_server,
-    push_to_server,
-    run_on_server,
-    smoother,
-    file_exists_on_server,
-    check_output,
-)
-import os, copy, glob, shutil, sys
-
+from siman.functions import (read_vectors,
+                             read_list,
+                             words,
+                             read_string,
+                             element_name_inv,
+                             invert,
+                             calculate_voronoi,
+                             get_from_server,
+                             push_to_server,
+                             run_on_server,
+                             smoother,
+                             file_exists_on_server,
+                             check_output,
+                             )
+import os
+import copy
+import glob
+import shutil
+import sys
+import gzip
 # Some functions are left as placeholders and will need to be implemented as needed.
 
 
@@ -37,15 +41,12 @@ class CalculationQE(Calculation):
 
         self.list_e_sigma0 = []
 
-    def write_structure(
-        self,
-        name_of_output_file,
-        type_of_coordinates="dir",
-        option=None,
-        prevcalcver=None,
-        path=None,
-        state="init",
-    ):
+    def write_structure(self, name_of_output_file, type_of_coordinates="dir",
+                        option=None,
+                        prevcalcver=None,
+                        path=None,
+                        state="init",
+                        ):
         if path is None:
             path = self.dir
         if state == "init":
@@ -75,7 +76,8 @@ class CalculationQE(Calculation):
                     self.input_instance.input_params[section][param] = self.set.params[
                         param
                     ]
-                    print(f"Updated: {section} {param} => {self.set.params[param]}")
+                    print(
+                        f"Updated: {section} {param} => {self.set.params[param]}")
         pass  # Placeholder
 
     def add_potcar(self):
@@ -86,7 +88,8 @@ class CalculationQE(Calculation):
         with open(path2potcar, "w") as f:
             f.write("ATOMIC_SPECIES \n")
             for z, el in zip(self.init.znucl, self.init.typat):
-                f.write(f"{element_name_inv(z)} {z} {element_name_inv(z)}.upf \n")
+                f.write(
+                    f"{element_name_inv(z)} {z} {element_name_inv(z)}.upf \n")
                 self.list_pot.append(f"{path2pot}/{element_name_inv(z)}.upf")
         self.list_tmp.append(path2potcar)
 
@@ -151,7 +154,8 @@ class CalculationQE(Calculation):
             # print(curset.params)
             self.input_params = curset.params
             self.input_params["system"]["nat"] = self.st.natom
-            self.input_params["system"]["ntyp"] = len([z for z in self.st.znucl])
+            self.input_params["system"]["ntyp"] = len(
+                [z for z in self.st.znucl])
             self.write_input_file(output_filename=path2incar)
             self.list_tmp.append(path2incar)
 
@@ -202,7 +206,7 @@ class CalculationQE(Calculation):
     def write_input_file(self, output_filename="./scf.in"):
         if "KPOINTS" in self.input_params.keys():
             del self.input_params["KPOINTS"]
-        elif  "KSPACING" in self.input_params.keys():
+        elif "KSPACING" in self.input_params.keys():
             del self.input_params["KSPACING"]
         with open(output_filename, "w") as f:
             for section, params in self.input_params.items():
@@ -284,7 +288,8 @@ class CalculationQE(Calculation):
             # print ('associated outcars = ',self.associated_outcars)
             printlog("read_results(): choose_outcar", choose_outcar)
             path_to_outcar = join(
-                dirname(self.path["output"]), self.associated_outcars[choose_outcar - 1]
+                dirname(self.path["output"]
+                        ), self.associated_outcars[choose_outcar - 1]
             )
             printlog(self.associated_outcars)
         else:
@@ -381,10 +386,10 @@ class CalculationQE(Calculation):
             text = outcar.read().decode(errors="replace")
             outcarlines = str(text).split("\n")
         for line in outcarlines:
-            
+
             if 'Total force' in line:
-                 self.force = float(line.split()[3])
-                
+                self.force = float(line.split()[3])
+
             if "!" in line:
                 self.energy_sigma0 = float(line.split()[4])
                 self.e0 = self.energy_sigma0
