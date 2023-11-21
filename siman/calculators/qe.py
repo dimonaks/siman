@@ -12,7 +12,6 @@ from siman.functions import (
     read_string,
     element_name_inv,
     invert,
-    calculate_voronoi,
     get_from_server,
     push_to_server,
     run_on_server,
