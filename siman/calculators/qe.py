@@ -26,11 +26,13 @@ import shutil
 import sys
 import gzip
 # Some functions are left as placeholders and will need to be implemented as needed.
+from icecream import ic
 
 
 class CalculationQE(Calculation):
     def __init__(self, inset=None, iid=None, output=None):
         super(CalculationQE, self).__init__(inset, iid, output)
+        # ic(dir(self))
         self.len_units = "Angstrom"
         self.calculator = "qe"
         self.input_instance = {}

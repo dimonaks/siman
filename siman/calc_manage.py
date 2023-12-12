@@ -319,7 +319,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True
+    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True,
+    flow = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -484,9 +485,14 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     """
     db = None
+    if flow:
+        header = flow.header
+        varset = flow.varset
+        db = flow.db
+        print('running with flow')
 
     def add_loop_prepare():
-
+    
         nonlocal calc, db, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params, scale_region
 
         if not params:
@@ -1339,6 +1345,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         for v in verlist:
             id = (it,inputset,v)
+            print(id)
 
             
            
@@ -1353,7 +1360,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, corenum = header.corenum)
+                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, corenum = header.corenum, flow=flow)
             
             prevcalcver = v
 
@@ -1382,7 +1389,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, input_kpoints=None, calc_method = None, u_ramping_region = None,
     mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None, 
-    mpi = False, corenum = None):
+    mpi = False, corenum = None, flow=None):
     """
 
     schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 'none'
@@ -1400,6 +1407,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     make init of seqset inside calculate_nbands(), actualize_set, check_kpoints 
 
     """
+    if flow:
+        header = flow.header
+        varset = header.varset
 
     def write_parameters_for_monte(name, vasp_run_com, params):
         file = cl.dir +  'monte.json'  
@@ -1595,8 +1605,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         printlog( "There is no calculation with id "+ str(id)+". I create new with set "+str(inputset)+"\n" )        
 
 
-
-
     if "up" in up:
 
         header.close_run = True
@@ -1611,30 +1619,25 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             cl_prev = copy.deepcopy(calc[id])
 
 
-
-
         if params.get('calculator'):
             if params.get('calculator') == 'aims':
-                cl = CalculationAims( varset[id[1]] )
+                cl = CalculationAims(varset[id[1]])
 
             elif params.get('calculator') == 'qe':
-                'Quantum Espresso'
-                cl = CalculationQE( varset[id[1]] )
+                # 'Quantum Espresso'
+                cl = CalculationQE(varset[id[1]])
         else:
-
             if input_st and isinstance(input_st, Molecule):
-                params['calculator'] = 'gaussian' # for molecules uses Gaussian by default
+                # for molecules uses Gaussian by default
+                params['calculator'] = 'gaussian'
                 # print(type(input_st))
-                cl = CalculationGaussian( varset[id[1]] )
-
+                cl = CalculationGaussian(varset[id[1]])
                 # sys.exit()
-
-
             else:
-                #by default Vasp
-                cl = CalculationVasp( varset[id[1]] )
-                
-        
+                # by default Vasp
+                cl = CalculationVasp(varset[id[1]])
+
+
 
 
 
