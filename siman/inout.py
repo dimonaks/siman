@@ -1630,7 +1630,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if "g(Stress)" in line:
                 #print line
-                gstress.append( round( float(line.split('=')[2])*1000 *100, 3 )  )
+                gstress.append( round( float(line.split('=')[2].split()[0])*1000 *100, 3 )  )
             #if "Total" in line:
                 #gstress.append( red_prec(float(line.split()[4])*1000 *100, 1000 )  )
             if "volume of cell" in line:
