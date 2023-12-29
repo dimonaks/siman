@@ -1,0 +1,28 @@
+&control
+    calculation = "scf"
+    restart_mode = "from_scratch"
+    prefix = "li"
+    pseudo_dir = "./"
+    outdir = "./outdir"
+    tprnfor = .TRUE.
+/
+&system
+    ibrav = 0
+    nat = 2
+    ntyp = 1
+    ecutwfc = 100
+    occupations = 'smearing'
+    smearing = 'marzari-vanderbilt'
+    degauss = 0.01
+/
+&electrons
+/
+&ions
+/
+&cell
+/
+K_POINTS automatic 
+5 5 5 0 0 0 
+
+ATOMIC_SPECIES 
+Li 3.0 Li.upf 
