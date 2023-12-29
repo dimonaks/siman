@@ -433,21 +433,6 @@ class InputSet():
         else:
             self.spin_polarized = False
 
-        if self.calculator == 'qe':
-            print(self.calculator)
-            self.params
-
-    def qe_read(self, param):
-        for section in param:
-            if section in self.params.keys():
-                for key in param[section]:
-                    self.params[section][key] = param[section][key]
-            elif section == 'KPOINTS':
-                self.set_ngkpt(param[section])
-            else:
-                self.params[section] = {}
-                for key in param[section]:
-                    self.params[section][key] = param[section][key]
         # require fix
         # if 'KPOINTS' not in self.params.keys() and 'KSPACING' not in self.params.keys():
         #     self.vasp_params['KSPACING'] = 0.2
@@ -1115,7 +1100,7 @@ def init_default_sets(init=0):
             "control": {
                 "calculation": '"scf"',
                 "restart_mode": '"from_scratch"',
-                "prefix": '"lno"',
+                "prefix": '"prefix"',
                 "pseudo_dir": '"./"',
                 "outdir": '"./outdir"',
                 "tprnfor": ".TRUE.",
@@ -1136,8 +1121,6 @@ def init_default_sets(init=0):
             "cell": {},
         }
         s.qe_params['KSPACING'] = 0.5
-
         header.varset[setname] = copy.deepcopy(s)
-        # header.varset[setname].printme()
 
     return

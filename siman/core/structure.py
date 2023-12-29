@@ -3522,7 +3522,7 @@ class Structure():
 
         makedir(filename)
 
-        printlog('Starting writing Quantum Espresso', filename,imp = 'y')
+        printlog('Writing structure in Quantum Espresso format ', filename,imp = 'y')
 
 
         with io.open(filename,'w', newline = '') as f:

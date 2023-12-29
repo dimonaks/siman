@@ -1049,7 +1049,6 @@ class Calculation(object):
         else:
             band_structure = None
         if self.calculator == 'qe':
-            print(dir(self.set))
             kspacing = self.set.qe_params['KSPACING']
         else:
             kspacing = self.set.vasp_params['KSPACING']

@@ -1,6 +1,7 @@
 """
-tmp version for qe analysis
-fit_tool_qe.py by AG
+tmp version for qe analysis 
+
+fit_tool_qe.py by AG based on fit_tool.py  
 
 Reads energies and volumes from provided VASP OUTCAR's files (CONTCAR's should exist and have the same naming pattern), 
 fits them using EOS and 
@@ -22,23 +23,20 @@ class Simple(object):
         self.atoms = {}
 
 
-pattern_lat = (
-    r"a\(\d+\) = \(\s*([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s*\)"
-)
-pattern_celldm = r"celldm\(1\)=(\s*[-+]?\d+\.\d+)"
-pattern_atoms = r"(\d+)\s+(\w+)\s+tau\(\s*(\d+)\)\s+=\s+\(\s*([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+\)"
+pattern_lat = r'a\(\d+\) = \(\s*([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s*\)'
+pattern_celldm = r'celldm\(1\)=(\s*[-+]?\d+\.\d+)'
+pattern_atoms = r'(\d+)\s+(\w+)\s+tau\(\s*(\d+)\)\s+=\s+\(\s*([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+([-+]?\d+\.\d+)\s+\)'
 sts = []
 for filename in sys.argv[1:]:
     st = Simple()
     st.filename = filename
     lat = []
-    st.name = "lno"
-    with open(filename, "r") as outcar:
+    with open(filename, 'r') as outcar:
         outcarlines = outcar.readlines()
         for i, line in enumerate(outcarlines):
             if "! " in line:
                 st.energy_sigma0 = float(line.split()[4])  # energy(sigma->0)
-                print(st.energy_sigma0)
+                # print(st.energy_sigma0)
             if "unit-cell volume" in line:
                 st.vol = float(line.split()[3])
 
@@ -50,34 +48,23 @@ for filename in sys.argv[1:]:
 
             if re.findall(pattern_celldm, line):
                 celldm_1_value = re.findall(pattern_celldm, line)
-            if "tau" in line:
+            if 'tau' in line:
                 tmp = line.split()
-                site_num, atom, x, y, z = tmp[0], tmp[1], tmp[6], tmp[7], tmp[8]
-                st.atoms[site_num] = {
-                    "element": atom,
-                    "pos": np.array([float(x), float(y), float(z)]),
-                }
+                site_num, atom,  x, y, z = tmp[0], tmp[1], tmp[6], tmp[7], tmp[8]
+                st.atoms[site_num] = {'element': atom, 'pos': np.array(
+                    [float(x), float(y), float(z)])}
         for i in range(3):
-            st.rprimd.append(np.array([a * float(celldm_1_value[0]) for a in lat[i]]))
-
-            ilist = ["Li", "Ni", "O"]  # nznucl of elements?
-            ilist = [1, 2, 3]
-
-            for z in ilist:
-                st.nznucl.append(int(z))
-
-            # type_of_coordinates = f.readline()
+            st.rprimd.append(
+                np.array([a*float(celldm_1_value[0]) for a in lat[i]]))
 
             for site in st.atoms:
-                st.xred.append(st.atoms[site]["pos"])
+                st.xred.append(st.atoms[site]['pos'])
         sts.append(st)
 
-    # sts.append(st)
-# print xcart
 energies = [st.energy_sigma0 for st in sts]
 volumes = [st.vol for st in sts]
 
-print(len(energies), len(volumes))
+
 vectors1 = [np.linalg.norm(st.rprimd[0]) for st in sts]
 vectors2 = [np.linalg.norm(st.rprimd[1]) for st in sts]
 power = 3
@@ -94,15 +81,9 @@ i_min = np.argmin(root_engs)
 e_min = np.real(root_engs[i_min])
 v_min = np.real(root_vols[i_min])
 
-# print v_min
-# print np.real(e_min)
-# import matplotlib.pyplot as plt
-# plt.plot(fine_volumes, fine_energie)
-# plt.show()
 
-# find st with vol most close to v_min
 i_tar = 0
-d1 = abs(sts[0].vol - v_min)
+d1 = abs(sts[0].vol-v_min)
 for i, st in enumerate(sts):
     d2 = abs(st.vol - v_min)
     if d2 < d1:
@@ -110,45 +91,32 @@ for i, st in enumerate(sts):
         i_tar = i
 
 st = sts[i_tar]
-# st = sts[7]
-# use i_tar
-# print scale
-# print st.vol
-if np.std(vectors1) + np.std(vectors2) < 1e-5:  # Vectors 1 and 2 do not change
-    scale = v_min / st.vol
+
+if np.std(vectors1)+np.std(vectors2) < 1e-5:  # Vectors 1 and 2 do not change
+    scale = (v_min/st.vol)
 
     i_scale_list = [2]  # only third vector is scaled - c_scale regime
 else:
-    scale = (v_min / st.vol) ** (1.0 / 3)
+    scale = (v_min/st.vol)**(1./3)
 
     i_scale_list = [0, 1, 2]  # uniform_scale regime
 for i in i_scale_list:
     st.rprimd[i] *= scale
 
-print(
-    "diff between new volume and target volume",
-    np.dot(st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])) - v_min,
-)
-
-with open("100.POSCAR", "w") as f:
-    f.write("CELL_PARAMETERS\n")
+print('diff between new volume and target volume', np.dot(
+    st.rprimd[0], np.cross(st.rprimd[1], st.rprimd[2])) - v_min)
+# print(st.rprimd)
+bohr2angst = 0.529177249
+with open('100.POSCAR', 'w') as f:
+    f.write('CELL_PARAMETERS angstrom\n')
     for i in 0, 1, 2:
-        f.write(
-            "{0:10.6f} {1:10.6f} {2:10.6f}\n".format(
-                st.rprimd[i][0], st.rprimd[i][1], st.rprimd[i][2]
-            )
-        )
+        f.write('{0:10.6f} {1:10.6f} {2:10.6f}\n'.format(
+            st.rprimd[i][0]*bohr2angst, st.rprimd[i][1]*bohr2angst, st.rprimd[i][2]*bohr2angst))
 
-    f.write("\n")
+    f.write('\n')
 
-    f.write("ATOMIC_POSITIONS angstrom\n")
+    f.write('ATOMIC_POSITIONS crystal\n')
 
     for x in st.atoms:
-        f.write(
-            "{}  {}  {}  {}\n".format(
-                st.atoms[x]["element"],
-                st.atoms[x]["pos"][0],
-                st.atoms[x]["pos"][1],
-                st.atoms[x]["pos"][2],
-            )
-        )
+        f.write("{}  {}  {}  {}\n".format(
+            st.atoms[x]['element'], st.atoms[x]['pos'][0], st.atoms[x]['pos'][1], st.atoms[x]['pos'][2]))
