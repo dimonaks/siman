@@ -286,7 +286,7 @@ def run_command(cl, option, name, parrallel_run_command,
                 elif cl.calculator == 'gaussian':
                     f.write(parrallel_run_command +" < input.gau > "+name+".out\n")
                 elif cl.calculator == 'qe':
-                    f.write(parrallel_run_command +" < scf.in > "+name+".out\n")
+                    f.write(parrallel_run_command +" < scf.in > "+name[name.rindex('.')+1:]+".OUTCAR\n")
                 else:
                     printlog('Error! Calculator ', cl.calculator, 'is unknown!')
 

@@ -101,12 +101,12 @@ class CalculationQE(Calculation):
             out_name (string): custom name of the output file
             version(string): legacy
         """
-        if out_name:
+        if version:
             self.path["output"] = self.dir+out_name
         else:
             self.path["output"] = self.dir + self.name + ".out"  # qe
         # tmp solution
-        self.path["output"] = self.dir + self.name + ".out"
+        # self.path["output"] = self.dir + self.name + ".out"
         #
         return self.path["output"]
 
@@ -190,8 +190,8 @@ class CalculationQE(Calculation):
         Returns:
             path_to_outcar: path to output card 
         """
-        path_to_outcar = self.path["output"]
-        self.get_file(os.path.basename(path_to_outcar), up=load)
+        self.get_file(os.path.basename(self.path["output"]), up=load)
+
         return path_to_outcar
 
     def make_incar(self):
