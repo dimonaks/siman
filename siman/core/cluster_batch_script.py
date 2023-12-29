@@ -239,10 +239,8 @@ def prepare_input(cl, prevcalcver = None, option = None, input_geofile = None, n
                     f.write("cp "+input_geofile+" POSCAR\n")
                 elif cl.calculator == 'gaussian':
                     pass
-
-
-
-
+                elif cl.calculator == 'qe':
+                    f.write("cat INCAR "+input_geofile+"  > scf.in\n")
     return
 
 
@@ -284,9 +282,11 @@ def run_command(cl, option, name, parrallel_run_command,
 
             else:
                 if cl.calculator == 'vasp':
-                    f.write(parrallel_run_command +" >"+name+".log\n")
+                    s.write(parrallel_run_command +" >"+name+".log\n")
                 elif cl.calculator == 'gaussian':
                     f.write(parrallel_run_command +" < input.gau > "+name+".out\n")
+                elif cl.calculator == 'qe':
+                    f.write(parrallel_run_command +" < scf.in > "+name[name.rindex('.')+1:]+".OUTCAR\n")
                 else:
                     printlog('Error! Calculator ', cl.calculator, 'is unknown!')
 
@@ -406,11 +406,9 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
                     ''
                     f.write("rm CHG   # rm_chg_wav flag\n") #
 
-    elif cl.calculator == 'gaussian':
+    elif cl.calculator == 'gaussian' or cl.calculator == 'qe':
         final_structure_file = None
         pass
-
-
 
 
     return final_structure_file
@@ -784,10 +782,12 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
             outputs = [ os.path.basename(out) for out in output_files_names ]
             # f.write('export PYTHONPATH=$PYTHONPATH:'+CLUSTER_PYTHONPATH+'\n')
             # f.write('/home/aksenov/tools/fit_tool.py '+list2string(outputs)+'\n' )
-            f.write('python '+header.cluster_home+'/tools/fit_tool.py '+list2string(outputs)+'\n' )
-            
-
-            f.write('cp 100.POSCAR POSCAR \n')
+            if cl.calculator == 'qe':
+                f.write('python '+header.cluster_home+'/tools/fit_tool_qe.py '+list2string(outputs)+'\n' )
+                f.write('cat INCAR 100.POSCAR > scf.in  \n')
+            else:
+                f.write('python '+header.cluster_home+'/tools/fit_tool.py '+list2string(outputs)+'\n' )
+                f.write('cp 100.POSCAR POSCAR \n')
         
         if 'u_ramping' in cl.calc_method:
             
@@ -806,9 +806,13 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
 
 
-            run_command(cl, option = option, name = cl.id[0]+'.'+cl.id[1]+'.100'+name_mod+'.fitted', 
-                parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum, f = f)
-
+            # this is tmp solution 
+            if cl.calculator == 'qe':
+                run_command(cl, option = option, name = cl.id[0]+'.'+cl.id[1]+'.100'+name_mod+'', 
+                    parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum, f = f)
+            else:
+                run_command(cl, option = option, name = cl.id[0]+'.'+cl.id[1]+'.100'+name_mod+'.fitted', 
+                    parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum, f = f)
             # print(final_analysis_flag)
             # sys.exit()
 
@@ -886,6 +890,9 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
     elif self.calculator == 'gaussian':
         parrallel_run_command = self.cluster.get('gaussian_command') or 'please provide command for gaussian in *cluster* dict in simanrc.py'
 
+    elif self.calculator == 'qe':
+        parrallel_run_command = self.cluster.get('qe_command') or 'please provide command for qe in *cluster* dict in simanrc.py'
+        
     else:
         printlog('Error! Unknown calculator', self.calculator )
 

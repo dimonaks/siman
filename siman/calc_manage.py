@@ -319,7 +319,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True
+    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True,
+    flow = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -486,7 +487,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     db = None
 
     def add_loop_prepare():
-
+    
         nonlocal calc, db, it, it_folder, verlist, setlist, varset, calc_method, inherit_args, params, scale_region
 
         if not params:
@@ -494,6 +495,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
         params['show'] = show
+        
         # if header.copy_to_cluster_flag:
         # print(params["nodes"])
 
@@ -829,7 +831,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             'DOSTATIC':''}
 
 
-
     def add_loop_scale():
 
         struct_des = header.struct_des
@@ -968,11 +969,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 try:
                     cl_temp = db[id_s].copy()
                 except:
-                    cl_temp = CalculationVasp(varset[inputset], id_s)
-                # print('here', cl_temp.id, )
-                # print(cl_temp.calculator)
-
-                # sys.exit()
+                    if params.get('calculator') == 'qe':
+                        cl_temp = CalculationQE(varset[inputset], id_s)   
+                    else:
+                        cl_temp = CalculationVasp(varset[inputset], id_s)
 
 
 
@@ -997,7 +997,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
                 if 'uniform_scale' in calc_method or 'c_scale' in calc_method:
-                    #print('Create 100')
                     #sys.exit()
                     #make version 100
                     cl_temp.version = 100
@@ -1008,10 +1007,15 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     # iid = cl_temp.id          
                     cl_temp.name = cl_temp.id[0]+'.'+cl_temp.id[1]+'.'+str(cl_temp.id[2])
                     cl_temp.dir = blockdir+"/"+ str(cl_temp.id[0]) +'.'+ str(cl_temp.id[1])+'/'
-                    cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
+                    if cl_temp.calculator=='qe':
+                        cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.out'
+                    else:
+                        cl_temp.path["output"] = cl_temp.dir+str(cl_temp.version)+'.OUTCAR'
+                    # print(cl_temp.path["output"])
                     cl_temp.cluster      = header.cluster
                     cl_temp.cluster_address      = header.cluster_address
                     cl_temp.project_path_cluster = header.project_path_cluster
+                    # print(cl_temp.calculator)
                     calc[cl_temp.id] = cl_temp
                     printlog(cl_temp.id, 'was created in database')
                     # sys.exit()
@@ -1035,10 +1039,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             input_geo_format = 'abinit'
             # sys.exit()
         return u_scale_flag, fitted_v100_id
-
-
-
-
 
 
     def add_loop_take_from_database():
@@ -1229,7 +1229,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             #by add_calculation; for u-ramping names are different
             cl = calc[it, setlist[0], 1]
 
-            calc[fitted_v100_id].path["output"] = cl.path["output"].replace('/1.', '/100.')
+            calc[fitted_v100_id].path["output"] = cl.path["output"].replace('./1.', './100.')
             
             calc[fitted_v100_id].associated_outcars = [out.replace('1.', '100.', 1) for out in cl.associated_outcars]
 
@@ -1407,6 +1407,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     make init of seqset inside calculate_nbands(), actualize_set, check_kpoints 
 
     """
+    # if flow:
+    #     header = flow.header
+    #     varset = header.varset
 
     def write_parameters_for_monte(name, vasp_run_com, params):
         file = cl.dir +  'monte.json'  
@@ -1602,8 +1605,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         printlog( "There is no calculation with id "+ str(id)+". I create new with set "+str(inputset)+"\n" )        
 
 
-
-
     if "up" in up:
 
         header.close_run = True
@@ -1618,29 +1619,25 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             cl_prev = copy.deepcopy(calc[id])
 
 
-
-
         if params.get('calculator'):
             if params.get('calculator') == 'aims':
-                cl = CalculationAims( varset[id[1]] )
+                cl = CalculationAims(varset[id[1]])
 
             elif params.get('calculator') == 'qe':
-                'Quantum Espresso'
-                cl = CalculationQE( varset[id[1]] )
+                # 'Quantum Espresso'
+                cl = CalculationQE(varset[id[1]])
         else:
-
             if input_st and isinstance(input_st, Molecule):
-                params['calculator'] = 'gaussian' # for molecules uses Gaussian by default
+                # for molecules uses Gaussian by default
+                params['calculator'] = 'gaussian'
                 # print(type(input_st))
-                cl = CalculationGaussian( varset[id[1]] )
-
+                cl = CalculationGaussian(varset[id[1]])
                 # sys.exit()
-
-
             else:
-                #by default Vasp
-                cl = CalculationVasp( varset[id[1]] )
-        
+                # by default Vasp
+                cl = CalculationVasp(varset[id[1]])
+
+
 
 
 
@@ -1778,7 +1775,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-
         cl.check_kpoints()    
 
 
@@ -1804,8 +1800,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-            if id == id_first:
+            if id == id_first or cl.calculator == 'qe':
                 path_to_potcar = cl.add_potcar()
+            
             
             for curset in setseq: #for each set
                 cl.calculate_nbands(curset, calc[id_first].path['potcar'], params = params)
@@ -2624,7 +2621,6 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     if not is_list_like(setlist):
         setlist = [setlist]
 
-
     if not calc:
         calc = header.calc
         db = header.db
@@ -2965,7 +2961,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             if not hasattr(cl, 'calculator'):
                cl.calculator = 'vasp' 
             
-            if cl.calculator == 'vasp':
+            if cl.calculator == 'vasp' or cl.calculator =='qe':
                 e   = cl.energy_sigma0
             else:
                 e = 0
@@ -3007,9 +3003,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         results_dic = {} #if some part fill this list it will be returned instead of final_outstring
         if ret == 'energies':
             results_dic[ret] = energies
-
+    
         cl = calc[id]
-
+        # print(if id not )
 
         if id not in calc or '4' not in calc[id].state:
             # printlog(calc[id].state, imp = 'Y')
