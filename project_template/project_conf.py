@@ -16,20 +16,26 @@ geo_folder           = './' # duplicate structures using .geo format files in th
 
 """Cluster parameters"""
 PATH2PROJECT = 'my_project' # path to project on cluster relative to home folder
-DEFAULT_CLUSTER = '1'
+DEFAULT_CLUSTER = 'mag'
 
 #description of user clusters:
+username = 'username' # user name at cluster
 CLUSTERS = {}
-CLUSTERS['1'] = {
-'address':'username@ip',
-'vasp_com':'prun /opt/vasp/bin/vasp',
-'homepath':'/home/username/',
+CLUSTERS['mag'] = {
+'address':username+'@10.30.16.168',
+'vasp_com':'mpirun vasp_std',
+'gaussian_command':'g16',
+'homepath':'/home/'+username+'/',
 'schedule':'SLURM',
-'corenum':16,
-'pythonpath':'/usr/lib64/python2.7/site-packages/numpy'
+'corenum':4,
+'memory':24, #GB, 
+'partition':'AMG-medium',
+# 'any_command':['--nodelist=node-amg01,node-amg02,node-amg03,node-amg09,node-amg12'],
+'modules':'module load Compiler/Intel/16u4 Q-Ch/VASP/5.4.4 ScriptLang/python/3.6i_2018u3; \nulimit -s unlimited\n' 
 }
 
-CLUSTERS['2'] = {
+
+CLUSTERS['ar'] = {
 'address':'username@ip',
 'vasp_com':'mpirun  vasp_std',
 'homepath':'/home/username/',
