@@ -182,7 +182,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
     cl2 (Calculation) - structure with lower concentration
-    energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
+    energy_ref (float) - energy in eV per one alkali ion in anode; default value is -1.9 eV for Li; -1.31 eV for Na, -1.02 eV for K
     
     temp(float) - potential at temperature, self.F is expected from phonopy calculations
     

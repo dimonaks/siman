@@ -5422,10 +5422,11 @@ def remove_atoms(it, ise, st, el, mag = 0.6, x = None, sgs  = None,
 
 
 
-def get_voltage_profile(objs = None, up = 0):
+def get_voltage_profile(objs = None, up = 0, x_last = 1):
     """
     objs (dict) - dictionary of calculation objects with concetration used as keys; an example is below
     up (bool) - update res_loop
+    x_last (float) - last concentration
     """
 
     #structures found by atat
@@ -5480,7 +5481,7 @@ def get_voltage_profile(objs = None, up = 0):
         xs2.append(x)
         V_prev = V
 
-    xs2.append(1)
+    xs2.append(x_last)
     es2.append(V_prev)
 
     if invert:

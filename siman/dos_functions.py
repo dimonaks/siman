@@ -142,7 +142,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
     lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, 
-    efermi_origin = True, efermi_shift = 0, invert_spins  = 0, name_suffix = '', image_name = None, color_dict = None):
+    efermi_origin = True, efermi_shift = 0, invert_spins  = 0, name_suffix = '', image_name = None, color_dict = None, DOSCAR = None):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -273,7 +273,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
         printlog(cl.name, 'e_fermi', cl.efermi, imp = 'Y')
      
-        DOSCAR = cl.get_file('DOSCAR', nametype = 'asoutcar'); 
+        if not DOSCAR:
+            DOSCAR = cl.get_file('DOSCAR', nametype = 'asoutcar'); 
         printlog('DOSCAR file is ', DOSCAR)
         if efermi_origin:
             dos.append( VaspDos(DOSCAR, cl.efermi) )

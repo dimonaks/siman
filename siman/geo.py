@@ -983,10 +983,10 @@ def ortho_vec(rprim, ortho_sizes = None, silent = 0):
     return mul_matrix
 
 
-def find_mul_mat(rprimd1, rprimd2, silent = 0):
+def find_mul_mat(rprimd1, rprimd2, silent = 0, mul = 1):
     #find mul_matrix to convert from rprimd1 to rprimd2
 
-    mul_matrix_float = np.dot( rprimd2,  np.linalg.inv(rprimd1) )
+    mul_matrix_float = np.dot( rprimd2,  np.linalg.inv(rprimd1) ) * mul
     if not silent:
         printlog('mul_matrix_float:\n',mul_matrix_float, imp = 'y', end = '\n')
 
@@ -1009,7 +1009,7 @@ def find_mul_mat(rprimd1, rprimd2, silent = 0):
 
 
 
-def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1), silent = 0): 
+def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1), silent = 0, test_natom = 1): 
 
     """ 
     st (Structure) -  
@@ -1019,6 +1019,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
 
     bound (float) - shift (A) allows to correctly account atoms on boundaries
     mp    (int)  include additionall atoms before cutting supecell
+    test_natom (bool) - test if the number of atoms is correct after transformation
     test_overlap (bool) - check if atoms are overlapping -  quite slow
     """ 
     sc = st.new() 
@@ -1104,7 +1105,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     sc.natom = len(sc.xcart)
 
 
-    if abs(sc.natom - sc_natom)>1e-5: #test 1, number of atoms
+    if test_natom and abs(sc.natom - sc_natom)>1e-5: #test 1, number of atoms
         printlog('Error! Supercell contains wrong number of atoms:', sc.natom  , 'instead of', sc_natom, 
             'try to increase *mp* of change *bound* ')
 
@@ -2230,7 +2231,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
         - 'rep' - replace atoms 
         - 'pol' - create polarons
 
-    sg - number of required space group obtained with info_mode = 1
+    sg (int) - number of required space group obtained with info_mode = 1
     return list of structures with sg space groups
 
 
@@ -2301,6 +2302,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
 
         nm = st_rep.sg(silent = silent)[1]
         symmetries.append(nm)
+        # print(nm)
         if nm == sg:
             structures.append(st_rep)
             at_replace.append(atoms_to_replace)
@@ -2310,6 +2312,7 @@ def replace_x_based_on_symmetry(st, el1, el2, x = None, sg = None, info_mode = 0
     if info_mode:
         return list(set(symmetries))
 
+    print('inside function',len(structures))
     return structures, at_replace
 
 
@@ -2755,22 +2758,6 @@ def find_voids(st1, st2):
     st = st1.replace_atoms(removed_at, 'void')
     return st
 
-def hex2rhombo(h,k,l):
-    #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
-    i = -h - k
-    hr = int(1/3*(-k + i + l))
-    kr = int(1/3*( h - i + l))
-    lr = int(1/3*(-h + k + l))
-    print(hr,kr,lr)
-    return hr,kr,lr
-
-def rhombo2hex(h,k,l):
-    #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
-    hh = k - l 
-    kh = l - h 
-    lh = h + k + l 
-    print(hh,kh,lh)
-    return hh,kh,lh
 
 
 
@@ -2895,12 +2882,14 @@ def create_ads_molecule(st, molecule = ['O'], mol_xc = [[0,0,0]], conf_i = [0], 
 
 
 def best_miller(hkl):
-    #find best representation of hkl
+    #find best integer representation of float hkl
     #returns float
+
     if min(hkl) == 0: 
         n = abs(max(hkl))
     else:
         n = abs(min(hkl)) 
+    hkl = np.array(hkl)
     hkl = hkl/n
 
     d_m = 100
@@ -2920,7 +2909,16 @@ def best_miller(hkl):
 
 
 def hkl2uvw(hkl, rprimd):
-    #convert hkl to uvw
+    """Find uvw normal to hkl for any lattice
+    INPUT:
+        - hkl (list) - list with plane
+        - rprimd (3*list of 3*arrays) - primitive vectors of lattice
+
+    RETURN
+        - uvw (list) - indicies of direction normal to plane
+
+
+    """
     # print(rprimd)
     # print('rprimd', rprimd)
 
@@ -2933,8 +2931,11 @@ def hkl2uvw(hkl, rprimd):
     uvw = np.dot(grprimd, ghkl )
     # print('uvw', uvw)
     m = np.linalg.norm(uvw)
+    # print(uvw)
+    
     uvw = uvw/m # normalize
     # uvw = uvw.round(0).astype(int)
+    # print(uvw)
     uvwo = best_miller(uvw)
 
 
@@ -3101,6 +3102,58 @@ def test_transform_miller(rprimd1, rprimd2, hkl, silent = 1):
 
 
     return hkl2i_opt
+
+
+
+def hex2rhombo(h,k,l):
+    #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
+    i = -h - k
+    hr = int(1/3*(-k + i + l))
+    kr = int(1/3*( h - i + l))
+    lr = int(1/3*(-h + k + l))
+    print(hr,kr,lr)
+    return hr,kr,lr
+
+def rhombo2hex(h,k,l):
+    #https://chem.libretexts.org/Bookshelves/Inorganic_Chemistry/Supplemental_Modules_(Inorganic_Chemistry)/Crystallography/Fundamental_Crystallography/Miller_Indices#Rhombohedral_crystals
+    hh = k - l 
+    kh = l - h 
+    lh = h + k + l 
+    print(hh,kh,lh)
+    return hh,kh,lh
+
+
+def three2four_index(uvw):
+    """
+Hexagonal Miller direction indices to Miller-Bravais indices: [uvw]->[UVTW]
+    """
+    # print(uvw, uvw[0])
+    # sys.exit()
+    u = 1/3*(2*uvw[0] - uvw[1])
+    v = 1/3*(2*uvw[1] - uvw[0])
+    t = - (u + v)
+    w = uvw[2]
+    # uvtw = [u,v,t,w]
+
+    # print ('before',[u,v,t,w])
+    uvwo = best_miller([u,v,w])
+    uvtw = list(uvwo)
+    uvtw.insert(2, - (uvwo[0] + uvwo[1]) )
+    # print(uvtw)
+    uvtw = [round(x) for x in uvtw] 
+    return uvtw
+
+def four2three_index(uvtw):
+    """
+    Miller-Bravais indices to Hexagonal Miller direction indices: [UVTW]->[uvw]
+    """
+
+    u = 2*uvtw[0] + uvtw[1]
+    v = 2*uvtw[1] + uvtw[0]
+    w = uvtw[3]
+    uvw = [u,v,w]
+
+    return uvw
 
 
 

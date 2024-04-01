@@ -216,12 +216,16 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     # sys.exit()
 
     if corenum == None:
-        if images == 3:
+        if images == 1:
+            corenum = 16
+        elif images == 3:
             corenum = 15
         elif images == 5:
             corenum = 15
         elif images == 7:
             corenum = 14
+        elif images == 9:
+            corenum = 9
         else:
             printlog('add_neb(): Error! number of images', images,'is unknown to me; please provide corenum!')
 

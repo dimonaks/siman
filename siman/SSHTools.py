@@ -25,7 +25,7 @@ class SSHTools:
 ###############################################################################################
 	def run( self, command, noerror=False, printout=False ):
 		if printout:
-			print("command:",command)
+			print("-- SSHTools(): command:",command)
 		# print("command:",command)
 		self.ssh.connect(self.host,username=self.user,pkey=self.pkey,port=self.port)
 		stdin,stdout,stderr = self.ssh.exec_command(command)
@@ -35,16 +35,16 @@ class SSHTools:
 		if err:
 			if noerror:
 				if printout:
-					print("stderr:","".join(err))
+					print("-- SSHTools(): stderr:","".join(err))
 				return ("".join(err)).strip()
 			else:
-				raise Warning("stderr: "+"".join(err))
+				raise Warning("-- SSHTools(): stderr: "+"".join(err))
 		
 		if printout:
 			if len(out)==1:
-				print("output:",out[0].rstrip())
+				print("-- SSHTools(): output:",out[0].rstrip())
 			else:
-				print("output:")
+				print("-- SSHTools(): output:")
 				for s in out:
 					print(s.rstrip())
 		return ("".join(out)).strip()

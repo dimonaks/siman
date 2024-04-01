@@ -744,15 +744,16 @@ class Calculation(object):
         dostype = pm.get('dostype') or 'partial'
         nneighbors = pm.get('nneighbors') or 6
         legend = pm.get('legend') or 'best'
+        xlabel = pm.get('xlabel') or '$E-E_F$, eV'
+        ylabel = pm.get('ylabel') or 'Total DOS, states/eV'
+        DOSCAR = pm.get('DOSCAR')
 
         if efermi_origin is None:
             efermi_origin = 1
 
 
-        xlabel = '$E-E_F$, eV'
         if multi is None:
             multi = {'first':1, 'last':1, 'ax':None, 'hide_xlabels':False, 'pad':None}
-            ylabel = 'Total DOS, states/eV'
         else:
             ylabel = None
             if multi['hide_xlabels']:
@@ -835,6 +836,7 @@ class Calculation(object):
             efermi_origin = efermi_origin,
             efermi_shift = efermi_shift,
             neighbors = nneighbors,
+            DOSCAR =DOSCAR,
             show = 0,  plot_param = {
             'figsize': (6,3), 
             'first':multi['first'], 'last':multi['last'], 'ax':multi['ax'], 'pad':multi['pad'], 'hide_xlabels':multi['hide_xlabels'],
@@ -905,6 +907,7 @@ class Calculation(object):
                 nsmooth = nsmooth, 
                 color_dict = color_dicts[i%2],
                 image_name = image_name, 
+                DOSCAR =DOSCAR,
 
                 # invert_spins = invert_spins,
                 # show_gravity = (1, 'p6', (-10, 10)), 
@@ -1113,7 +1116,8 @@ class Calculation(object):
             # sys.exit()
 
         else:
-            printlog("check_kpoints(): The actual k-spacings are ", np.array(self.calc_kspacings(N) ).round(2), imp = 'Y')
+            printlog("check_kpoints(): The actual k-spacings are ", [f'{ks:.2f}' for ks in self.calc_kspacings(N)], imp = 'Y')
+        
         return N
 
 
@@ -1425,7 +1429,7 @@ class Calculation(object):
                 self.children = []
 
             if not add and len(self.children)>0:
-                print('Children were found in self.children:', len(self.children), ' childs, by default reading last, choose with *i_child* ')
+                printlog('Children were found in self.children:', len(self.children), ' childs, by default reading last, choose with *i_child* ', imp = 'n')
                 
                 idd = None
                 for i in self.children:

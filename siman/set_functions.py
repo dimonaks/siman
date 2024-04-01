@@ -202,6 +202,8 @@ siman_keys = [
 'path2pot', # path to folder with potentials - used with potdir; if not provided that header.path2potentials is used
 'path_to_potcar', # explicit path to potential - depreacated
 'periodic', # 1 or 0, periodic boundary conditions or not; by default considered periodic
+'mul_nbands_small_cell', 
+'mul_nbands', 
 ]
 
 aims_keys = [
@@ -435,7 +437,10 @@ class InputSet():
             s = self
         else:
             s = copy.deepcopy(self)
-            
+        
+        if 'add_nbands' in param and 'mul_nbands' in param:
+            printlog('Error! Use either *add_nbands* or *mul_nbands*. Their meaning is equivalent giving the multiplier by which the number of bands will be increased from their minimum value.')
+
         for key in param:
             # print(key)
             if key in vasp_keys:
@@ -445,7 +450,7 @@ class InputSet():
                 for key2 in param[key]:
                     s.set_potential(key2, param[key][key2])
 
-            elif key == 'add_nbands':
+            elif key == 'add_nbands' or key == 'mul_nbands':
                 s.set_add_nbands(param[key])
 
             elif key == 'ngkpt':
@@ -1012,7 +1017,7 @@ def init_default_sets(init = 0):
         s.update()
         header.varset[setname] = copy.deepcopy(s)
     
-    setname = 'static'
+    setname = 'static' #SP
     if init or setname not in varset: #init only once
         s = InputSet(setname, calculator = 'vasp') #default starting set without relaxation
         s.kpoints_file = True
@@ -1022,9 +1027,6 @@ def init_default_sets(init = 0):
             'NELM'      : 50,
             'EDIFF'     : 1e-05,
             'NSW'       : 0,
-            'EDIFFG'    : 0,
-            'IBRION'    : 1,
-            'ISIF'      : 2,
             'PREC'      : "Normal",
             'ALGO'      : "Normal",
             'ENCUT'     : 400,
@@ -1036,39 +1038,39 @@ def init_default_sets(init = 0):
             'SIGMA'     : 0.1,
             'LPLANE'    : ".TRUE.",
             'NPAR'      : 1,
+            'mul_nbands_small_cell'      : 3,
             }
         s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
 
         s.update()
         header.varset[setname] = copy.deepcopy(s)
-    
+        header.varset = read_vasp_sets([('opts' ,'static', {'IBRION'    : 1, 'ISIF'      : 2, 'NSW':20, 'EDIFFG':-0.05, },)] )
 
 
 
-    setname = 'opt'
+    setname = 'static_low'
     if init or setname not in varset: #init only once
         # sys.exit()
         s = InputSet(setname, calculator = 'vasp') 
         s.kpoints_file = True
         s.add_nbands = 1.5
         s.params = {
-            'IBRION'    : 1,
             'ENCUT'     : 150,
-            'EDIFFG'    : -0.05,
-            'SIGMA'     : 0.2,
-            'ISIF'      : 2,
-            'EDIFF'     : 1e-05,
-            'NSW'       : 20,
-            'ISMEAR'    : 2,
-            'KSPACING'  : 0.2,
+            'EDIFF'     : 1e-04,
+            'NSW'       : 0,
+            'SIGMA'     : 0.1,
+            'ISMEAR'    : 0,
+            'KSPACING'  : 0.5,
+            'mul_nbands_small_cell'      : 3,
             }
         s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
         
         s.update()
         header.varset[setname] = copy.deepcopy(s)
-    # print(header.varset[setname], setname)
+
+    header.varset = read_vasp_sets([('opts_low' ,'static_low', {'IBRION'    : 1, 'ISIF'      : 2, 'NSW':20, 'EDIFFG':-0.1},)] )
 
 
 

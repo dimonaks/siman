@@ -27,7 +27,7 @@ PATH2ARCHIVE_LOCAL  = None
 SAVE_CONTCAR = 1 # adds 's' to savefile argument alowing to move CONTCAR to 1.CONTCAR
 EXCLUDE_NODES = False
 MEM_CPU = None
-
+AUTO_UPDATE_DB = False # if True, then execute write_database() at the end of add() and res()
 
 #Global variables
 final_vasp_clean     = True 
@@ -52,6 +52,7 @@ siman_run = False #
 PATH2SHELVE_DBSUP = 'calc.gdbm3' # supporting database
 PATH2SHELVE_DB = 'only_calc.gdbm3' # name for calculation database, db dict
 PATH2HISTORYFILE = 'history' 
+PATH2DATABASE        = None # ?
 
 
 
@@ -84,6 +85,86 @@ if 0:
             mpl.use('agg') #switch matplotlib on or off; for running script using ssh
         siman_run = False
         history.append('separate run')
+
+
+def printlog(*logstrings, **argdic):
+    """
+    '' - silent
+    e - errors and warnings
+    a - attentions
+    m - minimalistic output of scientific procedures - only obligatory mess are shown
+    M - maximalistic output of scientific procedures  
+    debug_level importance:
+        'n' - not important at all - for debugging
+        ''  - almost all actions, no flag is needed
+        'y' - important - major actions
+        'Y' - super important, or output asked by user
+    """
+    
+    global siman_run
+    end = '\n\n'# no argument for end, make one separate line
+    
+    debug_level  = 'e' #empty
+    for key in argdic:
+        if 'imp' in key:
+            debug_level = argdic[key]
+        
+        if 'end' in key:
+            end = argdic[key]
+
+
+    mystring = ''
+    for m in logstrings:
+        mystring+=str(m)+' '
+
+
+    if len(mystring.splitlines()) == 1:
+        mystring = '-- '+mystring
+    else:
+        ''
+        # mystring = '    '+mystring.replace('\n', '\n    ') 
+    
+    mystring+=end
+
+
+    if 'Error' in mystring:# or 'Warning' in mystring:
+        mystring+='\n\n\n'
+    
+    if 'Warning' in mystring or 'Attention' in mystring:
+        debug_level = 'Y'
+
+    for level in 'neyY':
+        # print(level, debug_level)
+        if (level in warnings and level in debug_level):
+            print (mystring,  end = "")
+
+    # if warnings:
+    #     ''
+    #     # print(debug_level)
+    #     if 'n' in debug_level and 'n' not in warnings:
+    #         pass
+    #     else:
+    #         print (mystring,  end = "")
+
+    if siman_run:
+        with open(project_folder+'/log','a') as log:
+            log.write(mystring)
+    
+    if verbose_log:
+        with open(project_folder+'/verbose_log','a') as f:
+            f.write(mystring)
+
+
+    if 'Error!' in mystring:
+        print (mystring)
+        print ('Error! keyword was detected in message; invoking RuntimeError ')
+        sys.exit()
+        # raise RuntimeError
+
+    return
+
+print_and_log = printlog
+
 
 
 
@@ -121,16 +202,16 @@ def _update_configuration(filename, pfolder = None, clusters=None):
     import importlib.util, sys
     spec = importlib.util.spec_from_file_location('project_conf', filename)
     project_conf = importlib.util.module_from_spec(spec)
-    if clusters:
-        setattr(header, "CLUSTERS", clusters)
+
     spec.loader.exec_module(project_conf)
     # print(dir(project_conf))
     config_vars = ['MEM_CPU','CIF2CELL', 'DEFAULT_CLUSTER', 'EXCLUDE_NODES', 
-    'NEW_BATCH', 'PATH2ARCHIVE', 'PATH2DATABASE', 'PATH2JMOL', 'PATH2NEBMAKE', 
+    'NEW_BATCH', 'PATH2ARCHIVE', 'PATH2DATABASE', 'PATH2JMOL', 'PATH2VESTA', 'PATH2NEBMAKE', 
     'PATH2PHONOPY', 'PATH2POTENTIALS', 'PATH2PROJECT', 'PBS_PROCS', 
     'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
     'geo_folder', 'path_to_images', 'path_to_paper', 
-    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE']
+    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 
+    'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE', 'AUTO_UPDATE_DB', 'warnings', ]
 
     for var in config_vars:
         try: 
@@ -139,11 +220,13 @@ def _update_configuration(filename, pfolder = None, clusters=None):
             setattr(header, var, value)
             # exec(var + " = " + str(value))
         except AttributeError:
-            ''
-            # print('Warning! Your '+ configfile_name +' doesnot contain', var)
+            # print(header.warnings)
+            printlog('Your '+ configfile_name +' does not contain', var, imp = 'n')
             pass
         # print(var, value)
     # CLUSTERS = getattr(project_conf, 'CLUSTERS')
+    if clusters:
+        setattr(header, "CLUSTERS", clusters)
 
     # print(CLUSTERS)
 
@@ -292,83 +375,6 @@ nme_list = ['H', 'He', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Si', 'P', 'S', 'Cl', 'Ar'
 
 
 
-def printlog(*logstrings, **argdic):
-    """
-    '' - silent
-    e - errors and warnings
-    a - attentions
-    m - minimalistic output of scientific procedures - only obligatory mess are shown
-    M - maximalistic output of scientific procedures  
-    debug_level importance:
-        'n' - not important at all - for debugging
-        ''  - almost all actions, no flag is needed
-        'y' - important - major actions
-        'Y' - super important, or output asked by user
-    """
-    
-    global siman_run
-    end = '\n\n'# no argument for end, make one separate line
-    
-    debug_level  = 'e' #empty
-    for key in argdic:
-        if 'imp' in key:
-            debug_level = argdic[key]
-        
-        if 'end' in key:
-            end = argdic[key]
-
-
-    mystring = ''
-    for m in logstrings:
-        mystring+=str(m)+' '
-
-
-    if len(mystring.splitlines()) == 1:
-        mystring = '-- '+mystring
-    else:
-        ''
-        # mystring = '    '+mystring.replace('\n', '\n    ') 
-    
-    mystring+=end
-
-
-    if 'Error' in mystring:# or 'Warning' in mystring:
-        mystring+='\n\n\n'
-    
-    if 'Warning' in mystring or 'Attention' in mystring:
-        debug_level = 'Y'
-
-    for level in 'neyY':
-        # print(level, debug_level)
-        if (level in warnings and level in debug_level):
-            print (mystring,  end = "")
-
-    # if warnings:
-    #     ''
-    #     # print(debug_level)
-    #     if 'n' in debug_level and 'n' not in warnings:
-    #         pass
-    #     else:
-    #         print (mystring,  end = "")
-
-    if siman_run:
-        with open(project_folder+'/log','a') as log:
-            log.write(mystring)
-    
-    if verbose_log:
-        with open(project_folder+'/verbose_log','a') as f:
-            f.write(mystring)
-
-
-    if 'Error!' in mystring:
-        print (mystring)
-        print ('Error! keyword was detected in message; invoking RuntimeError ')
-        sys.exit()
-        # raise RuntimeError
-
-    return
-
-print_and_log = printlog
 
 
 

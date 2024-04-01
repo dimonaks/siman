@@ -321,6 +321,7 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
                               "z": "OSZICAR",
                               "w": "WAVECAR",
                               "f": "WAVEDER"
+                              "u": "ELFCAR"
 
 
             '!' follwed after key, e.g. 'c!' means that the CHGCAR will saved as well
@@ -366,7 +367,10 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
                               "t": "XDATCAR",
                               "z": "OSZICAR",
                               "w": "WAVECAR",
-                              "f": "WAVEDER"}
+                              "f": "WAVEDER",
+                              "u": "ELFCAR",
+
+                              }
 
             if 'a' in savefile:
                 savefile+='a0a2' # for compatibility with previous behavior
