@@ -1506,7 +1506,8 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     natom2 = st2.get_natom()
 
     if natom1%natom2:
-        printlog('Warning! Non-stoichiometric slab, atom1/natom2 is', natom1/natom2)
+        printlog('Warning! Non-stoichiometric slab, natom1/natom2 is', natom1/natom2, 
+            imp = 'y')
 
 
     if normal == 0:
@@ -1574,7 +1575,8 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
             if abs(dif) > 0:
                 el_dif[el] = int(dif) 
 
-        print('The following elements are off-stoichiometry in the slab', el_dif, 'please provide corresponding chemical potentials')
+        if not silent:
+            print('The following elements are off-stoichiometry in the slab', el_dif, 'please provide corresponding chemical potentials')
         
         E_nonst = 0
         for key in el_dif:

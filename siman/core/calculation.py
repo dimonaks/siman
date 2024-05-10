@@ -35,7 +35,7 @@ if header.pymatgen_flag:
     from pymatgen.core.composition import Composition
 
 
-from siman.header import printlog
+from siman.header import printlog,runBash
 
 from siman import set_functions
 # from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
@@ -543,8 +543,13 @@ class Calculation(object):
             header.db[id].id = id
         return clcopy
 
-    def jmol(self, *args, **kwargs):
-        self.end.jmol(*args, **kwargs)
+    def jmol(self, r = 0, *args, **kwargs):
+        if r == 5:
+            self.get_file('*XDATCAR')
+            filename = self.path['xdatcar']
+            runBash(header.PATH2OVITO+' '+filename, detached = True)
+        else:
+            self.end.jmol(r=r,*args, **kwargs)
     def poscar(self):
         self.end.write_poscar()
 
@@ -1254,6 +1259,9 @@ class Calculation(object):
         elif 'xml' in filetype:
             self.path['xml'] = path_to_file
 
+        elif 'XDATCAR' in filetype:
+            self.path['xdatcar'] = path_to_file
+
 
         # print(self.cluster_address)
         # print(self.project_path_cluster+'/')
@@ -1364,6 +1372,7 @@ class Calculation(object):
                 'full_nomag' - full without magmom
                 'full' - full with magmom
                 'full_chg' - full with magmom and including chg file
+                'full_wave' - full with magmom and including wavecar
             
             up (str) - update key transferred to add_loop and res_loop;
                 'up1' - create new calculation if not exist
@@ -1404,7 +1413,8 @@ class Calculation(object):
             suffix = '.if'
         if iopt == 'full_chg':
             suffix = '.ifc'
-
+        if iopt == 'full_wave':
+            suffix = '.ifw'
 
 
 

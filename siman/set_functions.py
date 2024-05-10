@@ -186,7 +186,9 @@ vasp_other_keys = [
 'DOSTATIC',
 'IWAVPRE',
 'MIXPRE',
-
+'LANGEVIN_GAMMA_L',
+'LANGEVIN_GAMMA',
+'PMASS'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
