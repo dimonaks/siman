@@ -281,6 +281,10 @@ class Structure():
 
     def exchange_axes_with_atoms(self, i1_r, i2_r):
         """
+        Exchange axes and rotate atoms
+
+        INPUT:
+            i1_r
         
         """
         st = copy.deepcopy(self)
@@ -737,7 +741,19 @@ class Structure():
 
 
     def update_types(self, elements):
-        # update typat, ntypat, znucl, nznucl from elements - list of elements names
+        
+        """
+        updates typat, ntypat, znucl, nznucl according to elements
+        
+        INPUT:
+
+            elements (list of element names) - ['Li','Co','O']
+        
+        RETURN:
+
+            Structure()
+
+        """
         st = copy.deepcopy(self)
         st.ntypat = len(set(elements))
 
@@ -762,7 +778,7 @@ class Structure():
         
         st.get_nznucl()
 
-        print(st.ntypat, st.typat, st.nznucl, st.znucl)
+        printlog(st.ntypat, st.typat, st.nznucl, st.znucl, imp = 'n')
 
         return st
 
@@ -1736,7 +1752,7 @@ class Structure():
                     typat.append(t)
                     xcart.append(st.xcart[i])
                     old_numbers.append(i)
-                    if st.magmom != []:
+                    if len(st.magmom) != 0:
                         if None not in st.magmom:
                             magmom.append(st.magmom[i])
             t+=1
@@ -3962,9 +3978,9 @@ class Structure():
                 else:
                     st.magmom[i] *= 5
             filename = st.write_cif(mcif = 1)
-        elif r == 5:
-            filename = None
-            ''
+        # elif r == 5:
+        #     filename = None
+        #     ''
         else:
             filename = st.write_poscar(vasp5 = 1)
         
