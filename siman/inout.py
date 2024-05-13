@@ -1422,6 +1422,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         self.intstress = None
         spin_polarized = None
         ifmaglist = None
+        self.mags_step = []
         for line in outcarlines:
 
 
@@ -1637,6 +1638,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                     #pass
 
 
+<<<<<<< HEAD
             if 0 and "g(Stress)" in line:
                                 # print( line)
                 if 'ortho' in line:
@@ -1644,6 +1646,13 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 else:
                     gstr = float(line.split('=')[2])
                 gstress.append( round( gstr*1000 *100, 3 )  )
+=======
+            if "g(Stress)" in line:
+                #print line
+                gstress.append( round( float(line.split('=')[2].split()[0])*1000 *100, 3 )  )
+            #if "Total" in line:
+                #gstress.append( red_prec(float(line.split()[4])*1000 *100, 1000 )  )
+>>>>>>> 64ea721ed2a2b1940049124d7572574b87883df6
             if "volume of cell" in line:
                 try:                     
                     self.end.vol = float(line.split()[4])
@@ -1845,6 +1854,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 # magnetic_elements
                 # ifmaglist
                 # self.tot_mag_by_atoms = tot_mag_by_atoms
+                self.mags_step.append(mags)
 
 
 
@@ -1894,6 +1904,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                             break
                         if 'f  =' in line:
                             freq.append(float(line.split()[3]) ) #THz
+
                         elif 'f/i=' in line:
                             freq.append(-float(line.split()[2]) ) #THz
                             # print(line)
