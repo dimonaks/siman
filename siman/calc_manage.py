@@ -568,7 +568,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
         printlog('add_loop: starting add_loop_inherit ...', imp ='n')
         #inherit option
-        inh_opt_ngkpt = ['full', 'full_chg', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
+        inh_opt_ngkpt = ['full', 'full_chg', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite', 'full_wave'] #inherit also ngkpt
         inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
         # if inherit_option in inh_opt_ngkpt+inh_opt_other:
         omit_inh_opt = ['inherit_xred', 'continue']
@@ -606,7 +606,8 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             elif inherit_option == 'make_vacancy':
                 it_new = iti+'.vac'
 
-
+            elif inherit_option == 'full_wave':
+                it_new = iti+'.ifw'
 
             if it_suffix: # add to default behaviour; make additional key, which can allow to override default behavior
                 it_new = it_new+'.'+it_suffix
@@ -1282,6 +1283,13 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             printlog('Copying WAVECAR ...', imp = 'y')
             if copy_to_server:
                 wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            else:
+                pass
+        
+        if inherit_option  == 'full_wave':
+            printlog('Copying WAVECAR ...', imp = 'y')
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('OUTCAR','WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
             else:
                 pass
 
@@ -2229,6 +2237,10 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         # printlog("Warning! final xred and xcart was used from OUTCAR and have low precision. Please use CONTCAR file \n");
         des = 'Fully inherited from the final state of '+cl_base.name+'; "magmom" set to [None]'
         st.magmom = [None]
+
+    elif inherit_type  == 'full_wave':
+
+        des = 'Fully inherited (including Wave file ) from the final state of '+cl_base.name
 
     elif inherit_type == "occ":
         des = 'Fully inherited from the final state of '+cl_base.name+'; occupation matrix is taken from '+calc_from_name

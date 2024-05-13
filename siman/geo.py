@@ -546,7 +546,7 @@ def replic(structure, mul = (1,1,1), inv = 1, only_atoms = None, cut_one_cell = 
 
 def local_surrounding(x_central, st, n_neighbours, control = 'sum', periodic = False, only_elements = None, only_numbers = None, round_flag = 1):
     """
-    Return list of distances to n closest atoms around central atom. (By defauld sum of distances)
+    Return list of distances to n closest atoms around central atom. (By default sum of distances)
     
     Input:
     - x_central - cartesian coordinates of central atom; vector
@@ -1013,7 +1013,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
 
     """ 
     st (Structure) -  
-    mul_matrix (3x3 ndarray of int) - for example created by *ortho_    vec()* 
+    mul_matrix (3x3 ndarray of int) - for example created by *ortho_vec()* 
 
     mul - multiply mul matrix - allows to choose fractions of new vectors
 
@@ -2789,7 +2789,10 @@ def create_ads_molecule(st, molecule = ['O'], mol_xc = [[0,0,0]], conf_i = [0], 
 
 
 
-    from pymatgen import Structure, Lattice, Molecule
+    # from pymatgen import Structure, Lattice, Molecule
+    from pymatgen.core import Lattice, Structure
+    from pymatgen.core.structure import Molecule
+
     from pymatgen.analysis.adsorption import AdsorbateSiteFinder
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     from pymatgen.io.vasp.inputs import Poscar

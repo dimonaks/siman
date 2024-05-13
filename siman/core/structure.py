@@ -274,12 +274,30 @@ class Structure():
 
         st.rprimd[i1_r] = r[i2_r]
         st.rprimd[i2_r] = r[i1_r]
-
+        
         st.update_xred()
 
         return st
 
+    def exchange_axes_with_atoms(self, i1_r, i2_r):
+        """
+        
+        """
+        st = copy.deepcopy(self)
+        xc = copy.deepcopy(self.xcart)
+        xr = copy.deepcopy(self.xred)
+        r = copy.deepcopy(self.rprimd)
 
+        for i in range(0,st.natom):
+            st.xcart[i][i1_r] = xc[i][i2_r] 
+            st.xcart[i][i2_r] = xc[i][i1_r] 
+
+            st.xred[i][i1_r] = xr[i][i2_r] 
+            st.xred[i][i2_r] = xr[i][i1_r] 
+
+        # st.update_xred()
+
+        return st
 
 
     def get_volume(self):
@@ -744,7 +762,7 @@ class Structure():
         
         st.get_nznucl()
 
-        # print(st.ntypat, st.typat, st.nznucl, st.znucl)
+        print(st.ntypat, st.typat, st.nznucl, st.znucl)
 
         return st
 
@@ -1718,8 +1736,9 @@ class Structure():
                     typat.append(t)
                     xcart.append(st.xcart[i])
                     old_numbers.append(i)
-                    if None not in st.magmom:
-                        magmom.append(st.magmom[i])
+                    if st.magmom != []:
+                        if None not in st.magmom:
+                            magmom.append(st.magmom[i])
             t+=1
 
         if len(magmom) == 0:
@@ -3909,6 +3928,7 @@ class Structure():
             2 - open mcif to see magnetic moments
             3 - xyz
             4 - open mcif to see magnetic moments only on oxygen, other magmoms are set as zero
+            5 - open XDATCAR
         show_voids (bool) - replace voids (z = 300) with Po to visualize them
         rep  (list 3*int) - replicate along vectors
         program - 
@@ -3942,22 +3962,33 @@ class Structure():
                 else:
                     st.magmom[i] *= 5
             filename = st.write_cif(mcif = 1)
+        elif r == 5:
+            filename = None
+            ''
         else:
             filename = st.write_poscar(vasp5 = 1)
         
         # print(r, filename)
         # sys.exit()
-        if 'jmol' in program :
-            # runBash(header.PATH2JMOL+' -j \"background white\" '+filename, detached = True)
-            runBash(header.PATH2JMOL+' '+filename, detached = True)
-        elif 'vesta' in program:
-            runBash(header.PATH2VESTA+' '+filename, detached = True)
+        if filename:
+            if 'jmol' in program :
+                runBash(header.PATH2JMOL+' -j \"background white\" '+filename, detached = True)
+                # runBash(header.PATH2JMOL+' '+filename, detached = True)
+            elif 'vesta' in program:
+                runBash(header.PATH2VESTA+' '+filename, detached = True)
+            elif 'ovito' in program:
+                runBash(header.PATH2VESTA+' '+filename, detached = True)
 
         return
 
     def vesta(self, *args, **kwargs):
         kwargs['program'] = 'vesta'
         self.jmol(*args, **kwargs)
+
+    def ovito(self, *args, **kwargs):
+        kwargs['program'] = 'ovito'
+        self.jmol(*args, **kwargs)
+
 
 
 

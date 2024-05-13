@@ -1422,6 +1422,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         self.intstress = None
         spin_polarized = None
         ifmaglist = None
+        self.mags_step = []
         for line in outcarlines:
 
 
@@ -1845,6 +1846,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 # magnetic_elements
                 # ifmaglist
                 # self.tot_mag_by_atoms = tot_mag_by_atoms
+                self.mags_step.append(mags)
 
 
 
@@ -1894,6 +1896,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                             break
                         if 'f  =' in line:
                             freq.append(float(line.split()[3]) ) #THz
+
                         elif 'f/i=' in line:
                             freq.append(-float(line.split()[2]) ) #THz
                             # print(line)
