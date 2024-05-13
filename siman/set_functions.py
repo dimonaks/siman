@@ -225,6 +225,7 @@ gaussian_keys = [
 'multiplicity',
 'charge',
 'SCRF',
+'chk',
 ]
 
 
