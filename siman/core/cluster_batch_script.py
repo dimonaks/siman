@@ -282,7 +282,7 @@ def run_command(cl, option, name, parrallel_run_command,
 
             else:
                 if cl.calculator == 'vasp':
-                    s.write(parrallel_run_command +" >"+name+".log\n")
+                    f.write(parrallel_run_command +" >"+name+".log\n")
                 elif cl.calculator == 'gaussian':
                     f.write(parrallel_run_command +" < input.gau > "+name+".out\n")
                 elif cl.calculator == 'qe':
