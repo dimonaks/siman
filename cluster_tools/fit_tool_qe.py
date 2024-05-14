@@ -3,9 +3,7 @@ tmp version for qe analysis
 
 fit_tool_qe.py by AG based on fit_tool.py  
 
-Reads energies and volumes from provided VASP OUTCAR's files (CONTCAR's should exist and have the same naming pattern), 
-fits them using EOS and 
-creates file '100.POSCAR' with minimum energy volume.
+Reads energies and volumes from provided QE output files fits them using EOS and creates file '100.POSCAR' (part of the QE input file with atomic positions and unitcell vectors) with minimum energy volume.
 
 """
 import sys
