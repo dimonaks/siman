@@ -319,8 +319,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True,
-    flow = None
+    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -1407,9 +1406,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     make init of seqset inside calculate_nbands(), actualize_set, check_kpoints 
 
     """
-    # if flow:
-    #     header = flow.header
-    #     varset = header.varset
 
     def write_parameters_for_monte(name, vasp_run_com, params):
         file = cl.dir +  'monte.json'  
