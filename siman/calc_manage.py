@@ -1228,7 +1228,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             #by add_calculation; for u-ramping names are different
             cl = calc[it, setlist[0], 1]
 
-            calc[fitted_v100_id].path["output"] = cl.path["output"].replace('./1.', './100.')
+            calc[fitted_v100_id].path["output"] = cl.path["output"].replace('/1.', '/100.')
             
             calc[fitted_v100_id].associated_outcars = [out.replace('1.', '100.', 1) for out in cl.associated_outcars]
 
