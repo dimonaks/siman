@@ -286,7 +286,7 @@ def run_command(cl, option, name, parrallel_run_command,
                 elif cl.calculator == 'gaussian':
                     f.write(parrallel_run_command +" < input.gau > "+name+".out\n")
                 elif cl.calculator == 'qe':
-                    f.write(parrallel_run_command +" < scf.in > "+name[name.rindex('.')+1:]+".OUTCAR\n")
+                    f.write(parrallel_run_command +" < scf.in > "+name.split(".")[3]+".OUTCAR\n")
                 else:
                     printlog('Error! Calculator ', cl.calculator, 'is unknown!')
 
@@ -804,14 +804,7 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
                 rm_chg_wav = ''
 
 
-
-
-            # this is tmp solution 
-            if cl.calculator == 'qe':
-                run_command(cl, option = option, name = cl.id[0]+'.'+cl.id[1]+'.100'+name_mod+'', 
-                    parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum, f = f)
-            else:
-                run_command(cl, option = option, name = cl.id[0]+'.'+cl.id[1]+'.100'+name_mod+'.fitted', 
+            run_command(cl, option = option, name = cl.id[0]+'.'+cl.id[1]+'.100'+name_mod+'.fitted', 
                     parrallel_run_command = parrallel_run_command, write = True, mpi = mpi, corenum = corenum, f = f)
             # print(final_analysis_flag)
             # sys.exit()
