@@ -274,12 +274,34 @@ class Structure():
 
         st.rprimd[i1_r] = r[i2_r]
         st.rprimd[i2_r] = r[i1_r]
-
+        
         st.update_xred()
 
         return st
 
+    def exchange_axes_with_atoms(self, i1_r, i2_r):
+        """
+        Exchange axes and rotate atoms
 
+        INPUT:
+            i1_r
+        
+        """
+        st = copy.deepcopy(self)
+        xc = copy.deepcopy(self.xcart)
+        xr = copy.deepcopy(self.xred)
+        r = copy.deepcopy(self.rprimd)
+
+        for i in range(0,st.natom):
+            st.xcart[i][i1_r] = xc[i][i2_r] 
+            st.xcart[i][i2_r] = xc[i][i1_r] 
+
+            st.xred[i][i1_r] = xr[i][i2_r] 
+            st.xred[i][i2_r] = xr[i][i1_r] 
+
+        # st.update_xred()
+
+        return st
 
 
     def get_volume(self):
@@ -719,7 +741,19 @@ class Structure():
 
 
     def update_types(self, elements):
-        # update typat, ntypat, znucl, nznucl from elements - list of elements names
+        
+        """
+        updates typat, ntypat, znucl, nznucl according to elements
+        
+        INPUT:
+
+            elements (list of element names) - ['Li','Co','O']
+        
+        RETURN:
+
+            Structure()
+
+        """
         st = copy.deepcopy(self)
         st.ntypat = len(set(elements))
 
@@ -744,7 +778,7 @@ class Structure():
         
         st.get_nznucl()
 
-        # print(st.ntypat, st.typat, st.nznucl, st.znucl)
+        printlog(st.ntypat, st.typat, st.nznucl, st.znucl, imp = 'n')
 
         return st
 
@@ -1718,8 +1752,9 @@ class Structure():
                     typat.append(t)
                     xcart.append(st.xcart[i])
                     old_numbers.append(i)
-                    if None not in st.magmom:
-                        magmom.append(st.magmom[i])
+                    if len(st.magmom) != 0:
+                        if None not in st.magmom:
+                            magmom.append(st.magmom[i])
             t+=1
 
         if len(magmom) == 0:
@@ -2787,8 +2822,8 @@ class Structure():
             if header.FROM_ONE is not None: #overwrites default behavior
                 from_one = header.FROM_ONE
 
-        if header.FROM_ONE != from_one:
-            printlog('Warning! provided *from_one* and header.FROM_ONE are different. I am using from header')
+            if header.FROM_ONE != from_one:
+                printlog('Warning! nn() the default *from_one* and header.FROM_ONE are different. I am using from header')
 
 
 
@@ -2964,7 +2999,7 @@ class Structure():
         return dist_list
 
 
-    def find_unique_topologies(self, el1, el2, nn = 6, tol = 0.5, told = 0.005, tolmag = 0.4, write_loc = 0):
+    def find_unique_topologies(self, el1, el2, nn = 6, tol = 0.5, told = 0.005, tolmag = 0.4, write_loc = 0, silent = None):
 
         """
         Looks for unique topologies
@@ -3015,8 +3050,12 @@ class Structure():
             av_dev, _   = local_surrounding2(x, st, nn, 'av_dev', True, only_elements = [z2], round_flag = 0 )
             # if av_dev > 100:
                 #probably surface atom, deviation is too much
-            mag = st.magmom[i]
-            print('Deviation for atom {:d} is {:.1f}'.format(i, av_dev) )
+            mag = 0
+            if i in st.magmom:
+                mag = st.magmom[i]
+            if not silent:
+
+                print('Deviation for atom {:d} is {:.1f}'.format(i, av_dev) )
             if len(unique_centers) == 0:
                 unique_centers.append(i)
                 unique_deviations.append(av_dev)
@@ -3033,13 +3072,15 @@ class Structure():
                 unique_deviations.append(av_dev)
         
         # pretty = pprint.PrettyPrinter(width=30)
-
-        print('Unique centers are ', unique_centers,'. number, deviation6, deviation5, magmom, and topology of polyhedra and  for each:')
+        if not silent:
+            print('Unique centers are ', unique_centers,'. number, deviation6, deviation5, magmom, and topology of polyhedra and  for each:')
+        out = {}
         for i, d in zip(unique_centers, unique_deviations):
             dic = st.nn(i, only = [z2], from_one = 0, silent = 1)
             lengths = dic['dist'][1:]
             av = dic['av(A-O,F)']
-            if d > 100:
+            # if d > 100:
+            if d > 1000:
                 x = st.xcart[i]
                 av_dev5, _   = local_surrounding2(x, st, 5, 'av_dev', True, only_elements = [z2], round_flag = 0 )
                 st.name+=str(i)
@@ -3047,10 +3088,14 @@ class Structure():
                     st.write_xyz(show_around=i+1, analysis = 'imp_surrounding', only_elements = [z2])
             # print(lengths)
             groups = group_bonds(lengths, told)
-            print( '{:2d} | {:4.1f} | {:4.1f} | {:4.1f} :'.format(i, d, av_dev5, st.magmom[i]))
-            print(groups, 'av={:.2f} \n'.format(av))
-
-        return
+            mag = 0
+            if i in st.magmom:
+                mag = st.magmom[i]
+            if not silent:
+                print( '{:2d} | {:4.1f} | {:4.1f} | {:4.1f} :'.format(i, d, av_dev5, mag))
+                print(groups, 'av={:.2f} \n'.format(av))
+            out[i] = av
+        return out
 
     def center(self, reduced = 0):
         #return cartesian or reduced center of the cell
@@ -3801,7 +3846,7 @@ class Structure():
 
 
 
-    def write_cif(self, filename = None, mcif = False, symprec = 0.1, write_prim = 0):
+    def write_cif(self, filename = None, mcif = False, symprec = 0.1, write_prim = 0, refine_struct = True):
         """
         Find primitive cell and write it in cif format
         
@@ -3809,7 +3854,9 @@ class Structure():
         mcif (bool) - if True, than write mcif file with magnetic moments included, primitive cell is not supported
         symprec (float) - symmetry precision, symprec = None allows to write the structure as is
         write_prim (bool) - convert structure to primitive 
-        
+        refine_struct (bool)  - If True, get_refined_structure
+                is invoked to convert input structure from primitive to conventional
+                uses spglib.refine_cell which in turn is shorthand for spglib.standardize_cell
 
         """
         
@@ -3852,12 +3899,12 @@ class Structure():
             # symprec = None
 
         if mcif:
-            cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif)
+            cif = CifWriter(st_mp, symprec = symprec, write_magmoms=mcif, refine_struct = refine_struct)
         else:
             if st_mp_prim:
-                cif_prim = CifWriter(st_mp_prim, symprec = symprec, )
+                cif_prim = CifWriter(st_mp_prim, symprec = symprec, refine_struct = refine_struct)
             
-            cif = CifWriter(st_mp, symprec = symprec, )
+            cif = CifWriter(st_mp, symprec = symprec, refine_struct = refine_struct)
 
         
         cif_name =  filename+'.'+m+'cif'
@@ -3901,6 +3948,7 @@ class Structure():
             2 - open mcif to see magnetic moments
             3 - xyz
             4 - open mcif to see magnetic moments only on oxygen, other magmoms are set as zero
+            5 - open XDATCAR
         show_voids (bool) - replace voids (z = 300) with Po to visualize them
         rep  (list 3*int) - replicate along vectors
         program - 
@@ -3934,22 +3982,33 @@ class Structure():
                 else:
                     st.magmom[i] *= 5
             filename = st.write_cif(mcif = 1)
+        # elif r == 5:
+        #     filename = None
+        #     ''
         else:
             filename = st.write_poscar(vasp5 = 1)
         
         # print(r, filename)
         # sys.exit()
-        if 'jmol' in program :
-            # runBash(header.PATH2JMOL+' -j \"background white\" '+filename, detached = True)
-            runBash(header.PATH2JMOL+' '+filename, detached = True)
-        elif 'vesta' in program:
-            runBash(header.PATH2VESTA+' '+filename, detached = True)
+        if filename:
+            if 'jmol' in program :
+                runBash(header.PATH2JMOL+' -j \"background white\" '+filename, detached = True)
+                # runBash(header.PATH2JMOL+' '+filename, detached = True)
+            elif 'vesta' in program:
+                runBash(header.PATH2VESTA+' '+filename, detached = True)
+            elif 'ovito' in program:
+                runBash(header.PATH2VESTA+' '+filename, detached = True)
 
         return
 
     def vesta(self, *args, **kwargs):
         kwargs['program'] = 'vesta'
         self.jmol(*args, **kwargs)
+
+    def ovito(self, *args, **kwargs):
+        kwargs['program'] = 'ovito'
+        self.jmol(*args, **kwargs)
+
 
 
 

@@ -56,153 +56,156 @@ vasp_ionic_keys = [
 
 
 vasp_other_keys = [
-    'AGGAC',
-    'LUSE_VDW',
-    'PARAM1',
-    'PARAM2',
-    'LVDW',
-    'LVHAR',
-    'LCALCPOL',
-    'EFIELD',
-    'VDW_RADIUS',
-    'VDW_SCALING',
-    'VDW_CNRADIUS',
-    'LWANNIER90_RUN',
-    'IVDW',
-    'VDW_D',
-    'MDALGO',
-    'TEBEG',
-    'TEEND',
-    'SYSTEM',
-    'ISTART',
-    'ICHARG',
-    'KGAMMA',
-    'KSPACING',
-    'EFIELD_PEAD',
-    'LPLANE',
-    'LSEPC',
-    'LSEPB',
-    'OMEGAMAX',
-    'ENCUTGW',
-    'NBANDSGW',
-    'NBANDSO',
-    'NBANDSV',
-    'ANTIRES',
-    'NOMEGA',
-    'OMEGATL',
-    'NCORE',
-    'NPAR',
-    'LSCALU',
-    'NSIM',
-    'ISYM',
-    'SYMPREC',
-    'LORBIT',
-    'EMIN',
-    'EMAX',
-    'NEDOS',
-    'LAECHG',
-    'LSORBIT',
-    'SAXIS',
-    'ISPIN',
-    'NBANDS',
-    'PSTRESS',
-    'ADDGRID',
-    'MAGMOM',
-    'GGA_COMPAT',
-    'IMAGES',
-    'LDAU',
-    'LDAUTYPE',
-    'LDAUL',
-    'LDAUU',
-    'LDAUJ',
-    'LDAUPRINT',
-    'LASPH',
-    'LMAXMIX',
-    'NFREE',
-    'AMIX',
-    'BMIX',
-    'AMIX_MAG',
-    'BMIX_MAG',
-    'WC',
-    'MAXMIX',
-    'OCCDIR1',
-    'OCCEXT',
-    'LHFCALC',
-    'HFSCREEN',
-    'TIME',
-    'PRECFOCK',
-    'NKRED',
-    'NGX',
-    'NGY',
-    'NGZ',
-    'NBMOD',
-    'LPARD',
-    'EINT',
-    'LWAVE',
-    'GGA',
-    'IALGO',
-    'LSCALAPACK',
-    'AMIN',
-    'IDIPOL',
-    'LDIPOL',
-    'DIPOL',
-    'LVTOT',
-    'AEXX',
-    'LDIAG',
-    'METAGGA',
-    'CMBJB',
-    'CMBJA',
-    'IMIX',
-    'LPEAD',
-    'LEPSILON',
-    'LCALCEPS',
-    'CSHIFT',
-    'LOPTICS',
-    'LRPA',
-    'LSPECTRAL',
-    'LCHARG',
-    'LELF',
-    'RWIGS',
-    'NUPDOWN',
-    'ALDAC',
-    'LAMBDA',
-    'SUBATOM',
-    'KPPRA',
-    'LAMBDA_D_K',
-    'USEPOT',
-    'M_CONSTR',
-    'I_CONSTRAINED_M',
-    'RWIGS',
-    'LSOL',
-    'EB_k',
-    'TAU',
-    'CORE_C',
-    'EB_K',
-    'LVDW_EWALD',
-    'VDW_C6',
-    'VDW_R0',
-    'NWRITE',
-    'MAGATOM',
-    'DOSTATIC',
-    'IWAVPRE',
-    'MIXPRE',
-
+'AGGAC',
+'LUSE_VDW',
+'PARAM1',
+'PARAM2',
+'LVDW',
+'LVHAR',
+'LCALCPOL',
+'EFIELD',
+'VDW_RADIUS',
+'VDW_SCALING',
+'VDW_CNRADIUS',
+'LWANNIER90_RUN',
+'IVDW',
+'VDW_D',
+'MDALGO',
+'TEBEG',
+'TEEND',
+'SYSTEM',
+'ISTART',
+'ICHARG',
+'KGAMMA',
+'KSPACING',
+'EFIELD_PEAD',
+'LPLANE',
+'LSEPC',
+'LSEPB',
+'OMEGAMAX',
+'ENCUTGW',
+'NBANDSGW',
+'NBANDSO',
+'NBANDSV',
+'ANTIRES',
+'NOMEGA',
+'OMEGATL',
+'NCORE',
+'NPAR',
+'LSCALU',
+'NSIM',
+'ISYM',
+'SYMPREC',
+'LORBIT',
+'EMIN',
+'EMAX',
+'NEDOS',
+'LAECHG',
+'LSORBIT',
+'SAXIS',
+'ISPIN',
+'NBANDS',
+'PSTRESS',
+'ADDGRID',
+'MAGMOM',
+'GGA_COMPAT',
+'IMAGES',
+'LDAU',
+'LDAUTYPE',
+'LDAUL',
+'LDAUU',
+'LDAUJ',
+'LDAUPRINT',
+'LASPH',
+'LMAXMIX',
+'NFREE',
+'AMIX',
+'BMIX',
+'AMIX_MAG',
+'BMIX_MAG',
+'WC',
+'MAXMIX',
+'OCCDIR1',
+'OCCEXT',
+'LHFCALC',
+'HFSCREEN',
+'TIME',
+'PRECFOCK',
+'NKRED',
+'NGX',
+'NGY',
+'NGZ',
+'NBMOD',
+'LPARD',
+'EINT',
+'LWAVE',
+'GGA',
+'IALGO',
+'LSCALAPACK',
+'AMIN',
+'IDIPOL',
+'LDIPOL',
+'DIPOL',
+'LVTOT',
+'AEXX',
+'LDIAG',
+'METAGGA',
+'CMBJB',
+'CMBJA',
+'IMIX',
+'LPEAD',
+'LEPSILON',
+'LCALCEPS',
+'CSHIFT',
+'LOPTICS',
+'LRPA',
+'LSPECTRAL',
+'LCHARG',
+'LELF',
+'RWIGS',
+'NUPDOWN',
+'ALDAC',
+'LAMBDA',
+'SUBATOM',
+'KPPRA',
+'LAMBDA_D_K',
+'USEPOT',
+'M_CONSTR',
+'I_CONSTRAINED_M',
+'RWIGS',
+'LSOL',
+'EB_k',
+'TAU',
+'CORE_C',
+'EB_K',
+'LVDW_EWALD',
+'VDW_C6',
+'VDW_R0',
+'NWRITE',
+'MAGATOM',
+'DOSTATIC',
+'IWAVPRE',
+'MIXPRE',
+'LANGEVIN_GAMMA_L',
+'LANGEVIN_GAMMA',
+'PMASS'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
 siman_keys = [
-    'universal',  # universal paramater with any content
-    'u_ramping_region',  # deprecated
-    'u_ramping_nstep',  # number of u ramping steps
-    'magnetic_moments',
-    'afm_ordering',
-    'set_sequence',  # sequence of sets
-    'savefile',  # additional keys pointing which files should be saved
-    # list, first position is number of points, then high-symmetry k-points in the form ['G', 0, 0, 0] in reciprocal space for calculating band structure
-    'k_band_structure',
-    'path2pot',  # path to folder with potentials - used with potdir; if not provided that header.path2potentials is used
-    'path_to_potcar',  # explicit path to potential - depreacated
-    'periodic',  # 1 or 0, periodic boundary conditions or not; by default considered periodic
+'universal', # universal paramater with any content
+'u_ramping_region', #deprecated
+'u_ramping_nstep', #number of u ramping steps
+'magnetic_moments',
+'afm_ordering',
+'set_sequence',# sequence of sets
+'savefile', #additional keys pointing which files should be saved
+'k_band_structure', # list, first position is number of points, then high-symmetry k-points in the form ['G', 0, 0, 0] in reciprocal space for calculating band structure 
+'path2pot', # path to folder with potentials - used with potdir; if not provided that header.path2potentials is used
+'path_to_potcar', # explicit path to potential - depreacated
+'periodic', # 1 or 0, periodic boundary conditions or not; by default considered periodic
+'mul_nbands_small_cell', 
+'mul_nbands', 
 ]
 
 aims_keys = [
@@ -219,13 +222,14 @@ qe_keys = [
 
 'gaussian keys'
 gaussian_keys = [
-    'functional',
-    'basis_set',
-    'job_type',
-    'optional',
-    'multiplicity',
-    'charge',
-    'SCRF',
+'functional',
+'basis_set',
+'job_type',
+'optional',
+'multiplicity',
+'charge',
+'SCRF',
+'chk',
 ]
 
 
@@ -449,6 +453,9 @@ class InputSet():
             s = self
         else:
             s = copy.deepcopy(self)
+        if 'add_nbands' in param and 'mul_nbands' in param:
+            printlog('Error! Use either *add_nbands* or *mul_nbands*. Their meaning is equivalent giving the multiplier by which the number of bands will be increased from their minimum value.')
+        
         if self.calculator == 'qe':
             for section in param:
                 if section in self.params.keys():
@@ -461,11 +468,8 @@ class InputSet():
                         self.params[section][key] = param[section][key]
             if 'KSPACING' in self.params.keys():
                 self.vasp_params['KSPACING'] = self.params['KSPACING']['value']
-            # print(self.params)
         else:
-
             for key in param:
-                # print(key)
                 if key in vasp_keys:
                     s.set_params_dict(key, param[key])
 
@@ -473,7 +477,7 @@ class InputSet():
                     for key2 in param[key]:
                         s.set_potential(key2, param[key][key2])
 
-                elif key == 'add_nbands':
+                elif key == 'add_nbands' or key == 'mul_nbands':
                     s.set_add_nbands(param[key])
 
                 elif key == 'ngkpt':
@@ -510,15 +514,15 @@ class InputSet():
 
                     s.set_sequence = sets  # put objects instead of names
 
-                # if hasattr(s, 'set_sequence') and s.set_sequence:
-                #     sets = []
-                #     for se in s.set_sequence:
-                #         if type(se) == str:
-                #             sets.append(copy.deepcopy(varset[se]))
-                #         else:
-                #             sets.append(copy.deepcopy(se))
+                    # if hasattr(s, 'set_sequence') and s.set_sequence:
+                    #     sets = []
+                    #     for se in s.set_sequence:
+                    #         if type(se) == str:
+                    #             sets.append(copy.deepcopy(varset[se]))
+                    #         else:
+                    #             sets.append(copy.deepcopy(se))
 
-                #     s.set_sequence = sets  #put objects instead of names
+                    #     s.set_sequence = sets  #put objects instead of names
         return s
 
     def read_universal(self, filename):
@@ -1018,62 +1022,63 @@ def init_default_sets(init=0):
 
         s.update()
         header.varset[setname] = copy.deepcopy(s)
-
-    setname = 'static'
-    if init or setname not in varset:  # init only once
-        # default starting set without relaxation
-        s = InputSet(setname, calculator='vasp')
+    
+    setname = 'static' #SP
+    if init or setname not in varset: #init only once
+        s = InputSet(setname, calculator = 'vasp') #default starting set without relaxation
         s.kpoints_file = True
         s.add_nbands = 1.5
         s.params = {
-            'ISTART': 0,
-            'NELM': 50,
-            'EDIFF': 1e-05,
-            'NSW': 0,
-            'EDIFFG': 0,
-            'IBRION': 1,
-            'ISIF': 2,
-            'PREC': "Normal",
-            'ALGO': "Normal",
-            'ENCUT': 400,
-            'ENAUG': 400*1.75,
-            'KSPACING': 0.2,
-            'KGAMMA': ".TRUE.",
-            'LREAL': "Auto",
-            'ISMEAR': 0,
-            'SIGMA': 0.1,
-            'LPLANE': ".TRUE.",
-            'NPAR': 1,
-        }
+            'ISTART'    : 0,
+            'NELM'      : 50,
+            'EDIFF'     : 1e-05,
+            'NSW'       : 0,
+            'PREC'      : "Normal",
+            'ALGO'      : "Normal",
+            'ENCUT'     : 400,
+            'ENAUG'     : 400*1.75,
+            'KSPACING'  : 0.2,
+            'KGAMMA'    : ".TRUE.",
+            'LREAL'     : "Auto",
+            'ISMEAR'    : 0,
+            'SIGMA'     : 0.1,
+            'LPLANE'    : ".TRUE.",
+            'NPAR'      : 1,
+            'mul_nbands_small_cell'      : 3,
+            }
         s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
 
         s.update()
         header.varset[setname] = copy.deepcopy(s)
+        header.varset = read_vasp_sets([('opts' ,'static', {'IBRION'    : 1, 'ISIF'      : 2, 'NSW':20, 'EDIFFG':-0.05, },)] )
 
-    setname = 'opt'
-    if init or setname not in varset:  # init only once
+
+
+    setname = 'static_low'
+    if init or setname not in varset: #init only once
         # sys.exit()
         s = InputSet(setname, calculator='vasp')
         s.kpoints_file = True
         s.add_nbands = 1.5
         s.params = {
-            'IBRION': 1,
-            'ENCUT': 150,
-            'EDIFFG': -0.05,
-            'SIGMA': 0.2,
-            'ISIF': 2,
-            'EDIFF': 1e-05,
-            'NSW': 20,
-            'ISMEAR': 2,
-            'KSPACING': 0.2,
-        }
+            'ENCUT'     : 150,
+            'EDIFF'     : 1e-04,
+            'NSW'       : 0,
+            'SIGMA'     : 0.1,
+            'ISMEAR'    : 0,
+            'KSPACING'  : 0.5,
+            'mul_nbands_small_cell'      : 3,
+            }
         s.vasp_params = s.params
         s.potdir = copy.deepcopy(header.nu_dict)
 
         s.update()
         header.varset[setname] = copy.deepcopy(s)
-    # print(header.varset[setname], setname)
+
+    header.varset = read_vasp_sets([('opts_low' ,'static_low', {'IBRION'    : 1, 'ISIF'      : 2, 'NSW':20, 'EDIFFG':-0.1},)] )
+
+
 
     setname = 'gaus_sp'
     if init or setname not in varset:  # init only once

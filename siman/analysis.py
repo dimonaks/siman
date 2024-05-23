@@ -182,7 +182,7 @@ def calc_redox(cl1, cl2, energy_ref = None, value = 0, temp = None, silent = 0, 
     Calculated average redox potential and change of volume
     cl1 (Calculation) - structure with higher concentration
     cl2 (Calculation) - structure with lower concentration
-    energy_ref (float) - energy in eV per one alkali ion in anode; default value is for Li; -1.31 eV for Na, -1.02 eV for K
+    energy_ref (float) - energy in eV per one alkali ion in anode; default value is -1.9 eV for Li; -1.31 eV for Na, -1.02 eV for K
     
     temp(float) - potential at temperature, self.F is expected from phonopy calculations
     
@@ -1506,7 +1506,8 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
     natom2 = st2.get_natom()
 
     if natom1%natom2:
-        printlog('Warning! Non-stoichiometric slab, atom1/natom2 is', natom1/natom2)
+        printlog('Warning! Non-stoichiometric slab, natom1/natom2 is', natom1/natom2, 
+            imp = 'y')
 
 
     if normal == 0:
@@ -1574,7 +1575,8 @@ def suf_en(cl1, cl2, silent = 0, chem_pot = None, return_diff_energy = False, ev
             if abs(dif) > 0:
                 el_dif[el] = int(dif) 
 
-        print('The following elements are off-stoichiometry in the slab', el_dif, 'please provide corresponding chemical potentials')
+        if not silent:
+            print('The following elements are off-stoichiometry in the slab', el_dif, 'please provide corresponding chemical potentials')
         
         E_nonst = 0
         for key in el_dif:
@@ -1705,7 +1707,6 @@ def gb_en_ideal(cl_gb, cl_bulk, n_gbs = 2):
     n1 = st1.natom
     e2 = cl_bulk.e0
     n2 = st2.natom
-
 
     A = st1.get_surface_area()
 

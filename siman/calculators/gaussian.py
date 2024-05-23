@@ -96,7 +96,10 @@ class CalculationGaussian(Calculation):
         spin_multiplicity = sp.get('multiplicity')
         charge = sp.get('charge')
         SCRF = sp.get('SCRF')
+        chk = sp.get('chk')
         # route_parameters = None#{"SCF":"Tight"}
+        print(sp)
+        print('job_type', job_type)
         route_parameters = {job_type:''}
         if SCRF:
             route_parameters[SCRF] = ''
@@ -106,6 +109,12 @@ class CalculationGaussian(Calculation):
             mem = 24
 
         link0_parameters = {'%NProcShared':self.cluster['corenum'], '%mem':str(mem)+'GB'}
+        if chk:
+            link0_parameters['%chk'] = str(chk)
+        
+        # print(functional)
+        # if not functional:
+            # printlog('Error! The set contains no functional, please provide!')
 
         inp = GaussianInput(self.init, basis_set = basis_set, charge = charge, spin_multiplicity = spin_multiplicity,
             functional = functional, route_parameters = route_parameters, 

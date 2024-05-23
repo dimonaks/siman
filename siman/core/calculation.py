@@ -48,7 +48,7 @@ if header.pymatgen_flag:
     from pymatgen.core.composition import Composition
 
 
-from siman.header import printlog
+from siman.header import printlog,runBash
 
 from siman import set_functions
 # from siman.small_functions import return_xred, makedir, angle, is_string_like, cat_files, grep_file, red_prec, list2string, is_list_like, b2s, calc_ngkpt, setting_sshpass
@@ -558,9 +558,14 @@ class Calculation(object):
             header.db[id].id = id
         return clcopy
 
-    def jmol(self, *args, **kwargs):
-        self.end.jmol(*args, **kwargs)
-
+    def jmol(self, r = 0, *args, **kwargs):
+        if r == 5:
+            self.get_file('*XDATCAR')
+            filename = self.path['xdatcar']
+            runBash(header.PATH2OVITO+' '+filename, detached = True)
+        else:
+            self.end.jmol(r=r,*args, **kwargs)
+    
     def poscar(self):
         self.end.write_poscar()
 
@@ -764,15 +769,16 @@ class Calculation(object):
         dostype = pm.get('dostype') or 'partial'
         nneighbors = pm.get('nneighbors') or 6
         legend = pm.get('legend') or 'best'
+        xlabel = pm.get('xlabel') or '$E-E_F$, eV'
+        ylabel = pm.get('ylabel') or 'Total DOS, states/eV'
+        DOSCAR = pm.get('DOSCAR')
 
         if efermi_origin is None:
             efermi_origin = 1
 
-        xlabel = '$E-E_F$, eV'
+
         if multi is None:
-            multi = {'first': 1, 'last': 1, 'ax': None,
-                     'hide_xlabels': False, 'pad': None}
-            ylabel = 'Total DOS, states/eV'
+            multi = {'first':1, 'last':1, 'ax':None, 'hide_xlabels':False, 'pad':None}
         else:
             ylabel = None
             if multi['hide_xlabels']:
@@ -843,31 +849,32 @@ class Calculation(object):
 
 
         if not iatoms:
-            # just one plot
-            plot_dos(cl,  iatom=iTM+1,
-                     dostype=dostype, orbitals=orbitals,
-                     labels=labels,
-                     nsmooth=nsmooth,
-                     image_name=image_name,
-                     # invert_spins = invert_spins,
-                     efermi_origin=efermi_origin,
-                     efermi_shift=efermi_shift,
-                     neighbors=nneighbors,
-                     show=0,  plot_param={
-                         'figsize': (6, 3),
-                         'first': multi['first'], 'last': multi['last'], 'ax': multi['ax'], 'pad': multi['pad'], 'hide_xlabels': multi['hide_xlabels'],
-                         'xlabel': xlabel, 'ylabel': ylabel,
-                         'corner_letter': corner_letter,
-                         'linewidth': linewidth,
-                         'fontsize': fontsize,
-                         'legend': legend,
-                         'ylim': ylim, 'ver': 1, 'fill': 1,
-                         # 'ylim':(-1,1),
-                         'ver_lines': ver_lines,
-                         'xlim': xlim,
-                         'x_nbins': x_nbins,
-                         # 'xlim':(-0.5,0.1),
-                         'dashes': (5, 1), 'fig_format': fig_format, 'fontsize': fontsize})
+            #just one plot
+            plot_dos(cl,  iatom = iTM+1,  
+            dostype = dostype, orbitals = orbitals, 
+            labels = labels, 
+            nsmooth = nsmooth, 
+            image_name = image_name, 
+            # invert_spins = invert_spins,
+            efermi_origin = efermi_origin,
+            efermi_shift = efermi_shift,
+            neighbors = nneighbors,
+            DOSCAR =DOSCAR,
+            show = 0,  plot_param = {
+            'figsize': (6,3), 
+            'first':multi['first'], 'last':multi['last'], 'ax':multi['ax'], 'pad':multi['pad'], 'hide_xlabels':multi['hide_xlabels'],
+            'xlabel':xlabel, 'ylabel':ylabel,
+            'corner_letter':corner_letter,
+            'linewidth':linewidth, 
+            'fontsize':fontsize,
+            'legend':legend,
+            'ylim':ylim, 'ver':1, 'fill':1,
+            # 'ylim':(-1,1), 
+            'ver_lines':ver_lines,
+            'xlim':xlim, 
+            'x_nbins':x_nbins,
+            # 'xlim':(-0.5,0.1), 
+            'dashes':(5,1), 'fig_format':fig_format, 'fontsize':fontsize})
 
         if iatoms:
 
@@ -916,13 +923,14 @@ class Calculation(object):
                     xlabel = "Energy (eV)"
 
                 # print()
-                plot_dos(cl,  iatom=iat+1,  efermi_origin=efermi_origin,
-                         dostype='partial', orbitals=orbitals,
-                         neighbors=nneighbors,
-                         labels=['', ''],
-                         nsmooth=nsmooth,
-                         color_dict=color_dicts[i % 2],
-                         image_name=image_name,
+                plot_dos(cl,  iatom = iat+1,  efermi_origin = efermi_origin,
+                dostype = 'partial', orbitals = orbitals, 
+                neighbors = nneighbors,
+                labels = ['', ''], 
+                nsmooth = nsmooth, 
+                color_dict = color_dicts[i%2],
+                image_name = image_name, 
+                DOSCAR =DOSCAR,
 
                          # invert_spins = invert_spins,
                          # show_gravity = (1, 'p6', (-10, 10)),
@@ -1120,8 +1128,8 @@ class Calculation(object):
             # sys.exit()
 
         else:
-            printlog("check_kpoints(): The actual k-spacings are ",
-                     np.array(self.calc_kspacings(N)).round(2), imp='Y')
+            printlog("check_kpoints(): The actual k-spacings are ", [f'{ks:.2f}' for ks in self.calc_kspacings(N)], imp = 'Y')
+        
         return N
 
     def calc_kspacings(self, ngkpt=None, sttype='init'):
@@ -1251,6 +1259,10 @@ class Calculation(object):
         elif 'xml' in filetype:
             self.path['xml'] = path_to_file
 
+        elif 'XDATCAR' in filetype:
+            self.path['xdatcar'] = path_to_file
+
+
         # print(self.cluster_address)
         # print(self.project_path_cluster+'/')
         # sys.exit()
@@ -1363,7 +1375,8 @@ class Calculation(object):
                 'full_nomag' - full without magmom
                 'full' - full with magmom
                 'full_chg' - full with magmom and including chg file
-
+                'full_wave' - full with magmom and including wavecar
+            
             up (str) - update key transferred to add_loop and res_loop;
                 'up1' - create new calculation if not exist
                 'up2' - recreate new calculation overwriting old; for reading results redownload output files
@@ -1403,6 +1416,10 @@ class Calculation(object):
             suffix = '.if'
         if iopt == 'full_chg':
             suffix = '.ifc'
+        if iopt == 'full_wave':
+            suffix = '.ifw'
+
+
 
         if 'it_suffix' in kwargs:
             it_suffix = '.'+kwargs['it_suffix']
@@ -1419,10 +1436,9 @@ class Calculation(object):
             if not hasattr(self, 'children'):
                 self.children = []
 
-            if not add and len(self.children) > 0:
-                print('Children were found in self.children:', len(
-                    self.children), ' childs, by default reading last, choose with *i_child* ')
-
+            if not add and len(self.children)>0:
+                printlog('Children were found in self.children:', len(self.children), ' childs, by default reading last, choose with *i_child* ', imp = 'n')
+                
                 idd = None
                 for i in self.children:
                     # print(i, ise, i[1], i[1] == ise)

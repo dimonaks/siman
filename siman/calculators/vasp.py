@@ -212,7 +212,7 @@ class CalculationVasp(Calculation):
                 curset.add_nbands = None
 
 
-            tve =0 # total number of valence electrons
+            tve = 0 # total number of valence electrons
             for i in range(st.ntypat):
                 # print self.init.zval
                 tve += self.init.zval[i] * st.nznucl[i] #number of electrons 
@@ -221,16 +221,24 @@ class CalculationVasp(Calculation):
                 vp['NELECT'] = int(tve - params['charge'])
 
 
-            if curset.add_nbands != None:
+            if vp.get('mul_nbands_small_cell') is not None and st.natom < 9:
+                mul_nbands = vp.get('mul_nbands_small_cell')
+                printlog('I use mul_nbands_small_cell, since the cell has less than 9 atoms')
+            elif curset.add_nbands is not None:
+                mul_nbands = curset.add_nbands
+            else:
+                mul_nbands = None
+
+            if mul_nbands is not None:
 
                 nbands_min = math.ceil(tve / 2.)
-                self.nbands = int ( round ( nbands_min * curset.add_nbands ) )
-                # print(self.nbands)
-                
-
+                self.nbands = int ( round ( nbands_min * mul_nbands ) )
                 vp['NBANDS'] = self.nbands
-                printlog('I found that at least', nbands_min, ' bands are required. I will use', self.nbands, 'bands; add_nbands = ', curset.add_nbands)
-
+                
+                printlog('I found that at least', nbands_min, ' bands are required. I will use', self.nbands, 'bands; mul_nbands = ', mul_nbands)
+            else:
+                if 'NBANDS' not in vp:
+                    printlog('Warning! No NBANDS in your set. The VASP will use ')
 
 
 
@@ -299,7 +307,9 @@ class CalculationVasp(Calculation):
 
 
                 for key in sorted(vp):
-    
+                    if key in set_functions.siman_keys:
+                        continue
+
                     if key == 'SYSTEM':
                         ''
                     elif key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #

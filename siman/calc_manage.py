@@ -17,9 +17,6 @@ except:
     print('calc_manage.py: pymatgen is not available')
     pymatgen_flag = False 
 
-if pymatgen_flag:
-    from pymatgen.ext.matproj import MPRester
-    from pymatgen.io.vasp.inputs import Poscar
 
 import siman
 from siman import header
@@ -43,7 +40,7 @@ from siman.picture_functions import plot_mep, fit_and_plot, plot_conv
 from siman.analysis import find_polaron, neb_analysis,polaron_analysis, calc_redox, matrix_diff
 from siman.geo import interpolate, replic, image_distance, scale_cell_uniformly, scale_cell_by_matrix, remove_atoms, create_deintercalated_structure, create_antisite_defect, create_antisite_defect2, local_surrounding, find_moving_atom
 from siman.set_functions import init_default_sets
-from siman.database import push_figure_to_archive
+from siman.database import push_figure_to_archive, write_database
 
 from siman.calculators.qe import CalculationQE
 
@@ -301,7 +298,7 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
 
 
 
-def add_loop(it, setlist, verlist, calc = None, varset = None, 
+def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None, 
     up = 'up2', inherit_option = None, id_from = None, inherit_args = None, confdic = None,
     i_atom_to_remove = None,
     coord = 'direct', savefile = header.default_savefile, show = '', comment = '', 
@@ -310,6 +307,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
     mat_proj_cell = '',
     mat_proj_id = None, 
+    mp_id = None, 
     cee_args = None,
     ise_new = None, it_suffix = None,
     scale_region = None, n_scale_images = 7,
@@ -374,6 +372,13 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
         - input_st - see in add_calculation()
 
         - it_folder - section folder (sfolder) used in struct_des; here needed with input_geo_format = mat_proj
+
+
+        - mat_proj_cell (str) - ?
+        - mat_proj_id (str) - id in materials project database, e.g. 'mp-100'
+        - mp_id (int) - id in materials project database without mp prefix
+
+
 
         - show - only for read_results() ?.
 
@@ -515,8 +520,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
 
 
-
-        it = it.strip()
+        if it:
+            it = it.strip()
         
         if it_folder: 
             it_folder = it_folder.strip()
@@ -564,7 +569,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
         printlog('add_loop: starting add_loop_inherit ...', imp ='n')
         #inherit option
-        inh_opt_ngkpt = ['full', 'full_chg', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite'] #inherit also ngkpt
+        inh_opt_ngkpt = ['full', 'full_chg', 'full_nomag', 'occ', 'r1r2r3', 'remove_imp', 'replace_atoms', 'make_vacancy', 'antisite', 'full_wave'] #inherit also ngkpt
         inh_opt_other = ['supercell', 'r2r3'] # do not inherit ngkpt
         # if inherit_option in inh_opt_ngkpt+inh_opt_other:
         omit_inh_opt = ['inherit_xred', 'continue']
@@ -602,7 +607,8 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             elif inherit_option == 'make_vacancy':
                 it_new = iti+'.vac'
 
-
+            elif inherit_option == 'full_wave':
+                it_new = iti+'.ifw'
 
             if it_suffix: # add to default behaviour; make additional key, which can allow to override default behavior
                 it_new = it_new+'.'+it_suffix
@@ -823,7 +829,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 # exclude = exclude_new
                 params['atat']['exclude_atoms_n'] = exclude_new
 
-            params['update_set_dic']={'add_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
+            params['update_set_dic']={'add_nbands':None, 'mul_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
             'MAGATOM':list2string(input_st.magmom), 
             'MAGMOM':None,
             'SUBATOM':subatom,
@@ -913,7 +919,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                     input_folder = struct_des[it_l].sfolder+'/'+it_l+suf
                     xyz_folder = None
                     # sys.exit()
-
+                printlog('calc_manage: input_folder is', input_folder, imp = '')
 
                 if input_st:
                     st = input_st
@@ -1042,20 +1048,36 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
     def add_loop_take_from_database():
 
-        nonlocal input_geo_format, it
+        nonlocal input_geo_format, it, mat_proj_id, it_folder, input_geo_file
 
         mat_proj_st_id = None
+
+        if mp_id:
+            mat_proj_id = 'mp-'+str(mp_id)
+
+
+
+
         if mat_proj_id:
             input_geo_format = 'mat_proj'
 
         if input_geo_format == 'mat_proj':
-            printlog("Taking structure "+it+" from materialsproject.org ...", imp = 'Y')
-            if it_folder == None:
-                printlog('Error! Please provide local folder for new ', it, 'structure using *it_folder* argument! ', imp = 'Y')
-            
+            printlog("Taking structure", mat_proj_id,"with it name "+str(it)+" from materialsproject.org ...", imp = 'Y')
+
             st = get_structure_from_matproj(it, it_folder, verlist[0], mat_proj_cell, mat_proj_id)
+            if it is None:
+                it = st.it
+                printlog("Giving name "+str(it), imp = 'Y')
+            if it_folder == None:
+                it_folder = st.it_folder
+                printlog('Warning! The local folder for new ', it, 'structure is ',it_folder,'if you need to change use *it_folder* argument! ', imp = 'Y')
+            
+
+
             mat_proj_st_id = st.mat_proj_st_id
             input_geo_file = st.input_geo_file
+            # print(st.input_geo_file)
+            # sys.exit()
             input_geo_format = 'vasp'
 
         elif input_geo_format == 'cee_database':
@@ -1065,6 +1087,7 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
 
             get_structure_from_cee_database(it, it_folder, verlist[0], **cee_args) #will transform it to vasp
             input_geo_format = 'vasp'
+        
         return mat_proj_st_id
 
 
@@ -1261,6 +1284,13 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
                 wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
             else:
                 pass
+        
+        if inherit_option  == 'full_wave':
+            printlog('Copying WAVECAR ...', imp = 'y')
+            if copy_to_server:
+                wrapper_cp_on_server(calc[id_base].path["output"].replace('OUTCAR','WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
+            else:
+                pass
 
         if inherit_option  == 'band_hse':
             printlog('Copying WAVECAR ...', imp = 'y')
@@ -1298,6 +1328,10 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             complete_run() # for IPython notebook
             printlog(run_on_server('./run', header.CLUSTER_ADDRESS), imp= 'Y' )
             printlog('To read results use ', hstring, '; possible options for show: fit, fo, fop, en, mag, magp, smag, maga, occ, occ1, mep, mepp', imp = 'Y')
+
+        if header.AUTO_UPDATE_DB:
+            write_database()
+
 
         return u_scale_flag
 
@@ -1349,7 +1383,6 @@ def add_loop(it, setlist, verlist, calc = None, varset = None,
             
            
             blockdir = header.struct_des[it].sfolder+"/"+varset[inputset].blockfolder #calculation folder
-
 
             add_calculation(it,inputset,v, verlist[0], verlist[-1], 
                 input_folder, blockdir, calc, varset, up, 
@@ -1565,7 +1598,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         printlog('add_calculation():',str(calc[id].name), " has been already created and has state: ", str(calc[id].state),)# imp = 'y')
 
         # print(cl.state)
-
+        if hasattr(cl, 'run_flag') and cl.run_flag:
+            printlog('Warning! This calculation was already submitted. Use run = 2 to submit it again')
+            if run == 2:
+                printlog('Warning! run = 2, the calculation is resubmitted' )
+            else:
+                printlog('Bye-bye!', imp = 'y')
+                return
 
         if check_job:
             res_params = params.get('res_params') or {}
@@ -1643,7 +1682,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         cl.id = id 
         cl.name = str(id[0])+'.'+str(id[1])+'.'+str(id[2]) # 
         cl.dir = blockdir+'/'+ str(id[0]) +'.'+ str(id[1])+'/'
-        
+        cl.run_flag = run 
 
         batch_script_filename = cl.dir +  cl.id[0]+'.'+cl.id[1]+'.run'        
 
@@ -1718,9 +1757,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         if up in ['up1', 'up2', 'up3']:
             if not os.path.exists(cl.dir):
+                printlog('calc_manage.add_calculation() 1731: Creating local directory', cl.dir)
                 os.makedirs(cl.dir)
                 if header.copy_to_cluster_flag:
-                    run_on_server("mkdir -p "+cl.dir, addr = cl.cluster_address)
+                    'seems not needed'
+                    # print('calc_manage.add_calculation() 1731: Creating remote directory', cl.dir, 'at', cl.cluster_address)
+                    # run_on_server("mkdir -p "+cl.dir, addr = cl.cluster_address)
 
             if id[2] == first_version:
                 write_batch_header(cl, batch_script_filename = batch_script_filename,
@@ -2189,6 +2231,10 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         des = 'Fully inherited from the final state of '+cl_base.name+'; "magmom" set to [None]'
         st.magmom = [None]
 
+    elif inherit_type  == 'full_wave':
+
+        des = 'Fully inherited (including Wave file ) from the final state of '+cl_base.name
+
     elif inherit_type == "occ":
         des = 'Fully inherited from the final state of '+cl_base.name+'; occupation matrix is taken from '+calc_from_name
 
@@ -2445,6 +2491,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     if isinstance(st, Structure):
         new.write_geometry('init', des, override = override)
         printlog('Write_geometry using VASP object, please make more general', imp = 'n')
+
+
+
     if geo_folder:
         st.write_xyz(filename=geo_folder + '/' + it_new+"/"+it_new+'.inherit.'+inherit_type+'.'+str(ver_new))
     else:
@@ -3044,6 +3093,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
 
+    if header.AUTO_UPDATE_DB:
+        write_database()
+
 
     if results_dic:
         return results_dic, result_list
@@ -3401,6 +3453,10 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
 
 
     """
+    from pymatgen.ext.matproj import MPRester
+    from pymatgen.io.vasp.inputs import Poscar
+    from pymatgen.core.composition import Composition
+
     with MPRester(header.pmgkey) as m:
         # print m.get_materials_id_references('mp-24850')
         # print m.get_structures('mp-24850')
@@ -3436,8 +3492,14 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
             sf = SpacegroupAnalyzer(st_pmg, symprec = 0.01)
             st_pmg = sf.get_conventional_standard_structure()
 
-        # print(st_pmg.lattice)
+        cm = Composition(st_pmg.formula)
+
+        # print(cm.reduced_formula)
+        if it is None:
+            it = str(cm.reduced_formula)
         # sys.exit()
+        if it_folder is None:
+            it_folder = it
 
     if it:
         add_des(header.struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
@@ -3456,7 +3518,8 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
     st.groundstate_st_id = groundstate_st_id
     st.mat_proj_st_id    = groundstate_st_id
     st.input_geo_file    = path2poscar
-
+    st.it = it
+    st.it_folder = it_folder
 
     return st
 

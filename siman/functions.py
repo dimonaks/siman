@@ -91,7 +91,8 @@ def smoother(x, n, mul = 1, align = 1):
 
 
 def run_on_server(command, addr = None):
-    printlog('Running', command, 'on server ...')
+    
+    printlog('run_on_server(): Running', command, 'on server ...')
     command = command.replace('\\', '/') # make sure is POSIX
     # sys.exit()
     
@@ -160,7 +161,8 @@ def push_to_server(files = None, to = None,  addr = None):
     
     command = ' mkdir -p {:}'.format( to )
     # print('asfsadfdsf', to)
-    printlog('push_to_server():', command, run_on_server(command, addr))
+    run_on_server(command, addr)
+    # printlog('push_to_server():', command, )
     # sys.exit()
 
     printlog('push_to_server(): uploading files ', files, 'to', addr, to)
