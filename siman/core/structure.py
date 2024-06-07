@@ -281,6 +281,10 @@ class Structure():
 
     def exchange_axes_with_atoms(self, i1_r, i2_r):
         """
+        Exchange axes and rotate atoms
+
+        INPUT:
+            i1_r
         
         """
         st = copy.deepcopy(self)
@@ -737,7 +741,19 @@ class Structure():
 
 
     def update_types(self, elements):
-        # update typat, ntypat, znucl, nznucl from elements - list of elements names
+        
+        """
+        updates typat, ntypat, znucl, nznucl according to elements
+        
+        INPUT:
+
+            elements (list of element names) - ['Li','Co','O']
+        
+        RETURN:
+
+            Structure()
+
+        """
         st = copy.deepcopy(self)
         st.ntypat = len(set(elements))
 
@@ -762,7 +778,7 @@ class Structure():
         
         st.get_nznucl()
 
-        print(st.ntypat, st.typat, st.nznucl, st.znucl)
+        printlog(st.ntypat, st.typat, st.nznucl, st.znucl, imp = 'n')
 
         return st
 
@@ -1736,7 +1752,7 @@ class Structure():
                     typat.append(t)
                     xcart.append(st.xcart[i])
                     old_numbers.append(i)
-                    if st.magmom != []:
+                    if len(st.magmom) != 0:
                         if None not in st.magmom:
                             magmom.append(st.magmom[i])
             t+=1
@@ -3585,11 +3601,15 @@ class Structure():
 
         makedir(filename)
 
-        printlog('Starting writing Quantum Espresso', filename,imp = 'y')
+        printlog('Writing structure in Quantum Espresso format ', filename,imp = 'y')
 
 
         with io.open(filename,'w', newline = '') as f:
-            f.write('ATOMIC_POSITIONS\n')
+            f.write('CELL_PARAMETERS angstrom\n')
+            for i in 0, 1, 2:
+                f.write('{:10.6f} {:10.6f} {:10.6f}'.format(st.rprimd[i][0],st.rprimd[i][1],st.rprimd[i][2]) )
+                f.write("\n")
+            f.write('ATOMIC_POSITIONS crystal\n')
             for el, x in zip(st.get_elements(), st.xred):
                 f.write(" {:2s}   {:12.10f}  {:12.10f}  {:12.10f} \n".format(el, x[0], x[1], x[2]) )
 
@@ -3962,9 +3982,9 @@ class Structure():
                 else:
                     st.magmom[i] *= 5
             filename = st.write_cif(mcif = 1)
-        elif r == 5:
-            filename = None
-            ''
+        # elif r == 5:
+        #     filename = None
+        #     ''
         else:
             filename = st.write_poscar(vasp5 = 1)
         

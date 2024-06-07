@@ -4716,7 +4716,7 @@ def run_OMC( cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = 
 
 
 def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise = None, suf = '', up = 0, gmt = 0, soluted_atom = None, e_s = None, 
-    add_loop_dic = {}, cluster = 'cee-omc'):
+    add_loop_dic = None, cluster = 'cee-omc'):
     """
     
     Optionally for each defect atom an occupation matrix can be provided
@@ -4735,6 +4735,11 @@ def run_OMC_sol(cl_defect, cl_ideal, defect_atoms = None, defect_occ = None, ise
     """
     if defect_atoms is None:
         defect_atoms = []
+
+    if add_loop_dic is None:
+        add_loop_dic = {}
+
+
 
     cl_defect_init = cl_defect.copy()
     if not ise:
