@@ -1334,6 +1334,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         maxforce = []; average = [];  gstress =[]
         # mforce = []
         self.list_e_sigma0 = []
+        self.list_etotal = [] # list of MD energies
         self.list_e_without_entr = []
         self.list_e_conv = [] # convergence of energy - all steps
         # try:
@@ -1733,6 +1734,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             
             if "energy   ETOTAL =" in line:
                 self.etotal = float(line.split()[4]) #Total energy in MD simulation
+                self.list_etotal.append(self.etotal)
             
 
 

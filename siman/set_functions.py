@@ -1098,9 +1098,9 @@ def init_default_sets(init=0):
 
     setname = 'qe'
     if init or setname not in varset:  # init only once
-        s.kpoints_file = True
         # default starting set without relaxation
         s = InputSet(setname, calculator='qe')
+        s.kpoints_file = True
         s.params = {
             "control": {
                 "calculation": '"scf"',
