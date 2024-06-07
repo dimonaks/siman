@@ -172,7 +172,8 @@ def cal_chg_diff_files(chg_file1, chg_file2, cl3=None, wcell=0, chg = 'CHGCAR'):
 
 def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
     """
-    Return the the value of charge density or electrostatic potential along z direction of slab; 
+    Return the the value of charge density (filetype = CHGCAR) or electrostatic potential (filetype = LOCPOT) 
+    along z direction of slab; 
 
     chgfile - full path to the file with charge density
     cl - Calculation() with slab structure; 
@@ -180,6 +181,10 @@ def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
 
     RETURN: 
     List of z-coordinates and respective average value of electrostatic pot in the z slice.
+
+    AUTHOR:
+    ?
+
     """
     from siman.picture_functions import fit_and_plot
     

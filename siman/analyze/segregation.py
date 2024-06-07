@@ -1,6 +1,10 @@
 import sys
 from siman.analysis import fit_a
-from siman.header import db
+from siman.header import db, printlog
+from siman.picture_functions import plot_conv
+from siman.functions import gb_energy_volume
+calc = db
+
 def inloop_segreg_analysis(outst, id, b_id, cl, analys_type, conv, n, base, readfiles, loadflag, choose_outcar):
     """
     analysis inside the res_loop; Used for grain boundary segregation project 
