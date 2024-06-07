@@ -1731,6 +1731,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 #self.energy = float(line.split()[4])
                 self.energy_free = float(line.split()[4]) #F free energy
             
+            if "energy   ETOTAL =" in line:
+                self.etotal = float(line.split()[4]) #Total energy in MD simulation
+            
 
 
 
