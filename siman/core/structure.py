@@ -50,7 +50,7 @@ from siman.functions import (read_vectors, read_list, words, read_string,
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
 from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
 local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral, 
-rms_between_structures, rms_between_structures2)
+rms_between_structures, rms_between_structures2, find_slab_width, move_edge, )
 from siman.set_functions import InputSet, aims_keys
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
 
