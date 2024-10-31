@@ -710,7 +710,7 @@ def gb_energy_volume(gb,bulk):
     V_1at = bulk.end.vol / bulk.end.natom #* to_ang**3
 
     E_1at = bulk.energy_sigma0 / bulk.end.natom 
-    A = np.linalg.norm( np.cross(gb.end.rprimd[1], gb.end.rprimd[2])  ) #surface area of gb
+    A = min( np.linalg.norm(np.cross(gb.end.rprimd[0], gb.end.rprimd[1])), np.linalg.norm(np.cross(gb.end.rprimd[0], gb.end.rprimd[2])), np.linalg.norm(np.cross(gb.end.rprimd[1], gb.end.rprimd[2])) ) #surface area of gb
     #print A
     gb.v_gb =      ( gb.end.vol              - V_1at * gb.end.natom) / A / 2. * 1000
     gb.e_gb =      ( gb.energy_sigma0    - E_1at * gb.end.natom) / A / 2. * eV_A_to_J_m * 1000
