@@ -1259,7 +1259,8 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             # print (fitted_v100_id, calc[fitted_v100_id].associated_outcars)
             # sys.exit()
 
-        if ise_new and (hasattr(varset[ise_new], 'k_band_structure') or hasattr(varset[ise_new], 'k_effective_mass')): #copy chgcar
+        if ise_new and ( (hasattr(varset[ise_new], 'k_band_structure') and varset[ise_new].k_band_structure)
+                      or (hasattr(varset[ise_new], 'k_effective_mass') and varset[ise_new].k_effective_mass) ): #copy chgcar
             # calc[id_base].path["charge"]
             printlog('Copying CHGCAR for band structure/effective mass', imp = 'y')
             # print('calc_manage.py, string 1664, calc[id_base].path["charge"] ', calc[id_base].path["charge"])
