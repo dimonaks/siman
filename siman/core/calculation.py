@@ -1,4 +1,5 @@
 # Copyright (c) Siman Development Team.
+# Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 import itertools
 import os
