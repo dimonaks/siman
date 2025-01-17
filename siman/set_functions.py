@@ -208,6 +208,7 @@ siman_keys = [
 'periodic', # 1 or 0, periodic boundary conditions or not; by default considered periodic
 'mul_nbands_small_cell', 
 'mul_nbands', 
+'k_effective_mass', # to generate KPOINTS for effective mass
 ]
 
 aims_keys = [

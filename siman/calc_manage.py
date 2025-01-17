@@ -1259,10 +1259,10 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             # print (fitted_v100_id, calc[fitted_v100_id].associated_outcars)
             # sys.exit()
 
-        if ise_new and hasattr(varset[ise_new], 'k_band_structure') and varset[ise_new].k_band_structure: #copy chgcar
-            
+        if ise_new and ( (hasattr(varset[ise_new], 'k_band_structure') and varset[ise_new].k_band_structure)
+                      or (hasattr(varset[ise_new], 'k_effective_mass') and varset[ise_new].k_effective_mass) ): #copy chgcar
             # calc[id_base].path["charge"]
-            printlog('Copying CHGCAR for band structure', imp = 'y')
+            printlog('Copying CHGCAR for band structure/effective mass', imp = 'y')
             # print('calc_manage.py, string 1664, calc[id_base].path["charge"] ', calc[id_base].path["charge"])
             if copy_to_server: 
                 wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
