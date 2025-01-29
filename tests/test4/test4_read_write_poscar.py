@@ -18,7 +18,7 @@ def test(poscar):
 
 	for file in poscar:
 		st = smart_structure_read(file)
-		st.write_poscar('new_' + file + '.POSCAR')
+		st.write_poscar('new_' + file)
 		line_init = sum(1 for line in open(file))
 		line_after = sum(1 for line in open('new_' + file +'.POSCAR'))
 		
