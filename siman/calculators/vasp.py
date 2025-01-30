@@ -416,8 +416,6 @@ class CalculationVasp(Calculation):
 
         it = self.id[0]
 
-
-
         if hasattr(self.set, 'k_band_structure') and self.set.k_band_structure:
             k = self.set.k_band_structure
             printlog('Writing k-points file for band structure calculation.', imp = 'y')
@@ -433,11 +431,20 @@ class CalculationVasp(Calculation):
                     f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n'.format(ps[1], ps[2], ps[3], ps[0]) ) 
                     f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n\n'.format(pn[1], pn[2], pn[3], pn[0]) ) 
                     ps = pn
-
-
-
-
-
+        
+        
+        elif hasattr(self.set, 'k_effective_mass') and self.set.k_effective_mass:
+            k = self.set.k_effective_mass
+            printlog('Writing k-points file for effective mass calculation.', imp = 'y')
+            
+            with open(filename, 'w', newline = '') as f:
+                f.write('Explicit k-point list\n')
+                f.write('{:} ! full number of points\n'.format(k[0]))
+                f.write('frac\n')
+                for pn in k[1:]:
+                    f.write('{:6.3f} {:6.3f} {:6.3f}   {:1.0f}\n'.format(pn[1], pn[2], pn[3], pn[0]) )
+        
+        
         elif self.set.kpoints_file:
             if self.set.kpoints_file is True:
 
@@ -731,7 +738,7 @@ class CalculationVasp(Calculation):
             if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
                 printlog('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
                 ns = len(spec_mom_is); 
-                number_of_ord = int(math.factorial(ns) / math.factorial(0.5 * ns)**2)
+                number_of_ord = int(math.factorial(ns) / math.factorial(int(0.5 * ns))**2)
                 
                 if number_of_ord > 10000:
                     printlog('Attention! Too much orderings (1000), skipping ...')

@@ -515,8 +515,22 @@ def read_poscar(st, filename, new = True):
                     select.append(flagset)
 
 
+        lattice_vel_vec = []
         velocities = []
         newline = f.readline() # if velocities are available - they are separated by one new line
+
+        if newline.strip() == 'Lattice velocities and vectors':
+            init_state = f.readline()
+            st.init_state = init_state
+
+            for i in range(6):
+                lvelvec = f.readline().split()
+                lattice_vel_vec.append( np.asarray([float(lvelvec[0]), float(lvelvec[1]), float(lvelvec[2])]) )
+            st.lvelvec = lattice_vel_vec
+
+            newline = f.readline()
+
+
         vel1 = f.readline()
         # print(vel1)
         if vel1:

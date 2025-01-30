@@ -3630,7 +3630,7 @@ def remove_vacuum(self, thickness = 0.0):
     return st_new
 
 
-def make_neutral(self, oxidation = None, type = 'element', at_fixed = None, mode = 'equal', 
+def make_neutral(self, oxi_state = None, type = 'element', at_fixed = None, mode = 'equal', 
                 return_oxidation = 1, silent = 1):
     """
     Makes slab with total a charge equal to 0 
@@ -3641,8 +3641,6 @@ def make_neutral(self, oxidation = None, type = 'element', at_fixed = None, mode
             E.g oxi_state = {"Li": 1, "La": 2, "Zr":4, "O": -2}
         type (dir integer) - assign oxidation states based on algorythm
             'element' - by chemical element, requires oxidation in format: 
-                E.g oxi_state = {"Li": 1, "La": 2, "Zr":4, "O": -2}
-            'position' - by position of chemical element, requires oxidation in format:
                 E.g oxi_state = {"Li": 1, "La": 2, "Zr":4, "O": -2}
         at_fixed (dir string) - list of atoms with fixed oxidation states
         mode (string) - how uncompensated charge will be redistributed between unfixed atoms    
@@ -3655,6 +3653,7 @@ def make_neutral(self, oxidation = None, type = 'element', at_fixed = None, mode
         else
             returns only a new structure 
 
+    add: change oxi_states only on transition metals
     author - A. Burov 
 
     """
@@ -3662,7 +3661,7 @@ def make_neutral(self, oxidation = None, type = 'element', at_fixed = None, mode
     st = copy.deepcopy(self)
     st = st.convert2pymatgen()
 
-    st.add_oxidation_state_by_element(oxidation)    
+    st.add_oxidation_state_by_element(oxi_state)    
     diff_chr = st.charge
 
     if (silent  == 1):
@@ -3685,54 +3684,54 @@ def make_neutral(self, oxidation = None, type = 'element', at_fixed = None, mode
                         at_sum += item
             else:
                 if (key not in at_fixed):
-                    if (oxidation[key] < 0):
+                    if (oxi_state[key] < 0):
                         at_sum += item
             
         rel_chr = diff_chr / at_sum
-        for key, item in oxidation.items():
+        for key, item in oxi_state.items():
             if (diff_chr > 0):
                 if (key not in at_fixed):
-                    if (oxidation[key] > 0):
-                        oxidation[key] = item - rel_chr
+                    if (oxi_state[key] > 0):
+                        oxi_state[key] = item - rel_chr
             else:
                 if (key not in at_fixed):
-                    if (oxidation[key] < 0):
-                        oxidation[key] = item - rel_chr
+                    if (oxi_state[key] < 0):
+                        oxi_state[key] = item - rel_chr
 
     elif (mode == 'propotional'):
         ox_sum = 0
         for key, item in at_init.items():
             if (diff_chr > 0):
                 if (key not in at_fixed):
-                    if (oxidation[key] > 0):
-                        ox_sum += oxidation[key]
+                    if (oxi_state[key] > 0):
+                        ox_sum += oxi_state[key]
             else:
                 if (key not in at_fixed):
-                    if (oxidation[key] < 0):
-                        ox_sum += oxidation[key]
+                    if (oxi_state[key] < 0):
+                        ox_sum += oxi_state[key]
 
-        for key, item in oxidation.items():
+        for key, item in oxi_state.items():
             rel_chr = item / ox_sum * diff_chr / at_init[key]
             if (diff_chr > 0):
                 if (key not in at_fixed):
-                    if (oxidation[key] > 0):
-                        oxidation[key] = item - rel_chr
+                    if (oxi_state[key] > 0):
+                        oxi_state[key] = item - rel_chr
             else:
                 if (key not in at_fixed):
-                    if (oxidation[key] < 0):
-                        oxidation[key] = item - rel_chr 
+                    if (oxi_state[key] < 0):
+                        oxi_state[key] = item - rel_chr 
 
-        st.add_oxidation_state_by_element(oxidation)    
+        st.add_oxidation_state_by_element(oxi_state)    
         print(st.charge)
 
     else:
         print("Wrong mode, check the function's description")
 
     if (silent == 1):
-        print("New oxidation states are {}".format(oxidation))
+        print("New oxidation states are {}".format(oxi_state))
 
     if (return_oxidation == 1):
-        return st, oxidation
+        return st, oxi_state
     else:
         return st
 
@@ -3795,6 +3794,32 @@ def find_slab_width(self, vacuum="no"):
         width = c_new
         
     return round(width, 1)
+
+
+def ewald_energy(self, oxi_state="no", silent=0):
+    """
+        Calculate width of the sample without vacuum.
+        INPUT:
+            st - input strucutre
+            oxi_state - oxidation states of elements
+                E.g.  {"Li": 1, "La": 2, "Zr":4, "O": -2}
+        RETURN:
+            Structure's Ewald Energy 
+    """
+    from pymatgen.analysis.ewald import EwaldSummation
+
+    st = copy.deepcopy(self)
+    st = st.convert2pymatgen()
+    st.add_oxidation_state_by_element(oxi_state)
+
+    ew_en = EwaldSummation(st, real_space_cut=None, recip_space_cut=None, eta=None, acc_factor=12.0, 
+                                                                w=0.7071067811865475, compute_forces=False)
+    if not silent:
+        print('Total Ewald energy is {:1.2f} eV'.format(ew_en.total_energy))
+
+    return ew_en.total_energy
+
+
 
 
 

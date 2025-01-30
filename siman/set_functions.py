@@ -184,13 +184,13 @@ vasp_other_keys = [
 'NWRITE',
 'MAGATOM',
 'DOSTATIC',
-'IWAVPRE',
 'MIXPRE',
 'LANGEVIN_GAMMA_L',
 'LANGEVIN_GAMMA',
 'PMASS',
 'ZAB_VDW',
-'IWAVPR'
+'IWAVPR',
+"NBLOCK",
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -208,6 +208,7 @@ siman_keys = [
 'periodic', # 1 or 0, periodic boundary conditions or not; by default considered periodic
 'mul_nbands_small_cell', 
 'mul_nbands', 
+'k_effective_mass', # to generate KPOINTS for effective mass
 ]
 
 aims_keys = [
