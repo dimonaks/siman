@@ -737,7 +737,7 @@ class CalculationVasp(Calculation):
             if len(spec_mom_is) % 2 == 0 and len(spec_mom_is) > 0:
                 printlog('Number of elements is even! trying to find all antiferromagnetic orderings:', imp = 'y')
                 ns = len(spec_mom_is); 
-                number_of_ord = int(math.factorial(ns) / math.factorial(0.5 * ns)**2)
+                number_of_ord = int(math.factorial(ns) / math.factorial(int(0.5 * ns))**2)
                 
                 if number_of_ord > 10000:
                     printlog('Attention! Too much orderings (1000), skipping ...')
