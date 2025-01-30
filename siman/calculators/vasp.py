@@ -32,6 +32,7 @@ class CalculationVasp(Calculation):
         self.len_units = 'Angstrom'
         self.init = Structure()
         self.end = Structure()
+        self.cluster = {'address':''}
 
 
 

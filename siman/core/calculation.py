@@ -772,6 +772,9 @@ class Calculation(object):
         xlabel = pm.get('xlabel') or '$E-E_F$, eV'
         ylabel = pm.get('ylabel') or 'Total DOS, states/eV'
         DOSCAR = pm.get('DOSCAR')
+        color_dicts = pm.get('color_dicts') or [
+                None, {'s': 'k', 'p': 'r', 'p6': '#FF0018', 'd': 'g'}]
+
 
         if efermi_origin is None:
             efermi_origin = 1
@@ -881,8 +884,7 @@ class Calculation(object):
             if corner_letter is None:
                 corner_letter = 1
 
-            color_dicts = [
-                None, {'s': 'k', 'p': 'r', 'p6': '#FF0018', 'd': 'g'}]
+
 
             total = len(iatoms)*1
             # letters = ['(a)', '(b)', '(c)', '(d)']*10
@@ -898,6 +900,9 @@ class Calculation(object):
             xlabel = None
             ylabel = None
             # i_last = 1
+
+
+            # print(color_dicts[i%2])
 
             for iat in iatoms:
                 # for cl, iat in zip([RbVsd, KVsd, Vsd], [13, 61, 53]):

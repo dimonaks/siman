@@ -1560,7 +1560,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                     self.end.xcart = local_xcart
 
             
-                    if out_type == 'xcarts':
+                    if out_type == 'xcarts' or 'md_geo' in show:
                         self.end.list_xcart.append(local_xcart) #xcart at each step only for dimer
 
                         #the change of typat is accounted below

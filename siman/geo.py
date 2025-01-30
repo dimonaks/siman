@@ -1154,7 +1154,7 @@ def determine_symmetry_positions(st, element, silent = 0, symprec = 0.01, angle_
     INPUT:
 
         - st (Structure)
-        - element (str) - name of element, for example Li
+        - element (str) - name of the element, for example Li
         - silent (bool) 
         - symprec (float) - tolerance for symmetry finding
         - angle_tolerance - Angle tolerance for symmetry finding
@@ -1581,11 +1581,11 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
     INPUT:
         el1 - first element name from periodic table for exchange
         el2 - second element name from periodic table for exchange
+        iatom (int) - create antistes using this atom number, from 0
         i_el2_list - use only this specific atom numbers searching AS (duplicates iatom)
 
         tol - tolerance for determining unique antisite configurations (A)
         max_sep - maximum separation between antisite components (A)
-        iatom (int) - create antistes using this atom number, from 0
         return_with_table (bool) - in addition to structures return table with basic information
 
         disp_AS1 - polaronic displacement around first component (-0.2 for hole, +0.2 for electron)

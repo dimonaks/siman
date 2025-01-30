@@ -1703,6 +1703,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 input_geo_format = input_geo_format, input_geo_file = input_geo_file)
 
 
+        #check volume
+        if cl.init.get_volume() < 0:
+            printlog(f'Error! The volume of unitcell is negative = {cl.init.get_volume():.2f} A^3! Check your input structure.')
+
+
+
+
 
         setseq = [cl.set]                                                                                                    
         if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
@@ -1712,6 +1719,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         for curset in setseq:
             if len(setseq) > 1:
                 printlog('sequence set mode: set', curset.ise,':', end = '\n')
+            # print(params['update_set_dic'])
             curset.load(params['update_set_dic'], inplace = True)
             cl.actualize_set(curset, params = params)
 

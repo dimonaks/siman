@@ -379,6 +379,9 @@ class InputSet():
                     "s.params['"+key+"']", str(self.params[key])), imp='Y', end='\n')
 
             printlog('ngkpt:', self.ngkpt, imp='Y')
+            printlog('add_nbands:', self.add_nbands, imp='Y')
+            if hasattr(self, 'mul_nbands'):
+                printlog('mul_nbands:', self.mul_nbands, imp='Y')
             # print(self.calculator)
 
             if hasattr(self, 'calculator') and self.calculator == 'vasp':
@@ -456,9 +459,12 @@ class InputSet():
         else:
             s = copy.deepcopy(self)
         if 'add_nbands' in param and 'mul_nbands' in param:
-            printlog('Error! Use either *add_nbands* or *mul_nbands*. Their meaning is equivalent giving the multiplier by which the number of bands will be increased from their minimum value.')
+            if param['add_nbands'] and param['mul_nbands']:
+                printlog('add_nbands', param['add_nbands'], imp = 'Y')
+                printlog('mul_nbands', param['mul_nbands'], imp = 'Y')
+                printlog('Error! Use either *add_nbands* or *mul_nbands*. Their meaning is equivalent giving the multiplier by which the number of bands will be increased from their minimum value.')
         
-        if self.calculator == 'qe':
+        if hasattr(self, 'calculator') and self.calculator == 'qe':
             for section in param:
                 if section in self.params.keys():
                     for key in param[section]:

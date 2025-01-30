@@ -110,7 +110,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - vacancy_creation - search for neighbors of the same type and make a vacancy as a start position
         - interstitial_insertion - search for two neighboring voids; use them as start and final positions
                                     by inserting atom *atom_to_insert*
-        - None - just use st and st2 as initial and final
+        - None - just use st and st_end as initial and final
         - external - folder with subfolders 00, 01, ... in VASP format is provided using *init_neb_geo_fld*
 
     INPUT:
@@ -142,6 +142,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - upload_vts (bool) - if True upload Vasp.pm and nebmake.pl to server
         - run (bool)  - run on server
         - init_neb_geo_fld - folder with initial geometry files in VASP format, automatically switch on 'external' mode 
+
+        - center_on_moving - places the migrating atom  in the center of the supercell for visualization purpurses
+
 
         - old_behaviour (str) - choose naming behavior before some date in the past for compatibility with your projects
             '020917'

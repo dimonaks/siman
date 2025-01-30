@@ -2098,8 +2098,9 @@ class Structure():
         el_new - new element periodic table short name
         mag_new - new magnetic moment
         mode 
-            1 - old behaviour, numbering is not conserved
+            1 - old behaviour, numbering is not conserved, may work incorrectly when list of numbers is random!
             2 - numbering is conserved if el_new already exists in self
+            3 - first remove, then return back
 
         TODO:
         Now if el_new already exists in structure, numbering is conserved,
@@ -2119,7 +2120,7 @@ class Structure():
         else:
             warn = 'Y'
 
-
+        # print('atoms_to_replace', atoms_to_replace)
         if mode in [1,2]:
             while atom_exsist:
 
@@ -2199,17 +2200,24 @@ class Structure():
 
 
         for i, (n, el) in enumerate(  zip(numbers, st.get_elements()) ):
-            if el == el_old: nums.append(n)
-            # print(nums)
+            if el == el_old: 
+                nums.append(n)
+                # print(n, el)
+        # print(nums)
         n_replace = int(len(nums)*concentration)
         c = float(n_replace/len(nums))
-        if c != concentration: print('\n\nAttention! This concentraiton is impossible. Real concentration is - ', c) 
+        if c != concentration: 
+            print('\n\nAttention! This concentraiton is impossible. Real concentration is - ', c) 
+        
         print('\nI have found {} from {} random atoms of {} to replace by {} \n'.format(n_replace, len(nums), el_old, el_new ))
         random.shuffle(nums)
 
         atoms2replace = nums[0:n_replace]
-        # print(num2replace)
-        st = st.replace_atoms(atoms2replace, el_new)
+        # print(atoms2replace)
+        # print(el_new)
+        # st.printme()
+        st = st.replace_atoms(atoms2replace, el_new, silent = 0, mode = 3)
+        # st.printme()
 
         return st
 

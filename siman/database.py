@@ -181,14 +181,15 @@ def write_database(calc = None, conv = None, varset = None, size_on_start = None
 
 
         printlog('Opening ', header.PATH2SHELVE_DB, 'for writing')
-
-        with shelve.Shelf(dbm.open(header.PATH2SHELVE_DB, 'c'), protocol = 3) as d:
+        mydb = dbm.open(header.PATH2SHELVE_DB, 'c')
+        with shelve.Shelf(mydb, protocol = 3) as d: # this gives more control over dbm; can be important to close manually!
             for key in header.db:
                 printlog('saving key:', key, imp = '')
                 # print(key)
                 # print(key, header.calc[key].inh_id)
                 d[str(key)] = header.db[key]
-        
+        mydb.close()
+
         if header.reorganize: #please run me from time to time to reduce the size of the database file
             with dbm.open(header.PATH2SHELVE_DB, 'w') as d:
                 d.reorganize()
