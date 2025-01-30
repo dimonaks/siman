@@ -3823,6 +3823,13 @@ class Structure():
 
 
             # print('write_poscar(): predictor:\n', st.predictor)
+
+            if hasattr(st, 'init_state') and hasattr(st, 'lvelvec'):
+                f.write("Lattice velocities and vectors\n")
+                f.write(st.init_state)
+                for v in st.lvelvec:
+                    f.write( '  {:18.16f}  {:18.16f}  {:18.16f}\n'.format(v[0], v[1], v[2]) )
+
             if hasattr(st, 'vel') and len(st.vel)>0:
                 printlog("Writing velocity to POSCAR ", imp = 'y')
                 # f.write("Cartesian\n")
