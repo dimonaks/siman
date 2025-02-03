@@ -1364,6 +1364,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         #self.end.znucl = self.znucl
         self.end.name = self.name+'.end'
         self.end.list_xcart = []
+        self.end.list_rprimd = []
+        self.list_stress = []
         self.energy = empty_struct()
         self.end.zval = []
         de_each_md = 0 # to control convergence each md step
@@ -1549,12 +1551,16 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                     printlog([v > 1e-3 for v in low+high], imp = 'Y' )
             
             if "direct lattice vectors" in line:
-                if not contcar_read:
+                if 'md_geo' in show or not contcar_read:
+                    rprimd = []
                     for v in 0,1,2:
                         line = outcarlines[i_line+1+v]
                         line = line.replace('-', ' -')
                         # print(line)
-                        self.end.rprimd[v] = np.asarray( [float(ri) for ri in line.split()[0:3]   ] )
+                        rprimd.append(np.asarray( [float(ri) for ri in line.split()[0:3]   ] ))
+                    self.end.rprimd = rprimd
+                    if 'npt' in show:
+                        self.end.list_rprimd.append(rprimd)
 
 
                 #print self.end.rprimd
@@ -1765,6 +1771,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 lines_str = line.split()[2:]
                 try:
                     self.stress = [float(i)*100 for i in lines_str]  # in MPa 
+                    if 'md_geo' in show and 'npt' in show:
+                        self.list_stress.append(self.stress)
                 except:
                     printlog('Warning! Some problem with *in kB* line of OUTCAR', imp = 'y')
                     printlog(line, imp = 'y')

@@ -1,3 +1,3 @@
 rm dist/*
-python3.8 setup.py sdist 
-python3.8 -m twine upload --repository siman dist/*
+python setup.py sdist 
+python -m twine upload --repository siman dist/*

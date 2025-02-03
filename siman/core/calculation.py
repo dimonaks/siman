@@ -100,6 +100,7 @@ class Calculation(object):
         header.db[self.id] = self
         self.cluster_address = ''
         self.project_path_cluster = ''
+        self.dir = '' # directory of calculation
 
     def get_path(self,):
         path = os.path.dirname(os.getcwd()+'/'+self.path['output'])

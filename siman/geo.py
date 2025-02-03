@@ -1067,6 +1067,8 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     sc.typat = []
     sc.xred  = []
     sc.magmom  = []
+    sc.init_numbers = []
+    
     #find range of multiplication
     mi = np.min(mul_matrix, axis = 0)
     ma = np.max(mul_matrix, axis = 0)
@@ -1085,6 +1087,13 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     # print([range(*z) for z in zip(mi-mp, ma+mp)])
     # print(st.rprimd)
     # print(sc.rprimd)
+
+    if hasattr(st, 'init_numbers') and st.init_numbers:
+        numbers = st.init_numbers
+    else:
+        numbers = range(st.natom)
+
+
     for uvw in itertools.product(*[range(*z) for z in zip(mi-mp, ma+mp)]): #loop over all ness uvw
         # print(uvw)
         xcart_mul = st.xcart + np.dot(uvw, st.rprimd) # coordinates of basis for each uvw
@@ -1092,7 +1101,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
         xred_mul  = xcart2xred(xcart_mul, sc.rprimd)
 
         # print(len(xred_mul), len(xcart_mul), len(st.typat), len(st.magmom) )
-        for xr, xc,  t, m in zip(xred_mul, xcart_mul, st.typat, st.magmom):
+        for xr, xc,  t, m, n in zip(xred_mul, xcart_mul, st.typat, st.magmom, numbers):
             # if 0<xr[0]<1 and 0<xr[1]<1 and 0<xr[2]<1:
                 # print (xr)
             if all([0-b <= r < 1-b for r, b in zip(xr, bounds)]): #only that in sc.rprimd box are needed
@@ -1100,6 +1109,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
                 sc.xred.append ( xr )
                 sc.typat.append( t  )
                 sc.magmom.append(m)
+                sc.init_numbers.append(n)
     
 
     sc.natom = len(sc.xcart)
