@@ -30,6 +30,29 @@ def find_vbm_cbm(energies, valent_band_num):
     return vbm, cbm
 
 
+def lattice_from_vasprun(file_path):
+    """
+    The function parses lattice vectors from vasprun.xml
+
+    INPUT:
+        - file_path (str) - path to vasprun.xml file
+    RETURN:
+        - lattice (np.array) - matrix with lattice vectors
+    """
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+
+    basis = root.find(".//structure/crystal/varray[@name='basis']")
+    vectors = basis.findall("v")
+
+    lattice = []
+    for vector in vectors:
+        vector_values = np.array(list(map(float, vector.text.split())))
+        lattice.append(vector_values)
+
+    return np.array(lattice)
+
+
 def parse_kpoints_for_band(file_path):
     """
     The function parses k-points from vasprun.xml
@@ -224,8 +247,13 @@ def total_band(st_name, vasprun_path, kpoints_file_path, ylim=(-10, 10), method=
 
     plt.tight_layout()
 
+    if method:
+        name_png = f'{st_name}_{method}'
+    else:
+        name_png = f'{st_name}'
+        
     if not file_name:
-        file_name = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
+        file_name = os.getcwd() + '/band_structures/' + f'{name_png}.png'
     plt.savefig(file_name)
 
     if debug:
@@ -426,7 +454,7 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
     if method:
         fig.suptitle(f"Orbital projected band structure for {st_name}\nElement {element}\nMethod of k-path finding {method}", fontsize=19)
     else:
-        fig.suptitle(f"Orbital projected band structure for {element}\nElement {element}")
+        fig.suptitle(f"Orbital projected band structure for {element}\nElement {element}", fontsize=19)
 
     contrib = np.zeros((nbands, len(kpoints), 3))
     for b in range(nbands):
@@ -480,11 +508,16 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
     plt.grid(False)
     plt.tight_layout()
 
+    if method:
+        name_png = f'{st_name}_{method}'
+    else:
+        name_png = f'{st_name}'
+
     if not file_name:
-        file_name = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
+        file_name = os.getcwd() + '/band_structures/' + f'{name_png}.png'
     plt.savefig(file_name)
 
-    path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}_proj-{element}.png'
+    path = os.getcwd() + '/band_structures/' + f'{name_png}_proj_{element}.png'
     plt.savefig(path)
 
     if debug:
@@ -522,18 +555,3 @@ def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10
     elif mode == "total":
         total_band(st_name, vasprun_path, kpoints_file_path, ylim=ylim, method=None, vbm_cbm_marker=vbm_cbm_marker,
                    file_name='', debug=debug)
-
-
-if __name__ == '__main__':
-    st_name = 'Si'
-    band_file_name = st_name + '.if'
-    set = "band_structure"
-    file_path = f'{st_name}/{band_file_name}.{set}/1.vasprun.xml'
-
-    total_band(st_name, vasprun_path=f'{st_name}/{band_file_name}.{set}/1.vasprun.xml',
-               kpoints_file_path=f'{st_name}/{band_file_name}.{set}/KPOINTS',
-               ylim=(-12, 8), method="AFLOW", vbm_cbm_marker=True, debug=True)
-
-    projected_band(st_name, vasprun_path=f'{st_name}/{band_file_name}.{set}/1.vasprun.xml',
-               kpoints_file_path=f'{st_name}/{band_file_name}.{set}/KPOINTS', element=st_name, ylim=(-12, 8),
-                      debug=True)

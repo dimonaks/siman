@@ -427,8 +427,8 @@ class CalculationVasp(Calculation):
                 ps= k[1]
                 for pn in k[2:]:
                     # pn  = next(k)
-                    f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n'.format(ps[1], ps[2], ps[3], ps[0]) ) 
-                    f.write('{:6.3f} {:6.3f} {:6.3f} ! {:s}\n\n'.format(pn[1], pn[2], pn[3], pn[0]) ) 
+                    f.write('{:6.6f} {:6.6f} {:6.6f} ! {:s}\n'.format(ps[1], ps[2], ps[3], ps[0]) )
+                    f.write('{:6.6f} {:6.6f} {:6.6f} ! {:s}\n\n'.format(pn[1], pn[2], pn[3], pn[0]) ) 
                     ps = pn
         
         
@@ -439,9 +439,9 @@ class CalculationVasp(Calculation):
             with open(filename, 'w', newline = '') as f:
                 f.write('Explicit k-point list\n')
                 f.write('{:} ! full number of points\n'.format(k[0]))
-                f.write('frac\n')
+                f.write('Rec\n')
                 for pn in k[1:]:
-                    f.write('{:6.3f} {:6.3f} {:6.3f}   {:1.0f}\n'.format(pn[1], pn[2], pn[3], pn[0]) )
+                    f.write('{:6.6f} {:6.6f} {:6.6f}   {:1.0f}\n'.format(pn[1], pn[2], pn[3], pn[0]) )
         
         
         elif self.set.kpoints_file:
