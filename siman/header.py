@@ -212,7 +212,7 @@ def _update_configuration(filename, pfolder = None, clusters=None):
     'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
     'geo_folder', 'path_to_images', 'path_to_paper', 
     'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 
-    'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE', 'AUTO_UPDATE_DB', 'warnings', 'PATH2EDITOR']
+    'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE', 'AUTO_UPDATE_DB', 'warnings', 'PATH2EDITOR', 'PATH2AFLOW']
 
     for var in config_vars:
         try: 
