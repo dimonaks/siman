@@ -2636,7 +2636,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             
             'mep_shift_vector' - visualization of mep in xyz format
             'charge' (int) - charge of cell, +1 removes one electron
-        - log_flag (bool) - if True, the logs "is unfinished; return \{\} []" will not be shown; used for band_structure/non_self_consist_calc
+        - log_flag (bool) - if False, the logs "is unfinished; return \{\} []" will not be shown; used for band_structure/non_self_consist_calc
     RETURN:
         
         (results_dic,    result_list)

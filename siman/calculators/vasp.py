@@ -439,7 +439,7 @@ class CalculationVasp(Calculation):
             with open(filename, 'w', newline = '') as f:
                 f.write('Explicit k-point list\n')
                 f.write('{:} ! full number of points\n'.format(k[0]))
-                f.write('Rec\n')
+                f.write('frac\n')
                 for pn in k[1:]:
                     f.write('{:6.6f} {:6.6f} {:6.6f}   {:1.0f}\n'.format(pn[1], pn[2], pn[3], pn[0]) )
         

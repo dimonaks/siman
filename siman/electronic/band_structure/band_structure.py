@@ -1,3 +1,6 @@
+"""
+Author: Kobernik Tatiana
+"""
 import os
 import sys
 from siman.header import db
@@ -32,7 +35,8 @@ def create_POSCAR(st, st_name, home_path, debug=False):
     path_to_main_folder = f'{home_path}/{folder_name}'
 
     os.makedirs(path_to_main_folder, exist_ok=True)
-    st.to(f"{st_name}.POSCAR", f'{path_to_main_folder}')
+
+    st.to(filename=f"{path_to_main_folder}/{st_name}.POSCAR", fmt='poscar')
 
     path_to_POSCAR = f'{path_to_main_folder}/{st_name}.POSCAR'
 
@@ -58,6 +62,7 @@ def find_kpath(st=None, method="AFLOW", path_to_POSCAR=None, debug=False):
                                     Example: [128 */number of points per line/*), ('G', 0.0, 0.0, 0.0), ('X', 0.5, 0.0, 0.5), ('W', 0.5, 0.25, 0.75), ...]
     """
     current_folder = os.getcwd()
+    print(current_folder)
 
     if method == "AFLOW":
         if not path_to_POSCAR:

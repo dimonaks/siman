@@ -554,4 +554,4 @@ def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10
                            file_name=file_name, debug=debug)
     elif mode == "total":
         total_band(st_name, vasprun_path, kpoints_file_path, ylim=ylim, method=None, vbm_cbm_marker=vbm_cbm_marker,
-                   file_name='', debug=debug)
+                   file_name=file_name, debug=debug)
