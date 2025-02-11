@@ -2548,7 +2548,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     it_folder = None, choose_outcar = None, choose_image = None, 
     cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
     description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None, style_dic = None, params = None):
+    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None, style_dic = None, params = None, log_flag=True):
     """Read results
     INPUT:
         
@@ -2644,6 +2644,7 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             
             'mep_shift_vector' - visualization of mep in xyz format
             'charge' (int) - charge of cell, +1 removes one electron
+        - log_flag (bool) - if False, the logs "is unfinished; return \{\} []" will not be shown; used for band_structure/non_self_consist_calc
     RETURN:
         
         (results_dic,    result_list)
@@ -2851,7 +2852,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             
             if readfiles and check_job:
                 if '3' in cl.check_job_state():
-                    printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
+                    if log_flag:
+                        printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
                     # cl.res()
                     continue
 
@@ -3066,7 +3068,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
                 dire = cl.dir
             except:
                 dire = ''
-            printlog( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',dire, imp = 'Y')
+            if log_flag:
+                printlog( "res_loop(): Calculation ", id, "is unfinished; return {} []", dire, imp='Y')
             return {}, []
         
         outloop_segreg_analysis(b_id, analys_type, conv, n, description_for_archive, show, push2archive)
@@ -3079,7 +3082,8 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         if analys_type == 'redox_pot':
             
             if '4' not in bcl.state:
-                printlog("res_loop: Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
+                if log_flag:
+                    printlog("res_loop: Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
                 return {}, []
 
             results_dic = calc_redox(cl, bcl, energy_ref)
