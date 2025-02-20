@@ -720,7 +720,7 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
                 else:
                     f.write('export PATH=$PATH:'+header.cluster_home+'/tools/vts/\n') #header.project_path_cluster
 
-                    f.write('nebmake.pl '+ startC + finalC + nim_str +' \n')
+                    f.write(header.NEBMAKERTOOL +' '+ startC + finalC + nim_str +' \n')
 
 
         if run_tool_flag:

@@ -704,6 +704,24 @@ def log_history(hstring):
 
 
 def gb_energy_volume(gb,bulk):
+
+    """
+    Calculate formation energy and excess voluem of a grain boundary (GB) using two calculation objects (with GB and ideal bulk one).
+
+    INPUT:
+
+    - gb - Calculation object with GB structure 
+    - bulk - Calculation object with defectless structure
+
+    RETURN:
+    - gb.e_gb - formation energy of the GB in J/m^2
+    - gb.v_gb - excess voluem of the GB in Angstroms
+
+    AUTHOR:
+    Dmitry Aksenov (updated by Nikita Davydov)
+
+    """
+
     if (gb.end.rprimd[1] != bulk.end.rprimd[1]).any() or (gb.end.rprimd[2] != bulk.end.rprimd[2]).any():
         print_and_log("Warning! You are trying to calculate gb_energy from cells with different lateral sizes:"+str(gb.end.rprimd)+" "+str(bulk.end.rprimd)+"\n")
     #print bulk.vol
@@ -712,9 +730,9 @@ def gb_energy_volume(gb,bulk):
     E_1at = bulk.energy_sigma0 / bulk.end.natom 
     A = min( np.linalg.norm(np.cross(gb.end.rprimd[0], gb.end.rprimd[1])), np.linalg.norm(np.cross(gb.end.rprimd[0], gb.end.rprimd[2])), np.linalg.norm(np.cross(gb.end.rprimd[1], gb.end.rprimd[2])) ) #surface area of gb
     #print A
-    gb.v_gb =      ( gb.end.vol              - V_1at * gb.end.natom) / A / 2. * 1000
-    gb.e_gb =      ( gb.energy_sigma0    - E_1at * gb.end.natom) / A / 2. * eV_A_to_J_m * 1000
-    gb.e_gb_init = ( gb.list_e_sigma0[0] - E_1at * gb.end.natom) / A / 2. * eV_A_to_J_m * 1000
+    gb.v_gb =      ( gb.end.vol              - V_1at * gb.end.natom) / A / 2. 
+    gb.e_gb =      ( gb.energy_sigma0    - E_1at * gb.end.natom) / A / 2. * eV_A_to_J_m 
+    gb.e_gb_init = ( gb.list_e_sigma0[0] - E_1at * gb.end.natom) / A / 2. * eV_A_to_J_m 
     gb.bulk_extpress = bulk.extpress     
     #print "Calc %s; e_gb_init = %.3f J/m^2; e_gb = %.3f J/m; v_gb = %.3f angstrom "%(gb.name, gb.e_gb_init, gb.e_gb, gb.v_gb )
     outst = "%15s&%7.0f&%7.0f"%(gb.name, gb.e_gb, gb.v_gb)

@@ -851,8 +851,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         write_xyz(st2s, file_name = it_new+'_end')
 
 
-    st1s.write_poscar('xyz/POSCAR1')
-    st2s.write_poscar('xyz/POSCAR2')
+    st1s.write_poscar('xyz/POSCAR1', aseheader = True)
+    st2s.write_poscar('xyz/POSCAR2', aseheader = True)
     # print(a)
     # runBash('cd xyz; mkdir '+it_new+'_all;'+"""for i in {00..04}; do cp $i/POSCAR """+ it_new+'_all/POSCAR$i; done; rm -r 00 01 02 03 04')
     
