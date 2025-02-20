@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 #encoding: utf-8
 
+#Taken from the Henkelman group's VTST Tools https://theory.cm.utexas.edu/vtsttools/index.html
+
 '''aselite is a striped down single file version of ase that retains the
 following features: atom and atoms objects, some of ase.io and some of
 ase.constraints.'''

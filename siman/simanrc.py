@@ -31,7 +31,7 @@ CLUSTERS['pardus'] = {
 
 
 """Local constants"""
-# PATH2NEBMAKE = 'YOUR_PATH_TO/icys_2023/tools/vts/' + NEBMAKERTOOL
+# PATH2NEBMAKE = 'YOUR_PATH_TO_vtst' + NEBMAKERTOOL
 PATH2POTENTIALS = '~/potcars/'
 PATH2JMOL = 'jmol'
 PATH2PHONOPY = 'phonopy'
