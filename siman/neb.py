@@ -15,7 +15,7 @@ from siman.small_functions import is_list_like, makedir, list2string
 from siman.classes import CalculationVasp, cd
 from siman.geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
 from siman.impurity import find_pores, determine_voids, determine_unique_voids
-
+from siman.external_tools.nebmaker import nebmaker
 
 
 
@@ -860,8 +860,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         if init_neb_geo_fld:
             printlog('Check neb files at', init_neb_geo_fld, imp = 'y')
         else:
-           a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
-           print(a)
+           # a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
+           # print(a)
+           nebmaker('POSCAR1','POSCAR2', images)
            dst = it_new+'_all'
            makedir(dst+'/any')
            for f in ['00', '01', '02', '03', '04']:
