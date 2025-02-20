@@ -15,7 +15,7 @@ from siman.small_functions import is_list_like, makedir, list2string
 from siman.classes import CalculationVasp, cd
 from siman.geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
 from siman.impurity import find_pores, determine_voids, determine_unique_voids
-
+from siman.external_tools.nebmaker import nebmaker
 
 
 
@@ -851,8 +851,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         write_xyz(st2s, file_name = it_new+'_end')
 
 
-    st1s.write_poscar('xyz/POSCAR1')
-    st2s.write_poscar('xyz/POSCAR2')
+    st1s.write_poscar('xyz/POSCAR1', aseheader = True)
+    st2s.write_poscar('xyz/POSCAR2', aseheader = True)
     # print(a)
     # runBash('cd xyz; mkdir '+it_new+'_all;'+"""for i in {00..04}; do cp $i/POSCAR """+ it_new+'_all/POSCAR$i; done; rm -r 00 01 02 03 04')
     
@@ -860,8 +860,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         if init_neb_geo_fld:
             printlog('Check neb files at', init_neb_geo_fld, imp = 'y')
         else:
-           a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
-           print(a)
+           # a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
+           # print(a)
+           nebmaker('POSCAR1','POSCAR2', images)
            dst = it_new+'_all'
            makedir(dst+'/any')
            for f in ['00', '01', '02', '03', '04']:
