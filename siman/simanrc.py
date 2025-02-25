@@ -4,7 +4,7 @@ User-related parameters for siman, file is installed to home folder
 
 """
 from __future__ import division, unicode_literals, absolute_import 
-from siman.header import CLUSTERS
+from siman.header import CLUSTERS, NEBMAKERTOOL
 
 """Cluster constants"""
 DEFAULT_CLUSTER = 'pardus'
@@ -31,7 +31,7 @@ CLUSTERS['pardus'] = {
 
 
 """Local constants"""
-PATH2NEBMAKE = '/hdd/home/aksenov/Simulation_wrapper/vts/nebmake.pl'
+# PATH2NEBMAKE = 'YOUR_PATH_TO_vtst' + NEBMAKERTOOL
 PATH2POTENTIALS = '~/potcars/'
 PATH2JMOL = 'jmol'
 PATH2PHONOPY = 'phonopy'

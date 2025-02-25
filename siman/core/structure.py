@@ -3630,7 +3630,7 @@ class Structure():
         return
 
 
-    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None, selective_dynamics = False, shift = None):
+    def write_poscar(self, filename = None, coord_type = 'dir', vasp5 = True, charges = False, energy = None, selective_dynamics = False, shift = None, aseheader = False):
         """
         write 
 
@@ -3643,6 +3643,8 @@ class Structure():
             None - not written
 
         shift - shift atoms
+
+        aseheader (bool) - change first line to element list. Needed for neb calculation via add_neb function
         
         NOTE
         #void element type is not written to POSCAR
@@ -3760,13 +3762,17 @@ class Structure():
             else:
                 energy_string = ''
 
-            f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; '+energy_string)
+            if aseheader == True:
+                for el in elnames:
+                    f.write(el+' ')
+            else:
+                f.write('i2a=['+list2string(elnames).replace(' ', ',') + '] ; '+energy_string)
             
-            if hasattr(self, 'tmap'):
-                f.write('tmap=[{:s}] ; '.format(list2string(st.tmap).replace(' ', ',') ))
+                if hasattr(self, 'tmap'):
+                    f.write('tmap=[{:s}] ; '.format(list2string(st.tmap).replace(' ', ',') ))
 
-            # print(self.name)
-            f.write(self.name)
+                # print(self.name)
+                f.write(self.name)
 
 
             f.write("\n{:18.15f}\n".format(1.0))
