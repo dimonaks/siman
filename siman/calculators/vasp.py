@@ -981,22 +981,23 @@ class CalculationVasp(Calculation):
         """
         Download and Read VASP OUTCAR file
 
-        ###INPUT:
+        INPUT:
             - load (str) - 'x' - download xml, o - download outcar and contcar, un - read unfinished
             - show (str) - print additional information
                 alkali_ion_number - show mag around this ion
             - choose_outcar - see description in res_loop(), from 1
-            - out_type - controls the return string
+            - out_type (str) - controls the return string
                 see in code, add here
                 also controls reading of OUTCAR
                 'xcarts' read xcart every relaxation step and write into self.end.list_xcart
 
             - only_load (bool) - if true - only load the files (used for database)
 
-        ###RETURN:
+        RETURN:
             ?
 
-        ###DEPENDS:
+        DEPENDS:
+        
         TODO:
         please split into outcar parser, downloader, and checker-formatter
 

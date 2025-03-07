@@ -323,7 +323,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
 
-    Input:
+    INPUT:
 
         - it - arbitary name for your crystal structure 
         - setlist (list of str or str) - names of sets with vasp parameters from *varset* dictionary
@@ -377,7 +377,8 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
         - mat_proj_cell (str) - ?
         - mat_proj_id (str) - id in materials project database, e.g. 'mp-100'
-        - mp_id (int) - id in materials project database without mp prefix
+        - mp_id (int) - id in materials project database without mp prefix, automatically turns on structure retrieval from 
+            materials project
 
 
 
@@ -1031,6 +1032,9 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
         if mp_id:
             mat_proj_id = 'mp-'+str(mp_id)
+            input_geo_format = 'mat_proj'
+            if not it_folder:
+                it_folder = 'MP/'+it
 
 
 
@@ -2402,78 +2406,47 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'no', b_id = None, 
-    typconv='', up = "", imp1 = None, imp2 = None, matr = None, voronoi = False, r_id = None, readfiles = True, plot = True, show = 'fomag', 
-    comment = None, input_geo_format = None, savefile = None, energy_ref = 0, ifolder = None, bulk_mul = 1, inherit_option = None,
-    calc_method = None, u_ramping_region = None, input_geo_file = None, corenum = None, run = None, input_st= None,
-    ortho = None, mat_proj_cell = None, ngkpt = None, it_suffix = None,
-    it_folder = None, choose_outcar = None, choose_image = None, 
-    cee_args = None, mat_proj_id = None, ise_new = None, push2archive = False,
-    description_for_archive = None, old_behaviour  = False,
-    alkali_ion_number = None, cluster = None, ret = None, override = None, check_job = 1, fitplot_args = None, style_dic = None, params = None):
-    """Read results
+def res_loop(it, setlist, verlist, analys_type = None,
+    up = "up1", readfiles = True, show = 'fomag', 
+    it_suffix = None,
+    choose_outcar = None, 
+    push2archive = False,
+    cluster = None, 
+    check_job = 1, 
+    params = None,
+    **args):
+    """
+    Read results of calculation with id (it, ise, v), where ise and v are taken from setlist and verlist
+    
     INPUT:
-        
-        'analys_type' - ('gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with 
-           
-            bulk material,
-            'e_imp' ('e_imp_kp', 'e_imp_ecut') - calculate impurity energy - just difference between cells with impurity and without.
-            'fit_ac' - fit a and c lattice constants using 2-dimensianal spline
-            'clusters' - allows to calculate formation energies of clusters
-            'diff' - difference of energies in meV, and volumes A^3; E(id) - E(b_id)
-            'matrix_diff' - difference normalized by matrix atoms
+        - it - name for your crystal structure in local database db
+        - setlist (list of str or str) - names of sets with vasp parameters from *varset* dictionary
+        - verlist - list of versions of calculations
 
-            'redox_pot' - calculate redox potential relative to b_id() (deintercalated cathode) and energy_ref ( energy per one ion atom Li, Na in metallic state or in graphite)
-            'neb' - make neb path. The start and final configurations 
-            should be versions 1 and 2, the intermidiate images are starting from 3 to 3+nimages
+        - 'analys_type' 
+            - 'gbe' - calculate gb energy and volume and plot it. b_id should be appropriete cell with bulk material,
+            - 'e_imp' ('e_imp_kp', 'e_imp_ecut') - calculate impurity energy - just difference between cells with impurity and without.
+            - 'fit_ac' - fit a and c lattice constants using 2-dimensianal spline
+            - 'clusters' - allows to calculate formation energies of clusters
+            - 'diff' - difference of energies in meV, and volumes A^3; E(id) - E(b_id)
+            - 'matrix_diff' - difference normalized by matrix atoms
+            - 'redox_pot' - calculate redox potential relative to b_id() (deintercalated cathode) and energy_ref ( energy per one ion atom Li, Na in metallic state or in graphite)
+            - 'neb' - make neb path. The start and final configurations 
+                should be versions 1 and 2, the intermidiate images are starting from 3 to 3+nimages
+            - 'xcarts' - ?
+            - 'atat' - allows to read atat calculations, use params['n_atat'] to read results for calculation n; 
 
-            'xcarts'
-            )
-        
-        voronoi - True of False - allows to calculate voronoi volume of impurities and provide them in output. only if lammps is installed
-        b_id - key of base calculation (for example bulk cell), used in several regimes; 
-        r_id - key of reference calculation; defines additional calculation (for example atom in vacuum or graphite to calculate formation energies); can contain directly the energy per one atom
+        - up (str):
+            - 'up1' - just read local output files. If files are missing, they will be attempted for download from cluster
+            - 'up2' - download output files from cluster , overwrite local files, and read them
+            - 'un' - try to read output, even when calculation was finished with error, but the correct version exist e.g. 1.OUTCAR
+            - 'un2' - try to read output when the running script was killed, and only output with original name exists, e.g. OUTCAR
 
-        up - 
-            
-            if equal to 'up2' the files are redownloaded; also can be used to download additional files can be 'xo' (deprecated?)
-            - if 'un' is found in up then siman will try to read unfinished outcars
-
-
-        readfiles (bool) - True - read from outcar, False - read from database; 
-
-
-
-        The next three used for 'clusters' regime:    
-        imp1 - key of bulk cell with one imp1
-        imp2 - key of bulk cell with one imp2
-        matr - key of bulk cell with pure matrix.
-
+        - readfiles (bool) - True - read from outcar, False - read from database; 
 
         - show - (str), allows to show additional information:
-            
             - mag - magnetic moments on magnetic atoms
               maga
-                *alkali_ion_number* (int) - number of atom around which to sort mag moments from 1
             - en  - convergence of total energy vs max force
             - mep - neb path
             - fo  - max force on each md step
@@ -2493,38 +2466,58 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
             - fit - save figure and show volume scan and fit in case of *analys_type* = 'fit_a'
             - fitns - save figure of volume scan and fit in case of *analys_type* = 'fit_a'
 
-        energy_ref - energy in eV; substracted from energy diffs
-        
-        bulk_mul - allows to scale energy and volume of bulk cell during calculation of segregation energies
+        - it_suffix (str) - additional suffix for name, for compatibility
 
-        choose_outcar (int, starting from 1)- if calculation have associated outcars, you can check them as well, by default
-        the last one is used during creation of calculation in write_batch_body()
-
-        choose_image (int) - relative to NEB, allows to choose specific image for analysis, by default the middle image is used
-
+        - choose_outcar (int, starting from 1)- if calculation have associated outcars, you can check them as well, by default
+            the last one is used during creation of calculation in write_batch_body()
         - push2archive (bool) - if True produced images are copied to header.project_conf.path_to_images
-        - description_for_archive - caption for images
+        - cluster (str) - name of cluster, used to override current cluster name to download output from the provided one
+        - check_job - (bool) check status on server, use 0 if no internet connection
 
-        ret (str) - return some more information in results_dic
-            
-            'energies' - just list of full energies
+
         
-        check_job - (bool) check status on server, use 0 if no internet connection
-
-        fitplot_args - additional arguments for fit_and_plot function
-
-        style_dic - passed to plot_mep()
-
-        - ise_new - dummy
-        - inherit_option - dummy
-        - savefile - dummy
-        - cluster - used to override cluster name
-        - override - dummy
-        
-        - params - dictionary of additional parameters to control internal, many arguments could me moved here 
+        - params (dict) - dictionary of additional parameters controlling res_loop and subroutins
             
-            'mep_shift_vector' - visualization of mep in xyz format
-            'charge' (int) - charge of cell, +1 removes one electron
+            - 'mep_shift_vector' - visualization of mep in xyz format
+            - 'charge' (int) - charge of cell, +1 removes one electron
+
+
+            ATAT related:
+            - 'n_atat' - number of structure to read
+
+
+            Somewhat depreacated and used for special regimes. Should be refined and regrouped.
+            - voronoi - True of False - allows to calculate voronoi volume of impurities and provide them in output. only if lammps is installed
+            - b_id - key of base calculation (for example bulk cell), used in several regimes; 
+            - r_id - key of reference calculation; defines additional calculation (for example atom in vacuum or graphite to calculate formation energies); can contain directly the energy per one atom
+
+
+            - description_for_archive - caption for images
+            - ret (str) - return more information in results_dic
+                - 'energies' - just list of full energies
+            - energy_ref - energy in eV; substracted from energy diffs
+            - bulk_mul - allows to scale energy and volume of bulk cell during calculation of segregation energies
+
+
+            The next three used for 'clusters' regime of 'analys_type' :    
+            - imp1 - key of bulk cell with one imp1
+            - imp2 - key of bulk cell with one imp2
+            - matr - key of bulk cell with pure matrix.
+
+            - alkali_ion_number (int) - number of atom around which to sort mag moments from 1
+            - choose_image (int) - correspons to NEB, allows to choose specific image for analysis, by default the middle image is used
+            - fitplot_args - additional arguments for fit_and_plot function
+            - style_dic - passed to plot_mep()
+            
+
+            Dummies: were used to allow running res() with the same arguments as were used for add(), can be removed probably
+            - ise_new - dummy
+            - inherit_option - dummy
+            - savefile - dummy
+            - override - dummy
+            and see just below
+        **args - just any args allowing to rename add to res
+
     RETURN:
         
         (results_dic,    result_list)
@@ -2535,19 +2528,62 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
         results_dic - should be used in current version! actually once was used as list, now should be used as dict
 
     TODO:
-    
-        
         Make possible update of b_id and r_id with up = 'up2' flag; now only id works correctly
 
+    AUTHOR:
+        Aksyonov Dmitry
 
     """
 
+    if params is None:
+        params = {}
 
-    """Setup"""
+    if analys_type is None:
+        analys_type = ''
+
+    p = params
+
+    voronoi = p.get('voronoi') or False   
+    b_id = p.get('b_id') or None  
+    r_id = p.get('r_id') or None  
+    ret = p.get('ret') or None   
+    energy_ref = p.get('energy_ref') or 0   
+    bulk_mul = p.get('bulk_mul') or 1   
+    typconv = p.get('typconv') or None
+    imp1 = p.get('imp1') or None   
+    imp2 = p.get('imp2') or None   
+    matr = p.get('matr') or None   
+    alkali_ion_number = p.get('alkali_ion_number') or None  
+    choose_image = p.get('choose_image') or None   
+    fitplot_args = p.get('fitplot_args') or None   
+    style_dic = p.get('style_dic') or None   
+    description_for_archive = p.get('description_for_archive') or None   
+    old_behaviour = p.get('old_behaviour') or False  
+    ise_new = p.get('ise_new') or None #dummy, not needed  
+    inherit_option = p.get('inherit_option') or None #dummy, not needed  
+    savefile = p.get('savefile') or None #dummy, not needed   
+    override = p.get('override') or None #dummy, not needed   
+    comment = p.get('comment') or None #dummy, not needed   
+    input_geo_format = p.get('input_geo_format') or None #dummy, not needed   
+    ifolder = p.get('ifolder') or None #dummy, not needed   
+    calc_method = p.get('calc_method') or None #dummy, not needed   
+    u_ramping_region = p.get('u_ramping_region') or None #dummy, not needed   
+    input_geo_file = p.get('input_geo_file') or None #dummy, not needed   
+    corenum = p.get('corenum') or None #dummy, not needed   
+    run = p.get('run') or None #dummy, not needed   
+    input_st = p.get('input_st') or None #dummy, not needed  
+    ortho = p.get('ortho') or None #dummy, not needed   
+    mat_proj_cell = p.get('mat_proj_cell') or None #dummy, not needed   
+    ngkpt = p.get('ngkpt') or None #dummy, not needed  
+    it_folder = p.get('it_folder') or None #dummy, not needed  
+    cee_args = p.get('cee_args') or None #dummy, not needed   
+    mat_proj_id = p.get('mat_proj_id') or None #dummy, not needed  
+    plot = p.get('plot') or True #dummy, not needed  
+
+
+
 
     from siman.picture_functions import plt
-
-
 
     if not is_list_like(verlist):
         verlist = [verlist]
@@ -2555,9 +2591,9 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
     if not is_list_like(setlist):
         setlist = [setlist]
 
-    if not calc:
-        calc = header.calc
-        db = header.db
+    # if not calc:
+    calc = header.calc
+    db = header.db
 
 
 
@@ -2655,54 +2691,67 @@ def res_loop(it, setlist, verlist,  calc = None, varset = None, analys_type = 'n
 
 
     """Amendmend required before main loop """
-    if analys_type == 'atat' and choose_outcar is not None:
-        
-
-        i = choose_outcar
+    if analys_type == 'atat':
         v = verlist[0]
         ise = setlist[0]
         idd = (it, ise, v)
         cl = db[idd]
-        fit = cl.get_file('fit.out', root = 1, up = up)
-        fit = cl.get_file('predstr.out', root = 1, up = up)
-        fit = cl.get_file('gs.out', root = 1, up = up)
-        
-        # print(fit)
-        fit_i_e = {} # dic, where concentration is a key
-        with open(fit, 'r') as f:
-            # lines = f.readlines()
-            for line in f:
-                # print(line)
-                x = float(line.split()[0])
-                k = int(line.split()[-1])
-                e = float(line.split()[1]) # dft energy
-                # print(x)
-                if x not in fit_i_e:
-                    fit_i_e[x] = []
-                fit_i_e[x].append( (k, e) )
-        # print(fit_i_e)
-        fit_i_min = {}
-        for key in fit_i_e:
-            i_e = sorted(fit_i_e[key], key=lambda tup: tup[1]) 
-            # print(i_e)
-            fit_i_min[key] = i_e[0][0]
-
-        # print(fit_i_min)
-        xs = sorted(fit_i_min.keys())
-        print("I read lowest energy configurations for the following concentration of vacancies", xs, 'They are availabe as' )
-        verlist = []
-        choose_outcar = None
-        for x in xs:
-            i = fit_i_min[x]
-            idd_new = (it, ise, i)
-            print(x,':db['+str(idd_new)+'], ')
+        i = params.get('n_atat') 
+        # print('i is', i)
+        if i is not None:
+            idd_new = (it, setlist[0], i)
+            v = verlist[0]
+            printlog('I create new calc at db['+str(idd_new)+'], ', imp = 'y')
             if i != v:
                 db[idd_new] = cl.copy(idd_new)
                 db[idd_new].update_name()
             db[idd_new].path['output'] = db[idd_new].dir+'/'+str(i)+'/OUTCAR.static'
             # print(db[idd_new].path['output'])
-            verlist.append(i)
-            # print(db[idd_new].id)
+            verlist.append(i)     
+
+
+        else:
+            i = choose_outcar
+            fit = cl.get_file('fit.out', root = 1, up = up)
+            fit = cl.get_file('predstr.out', root = 1, up = up)
+            fit = cl.get_file('gs.out', root = 1, up = up)
+            
+            # print(fit)
+            fit_i_e = {} # dic, where concentration is a key
+            with open(fit, 'r') as f:
+                # lines = f.readlines()
+                for line in f:
+                    # print(line)
+                    x = float(line.split()[0])
+                    k = int(line.split()[-1])
+                    e = float(line.split()[1]) # dft energy
+                    # print(x)
+                    if x not in fit_i_e:
+                        fit_i_e[x] = []
+                    fit_i_e[x].append( (k, e) )
+            # print(fit_i_e)
+            fit_i_min = {}
+            for key in fit_i_e:
+                i_e = sorted(fit_i_e[key], key=lambda tup: tup[1]) 
+                # print(i_e)
+                fit_i_min[key] = i_e[0][0]
+
+            # print(fit_i_min)
+            xs = sorted(fit_i_min.keys())
+            printlog("I read lowest energy configurations for the following concentration of vacancies", xs, 'They are availabe as', imp = 'y' )
+            verlist = []
+            choose_outcar = None
+            for x in xs:
+                i = fit_i_min[x]
+                idd_new = (it, ise, i)
+                printlog(x,':db['+str(idd_new)+'], ', imp = 'y')
+                if i != v:
+                    db[idd_new] = cl.copy(idd_new)
+                    db[idd_new].update_name()
+                db[idd_new].path['output'] = db[idd_new].dir+'/'+str(i)+'/OUTCAR.static'
+                # print(db[idd_new].path['output'])
+                verlist.append(i)
+                # print(db[idd_new].id)
 
 
     # if analys_type == 'monte':

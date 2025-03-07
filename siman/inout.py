@@ -2521,6 +2521,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
     # print(out_type)
     # sys.exit()
+    if out_type is None:
+        out_type = ''
     if   out_type == 'gbe'  : outst = outst_gbe
     elif out_type == 'e_imp': outst = outst_imp
     elif out_type == 'e_seg': outst = outst_seg            
