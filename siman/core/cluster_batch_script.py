@@ -278,7 +278,7 @@ def run_command(cl, option, name, parrallel_run_command,
                 f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron_mod.py > polaron.log\n')
 
             elif 'atat' in  cl.calc_method:
-                f.write('maps -d&\npollmach runstruct_vasp mpirun\n')
+                f.write(header.atat_run_command)
 
             else:
                 if cl.calculator == 'vasp':

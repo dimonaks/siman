@@ -134,12 +134,13 @@ def cif2poscar(cif_file, poscar_file):
 
 
 
-    # print(header.CIF2CELL)
+    # print('CIF2CELL', header.CIF2CELL)
     if pymatgen_flag and not header.CIF2CELL:
         # print(cif_file)
         parser = CifParser(cif_file)
         # s = parser.get_structures(primitive = True)[0]
-        s = parser.get_structures(primitive = 0)[0]
+        # s = parser.get_structures(primitive = 0)[0]
+        s = parser.parse_structures(primitive = 0)[0]
         
 
         si = s._sites[0]
@@ -268,6 +269,9 @@ def smart_structure_read(filename = None, curver = 1, calcul = None, input_folde
     if cl.path["input_geo"] == None: 
         printlog("Error! Input file was not properly read for some reason")
     
+    if not cl.init.magmom:
+        cl.init.magmom = [None]
+
 
     return cl.init
 
@@ -2486,12 +2490,17 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             path_l = cl.path['output'].replace('400.OUTCAR','')
             plt.tight_layout()
             filename = path_l+str(self.name)+'.png'
+            makedir(filename)
+
             plt.savefig(filename)
             printlog('Freq file saved to ', filename, imp = 'y')
 
         else:
             path_l = 'figs/'
             filename = path_l+str(self.id)+'.pdf'
+            makedir(filename)
+            plt.tight_layout()
+            
             plt.savefig(filename)
             printlog('Freq file saved to ', filename, imp = 'y')
             plt.show()

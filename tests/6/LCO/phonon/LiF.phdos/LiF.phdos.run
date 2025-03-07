@@ -1,0 +1,25 @@
+#!/bin/bash   
+#SBATCH -J LiF.phdos
+#SBATCH -N 1
+#SBATCH -n 16
+#SBATCH -o /home/d.aksenov//LCO/phonon//LiF.phdos/sbatch.out
+#SBATCH -e /home/d.aksenov//LCO/phonon//LiF.phdos/sbatch.err
+#SBATCH -p AMG-medium
+cd /home/d.aksenov//LCO/phonon//LiF.phdos/
+module load Compiler/Intel/16u4 Q-Ch/VASP/5.4.4 ScriptLang/python/3.6i_2018u3; 
+ulimit -s unlimited
+
+export PATH=$PATH:/home/d.aksenov/tools/
+touch RUNNING
+#Basic run:
+cp 1.POSCAR POSCAR
+mpirun vasp_std >LiF.phdos.1.log
+sleep 20
+mv OUTCAR 1.OUTCAR
+mv CONTCAR 1.CONTCAR
+mv CHGCAR 1.CHGCAR
+mv vasprun.xml 1.vasprun.xml
+
+#Footer section: 
+rm WAVEDER PROCAR DOSCAR EIGENVAL XDATCAR LOCPOT ELFCAR PARCHG OSZICAR CHG AECCAR0 AECCAR2 WAVECAR 
+rm RUNNING

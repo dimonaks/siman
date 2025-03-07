@@ -263,6 +263,8 @@ class Calculation(object):
 #             if hasattr(curset, 'magnetic_moments') and curset.magnetic_moments and ('ISPIN' in curset.vasp_params.keys()) and curset.vasp_params['ISPIN'] == 2:
             self.init.magmom = read_list(
                 "magmom", self.natom, float, gen_words)
+            if not self.init.magmom:
+                self.init.magmom = [None]
             # if magmom[0] is not None:
             #     self.init.magmom = magmom
 

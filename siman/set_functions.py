@@ -191,6 +191,7 @@ vasp_other_keys = [
 'ZAB_VDW',
 'IWAVPR',
 "NBLOCK",
+'BEXT'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 

@@ -43,7 +43,7 @@ CLUSTERS['sge'] = {'address':'ut1',
 
 """Local constants"""
 PATH2POTENTIALS = './potcars/'
-PATH2NEBMAKE = 'nebmaker.pl'
+# PATH2NEBMAKE = 'nebmaker.pl'
 PATH2JMOL = 'jmol'
 PATH2PHONOPY = 'phonopy'
 PATH2VASPKIT = 'vaspkit'
@@ -60,7 +60,7 @@ show_head = None # show header for res_loop()
 
 
 """List of constants determined during installation"""
-CIF2CELL = True 
+CIF2CELL = False 
 
 
 

@@ -1508,7 +1508,7 @@ class CalculationVasp(Calculation):
         print(self.dir)
         out = runBash(phonopy_command+' --fc '+os.path.basename(self.path['xml']))
 
-        printlog('phonopy out: ', out)
+        print('phonopy out: ', out)
 
 
 

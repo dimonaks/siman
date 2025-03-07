@@ -21,12 +21,13 @@ except:
 import siman
 from siman import header
 from siman.header import printlog, runBash
-from siman.small_functions import is_list_like, makedir, list2string, calc_ngkpt, setting_sshpass
+from siman.small_functions import is_list_like, makedir, list2string, setting_sshpass
 from siman.classes import Description
 from siman.core.structure import Structure
 from siman.calculators.vasp import CalculationVasp
 from siman.calculators.aims import CalculationAims
 from siman.calculators.gaussian import CalculationGaussian
+from siman.calculators.atat import setup_atat_step1, setup_atat_step2
 from siman.core.molecule import Molecule
 from siman.core.cluster_run_script import prepare_run, make_run, complete_run
 from siman.core.cluster_batch_script import write_batch_header, write_batch_body
@@ -426,13 +427,15 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             - 'polaron' - polaron hopping, only input_st is supported
                 - put here all parameters
 
-            - 'atat' - create all input for ATAT
+            - 'atat' - create all input for ATAT. If one active atom then maps is started, if two or more then mmaps is started.
                 params['atat']
                     - 'active_atoms' - now dictionary of elements, which can be substituted by what e.g. {'Li':'Vac'}
                     please improve that Li0 can be used, to consider only symmetrically non-equivalent position for this element
-                    - 'exclude_atoms_n' - exclude specific atoms from cluster expansion
+                    - 'exclude_atoms_n' - exclude specific atoms from cluster expansion by providing their numbers
                     - 'subatom' -  a string for choosing different POTCAR, e.g. 's/K/K_pv/g' or 's/K/K_pv/g\nSUBATOM = s/Nb/Nb_pv/g'
-
+                    - 'constraints' (list) - list of constraints, 
+                        e.g. '1.0*Al -1.0*Li +0.1*Co >= 0.5', for magnetic calculations, 
+                        labels should be the same as in lat.in, e.g. Li+1, see mmaps documentation
 
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
 
@@ -467,6 +470,9 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
             - 'nodes' - number of nodes for sqedule system, currently works only for PBS
             - 'init_neb_geo_fld' - path to folder with geo files for NEB in VASP format
+
+            - 'calculator' (str) - vasp, qe, gaussian
+
 
     Comments:
         
@@ -802,38 +808,9 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
         if 'atat' in calc_method:
 
-            ks = varset[setlist[0]].vasp_params['KSPACING']
-            input_st = input_st.reorder_element_groups(order = 'alphabet') # required for correct work of ATAT
+            setup_atat_step1(varset, setlist, input_st, params)
 
-            N = calc_ngkpt(input_st.get_recip(), ks)
-            # print(N)
-            KPPRA = N[0]*N[1]*N[2]*input_st.natom # here probably symmetry should taken into account? not really good working
 
-            if ks == 0.3:
-                KPPRA = 1200
-            else:
-                KPPRA = 1200
-                printlog('Warning! KPPRA = 1200 for all kspacings! please contact developer to improve or modify this code in calc_manage.py')
-
-            printlog('Atat mode, KPPRA is', KPPRA, imp = 'Y')
-            # sys.exit()
-            exclude_new = []
-            exclude = params['atat'].get('exclude_atoms_n')
-
-            subatom = params['atat'].get('subatom') or None
-            # print(exclude)
-            # sys.exit()
-            if exclude:
-                for i in exclude:
-                    exclude_new.append(input_st.old_numbers.index(i)) # required since the structure was reordered
-                # exclude = exclude_new
-                params['atat']['exclude_atoms_n'] = exclude_new
-
-            params['update_set_dic']={'add_nbands':None, 'mul_nbands':None, 'USEPOT':'PAWPBE', 'KPPRA':KPPRA, 
-            'MAGATOM':list2string(input_st.magmom), 
-            'MAGMOM':None,
-            'SUBATOM':subatom,
-            'DOSTATIC':''}
 
 
     def add_loop_scale():
@@ -1424,15 +1401,21 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     mpi = False, corenum = None):
     """
 
-    schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 'none'
+    INPUT:
+        See description at add()
 
-    prevcalcver - version of previous calculation in verlist
+        - schedule_system - type of job scheduling system:'PBS', 'SGE', 'SLURM', 'none'
 
-    output_files_names - the list is updated on every call
+        - prevcalcver - version of previous calculation in verlist
 
-    if inherit_option == 'continue' the previous completed calculation is saved in cl.prev list
+        - output_files_names - the list is updated on every call
 
-    input_st (Structure) - Structure object can be provided instead of input_folder and input_geo_file, has highest priority
+        - if inherit_option == 'continue' the previous completed calculation is saved in cl.prev list
+
+        - input_st (Structure) - Structure object can be provided instead of input_folder and input_geo_file, has highest priority
+
+        - params (dict) - the dict with additional arguments, see add() description
+
 
 
     TODO:
@@ -1481,97 +1464,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         return file
 
 
-    def write_lat_in(st, params):
-        file = cl.dir +  'lat.in'
-        to_ang = 1
-        rprimd = st.rprimd
-        with open(file, 'w') as f:
-            for i in 0, 1, 2:
-                f.write('{:10.6f} {:10.6f} {:10.6f}\n'.format(rprimd[i][0]*to_ang,rprimd[i][1]*to_ang,rprimd[i][2]*to_ang) )
-                # f.write("\n")
-            f.write(' 1 0 0\n 0 1 0\n 0 0 1\n')
-
-            active_atoms = params['atat']['active_atoms'] #dict
-            
-            exclude = params['atat'].get('exclude_atoms_n') or []
-            
-            subs = []
-
-            active_numbers = []
-            subs_dict    = {}
-            active_elements = []
-            for el in set(st.get_elements()):
-                for elan in active_atoms:
-                    
-                    if el not in elan:
-                        continue
-
-
-                    # print(elan)
-                    active_elements.append(el)
-                    elann = re.split('(\d+)',elan)
-                    print('Exctracting symmetry position of Na ', elann)
-                    if len(elann) > 2:
-                        ela = elann[0]
-                        isym   = int(elann[1])
-                    else:
-                        ela = elann[0]
-                        isym = None
-                    if isym:
-                        natoms = st.determine_symmetry_positions(el)
-                        a_numbers = natoms[isym-1]
-                    else:
-                        a_numbers = st.get_numbers(el)
-            
-                    for i in a_numbers:
-                        subs_dict[i] = active_atoms[elan]
-                    
-                    active_numbers.extend(a_numbers)
-            # print(active_numbers)
-            # sys.exit()
-
-
-            # st.printme()
-            # sys.exit()
-
-
-            for i, el in enumerate(st.get_elements()):
-                if i not in exclude and i in active_numbers:
-                    # print(el, i, st.xred[i])
-                    subs.append(subs_dict[i])
-                else:
-                    subs.append(None)
-
-            print(subs)
-            # print(st.magmom)
-
-            if None in st.magmom:
-                magmom = st.natom*['']
-            else:
-                magmom = st.magmom
-
-            # print(magmom)
-            for x, el, sub, m in zip(st.xred, st.get_elements(), subs, magmom):
-                # if el == 'O':
-                #     m = 0
-                # print(m)
-                if abs(m) < 0.1:
-                    m = 0
-                # print(m, '{:+.0f}'.format(m))
-                f.write('{:10.6f} {:10.6f} {:10.6f} {:s}{:+.0f}'.format(*x, el, m))
-                
-                if sub:
-                    f.write(','+sub)
-                f.write("\n")
-
-        #highlight active atoms
-        st_h = st.replace_atoms(active_numbers, 'Pu')
-        st_h.write_poscar()
-        printlog('Check active atoms', imp = 'y')
-
-
-
-        return file
 
     struct_des = header.struct_des
 
@@ -1901,19 +1793,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
                 if 'atat' in cl.calc_method:
-                    lat_in = write_lat_in(cl.init, params)
-                    list_to_copy.append(lat_in)
-                    wrap = cl.dir+'/vasp.wrap'
-                    shutil.copyfile(cl.dir+'/INCAR', wrap)
 
-                    with open(wrap, "r") as fwr:
-                        wrap_cont = fwr.readlines()
-
-                    with open(wrap, "w") as fwr:
-                        fwr.write("[INCAR]\n"+"".join(wrap_cont[1:])) # remove first line with SYSTEM tag - not working in ATAT for some reason
-
-                    list_to_copy.append(wrap)
-
+                    setup_atat_step2(cl, params, list_to_copy)
 
 
                 if header.copy_to_cluster_flag: 
