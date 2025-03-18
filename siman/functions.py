@@ -426,6 +426,22 @@ def salary_inflation():
     return
 
 def element_name_inv(el):
+    """
+    Return Z of element if element name is provided and vise vera 
+    e.g.
+    element_name_inv('C')
+    6
+    element_name_inv(6)
+    'C'
+
+    INPUT:
+        el (str or int) - Z or name of element
+
+    RETURN
+        Z or element name depending on input
+
+
+    """
     el_dict = header.el_dict
     nu_dict = header.nu_dict
     # print type(el), el, type(str('sdf') )

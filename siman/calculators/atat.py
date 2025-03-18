@@ -6,7 +6,7 @@ This module contains interface tools to work with ATAT software
 Contributors: 
 Aksyonov Dmitry
 """
-import shutil, re
+import shutil, re, sys
 from siman.small_functions import calc_ngkpt, list2string
 from siman.header import printlog
 from siman import header
@@ -25,6 +25,8 @@ def setup_atat_step1(varset, setlist, input_st, params):
 
     ks = varset[setlist[0]].vasp_params['KSPACING']
     input_st = input_st.reorder_element_groups(order = 'alphabet') # required for correct work of ATAT
+    # input_st.printme()
+    # sys.exit()
 
     N = calc_ngkpt(input_st.get_recip(), ks)
     # print(N)
@@ -57,11 +59,18 @@ def setup_atat_step1(varset, setlist, input_st, params):
     'DOSTATIC':''}
 
 
-    if len(params['atat']['active_atoms']) == 1:
-        header.atat_run_command = 'maps -d&\npollmach runstruct_vasp mpirun\n'
-    else:
-        header.atat_run_command = 'mmaps -d&\npollmach runstruct_vasp mpirun\n'
+    rm_files = 'rm maps_is_running pollmach_is_running; \n'
 
+    maps_keys = params['atat'].get('maps_keys') or '-d' # default
+    # print(maps_keys)
+    # sys.exit()
+
+    if len(params['atat']['active_atoms']) == 1:
+        maps = 'maps '
+    else:
+        maps = 'mmaps '
+
+    header.atat_run_command = rm_files+maps+maps_keys+'&\npollmach runstruct_vasp mpirun\n'
 
     return
 
@@ -80,7 +89,8 @@ def write_lat_in(st, params, dirpath):
         active_atoms = params['atat']['active_atoms'] #dict
         
         exclude = params['atat'].get('exclude_atoms_n') or []
-        
+        # print(exclude)
+        # sys.exit()
         subs = []
 
         active_numbers = []
@@ -96,13 +106,14 @@ def write_lat_in(st, params, dirpath):
                 # print(elan)
                 active_elements.append(el)
                 elann = re.split('(\d+)',elan)
-                print('Exctracting symmetry position of Na ', elann)
+                printlog('Exctracting symmetry position of Na ', elann)
                 if len(elann) > 2:
                     ela = elann[0]
                     isym   = int(elann[1])
                 else:
                     ela = elann[0]
                     isym = None
+                
                 if isym:
                     natoms = st.determine_symmetry_positions(el)
                     a_numbers = natoms[isym-1]
@@ -129,9 +140,11 @@ def write_lat_in(st, params, dirpath):
                 subs.append(None)
 
         printlog('Substitutions are', subs,)
-        # print(st.magmom)
+        # print('subs=',subs)
 
-        if None in st.magmom:
+        # print(st.magmom)
+        # sys.exit()
+        if len(st.magmom) == 0 or None in st.magmom:
             write_magmom = False
             magmom = st.natom*['']
         else:
@@ -139,6 +152,8 @@ def write_lat_in(st, params, dirpath):
             write_magmom = True
 
         # print('magmom', magmom, st.magmom,st.natom)
+        # sys.exit()
+
         for x, el, sub, m in zip(st.xred, st.get_elements(), subs, magmom):
             # if el == 'O':
             #     m = 0
@@ -157,7 +172,7 @@ def write_lat_in(st, params, dirpath):
     #highlight active atoms
     st_h = st.replace_atoms(active_numbers, 'Pu')
     st_h.write_poscar()
-    printlog('Check active atoms', imp = 'y')
+    printlog('ATAT files sucesfully created. Check active atoms using file above.', imp = 'y')
 
 
 

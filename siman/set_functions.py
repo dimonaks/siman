@@ -191,7 +191,8 @@ vasp_other_keys = [
 'ZAB_VDW',
 'IWAVPR',
 "NBLOCK",
-'BEXT'
+'BEXT',
+'KPAR'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -880,6 +881,43 @@ class InputSet():
 
         return
 
+    def get_n_valence_electrons(self, el_list):
+        """
+        For the given list of elements return number of valence electrons, determined by the file with potential.
+
+        INPUT:
+            - el_list (list) - list of elements e.g. ['Li', 'O']
+
+        RETURN:
+            - n_val_list (list) - list of valence electrons
+        """
+
+        from pathlib import Path
+        if hasattr(self, 'path2pot' ) and self.path2pot:
+            path2pot = self.path2pot
+        else:
+            path2pot = header.PATH2POTENTIALS
+
+        n_val_list = []
+        #1. Determine code
+        if not hasattr(self, 'calculator'):
+            self.calculator = 'vasp' # for compat with old databases, when only vasp was available
+
+        if self.calculator == 'vasp':
+
+            for el in el_list:
+                potcar = Path(path2pot) / Path(self.potdir[invert(el)]) / Path('POTCAR')
+                for line in open(potcar,'r'):
+                    if "ZVAL" in line:
+                        n_val_list.append(int(float(line.split()[5])))
+                        break
+
+            # print(n_val_list)
+
+        else:
+            printlog('Error! Currently this functional is coded only for VASP sets!')
+
+        return n_val_list
 
 def inherit_iset(ise_new, ise_from, varset, override=False, newblockfolder=None):
     """ Create new set copying from existing and update some fields. If ise_from does not exist create new"""

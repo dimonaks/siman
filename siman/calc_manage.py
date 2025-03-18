@@ -430,6 +430,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
             - 'atat' - create all input for ATAT. If one active atom then maps is started, if two or more then mmaps is started.
                 params['atat']
+                    - 'maps_keys' - this is keys provided to maps or mmaps, default is -d, see maps --help
                     - 'active_atoms' - now dictionary of elements, which can be substituted by what e.g. {'Li':'Vac'}
                     please improve that Li0 can be used, to consider only symmetrically non-equivalent position for this element
                     - 'exclude_atoms_n' - exclude specific atoms from cluster expansion by providing their numbers

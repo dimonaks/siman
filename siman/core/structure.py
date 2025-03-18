@@ -58,7 +58,9 @@ from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_ge
 
 
 class Structure():
-    """This class includes only structure related information such as primitive vectors, coordinates, forces and so on"""
+    """This class includes only structure related information such as primitive vectors, coordinates, atom types, magnetic moments, etc.
+
+    """
     def __init__(self):
         self.name = ""
         self.des = ''
@@ -332,7 +334,7 @@ class Structure():
         return self.get_elements()[i]
 
     def get_elements_z(self):
-        #return list of elements z-numbers
+        #return list of elements z-numbers for all atoms in the cell
         return [self.znucl[t-1] for t in self.typat]
     def get_el_z(self, i):
         #return z-number of element
@@ -389,8 +391,25 @@ class Structure():
 
 
 
-    def get_total_number_electrons(self):
+    def get_total_number_electrons(self, iset):
+        """
+        Calculate total number of electrons for this structure and set ise
+
+        INPUT:
+            - iset (InputSet) - InputSet object from header.varset dict
+
+
+        RETURN:
+            - total number of electrons
+
+        """
+
+        el_list = [invert(z) for z in self.znucl]
+
+        self.zval = iset.get_n_valence_electrons(el_list)
+
         zvals = self.get_elements_zval()
+        # print(zvals)
         return int(sum(zvals))
 
 
@@ -1759,7 +1778,6 @@ class Structure():
 
         if len(magmom) == 0:
             magmom = [None]
-
         st.old_numbers = old_numbers
         st.xcart = xcart
         st.magmom = magmom
@@ -1769,6 +1787,8 @@ class Structure():
         st.name+='_r'
         # st.write_poscar()
 
+        # print(st.magmom)
+        # sys.exit()
         return st
 
     def reorder(self, new_order):
