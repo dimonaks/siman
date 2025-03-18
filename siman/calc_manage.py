@@ -2415,7 +2415,8 @@ def res_loop(it, setlist, verlist, analys_type = None,
     push2archive = False,
     cluster = None, 
     check_job = 1, 
-    params = None, log_flag,
+    params = None, 
+    log_flag = True,
     **args):
     """
     Read results of calculation with id (it, ise, v), where ise and v are taken from setlist and verlist
