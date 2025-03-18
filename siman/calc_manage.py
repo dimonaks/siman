@@ -318,7 +318,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True
+    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True, job_name = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -474,6 +474,8 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             - 'init_neb_geo_fld' - path to folder with geo files for NEB in VASP format
 
             - 'calculator' (str) - vasp, qe, gaussian
+        
+        - job_name - job name on cluster
 
 
     Comments:
@@ -1374,7 +1376,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, corenum = header.corenum)
+                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, corenum = header.corenum, job_name = job_name)
             
             prevcalcver = v
 
@@ -1403,7 +1405,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, input_kpoints=None, calc_method = None, u_ramping_region = None,
     mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None, 
-    mpi = False, corenum = None):
+    mpi = False, corenum = None, job_name = None):
     """
 
     INPUT:
@@ -1420,6 +1422,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         - input_st (Structure) - Structure object can be provided instead of input_folder and input_geo_file, has highest priority
 
         - params (dict) - the dict with additional arguments, see add() description
+
+        - job_name - job name on cluster 
 
 
 
@@ -1670,10 +1674,16 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     # run_on_server("mkdir -p "+cl.dir, addr = cl.cluster_address)
 
             if id[2] == first_version:
-                write_batch_header(cl, batch_script_filename = batch_script_filename,
+                if job_name:
+                    write_batch_header(cl, batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
                     path_to_job = header.project_path_cluster+'/'+cl.dir, 
-                    job_name = cl.id[0]+"."+cl.id[1], corenum = corenum  )
+                    job_name = job_name, corenum = corenum  )
+                else:
+                    write_batch_header(cl, batch_script_filename = batch_script_filename,
+                        schedule_system = cl.schedule_system, 
+                        path_to_job = header.project_path_cluster+'/'+cl.dir, 
+                        job_name = cl.id[0]+"."+cl.id[1], corenum = corenum  )
 
 
 
