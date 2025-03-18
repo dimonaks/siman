@@ -3495,9 +3495,71 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
     # print(struct)
 
 
+    def get_structure_from_matproj_new(mat_proj_id=None, it=None, it_folder=None, mat_proj_cell=None, ver=None):
+        from mp_api.client import MPRester  # Modern MP API client
+        from pymatgen.io.vasp import Poscar
+        from pymatgen.core.composition import Composition
+        """ Version with MP-API instead of outdated Pymatgen-API """ 
 
+        with MPRester(header.mpkey) as m:
+            if mat_proj_id:
+                groundstate_st_id = mat_proj_id
+            else:
+                # Fetch entries for the given chemical system or formula
+                if it is None:
+                    it = str(cm.reduced_formula)
+                # sys.exit()
+                if it_folder is None:
+                    it_folder = it
 
+                if it:
+                    results = m.summary.search(formula=it, fields=["material_id", "energy_above_hull"])
+                    add_des(header.struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
+                else:
+                    raise ValueError("No material ID or chemical system provided.")
 
+                # Sort by energy above hull to find the ground state
+                if results:
+                    sorted_results = sorted(results, key=lambda x: x.energy_above_hull)
+                    groundstate_st_id = sorted_results[0].material_id
+                else:
+                    raise ValueError("No results found for the given query.")
+
+            # Fetch the structure using the material ID
+            st_pmg = m.get_structure_by_material_id(groundstate_st_id)
+
+            # Convert to conventional cell if requested
+            if mat_proj_cell is not None and 'conv' in mat_proj_cell:
+                sf = SpacegroupAnalyzer(st_pmg, symprec=0.01)
+                st_pmg = sf.get_conventional_standard_structure()
+
+            # Determine the formula and folder name
+            cm = Composition(st_pmg.formula)
+            if it is None:
+                it = str(cm.reduced_formula)
+            if it_folder is None:
+                it_folder = it
+
+            # Define the output POSCAR file path
+            if it:
+                path2poscar = os.path.join(it_folder, it, f"{groundstate_st_id}.POSCAR-{ver}")
+                os.makedirs(os.path.dirname(path2poscar), exist_ok=True)
+            else:
+                path2poscar = os.path.join(it_folder, f"{groundstate_st_id}.POSCAR") if it_folder else f"{groundstate_st_id}.POSCAR"
+
+            # Write the structure to a POSCAR file
+            Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True)
+            printlog('Structure', groundstate_st_id, 'downloaded from materialsproject.org\n', 'File '+path2poscar+" was written", imp = 'y')
+
+            # Return the structure with additional metadata
+            st = smart_structure_read(input_geo_file=path2poscar)
+            st.groundstate_st_id = groundstate_st_id
+            st.mat_proj_st_id = groundstate_st_id
+            st.input_geo_file = path2poscar
+            st.it = it
+            st.it_folder = it_folder
+
+            return st
 
 
 

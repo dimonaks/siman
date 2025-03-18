@@ -211,7 +211,7 @@ def _update_configuration(filename, pfolder = None, clusters=None):
     'PATH2PHONOPY', 'PATH2POTENTIALS', 'PATH2PROJECT', 'PBS_PROCS', 
     'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
     'geo_folder', 'path_to_images', 'path_to_paper', 
-    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 
+    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 'mpkey',
     'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE', 'AUTO_UPDATE_DB', 'warnings', 'PATH2EDITOR', 'PATH2AFLOW', 'NEBMAKERTOOL']
 
     for var in config_vars:
