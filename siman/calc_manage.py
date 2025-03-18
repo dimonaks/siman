@@ -2407,6 +2407,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
 
 
+
 def res_loop(it, setlist, verlist, analys_type = None,
     up = "up1", readfiles = True, show = 'fomag', 
     it_suffix = None,
@@ -2414,11 +2415,12 @@ def res_loop(it, setlist, verlist, analys_type = None,
     push2archive = False,
     cluster = None, 
     check_job = 1, 
-    params = None,
+    params = None, log_flag,
     **args):
     """
     Read results of calculation with id (it, ise, v), where ise and v are taken from setlist and verlist
     
+
     INPUT:
         - it - name for your crystal structure in local database db
         - setlist (list of str or str) - names of sets with vasp parameters from *varset* dictionary
@@ -2474,6 +2476,7 @@ def res_loop(it, setlist, verlist, analys_type = None,
         - push2archive (bool) - if True produced images are copied to header.project_conf.path_to_images
         - cluster (str) - name of cluster, used to override current cluster name to download output from the provided one
         - check_job - (bool) check status on server, use 0 if no internet connection
+        - log_flag (bool) - if False, the logs "is unfinished; return \{\} []" will not be shown; used for band_structure/non_self_consist_calc
 
 
         
@@ -2517,7 +2520,10 @@ def res_loop(it, setlist, verlist, analys_type = None,
             - savefile - dummy
             - override - dummy
             and see just below
+        
+
         **args - just any args allowing to rename add to res
+
 
     RETURN:
         
@@ -2782,7 +2788,8 @@ def res_loop(it, setlist, verlist, analys_type = None,
             
             if readfiles and check_job:
                 if '3' in cl.check_job_state():
-                    printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
+                    if log_flag:
+                        printlog( cl.name, 'has state:',cl.state,'; I will continue', cl.dir, imp = 'y')
                     # cl.res()
                     continue
 
@@ -2997,7 +3004,8 @@ def res_loop(it, setlist, verlist, analys_type = None,
                 dire = cl.dir
             except:
                 dire = ''
-            printlog( "res_loop(): Calculation ",id, 'is unfinished; return \{\} []',dire, imp = 'Y')
+            if log_flag:
+                printlog( "res_loop(): Calculation ", id, "is unfinished; return {} []", dire, imp='Y')
             return {}, []
         
         outloop_segreg_analysis(b_id, analys_type, conv, n, description_for_archive, show, push2archive)
@@ -3010,7 +3018,8 @@ def res_loop(it, setlist, verlist, analys_type = None,
         if analys_type == 'redox_pot':
             
             if '4' not in bcl.state:
-                printlog("res_loop: Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
+                if log_flag:
+                    printlog("res_loop: Calculation ",bcl.id, 'is unfinished; return', imp = 'Y')
                 return {}, []
 
             results_dic = calc_redox(cl, bcl, energy_ref)
