@@ -1105,6 +1105,9 @@ class CalculationVasp(Calculation):
                 self.get_file(os.path.basename(file), up = load)
 
 
+
+
+
         if 'x' in load:
 
             # get_from_server(files = join(self.project_path_cluster, path_to_xml), to = os.path.dirname(path_to_outcar),  

@@ -1602,6 +1602,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
         #check volume
         if cl.init.get_volume() < 0:
+            ''
             printlog(f'Error! The volume of unitcell is negative = {cl.init.get_volume():.2f} A^3! Check your input structure.')
 
 

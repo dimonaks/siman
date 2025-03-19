@@ -1142,19 +1142,19 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     return sc
 
 
-def supercell(st, ortho_sizes):
+def supercell(st, ortho_sizes, **argv):
     """
     wrapper
     """
     mul_matrix = ortho_vec(st.rprimd, ortho_sizes)
-    return create_supercell(st, mul_matrix)
+    return create_supercell(st, mul_matrix, **argv)
 
-def cubic_supercell(st, ortho_sizes):
+def cubic_supercell(st, ortho_sizes, **argv):
     """
     wrapper
     """
     mul_matrix = ortho_vec(st.rprimd, ortho_sizes)
-    return create_supercell(st, mul_matrix)
+    return create_supercell(st, mul_matrix, **argv)
 
 
 def determine_symmetry_positions(st, element, silent = 0, symprec = 0.01, angle_tolerance = 5.0):
