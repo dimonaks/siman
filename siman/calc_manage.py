@@ -2912,10 +2912,31 @@ def res_loop(it, setlist, verlist, analys_type = None,
 
             
             if readfiles:
-                printlog('Starting self.read_results() ...')
-                outst = cl.read_results(loadflag, analys_type, voronoi = voronoi, show = show, 
-                    choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
-                
+
+                if header.PARSE_OUTPUT_ON_CLUSTER:
+                    # new  regime to parse output on cluster, improve! 1. parse on cluster, 2. create pickle on cluster, 3. download pickle. 4. deserilize pickle
+                    path = os.path.dirname(path_to_outcar)
+                    out =  os.path.basename(path_to_outcar)
+                    script = """
+                    cd path; python3 '
+                    from siman.calculator.vasp import CalculationVasp
+                    cl = CalculationVasp(output = out)
+                    cl.read_results() #load = load, out_type = out_type, show = show, voronoi = voronoi,             path_to_outcar = path_to_outcar, path_to_contcar = path_to_contcar
+                    file = cl.serialize()
+                    print(file)
+                    '  
+                    """
+                    pickle_file = run_on_server(script, header.cluster_address)
+                    file = pickle_file
+                    cl.get_file(os.path.basename(file), up = load) # download file
+                    cl.deserialize(local_pickle_file)
+
+                else:
+                    # old normal regime
+                    printlog('Starting self.read_results() ...')
+                    outst = cl.read_results(loadflag, analys_type, voronoi = voronoi, show = show, 
+                        choose_outcar = choose_outcar, alkali_ion_number = alkali_ion_number)
+                    
                 if '5' in cl.state:
                     continue
 

@@ -49,6 +49,9 @@ override_cluster_address = 0 # 1 or 0, override read calculations to header.CLUS
 pymatgen_flag = None
 open_terminal = False #used in runBash
 siman_run = False #
+PARSE_OUTPUT_ON_CLUSTER = False # put this true 
+
+
 PATH2SHELVE_DBSUP = 'calc.gdbm3' # supporting database
 PATH2SHELVE_DB = 'only_calc.gdbm3' # name for calculation database, db dict
 PATH2HISTORYFILE = 'history' 
@@ -211,7 +214,7 @@ def _update_configuration(filename, pfolder = None, clusters=None):
     'PATH2PHONOPY', 'PATH2POTENTIALS', 'PATH2PROJECT', 'PBS_PROCS', 
     'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
     'geo_folder', 'path_to_images', 'path_to_paper', 
-    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 'mpkey',
+    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 'mpkey', 'PARSE_OUTPUT_ON_CLUSTER',
     'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE', 'AUTO_UPDATE_DB', 'warnings', 'PATH2EDITOR', 'PATH2AFLOW', 'NEBMAKERTOOL']
 
     for var in config_vars:
