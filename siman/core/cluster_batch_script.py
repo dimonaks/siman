@@ -177,6 +177,9 @@ def write_batch_header(cl, batch_script_filename = None,
             f.write("cd "+path_to_job+"\n")
             # f.write("export OMP_NUM_THREADS=1\n")
 
+            if 'source' in header.cluster:
+                f.write(header.cluster['source']+'\n')
+
             if 'modules' in header.cluster:
                 f.write(header.cluster['modules']+'\n')
             
