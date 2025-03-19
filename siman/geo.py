@@ -1114,8 +1114,10 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
 
     sc.natom = len(sc.xcart)
 
+    if sc_natom < 0:
+        printlog('Warning! sc_natom is negative, check you input structure. Use supercell on your on risk!')
 
-    if test_natom and abs(sc.natom - sc_natom)>1e-5: #test 1, number of atoms
+    if test_natom and abs(sc.natom - abs(sc_natom) )>1e-5: #test 1, number of atoms
         printlog('Error! Supercell contains wrong number of atoms:', sc.natom  , 'instead of', sc_natom, 
             'try to increase *mp* of change *bound* ')
 
