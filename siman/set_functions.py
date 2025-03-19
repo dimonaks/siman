@@ -190,9 +190,10 @@ vasp_other_keys = [
 'PMASS',
 'ZAB_VDW',
 'IWAVPR',
-"NBLOCK",
+'NBLOCK',
 'BEXT',
-'KPAR'
+'KPAR',
+'LMIXTAU'
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 

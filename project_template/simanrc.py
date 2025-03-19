@@ -6,7 +6,8 @@ from __future__ import division, unicode_literals, absolute_import
 
 """General parameters"""
 PATH2POTENTIALS = '~/PAW_PBE_VASP' # put potential into this directory
-pmgkey = "" # please get your own key from materials project for pymatgen
+pmgkey = "" # please get your own key from materials project for pymatgen: 16 digits (https://legacy.materialsproject.org/dashboard) 
+mpkey = "" # please get your own key from materials project api: 32 digits (https://next-gen.materialsproject.org/api)
 PATH2DATABASE        = './database'
 AUTO_UPDATE_DB = False # if True, then execute write_database() at the end of add() and res()
 PATH2JMOL     = 'jmol'
