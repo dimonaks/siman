@@ -3517,26 +3517,36 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
     # print(struct)
 
 
-def get_structure_from_matproj_new(mat_proj_id=None, it=None, it_folder=None, mat_proj_cell=None, ver=None):
+def get_structure_from_matproj_new(mat_proj_id=None, it=None, it_folder=None, mat_proj_cell=None, ver=None, mute_progress_bars=True):
     from mp_api.client import MPRester  # Modern MP API client
     from pymatgen.io.vasp import Poscar
     from pymatgen.core.composition import Composition
     """ Version with MP-API instead of outdated Pymatgen-API """ 
 
-    with MPRester(header.mpkey) as m:
+    """
+        Find material with 'it' stoichiometry (lowest energy) from materialsproject.org, 
+        download and create field in struct_des and input POSCAR file
+        INPUT:
+            - it        - materials name, such as 'LiCoO2', .... By default the structure with minimum *e_above_hull* is taken
+            - it_folder - section folder in which the Poscar will be placed
+            - ver       - version of structure defined by user
+            - mat_proj_id (str) - the id can be provided explicitly
+            - mat_proj_cell (str)- 
+                    - 'conv' - conventional
+            - mute_progress_bars - mute progress bar of MPRester
+
+        RETURN:
+            - st - siman structure 
+    """
+
+    with MPRester(header.mpkey, mute_progress_bars=mute_progress_bars) as m:
         if mat_proj_id:
             groundstate_st_id = mat_proj_id
         else:
             # Fetch entries for the given chemical system or formula
-            if it is None:
-                it = str(cm.reduced_formula)
-            # sys.exit()
-            if it_folder is None:
-                it_folder = it
 
             if it:
                 results = m.summary.search(formula=it, fields=["material_id", "energy_above_hull"])
-                add_des(header.struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
             else:
                 raise ValueError("No material ID or chemical system provided.")
 
@@ -3546,6 +3556,11 @@ def get_structure_from_matproj_new(mat_proj_id=None, it=None, it_folder=None, ma
                 groundstate_st_id = sorted_results[0].material_id
             else:
                 raise ValueError("No results found for the given query.")
+
+            if it is None:
+                it = str(cm.reduced_formula)
+            if it_folder is None:
+                it_folder = it
 
         # Fetch the structure using the material ID
         st_pmg = m.get_structure_by_material_id(groundstate_st_id)
@@ -3562,12 +3577,12 @@ def get_structure_from_matproj_new(mat_proj_id=None, it=None, it_folder=None, ma
         if it_folder is None:
             it_folder = it
 
-        # Define the output POSCAR file path
+
+        os.makedirs("poscar", exist_ok=True)
+        path2poscar = "poscar/" + it + "_" + f"{groundstate_st_id}.POSCAR-" + str(ver)
+
         if it:
-            path2poscar = os.path.join(it_folder, it, f"{groundstate_st_id}.POSCAR-{ver}")
-            os.makedirs(os.path.dirname(path2poscar), exist_ok=True)
-        else:
-            path2poscar = os.path.join(it_folder, f"{groundstate_st_id}.POSCAR") if it_folder else f"{groundstate_st_id}.POSCAR"
+            add_des(header.struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
 
         # Write the structure to a POSCAR file
         Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True)
