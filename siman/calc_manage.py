@@ -799,7 +799,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
                     db[cl_temp.id] = cl_temp
                 
                     if ver_new ==2:
-                        cl_temp.write_structure("2.POSCAR") # create it already here, it will copied automatically since all POSCARs are copied             
+                        cl_temp.write_structure("2.POSCAR", coord) # create it already here, it will copied automatically since all POSCARs are copied             
  
             # input_st.write_poscar(cl_temp.dir+'/0.POSCAR')
             # st1.write_poscar(cl_temp.dir+'/1.POSCAR_test')

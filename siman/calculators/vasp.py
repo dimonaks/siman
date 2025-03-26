@@ -102,7 +102,7 @@ class CalculationVasp(Calculation):
 
     def write_structure(self, name_of_output_file, type_of_coordinates = 'dir', option = None, prevcalcver = None, path = None, state = 'init'):
         """Generates POSCAR file
-           type_of_coordinates - 'direct' (xred) or 'cartesian' (xcart)
+           type_of_coordinates - 'direct'/'dir' (xred) or 'cartesian'/'car' (xcart)
            option -inheritance option
            prevcalcver - ver of first calc in calc list; for first None
            state - 'init' or 'end' 
