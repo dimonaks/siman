@@ -1424,6 +1424,8 @@ class Calculation(object):
             suffix = '.if'
         if iopt == 'full_chg':
             suffix = '.ifc'
+        if iopt == 'full_chg_nscf':
+            suffix = '.ifc' #name is the same
         if iopt == 'full_wave':
             suffix = '.ifw'
 
@@ -1493,6 +1495,13 @@ class Calculation(object):
                         ICHARG_or = vp['ICHARG']
                         vp['ICHARG'] = 1
 
+                if iopt == 'full_chg_nscf':
+                    if 'ICHARG' in vp and vp['ICHARG'] != 11:
+                        printlog(
+                            'Warning! Inheritance of CHGCAR and ICHARG == 0; I change locally ICHARG to 1')
+                        ICHARG_or = vp['ICHARG']
+                        vp['ICHARG'] = 11
+                    iopt = 'full_chg' # everything else is the same
                 if not vers:
                     vers = [self.id[2]]
 

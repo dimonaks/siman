@@ -2,6 +2,6 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'neb external bugfix '
+git commit -m 'noncollinear calc with vasp '
 git push origin simanaks
 

@@ -193,7 +193,8 @@ vasp_other_keys = [
 'NBLOCK',
 'BEXT',
 'KPAR',
-'LMIXTAU'
+'LMIXTAU',
+'LORBMOM',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -212,6 +213,7 @@ siman_keys = [
 'mul_nbands_small_cell', 
 'mul_nbands', 
 'k_effective_mass', # to generate KPOINTS for effective mass
+'cluster_run_command', # run command to run on cluster, used to update cluster['vasp_com'] from set
 ]
 
 aims_keys = [
@@ -446,6 +448,8 @@ class InputSet():
         else:
             self.spin_polarized = False
 
+
+
         # require fix
         # if 'KPOINTS' not in self.params.keys() and 'KSPACING' not in self.params.keys():
         #     self.vasp_params['KSPACING'] = 0.2
@@ -468,6 +472,7 @@ class InputSet():
                 printlog('mul_nbands', param['mul_nbands'], imp = 'Y')
                 printlog('Error! Use either *add_nbands* or *mul_nbands*. Their meaning is equivalent giving the multiplier by which the number of bands will be increased from their minimum value.')
         
+
         if hasattr(self, 'calculator') and self.calculator == 'qe':
             for section in param:
                 if section in self.params.keys():
@@ -505,6 +510,8 @@ class InputSet():
 
                 elif key == 'bfolder':
                     print_and_log('New blockfolder', param[key])
+
+
 
                 elif key in siman_keys:
                     s.set_attrp(key, param[key])

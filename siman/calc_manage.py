@@ -1607,7 +1607,15 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-
+        #pass using object
+        # if header.copy_to_cluster_flag:
+        cl.cluster_address      = header.cluster_address
+        cl.project_path_cluster = header.project_path_cluster
+        cl.cluster_home = header.cluster_home
+        cl.corenum = header.corenum 
+        cl.schedule_system = header.schedule_system
+        cl.cluster = header.cluster
+        cl.params = params
 
         setseq = [cl.set]                                                                                                    
         if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
@@ -1638,15 +1646,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-        #pass using object
-        # if header.copy_to_cluster_flag:
-        cl.cluster_address      = header.cluster_address
-        cl.project_path_cluster = header.project_path_cluster
-        cl.cluster_home = header.cluster_home
-        cl.corenum = header.corenum 
-        cl.schedule_system = header.schedule_system
-        cl.cluster = header.cluster
-        cl.params = params
+
 
         if mat_proj_st_id:
             cl.mat_proj_st_id = mat_proj_st_id
