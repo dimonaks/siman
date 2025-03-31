@@ -1365,7 +1365,7 @@ class Calculation(object):
         # sys.exit()
         res_loop(*self.id, **argv)
 
-    def run(self, ise, iopt='full_nomag', up='up1', vers=None, i_child=-1, add=0, it_suffix_del=True, *args, **kwargs):
+    def run(self, ise, iopt='full_nomag', up='up1', vers=None, i_child=-1, add=0, it_suffix_del=True, params = None, *args, **kwargs):
         """
         Wrapper for add_loop (in development).
         On a first run create new calculation. On a second run will try to read results.
@@ -1429,7 +1429,8 @@ class Calculation(object):
         if iopt == 'full_wave':
             suffix = '.ifw'
 
-
+        if params is None:
+            params = {}
 
         if 'it_suffix' in kwargs:
             it_suffix = '.'+kwargs['it_suffix']
@@ -1498,16 +1499,20 @@ class Calculation(object):
                 if iopt == 'full_chg_nscf':
                     if 'ICHARG' in vp and vp['ICHARG'] != 11:
                         printlog(
-                            'Warning! Inheritance of CHGCAR and ICHARG == 0; I change locally ICHARG to 1')
+                            'Warning! Inheritance of CHGCAR and ICHARG == 0; I change locally ICHARG to 11')
                         ICHARG_or = vp['ICHARG']
                         vp['ICHARG'] = 11
                     iopt = 'full_chg' # everything else is the same
+                
+                params['cl_parent'] = self
+                if params.get('upload_parent_chgcar'):
+                    kwargs['copy_to_server'] = False
                 if not vers:
                     vers = [self.id[2]]
 
                 idd = self.id
                 it_new = add_loop(idd[0], idd[1], vers, ise_new=ise, up=up,
-                                  inherit_option=iopt, override=1, *args, **kwargs)
+                                  inherit_option=iopt, override=1, params = params, *args, **kwargs)
                 # it_new = add_loop(*self.id, ise_new = ise, up = up, inherit_option = iopt, override = 1)
                 child = (it_new, ise, self.id[2])
 

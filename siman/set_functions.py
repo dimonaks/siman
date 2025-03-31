@@ -214,6 +214,7 @@ siman_keys = [
 'mul_nbands', 
 'k_effective_mass', # to generate KPOINTS for effective mass
 'cluster_run_command', # run command to run on cluster, used to update cluster['vasp_com'] from set
+'shiftk', # shift of k-mesh (s1,s2,s3), float from 0 to 1
 ]
 
 aims_keys = [

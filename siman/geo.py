@@ -264,9 +264,10 @@ def calc_kspacings(ngkpt, rprimd):
     for i in 0, 1, 2:
         if ngkpt[i] != 0:
             a = np.linalg.norm( recip[i] ) / ngkpt[i]
-            kspacing.append(red_prec(a))
+            # kspacing.append(red_prec(a))
+            kspacing.append(a)
         else:
-            printlog('Warning! ngkpt = 0 in geo.calc_kspacings', imp='y')
+            printlog('Warning! ngkpt = 0 in siman.geo.calc_kspacings()', imp='y')
 
     return  kspacing
 

@@ -501,7 +501,11 @@ class CalculationVasp(Calculation):
                     else: 
                         f.write("Monkhorst Pack\n")
                     f.write('%i %i %i \n'%(nk1, nk2, nk3) )
-                    f.write("0 0 0\n") # optional shift
+                    if hasattr(self.set, 'shiftk') and self.set.shiftk:
+                        s = self.set.shiftk
+                        f.write("{:.6f} {:.6f} {:.6f}\n".format(s[0],s[1], s[2])) # optional shift
+                    else:
+                        f.write("0 0 0\n") # optional shift
 
                 printlog( "KPOINTS was generated\n")
             
@@ -693,7 +697,8 @@ class CalculationVasp(Calculation):
         # print(self.init.magmom)
         # print(None in self.init.magmom)
         # sys.exit()
-
+        magmom = []
+        
         if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
             magmom = self.init.magmom
 
@@ -861,7 +866,7 @@ class CalculationVasp(Calculation):
                 vp['MAGMOM'] = [x for m in vp['MAGMOM'] for x in (0, 0, m)]
                 printlog('MAGMOM from set was converted to [0,0, m, 0, 0, m ...]:', vp['MAGMOM'] , imp = 'y')
             vc = self.cluster['vasp_com'].split()
-            self.cluster['vasp_com'] = vc[0] + ' vasp_ncl'
+            self.cluster['vasp_com'] = ' '.join(vc[0:-1]) + ' vasp_ncl'
             printlog('vasp_com replaced to vasp_ncl', imp = 'y')
 
 
@@ -875,9 +880,12 @@ class CalculationVasp(Calculation):
             # self.init.magmom = [None]
             # sys.exit()
 
+        if params.get('ngkpt'):
+            curset.ngkpt = params.get('ngkpt')
 
 
-
+        if params.get('shiftk'):
+            curset.shiftk = params.get('shiftk')
 
 
 
