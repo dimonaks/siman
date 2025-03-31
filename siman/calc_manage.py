@@ -474,6 +474,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             - 'init_neb_geo_fld' - path to folder with geo files for NEB in VASP format
 
             - 'calculator' (str) - vasp, qe, gaussian
+            - shiftk (list of float) - shift of k-mesh (s1,s2,s3), float from 0 to 1
 
 
     Comments:
@@ -799,7 +800,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
                     db[cl_temp.id] = cl_temp
                 
                     if ver_new ==2:
-                        cl_temp.write_structure("2.POSCAR") # create it already here, it will copied automatically since all POSCARs are copied             
+                        cl_temp.write_structure("2.POSCAR", coord) # create it already here, it will copied automatically since all POSCARs are copied             
  
             # input_st.write_poscar(cl_temp.dir+'/0.POSCAR')
             # st1.write_poscar(cl_temp.dir+'/1.POSCAR_test')
@@ -1249,47 +1250,58 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             if copy_to_server: 
                 wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
             else:
-                shutil.copy(os.getcwd()+'/'+calc[id_base].path["charge"], calc[id].dir + '/CHGCAR')
+                ''
+                # shutil.copy(os.getcwd()+'/'+calc[id_base].path["charge"], calc[id].dir + '/CHGCAR') # do we need this?
 
+        # print(copy_to_server)
+        # sys.exit()
         if inherit_option  == 'full_chg':
 
             # cl.path["charge"] = cl.path["output"].replace('OUTCAR', 'CHGCAR')
             # print(calc[id_base].path)
-            printlog('Copying CHGCAR ...', imp = 'y')
             if copy_to_server:
+                printlog('Copying CHGCAR on cluster ...', imp = 'y')
                 wrapper_cp_on_server(calc[id_base].path["charge"], header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'CHGCAR')
             else:
                 pass
+        
+
+
         if inherit_option  == 'optic':
-            printlog('Copying WAVECAR ...', imp = 'y')
             if copy_to_server:
+                printlog('Copying WAVECAR  on cluster ...', imp = 'y')
                 wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
             else:
                 pass
         
         if inherit_option  == 'full_wave':
-            printlog('Copying WAVECAR ...', imp = 'y')
             if copy_to_server:
+                printlog('Copying WAVECAR  on cluster ...', imp = 'y')
+
                 wrapper_cp_on_server(calc[id_base].path["output"].replace('OUTCAR','WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
             else:
                 pass
 
         if inherit_option  == 'band_hse':
-            printlog('Copying WAVECAR ...', imp = 'y')
             if copy_to_server:
+                printlog('Copying WAVECAR  on cluster ...', imp = 'y')
+
                 wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
             else:
                 pass
 
         if inherit_option  == 'optic_loc':
-            printlog('Copying WAVECAR ...', imp = 'y')
             if copy_to_server:
+                printlog('Copying WAVECAR ...', imp = 'y')
+    
                 wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVECAR'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVECAR')
             else:
                 pass
 
             printlog('Copying WAVEDER ...', imp = 'y')
             if copy_to_server:
+                printlog('Copying WAVECAR ...', imp = 'y')
+
                 wrapper_cp_on_server(calc[id_base].path["output"].replace('WAVEDER'), header.project_path_cluster + '/' + calc[id].dir + '/', new_filename = 'WAVEDER')       
             else:
                 pass
@@ -1607,7 +1619,15 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-
+        #pass using object
+        # if header.copy_to_cluster_flag:
+        cl.cluster_address      = header.cluster_address
+        cl.project_path_cluster = header.project_path_cluster
+        cl.cluster_home = header.cluster_home
+        cl.corenum = header.corenum 
+        cl.schedule_system = header.schedule_system
+        cl.cluster = header.cluster
+        cl.params = params
 
         setseq = [cl.set]                                                                                                    
         if hasattr(cl.set, 'set_sequence') and cl.set.set_sequence:
@@ -1638,15 +1658,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-        #pass using object
-        # if header.copy_to_cluster_flag:
-        cl.cluster_address      = header.cluster_address
-        cl.project_path_cluster = header.project_path_cluster
-        cl.cluster_home = header.cluster_home
-        cl.corenum = header.corenum 
-        cl.schedule_system = header.schedule_system
-        cl.cluster = header.cluster
-        cl.params = params
+
 
         if mat_proj_st_id:
             cl.mat_proj_st_id = mat_proj_st_id
@@ -1719,7 +1731,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
 
 
-        cl.check_kpoints()    
+        cl.check_kpoints(params.get('ngkpt'))    
 
 
         if up in ['up1', 'up2', 'up3']:
@@ -1796,6 +1808,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                 list_to_copy.append(batch_script_filename)
                 
+                if params.get('upload_parent_chgcar'):
+
+                    path_charge = cl.dir + '/CHGCAR'
+                    shutil.copy(params['cl_parent'].path['charge'], path_charge)
+                    printlog('I include parent chgcar for upload:', params['cl_parent'].path['charge'], 'file renamed to CHGCAR; no copy on cluster will be attemted.', imp = 'y')
+                    # sys.exit()
+                    list_to_copy.append(path_charge)
 
 
                 if 'atat' in cl.calc_method:

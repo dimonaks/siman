@@ -102,7 +102,7 @@ class CalculationVasp(Calculation):
 
     def write_structure(self, name_of_output_file, type_of_coordinates = 'dir', option = None, prevcalcver = None, path = None, state = 'init'):
         """Generates POSCAR file
-           type_of_coordinates - 'direct' (xred) or 'cartesian' (xcart)
+           type_of_coordinates - 'direct'/'dir' (xred) or 'cartesian'/'car' (xcart)
            option -inheritance option
            prevcalcver - ver of first calc in calc list; for first None
            state - 'init' or 'end' 
@@ -246,8 +246,12 @@ class CalculationVasp(Calculation):
 
             if 'LSORBIT' in vp and vp['LSORBIT']:
                 # print (vp)
-                printlog('SOC calculation detected; increasing number of bands by two', imp = 'Y')
+                printlog('SOC calculation detected; I am increasing number of bands by two', imp = 'Y')
+                printlog('Warning! When SOC is included, we recommend testing whether switching off symmetry (ISYM=-1) changes the results.', imp = 'Y')
+                printlog('k-point convergence is tedious and slow, be carefull', imp = 'Y')
                 vp['NBANDS']*=2
+                if 'LREAL' in vp and 'False' not in vp['LREAL']:
+                    printlog('Warning! LREAL = .False. is suggested!', imp = 'Y')
 
 
 
@@ -315,7 +319,19 @@ class CalculationVasp(Calculation):
                         ''
                     elif key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
                         mag = self.init.magmom
-                        magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order ]
+                        
+                        if len(mag) == natom:
+                            magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order ]
+                        
+                        elif len(mag) == 3*natom:
+                            
+                            mag3 = [mag[i:i+3] for i in range(0, len(mag), 3)]
+                            
+                            mag3_aligned = [mag3[i] for i in poscar_atom_order ]
+
+                            magmom_aligned_with_poscar = [x for sublist in mag3_aligned for x in sublist]
+
+                        
                         f.write('MAGMOM = '+list2string(magmom_aligned_with_poscar)+"\n") #magmom from geo file has higher preference
                    
                     elif vp[key] == None:
@@ -485,7 +501,11 @@ class CalculationVasp(Calculation):
                     else: 
                         f.write("Monkhorst Pack\n")
                     f.write('%i %i %i \n'%(nk1, nk2, nk3) )
-                    f.write("0 0 0\n") # optional shift
+                    if hasattr(self.set, 'shiftk') and self.set.shiftk:
+                        s = self.set.shiftk
+                        f.write("{:.6f} {:.6f} {:.6f}\n".format(s[0],s[1], s[2])) # optional shift
+                    else:
+                        f.write("0 0 0\n") # optional shift
 
                 printlog( "KPOINTS was generated\n")
             
@@ -677,7 +697,10 @@ class CalculationVasp(Calculation):
         # print(self.init.magmom)
         # print(None in self.init.magmom)
         # sys.exit()
+        magmom = []
+        
         if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
+            magmom = self.init.magmom
 
             printlog('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
@@ -686,7 +709,6 @@ class CalculationVasp(Calculation):
             printlog('curset.magnetic_moments = ', curset.magnetic_moments)
             
             mag_mom_other = 0.6 # magnetic moment for all other elements
-            magmom = []
             for el in curset.magnetic_moments.keys():
                 if '/' in el and ldau == False:
                     # if ldau is true and multitype regime is true then everything is updated above
@@ -818,28 +840,54 @@ class CalculationVasp(Calculation):
                     if self.calc_method and 'afm_ordering' in self.calc_method:
                         self.magnetic_orderings = mag_orderings
                   
-            self.init.magmom = magmom # the order is the same as for other lists in init
+
+
 
         
+            self.init.magmom = magmom # the order is the same as for other lists in init
+
         elif 'MAGMOM' in vp and vp['MAGMOM']: #just add * to magmom tag if it is provided without it
             printlog('Magnetic moments from vasp_params["MAGMOM"] are used\n')
-            
+            magmom = vp['MAGMOM']
             # if "*" not in vp['MAGMOM']:
             #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
         
+        if 'LSORBIT' in vp and vp['LSORBIT']:
+            if len(magmom) == 0:
+                printlog('Warning! magmom is empty')
+            elif len(magmom) == self.init.natom:
+                printlog('magmom is converted to [0,0, m, 0, 0, m ...] required for noncollinear calculations', imp = 'y')
+                magmom = [x for m in magmom for x in (0, 0, m)]
+            else:
+                printlog('magmom is used from previous SO calculation', magmom, imp = 'y')
+            self.init.magmom = magmom
+
+            if 'MAGMOM' in vp and vp['MAGMOM'] and len(vp['MAGMOM']) == self.init.natom:
+                vp['MAGMOM'] = [x for m in vp['MAGMOM'] for x in (0, 0, m)]
+                printlog('MAGMOM from set was converted to [0,0, m, 0, 0, m ...]:', vp['MAGMOM'] , imp = 'y')
+            vc = self.cluster['vasp_com'].split()
+            self.cluster['vasp_com'] = ' '.join(vc[0:-1]) + ' vasp_ncl'
+            printlog('vasp_com replaced to vasp_ncl', imp = 'y')
 
 
-        # print (self.init.magmom, 'asdfaaaaaaaaaaaa')
-        
-        # sys.exit()
-
-        # number of electrons
+        if 'cluster_run_command' in vp and vp['cluster_run_command']:
+            vc = cl.cluster['vasp_com'].split()
+            cl.cluster['vasp_com'] = vc[0] + ' ' + vp['cluster_run_command']
 
         if vp.get('MAGATOM') is not None: # for ATAT
             # print (vp['MAGATOM'])
             del vp['MAGMOM']
             # self.init.magmom = [None]
             # sys.exit()
+
+        if params.get('ngkpt'):
+            curset.ngkpt = params.get('ngkpt')
+
+
+        if params.get('shiftk'):
+            curset.shiftk = params.get('shiftk')
+
+
 
         if self.calculator == 'aims':
             if None not in self.init.magmom:

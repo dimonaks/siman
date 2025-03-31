@@ -194,7 +194,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         printlog('I use folder with input files for neb in VASP format:', init_neb_geo_fld, imp = 'y')
         if st or starting_calc:
             printlog('Warning! st and starting_calc are ignored')
-        neb_folders = [ f.name for f in os.scandir(init_neb_geo_fld) if f.is_dir() ]
+        neb_folders = sorted([ f.name for f in os.scandir(init_neb_geo_fld) if f.is_dir() ])
+        printlog('Neb folders are ', neb_folders, imp = 'y')
         images = len(neb_folders) - 2
         search_type = 'external'
 

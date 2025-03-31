@@ -882,7 +882,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
     printlog("The following output files will be saved: savefile =", savefile,)
 
     if self.calculator == 'vasp':
-        parrallel_run_command = header.vasp_command
+        parrallel_run_command = self.cluster.get('vasp_com')
 
     elif self.calculator == 'gaussian':
         parrallel_run_command = self.cluster.get('gaussian_command') or 'please provide command for gaussian in *cluster* dict in simanrc.py'

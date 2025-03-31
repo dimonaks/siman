@@ -2,6 +2,6 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'test mp-api '
+git commit -m 'small update of chgcar upload when inheriting takes place '
 git push origin simanaks
 
