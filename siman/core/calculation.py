@@ -583,13 +583,13 @@ class Calculation(object):
         # TODO - please finish
         ''
 
-    def mag_diff(self, cl2, dm_skip=0.5, el='FeNiCoVMnO', more=0, abs_=0):
+    def mag_diff(self, cl2, dm_skip=0.5, el='FeNiCoVMnO', more=0, abskey=0):
         """
         rms difference of magmom, skippting large deviations, due to defects
         dm_skip (float) - skip differences larger than this 
         el (str) - only for this element, could be several 
         more (bool) - show more info about mag diff at each pos
-        abs_ (bool) - calculate differnce of absolute values of magmom        
+        abskey (bool) - calculate differnce of absolute values of magmom        
         the order of elements should be the same!!!
 
         """
@@ -601,49 +601,30 @@ class Calculation(object):
         ms = 0
         tot = 0
         maxdm = 0
-        if abs_:
-            for i in range(len(m1)):
-                if el1[i] != el2[i]:
-                    print('Warinig! el1 is not equal el2 for i=',
-                          i, el1[i], el2[i])
-    
-                dm = abs(abs(m1[i])-abs(m2[i]))
-                if dm > dm_skip:
-                    print('For i=', i, el1[i], 'dm= {:0.3f} muB'.format(
-                        dm), ', which is larger than dm_skip =', dm_skip, '; probably defect, skipping')
-                    continue
-                if el and el1[i] not in el:
-                    continue
-    
-                if more:
-                    print('For ', i, el1[i], el2[i], 'dm= {:0.3f} muB'.format(dm))
-    
-                if dm > maxdm:
-                    maxdm = dm
-                ms += (dm)**2
-                tot += 1
-        else:
-            for i in range(len(m1)):
-                if el1[i] != el2[i]:
-                    print('Warinig! el1 is not equal el2 for i=',
-                          i, el1[i], el2[i])
-    
-                dm = abs(m1[i]-m2[i])
-                if dm > dm_skip:
-                    print('For i=', i, el1[i], 'dm= {:0.3f} muB'.format(
-                        dm), ', which is larger than dm_skip =', dm_skip, '; probably defect, skipping')
-                    continue
-                if el and el1[i] not in el:
-                    continue
-    
-                if more:
-                    print('For ', i, el1[i], el2[i], 'dm= {:0.3f} muB'.format(dm))
-    
-                if dm > maxdm:
-                    maxdm = dm
-                ms += (dm)**2
-                tot += 1    
+        for i in range(len(m1)):
+            if el1[i] != el2[i]:
+                print('Warinig! el1 is not equal el2 for i=',
+                      i, el1[i], el2[i])
 
+            if abskey:
+                dm = abs(abs(m1[i])-abs(m2[i]))
+            else:
+                dm = abs(m1[i]-m2[i])
+
+            if dm > dm_skip:
+                print('For i=', i, el1[i], 'dm= {:0.3f} muB'.format(
+                    dm), ', which is larger than dm_skip =', dm_skip, '; probably defect, skipping')
+                continue
+            if el and el1[i] not in el:
+                continue
+
+            if more:
+                print('For ', i, el1[i], el2[i], 'dm= {:0.3f} muB'.format(dm))
+
+            if dm > maxdm:
+                maxdm = dm
+            ms += (dm)**2
+            tot += 1
         rms = (ms/tot)**0.5
 
         if el:
