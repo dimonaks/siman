@@ -283,3 +283,28 @@ def outloop_segreg_analysis(b_id, analys_type, conv, n, description_for_archive,
         plot_conv( [id], calc,  "dimer")
 
     return
+
+
+
+def seg_en(cl_defM, cl_def, cl_bulkM, cl_bulk):
+    """
+    Calculate segregation energy at some defect of the substituted atom.
+
+    INPUT:
+
+    - cl_defM - Calculation object with defect structure and a substituted atom
+    - cl_def - Calculation object with defect structure (without a substituted atom)
+    - cl_bulkM - Calculation object with ideal (defectless) structure and a substituted atom
+    - cl_bulk - Calculation object with ideal (defectless) structure (without a substituted atom)    
+
+    RETURN:
+    - Eseg - segregation energy of the atom in the defect
+
+    AUTHOR:
+    Nikita Davydov
+
+    """
+
+    Eseg = cl_defM.e0 - cl_def.e0_at*cl_defM.end.natom - (cl_bulkM.e0 - cl_bulk.e0_at*cl_bulkM.end.natom)
+
+    return Eseg    
