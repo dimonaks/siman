@@ -244,14 +244,19 @@ class CalculationVasp(Calculation):
 
 
 
-            if 'LSORBIT' in vp and vp['LSORBIT']:
-                # print (vp)
-                printlog('SOC calculation detected; I am increasing number of bands by two', imp = 'Y')
-                printlog('Warning! When SOC is included, we recommend testing whether switching off symmetry (ISYM=-1) changes the results.', imp = 'Y')
-                printlog('k-point convergence is tedious and slow, be carefull', imp = 'Y')
-                vp['NBANDS']*=2
+            if ('LSORBIT' in vp and vp['LSORBIT']) or ('LNONCOLLINEAR' in vp and vp['LNONCOLLINEAR']):
+
+                vp['NBANDS'] *= 2
+
+                if vp['LSORBIT']:
+                    printlog('SOC calculation detected; I double number of bands up to', vp['NBANDS'],  imp = 'Y')
+                    printlog('Warning! When SOC is included, we recommend testing whether switching off symmetry (ISYM=-1) changes the results.', imp = 'Y')
+                    printlog('k-point convergence is tedious and slow, be carefull', imp = 'Y')
+                elif vp['LNONCOLLINEAR']: 
+                    printlog('LNONCOLLINEAR calculation detected; I double number of bands up to', vp['NBANDS'], imp = 'Y')
+
                 if 'LREAL' in vp and 'False' not in vp['LREAL']:
-                    printlog('Warning! LREAL = .False. is suggested!', imp = 'Y')
+                    printlog('Warning! LREAL = .False. is suggested for SOC!', imp = 'Y')
 
 
 
@@ -852,7 +857,7 @@ class CalculationVasp(Calculation):
             # if "*" not in vp['MAGMOM']:
             #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
         
-        if 'LSORBIT' in vp and vp['LSORBIT']:
+        if ('LSORBIT' in vp and vp['LSORBIT']) or ('LNONCOLLINEAR' in vp and vp['LNONCOLLINEAR']):
             if len(magmom) == 0:
                 printlog('Warning! magmom is empty')
             elif len(magmom) == self.init.natom:

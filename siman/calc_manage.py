@@ -281,8 +281,11 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
     if nodes is not None:
         clust['nodes'] = nodes
 
+    if header.ABSOLUTE_PATH2PROJECT:
+        header.project_path_cluster = header.PATH2PROJECT
 
-    header.project_path_cluster = header.cluster_home +'/'+ header.PATH2PROJECT
+    else:
+        header.project_path_cluster = header.cluster_home +'/'+ header.PATH2PROJECT
 
     try:
         header.vasp_command = clust['vasp_com']
@@ -475,6 +478,8 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
             - 'calculator' (str) - vasp, qe, gaussian
             - shiftk (list of float) - shift of k-mesh (s1,s2,s3), float from 0 to 1
+
+            - upload_parent_chgcar (bool) - if calculation is inherited, this flag allows to upload chgcar to cluster
 
 
     Comments:

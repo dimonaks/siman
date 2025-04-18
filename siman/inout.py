@@ -1444,6 +1444,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         spin_polarized = None
         ifmaglist = None
         self.mags_step = []
+        self.vlength = 0
+
         for line in outcarlines:
 
 
@@ -1767,6 +1769,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             if re_lengths.search(line):
                 self.vlength = [red_prec( float(l),1000 ) for l in outcarlines[i_line + 1].split()[0:3]]
                 #print self.vlength
+            # else:
+                # printlog('Warning! length of vectors is absent in OUTCAR')
+
             if "in kB" in line:
                 # print(line)
                 # try:
@@ -1870,8 +1875,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if 'magnetization (x)' in line:
                 # print(line)
+                mags = []
                 if ifmaglist is not None:
-                    mags = []
                     for j in range(self.end.natom):
                         mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
                     
