@@ -3693,7 +3693,7 @@ def make_neutral(self, oxi_state = None, type = 'element', at_fixed = None, mode
         for key, item in at_init.items():
             if (diff_chr > 0):
                 if (key not in at_fixed):
-                    if (oxidation[key] > 0):
+                    if (oxi_state[key] > 0):
                         at_sum += item
             else:
                 if (key not in at_fixed):

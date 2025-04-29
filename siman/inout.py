@@ -1355,6 +1355,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         self.list_etotal = [] # list of MD energies
         self.list_e_without_entr = []
         self.list_e_conv = [] # convergence of energy - all steps
+        self.list_ekin = [] # convergence of kinetic energy - all steps
+
         # try:
         #     self.end = copy.deepcopy(self.init) # below needed end values will be updated
         # except:
@@ -1742,6 +1744,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
                 de_each_md_list.append(de_each_md)
 
+            if "kinetic energy EKIN   =" in line:
+                self.ekin = float(line.split()[4])
+                self.list_ekin.append(self.ekin)
 
             if "energy without entropy =" in line:
                 e_sig0_prev = e_sig0
