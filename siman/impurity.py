@@ -848,7 +848,7 @@ def make_interface2(st1, st2, shift, mesh = [5,5], oxi = {}, at_fixed = [], mode
 
                     interface_c.update_xred()
                     interface_c = interface_c.return_atoms_to_cell()
-                    interface_c = interface_c.make_neutral(oxidation = oxi, at_fixed = at_fixed, mode = 'equal',
+                    interface_c = interface_c.make_neutral(oxi_state = oxi, at_fixed = at_fixed, mode = 'equal',
                                                             silent = 1, return_oxidation = 0)
 
                     en = EwaldSummation(interface_c)
