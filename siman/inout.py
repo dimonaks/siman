@@ -1353,6 +1353,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         # mforce = []
         self.list_e_sigma0 = []
         self.list_etotal = [] # list of MD energies
+        self.list_temp = [] # list of MD temperatures
         self.list_e_without_entr = []
         self.list_e_conv = [] # convergence of energy - all steps
         self.list_ekin = [] # convergence of kinetic energy - all steps
@@ -1446,6 +1447,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         spin_polarized = None
         ifmaglist = None
         self.mags_step = []
+        self.vlength = 0
+
         for line in outcarlines:
 
 
@@ -1739,6 +1742,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 self.e_without_entr = float(line.split()[3]) #
                 self.energy_sigma0 = float(line.split()[6]) #energy(sigma->0)
                 self.e0 = self.energy_sigma0
+
                 self.list_e_sigma0.append(  self.energy_sigma0  )
                 self.list_e_without_entr.append(  self.e_without_entr  )
 
@@ -1747,6 +1751,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             if "kinetic energy EKIN   =" in line:
                 self.ekin = float(line.split()[4])
                 self.list_ekin.append(self.ekin)
+
+            if "(temperature" in line:
+                self.list_temp.append(float(line.split()[-2]))
 
             if "energy without entropy =" in line:
                 e_sig0_prev = e_sig0
@@ -1772,6 +1779,9 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             if re_lengths.search(line):
                 self.vlength = [red_prec( float(l),1000 ) for l in outcarlines[i_line + 1].split()[0:3]]
                 #print self.vlength
+            # else:
+                # printlog('Warning! length of vectors is absent in OUTCAR')
+
             if "in kB" in line:
                 # print(line)
                 # try:
@@ -1875,8 +1885,8 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if 'magnetization (x)' in line:
                 # print(line)
+                mags = []
                 if ifmaglist is not None:
-                    mags = []
                     for j in range(self.end.natom):
                         mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
                     
