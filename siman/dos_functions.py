@@ -645,7 +645,8 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             # sys.exit()
             i = 0
             for n, l, iat, el, d in zip(names, lts, atoms,els, ds):
-                if el in ['Ti','Fe', 'Co', 'V', 'Mn', 'Ni'] and orb in ['p', 's', 'p_all']:
+                #if el in ['Ti','Fe', 'Co', 'V', 'Mn', 'Ni'] and orb in ['p', 's', 'p_all']:
+                if el in ['Ti', 'Co', 'V',  'Ni'] and orb in ['p', 's', 'p_all']:
                     
                     continue
                 if el == 'O' and orb in ('d', 't2g', 'eg', 'dxy', 'dyz', 'dxz', 'dz2', 'dx2', 'd_all'):

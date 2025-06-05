@@ -3440,7 +3440,16 @@ class Structure():
 
     def make_polarons(self, atoms, pol_type = 'hole', mag = None, silent = 1):
         """
+        Experimental!!!. Please improve for pol_type
         create polarons
+
+        INPUT:
+
+            - atoms (list) - list of atom numbers
+            - pol_type (str)
+                - 'hole'
+                - 
+
         """
         st = self.copy()
         for i in atoms:

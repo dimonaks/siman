@@ -195,6 +195,8 @@ vasp_other_keys = [
 'KPAR',
 'LMIXTAU',
 'LORBMOM',
+'LNONCOLLINEAR',
+'LMONO',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -1037,7 +1039,7 @@ def make_sets_for_conv(isefrom, conv, list_of_parameters, varset):
 def init_default_sets(init=0):
     """
     Pre-defined sets for Vasp
-    Initialized in read_database(scratch = False, init_sets = 0) and can be updated with init_sets arg
+    Initialized in read_database(scratch = False, init_sets = 0) and can be updated with init_sets arg set to 1
     """
     varset = header.varset
     # print('init_default_sets():, init ', init)
@@ -1134,7 +1136,102 @@ def init_default_sets(init=0):
         header.varset[setname] = copy.deepcopy(s)
 
     header.varset = read_vasp_sets([('opts_low' ,'static_low', {'IBRION'    : 1, 'ISIF'      : 2, 'NSW':20, 'EDIFFG':-0.1},)] )
+    mp_gga_pot_pack = {
+         1:'H', 2:'He', 5: 'B',     6: 'C',     7: 'N',     8: 'O',     9: 'F',
+         14: 'Si',     15: 'P',     16: 'S',     17: 'Cl',
+         3:  'Li_sv',  11: 'Na_pv', 19: 'K_sv',  37: 'Rb_sv', 55: 'Cs_sv',
+         4:  'Be_sv',  12: 'Mg_pv', 20: 'Ca_sv', 38: 'Sr_sv', 56: 'Ba_sv',
+        21:  'Sc_sv',  39: 'Y_sv',  22: 'Ti_pv', 40: 'Zr_sv', 72: 'Hf_pv',
+        23:  'V_pv',   41: 'Nb_pv', 73: 'Ta_pv', 24: 'Cr_pv', 42: 'Mo_pv',
+        74:  'W_pv',   25: 'Mn_pv', 26: 'Fe_pv', 27: 'Co_pv', 28: 'Ni_pv',
+        29:  'Cu_pv',  30: 'Zn',    31: 'Ga_d', 32: 'Ge_d', 33: 'As',
+        34:  'Se',     35: 'Br',    36: 'Kr',   47: 'Ag',   48: 'Cd',
+        49:  'In_d',   50: 'Sn_d',  51: 'Sb',   52: 'Te',   53: 'I',
+        54:  'Xe',     79: 'Au',    80: 'Hg',   81: 'Tl_d', 82: 'Pb_d',
+        83:  'Bi',     84: 'Po_d',  85: 'At_d',
+        57:  'La',     58: 'Ce',    59: 'Pr_3', 60: 'Nd_3', 61: 'Pm_3',
+        62:  'Sm_3',   63: 'Eu',    64: 'Gd',   65: 'Tb_3', 66: 'Dy_3',
+        67:  'Ho_3',   68: 'Er_3',  69: 'Tm_3', 70: 'Yb_3', 71: 'Lu_3',
+        89: 'Ac',      90: 'Th',     91: 'Pa',     92: 'U',     93: 'Np',
+        94: 'Pu',      95: 'Am',    
+    }
 
+
+    setname = 'MPStatic'
+    if init or setname not in varset: #init only once
+        # sys.exit()
+        s = InputSet(setname, calculator='vasp')
+        s.kpoints_file = True
+        s.add_nbands = None
+        s.params = {
+            'ADDGRID': True,
+            'ALGO'   : 'Normal',
+            'EDIFF'  : 0.0005,
+            'ENCUT'  : 520,
+            'IBRION' : -1,
+            'ICHARG' : 0,
+            'ISIF'   : 3,
+            'ISMEAR' : -5,
+            'ISPIN'  : 2,
+            'LAECHG' : True,
+            'LASPH'  : True,
+            'LCHARG' : True,
+            'LELF'   : True,
+            'LORBIT' : 11,
+            'LREAL'  : 'Auto',
+            'LVHAR'  : True,
+            'LWAVE'  : False,
+            'NELM'   : 100,
+            'NSW'    : 0,
+            'PREC'   : 'Accurate',
+            'SIGMA'  : 0.05,
+            'KSPACING': 0.23,
+            'KGAMMA': True,
+            'mul_nbands_small_cell'      : 3,
+            'magnetic_moments':{'Ti':0.6, 'Nb':0, 'W':0, 'V':5, 'Fe':5, 'Co':5, 'Mn':5, 'Ni':5, 'Cr':5, },
+            }
+
+        s.vasp_params = s.params
+        for key in mp_gga_pot_pack:
+            s.set_potential(key, mp_gga_pot_pack[key])
+
+        s.update()
+        header.varset[setname] = copy.deepcopy(s)
+
+    setname = 'MPRelax'
+    if init or setname not in varset: #init only once
+        # sys.exit()
+        s = InputSet(setname, calculator='vasp')
+        s.kpoints_file = True
+        s.add_nbands = None
+        s.params = {
+            'ALGO'      :'Fast',
+            'EDIFF'     :1e-05,
+            'EDIFFG'    :-0.01,
+            'ENCUT'     :520,
+            'IBRION'    :2,
+            'ICHARG'    :1,
+            'ISIF'      :3,
+            'ISMEAR'    :-5,
+            'ISPIN'     :2,
+            'LORBIT'    :11,
+            'LREAL'     :'Auto',
+            'LWAVE'     :False,
+            'NELM'      :100,
+            'NSW'       :99,
+            'PREC'      :'Accurate',
+            'SIGMA'     :0.05,
+            'KSPACING': 0.23,
+            'KGAMMA': True,
+            'mul_nbands_small_cell'      : 3,
+            'magnetic_moments':{'Ti':0.6, 'Nb':0, 'W':0, 'V':5, 'Fe':5, 'Co':5, 'Mn':5, 'Ni':5, 'Cr':5, },
+            }
+
+        s.vasp_params = s.params
+        for key in mp_gga_pot_pack:
+            s.set_potential(key, mp_gga_pot_pack[key])
+        s.update()
+        header.varset[setname] = copy.deepcopy(s)
 
 
     setname = 'gaus_sp'

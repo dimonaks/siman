@@ -244,14 +244,19 @@ class CalculationVasp(Calculation):
 
 
 
-            if 'LSORBIT' in vp and vp['LSORBIT']:
-                # print (vp)
-                printlog('SOC calculation detected; I am increasing number of bands by two', imp = 'Y')
-                printlog('Warning! When SOC is included, we recommend testing whether switching off symmetry (ISYM=-1) changes the results.', imp = 'Y')
-                printlog('k-point convergence is tedious and slow, be carefull', imp = 'Y')
-                vp['NBANDS']*=2
+            if ('LSORBIT' in vp and vp['LSORBIT']) or ('LNONCOLLINEAR' in vp and vp['LNONCOLLINEAR']):
+
+                vp['NBANDS'] *= 2
+
+                if vp['LSORBIT']:
+                    printlog('SOC calculation detected; I double number of bands up to', vp['NBANDS'],  imp = 'Y')
+                    printlog('Warning! When SOC is included, we recommend testing whether switching off symmetry (ISYM=-1) changes the results.', imp = 'Y')
+                    printlog('k-point convergence is tedious and slow, be carefull', imp = 'Y')
+                elif vp['LNONCOLLINEAR']: 
+                    printlog('LNONCOLLINEAR calculation detected; I double number of bands up to', vp['NBANDS'], imp = 'Y')
+
                 if 'LREAL' in vp and 'False' not in vp['LREAL']:
-                    printlog('Warning! LREAL = .False. is suggested!', imp = 'Y')
+                    printlog('Warning! LREAL = .False. is suggested for SOC!', imp = 'Y')
 
 
 
@@ -270,7 +275,7 @@ class CalculationVasp(Calculation):
 
 
 
-    def make_incar(self):
+    def make_incar(self, filename = None):
         """Makes Incar file for current calculation and copy all
         TO DO: there is no need to send all POSCAR files; It is enothg to send only one. However for rsync its not that crucial
         """
@@ -298,8 +303,11 @@ class CalculationVasp(Calculation):
                 name_mod = ''
             else:
                 name_mod = curset.ise+'.'
+            if filename:
+                incar_filename = filename
+            else:
+                incar_filename = d+name_mod+'INCAR'
 
-            incar_filename = d+name_mod+'INCAR'
             vp = curset.vasp_params
             
 
@@ -422,13 +430,14 @@ class CalculationVasp(Calculation):
 
 
     
-    def make_kpoints_file(self):
+    def make_kpoints_file(self, filename = None):
 
         struct_des = header.struct_des
         #Generate KPOINTS
         kspacing = self.set.vasp_params.get('KSPACING')
 
-        filename = os.path.join(self.dir, "KPOINTS")
+        if filename is None:
+            filename = os.path.join(self.dir, "KPOINTS")
 
         it = self.id[0]
 
@@ -469,7 +478,7 @@ class CalculationVasp(Calculation):
                 #Generate kpoints file
 
                 #
-                if hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') and kspacing in struct_des[it].ngkpt_dict_for_kspacings:
+                if it in struct_des and hasattr(struct_des[it], 'ngkpt_dict_for_kspacings') and kspacing in struct_des[it].ngkpt_dict_for_kspacings:
                     N =    struct_des[it].ngkpt_dict_for_kspacings[kspacing]
                     printlog( 'Attention! ngkpt = ',N, 
                         ' is adopted from struct_des which you provided for it ',it, ' and kspacing = ',kspacing)
@@ -852,7 +861,7 @@ class CalculationVasp(Calculation):
             # if "*" not in vp['MAGMOM']:
             #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
         
-        if 'LSORBIT' in vp and vp['LSORBIT']:
+        if ('LSORBIT' in vp and vp['LSORBIT']) or ('LNONCOLLINEAR' in vp and vp['LNONCOLLINEAR']):
             if len(magmom) == 0:
                 printlog('Warning! magmom is empty')
             elif len(magmom) == self.init.natom:

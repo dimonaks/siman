@@ -84,7 +84,7 @@ from siman.geo import replic
 # from ase.utils.eos import EquationOfState
 
 def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, 
-    plot = 1, fitplot_args = None, style_dic = None, datafile = None):
+    plot = 1, fitplot_args = None, style_dic = None, datafile = None, ver_line_nums = None, annotates = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path or just coordinates along one line (for polarons)
@@ -99,6 +99,10 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     plot - if plot or not
 
+    ver_line_nums - (2*tuple of int) - two numbers corresponding to atom_pos, which will be used to plot hor line between them - e.g. interface
+    
+    annotates (list of str) - list with annotations for each points
+    
     """
 
 
@@ -129,6 +133,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
         diffs = np.diff(path.T, axis = 0)
         path_length =  np.linalg.norm( diffs, axis = 1).sum()
         mep_pos =  np.array([p*path_length for p in u])
+
     else:
         mep_pos = atom_pos
         path_length  = atom_pos[-1]
@@ -164,8 +169,13 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     # spl = CubicSpline(mep_pos, eners, bc_type = 'periodic') 
     # spl = CubicSpline(mep_pos, eners, bc_type = 'clamped' ) #first derivative zero
 
-
-
+    ver_lines = None
+    if ver_line_nums:
+        i1 = mep_pos[ver_line_nums[0]]
+        i2 = mep_pos[ver_line_nums[1]]
+        ver_lines = [{'x':(i1+i2)/2, 'c':'k', 'lw':1, 'ls':'--'} ]
+    # print(hor_line)
+    # sys.exit()
     spl = scipy.interpolate.PchipInterpolator(mep_pos, eners)
     ynew = spl(xnew)
 
@@ -190,11 +200,20 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
         fitplot_args['ylabel'] = 'Energy (eV)'
 
     path2saved = None
+
+    if annotates:
+        annotate = 1
+    else:
+        annotate = 0
+
+
     if plot:
         # print(style_dic.get('color'))
-        path2saved = fit_and_plot(orig = {'x':mep_pos, 'y':eners, 'fmt':style_dic['p'], 'label':style_dic['label'], 'color':style_dic.get('color')}, 
+        path2saved = fit_and_plot(orig = {'x':mep_pos, 'y':eners, 'fmt':style_dic['p'], 
+            'label':style_dic['label'], 'color':style_dic.get('color'),
+            'annotates':annotates, 'annotate_arrowprops':None, 'annotate_color':'k'}, 
             spline = {'x':xnew, 'y':ynew, 'fmt':style_dic['l'], 'label':None, 'color':style_dic.get('color')}, 
-        image_name =  image_name, filename = filename, show = show, 
+        image_name =  image_name, filename = filename, show = show, ver_lines = ver_lines, annotate = annotate,
         **fitplot_args)
 
         # print(image_name, filename)
@@ -266,8 +285,10 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             - {'x':,'y':, 'fmt':, ..., *any argument valid for pyplot.plot()* }  not implemented for powers and scatter yet
                 - 'label' (str) - 
                 - 'xticks' (list) - 
+                - 'annotates' (list) - list with annotations
                 - 'annotate_fontsize' (str)
                 - 'annotate_arrowprops' (dict)
+                - 'annotate_color' (str)
         - first, last (int) - allows to call this function multiple times to put several axes on one impage. Use first = 1, last = 0 for the first axes, 0, 0 for intermidiate, and 0, 1 for last axes.
         - power (int) - the power of polynom, turns on fitting
         - scatter (bool) - plot scatter points - the data format is slightly different - see *data*
@@ -276,7 +297,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
         - filename (str) - name of file with figure, image_name - deprecated
         - fig_format (str) - format of saved file.
         - dpi    - resolution of saved file
-        - ver_lines - list of dic args for  vertical lines {'x':, 'c', 'lw':, 'ls':}
+        - ver_lines - list of dic args for  vertical lines e.g. {'x':5, 'c':'k', 'lw':3, 'ls':'-'}
         - hor_lines
         - ver - vertical line at 0
         - hor - horizontal line at 0
@@ -416,6 +437,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     keys = []
     shift = 0
+    return_results = []
     for key in sorted(data):
         keys.append(key)
         if scatter:
@@ -485,7 +507,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             # print('con_copy', con_other_args)
             # sys.exit()
             for k in ['x', 'x2', 'x2label', 'y', 'fmt', 'annotates', 'x2_func', 'x2_func_inv', 
-            'annotate_fontsize', 'annotate_arrowprops']:
+            'annotate_fontsize', 'annotate_arrowprops', 'annotate_color']:
                 if k in con_other_args:
                     del con_other_args[k]
             if 'color' in con_other_args:
@@ -534,8 +556,10 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 # ax.plot(x_range, fit_y1, xyf[2][0]+'--', )
                 ax.plot(x_range, fit_y1, '--', )
 
-                # x_min  = fit_func2.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
-                # y_min  = fit_func2(x_min)
+                x_min  = fit_func1.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
+                y_min  = fit_func1(x_min)
+                return_results.append(y_min)
+                print('y_min is ', y_min)
                 from scipy import stats
                 slope, intercept, r_value, p_value, std_err = stats.linregress(xyf[0], xyf[1])
                 print ('R^2 = {:5.2f} for {:s}'.format(r_value**2, key))
@@ -546,12 +570,13 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
 
             adjustText_installed =0 
-            if annotate:
-                fs = con.get('annotate_fontsize') or fontsize
+            if annotate and con.get('annotates'):
+                fs = con.get('annotate_fontsize') or fontsize or 12
                 arrowprops = con.get('annotate_arrowprops')
                 if 'annotate_arrowprops' not in con:
                     arrowprops = dict(arrowstyle='->', connectionstyle='arc3,rad=0.5', color='black')
 
+                annotate_color = con.get('annotate_color') or 'r'
 
                 if adjustText_installed:
                     # sys.exit()
@@ -577,7 +602,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 else:
                     for name, x, y in zip(con['annotates'], con['x'], con['y']):
                         ax.annotate(name, xy=(x, y),
-                        xytext = (-fs//2, fs//2), fontsize = fs, color = 'r',
+                        xytext = (-fs//2, fs//2), fontsize = fs, color = annotate_color,
                         textcoords = 'offset points', ha='center', va='bottom',
                         # bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                         arrowprops = arrowprops
@@ -726,7 +751,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
     else:
         printlog('Attention! last = False, no figure is saved')
 
-    return path2saved
+    return path2saved, return_results
 
 fitplot = fit_and_plot
 

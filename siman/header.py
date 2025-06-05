@@ -58,7 +58,7 @@ PATH2HISTORYFILE = 'history'
 PATH2DATABASE        = None # ?
 PATH2AFLOW = None
 NEBMAKERTOOL = 'nebmake.py'
-
+ABSOLUTE_PATH2PROJECT = None
 
 
 
@@ -154,7 +154,8 @@ def printlog(*logstrings, **argdic):
             log.write(mystring)
     
     if verbose_log:
-        with open(project_folder+'/verbose_log','a') as f:
+        # with open(project_folder+'/verbose_log','a') as f: # check that this is not needed for matsolver
+        with open('verbose_log','a') as f:
             f.write(mystring)
 
 
@@ -214,7 +215,7 @@ def _update_configuration(filename, pfolder = None, clusters=None):
     'PATH2PHONOPY', 'PATH2POTENTIALS', 'PATH2PROJECT', 'PBS_PROCS', 
     'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
     'geo_folder', 'path_to_images', 'path_to_paper', 
-    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 'mpkey', 'PARSE_OUTPUT_ON_CLUSTER',
+    'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 'mpkey', 'PARSE_OUTPUT_ON_CLUSTER', 'ABSOLUTE_PATH2PROJECT',
     'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE', 'AUTO_UPDATE_DB', 'warnings', 'PATH2EDITOR', 'PATH2AFLOW', 'NEBMAKERTOOL']
 
     for var in config_vars:
