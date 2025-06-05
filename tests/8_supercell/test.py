@@ -1,5 +1,5 @@
 """
-Test mp-api
+Test supercell
 
 Author: Dmitry Aksyonov
 """

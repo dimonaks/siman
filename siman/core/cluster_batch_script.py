@@ -272,6 +272,10 @@ def run_command(cl, option, name, parrallel_run_command,
             elif 'monte' in cl.calc_method:
                 f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/monte.py > monte.log\n')
 
+            elif 'shiftk_average' in cl.calc_method:
+                f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/cluster_runners/shiftk.py > shiftk.log\n')
+
+            
             elif 'polaron' in cl.calc_method:
                 f.write("python "+header.cluster_home+'/'+ header.cluster_tools+'/siman/polaron.py > polaron.log\n')
             elif 'polaron2' in cl.calc_method:

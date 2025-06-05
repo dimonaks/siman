@@ -154,7 +154,8 @@ def printlog(*logstrings, **argdic):
             log.write(mystring)
     
     if verbose_log:
-        with open(project_folder+'/verbose_log','a') as f:
+        # with open(project_folder+'/verbose_log','a') as f: # check that this is not needed for matsolver
+        with open('verbose_log','a') as f:
             f.write(mystring)
 
 

@@ -196,6 +196,7 @@ vasp_other_keys = [
 'LMIXTAU',
 'LORBMOM',
 'LNONCOLLINEAR',
+'LMONO',
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -1185,7 +1186,7 @@ def init_default_sets(init=0):
             'PREC'   : 'Accurate',
             'SIGMA'  : 0.05,
             'KSPACING': 0.23,
-            'GAMMA': True,
+            'KGAMMA': True,
             'mul_nbands_small_cell'      : 3,
             'magnetic_moments':{'Ti':0.6, 'Nb':0, 'W':0, 'V':5, 'Fe':5, 'Co':5, 'Mn':5, 'Ni':5, 'Cr':5, },
             }
@@ -1221,7 +1222,7 @@ def init_default_sets(init=0):
             'PREC'      :'Accurate',
             'SIGMA'     :0.05,
             'KSPACING': 0.23,
-            'GAMMA': True,
+            'KGAMMA': True,
             'mul_nbands_small_cell'      : 3,
             'magnetic_moments':{'Ti':0.6, 'Nb':0, 'W':0, 'V':5, 'Fe':5, 'Co':5, 'Mn':5, 'Ni':5, 'Cr':5, },
             }

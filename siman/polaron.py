@@ -23,7 +23,7 @@ import random
 
 from os.path import expanduser
 home = expanduser("~")
-sys.path.append(home+'/tools/') # for numpy libraries
+sys.path.append(home+'/tools/') # for siman library
 import numpy as np
 
 from siman import header

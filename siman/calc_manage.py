@@ -33,7 +33,7 @@ from siman.core.cluster_run_script import prepare_run, make_run, complete_run
 from siman.core.cluster_batch_script import write_batch_header, write_batch_body
 from siman.analyze.segregation import inloop_segreg_analysis 
 from siman.analyze.segregation import outloop_segreg_analysis 
-
+from siman.core.manage import setup_shiftk_average
 
 from siman.functions import (gb_energy_volume, element_name_inv, get_from_server,  run_on_server, push_to_server, wrapper_cp_on_server)
 from siman.inout import determine_file_format, write_xyz, read_xyz, write_occmatrix, smart_structure_read
@@ -321,7 +321,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True
+    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True, update_set = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -388,7 +388,8 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         - show - only for read_results() ?.
 
         - comment - arbitrary comment for history.
-
+    
+        - update_set (dict) - allow to update set, the same as params['update_set_dic'] and has higher priority
 
 
         #inherit flags:
@@ -514,6 +515,9 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
         params['show'] = show
         
+        if update_set:
+            params['update_set_dic'] = update_set
+
         # if header.copy_to_cluster_flag:
         # print(params["nodes"])
 
@@ -1820,11 +1824,28 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     printlog('I include parent chgcar for upload:', params['cl_parent'].path['charge'], 'file renamed to CHGCAR; no copy on cluster will be attemted.', imp = 'y')
                     # sys.exit()
                     list_to_copy.append(path_charge)
+                elif params.get('chgcar'):
+                    if not os.path.exists(params['chgcar']):
+                        printlog("Error! provided chgcar is missing!", params['chgcar'])
+                    path_charge = cl.dir + '/CHGCAR'
+                    shutil.copy(params['chgcar'], path_charge)
+                    printlog('I include provided chgcar for upload:', params['chgcar'], 'and rename to CHGCAR', imp = 'y')
+                    list_to_copy.append(path_charge)
+
+
 
 
                 if 'atat' in cl.calc_method:
 
                     setup_atat_step2(cl, params, list_to_copy)
+
+                elif 'shiftk_average' in calc_method:
+
+                    setup_shiftk_average(cl, params, list_to_copy)
+
+
+
+
 
 
                 if header.copy_to_cluster_flag: 
@@ -2474,6 +2495,13 @@ def res_loop(it, setlist, verlist, analys_type = None,
         - readfiles (bool) - True - read from outcar, False - read from database; 
 
         - show - (str), allows to show additional information:
+            - mep - save mep
+            - mepp - show mep
+            - neb_noxyz - do not write xyz files
+            - neb_geo - write geo files in neb regime
+            - neb_geo2 - more information about neb, such as distances
+            - neb_rms  - show rms distances for moving 
+            - neb_born - born barrier
             - mag - magnetic moments on magnetic atoms
               maga
             - en  - convergence of total energy vs max force
@@ -2927,6 +2955,17 @@ def res_loop(it, setlist, verlist, analys_type = None,
                 # sys.exit()
 
 
+            if 'shiftk_average' in cl.calc_method:
+                file = cl.get_file('ENERGIES')
+                # print(file)
+                shiftk_energies = []
+                with open(file, 'r') as f:
+                    for line in f:
+                        # print(line)
+                        shiftk_energies.append(float(line.split()[-1]))
+                cl.shiftk_energies = shiftk_energies
+                # print(energies)
+                # print(len(cl.shiftk_energies))
 
 
 
