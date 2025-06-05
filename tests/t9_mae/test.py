@@ -26,7 +26,7 @@ def single_volume():
     ngkpt = [20,20,20]
     mk = 2 # dimensionality of shift mesh, e.g. 2x2x2
 
-    run = 1
+    run = 0
 
     if 0:
         #step 1. Calculate magnetic charge density
@@ -59,7 +59,8 @@ def single_volume():
                     )
             else:
                 cl_ncl = db['Fe1bcc_'+dns, 'ncl', 1]
-                cl_ncl.res()
+                cl_ncl.res(up = 'up2')
+                print(cl_ncl.shiftk_energies)
                 average_energy = sum(cl_ncl.shiftk_energies) / len(cl_ncl.shiftk_energies)
                 energies.append(average_energy)
         if not run:
