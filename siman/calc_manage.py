@@ -252,7 +252,7 @@ def choose_cluster(cluster_name, corenum, nodes):
         header.cluster_home = ''
     
 
-    print('The home folder on cluster is ', header.cluster_home)
+    printlog('The home folder on cluster is ', header.cluster_home)
     
 
 
