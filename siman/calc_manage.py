@@ -207,7 +207,7 @@ def inherit_ngkpt(it_to, it_from, inputset):
     return
 
 
-def choose_cluster(cluster_name, cluster_home, corenum, nodes):
+def choose_cluster(cluster_name, corenum, nodes):
     """
     *cluster_name* should be in header.project_conf.CLUSTERS dict
     nodes - number of nodes
@@ -243,20 +243,17 @@ def choose_cluster(cluster_name, cluster_home, corenum, nodes):
 
 
     #Determine cluster home using ssh
-    # run_on_server('touch ~/.hushlogin', header.cluster_address)
     if header.copy_to_cluster_flag:
-        header.cluster_home = run_on_server('pwd', header.cluster_address)
+        if 'homepath' in clust and clust['homepath']:
+            header.cluster_home = clust['homepath']
+        else:
+            header.cluster_home = run_on_server('pwd', header.cluster_address)
+            clust['homepath'] = header.cluster_home
     else:
         header.cluster_home = ''
     
-    clust['homepath'] = header.cluster_home
 
     printlog('The home folder on cluster is ', header.cluster_home)
-
-    # if cluster_home is None:
-    #     header.cluster_home    = clust['homepath']
-    # else:
-    #     header.cluster_home    = cluster_home
     
 
 
