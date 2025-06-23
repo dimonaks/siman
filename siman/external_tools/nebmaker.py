@@ -4,7 +4,7 @@ Script for creating migration path using IDPP methode for NEB calculations
 Taken from the Henkelman group's VTST Tools https://theory.cm.utexas.edu/vtsttools/index.html
 '''
 
-print(__name__)
+# print(__name__)
 if __name__ == "__main__":
 	from aselite import read_vasp, write_vasp, NEB
 	from sys import argv

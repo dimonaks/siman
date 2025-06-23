@@ -80,8 +80,9 @@ if __name__ == "__main__":
 
     vasprun_command = params.get('vasp_com') or 'vasp_std'
     nk = params.get('nk')# number of k-points
-    mk = params.get('mk')# number of shifts
-    mode   = params.get('mode') or 'equidistant' # mode type: equidistant, random, provided
+    mk = params.get('mk')# size of grid for shifts
+    m = params.get('m')# number of shifts for sobol
+    mode   = params.get('shift_type') or 'eqd' # mode type: equidistant, random, provided
     v   = params.get('v') or 1 # version
     chgcar_name   = params.get('chgcar') 
     if chgcar_name is None:
@@ -102,8 +103,11 @@ if __name__ == "__main__":
 
 
 
-    if mode =='equidistant':
+    if mode == 'eqd':
         kshifts = equidistant_shifts(mk)
+    elif mode == 'sobol':
+        kshifts = params.get('kshifts')
+
     elif mode =='random':
         kshifts = generate_uniform_random_shifts_bcc_sym(
             m=mk,
