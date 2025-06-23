@@ -226,7 +226,7 @@ def _update_configuration(filename, pfolder = None, clusters=None):
             # exec(var + " = " + str(value))
         except AttributeError:
             # print(header.warnings)
-            printlog('Your '+ configfile_name +' does not contain', var, imp = 'n')
+            printlog('Your '+ configfile_name +' does not contain', var)
             pass
         # print(var, value)
     # CLUSTERS = getattr(project_conf, 'CLUSTERS')

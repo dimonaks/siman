@@ -23,6 +23,7 @@ from siman.small_functions import list2string, cwd, return_xred, get_mismatch
 from siman.functions import invert
 from siman.calc_manage import add, res, add_loop, name_mod_supercell, res_loop, inherit_icalc, push_figure_to_archive
 from siman.neb import add_neb
+
 from siman.classes import Calculation
 from siman.analysis import calc_redox,  matrix_diff, interface_en
 from siman.geo import create_deintercalated_structure, remove_one_atom, remove_half_based_on_symmetry, remove_half, create_replaced_structure, create_antisite_defect3, determine_symmetry_positions, create_single_antisite

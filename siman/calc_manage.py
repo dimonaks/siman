@@ -2953,7 +2953,7 @@ def res_loop(it, setlist, verlist, analys_type = None,
 
 
             if 'shiftk_average' in cl.calc_method:
-                file = cl.get_file('ENERGIES')
+                file = cl.get_file('ENERGIES', up='up2')
                 # print(file)
                 shiftk_energies = []
                 with open(file, 'r') as f:
