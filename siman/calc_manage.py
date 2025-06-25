@@ -518,7 +518,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         # if header.copy_to_cluster_flag:
         # print(params["nodes"])
 
-        choose_cluster(cluster, cluster_home, corenum, params.get("nodes"))
+        choose_cluster(cluster, corenum, params.get("nodes"))
         
         if run:
             prepare_run()
