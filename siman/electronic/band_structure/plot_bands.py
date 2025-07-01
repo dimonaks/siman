@@ -4,7 +4,12 @@ Author: Kobernik Tatiana
 
 import numpy as np
 import xml.etree.ElementTree as ET
+
+import matplotlib
+matplotlib.use('Agg')  # for matsolver backend
 import matplotlib.pyplot as plt
+
+
 from matplotlib.collections import LineCollection
 import re
 from siman.header import printlog
@@ -192,7 +197,7 @@ def total_band(st_name, vasprun_path, kpoints_file_path, ylim=(-10, 10), method=
         - vbm_cbm_marker (bool) - indicator showing whether vbm and cbm points need to be marked on the plot
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
-        - debug (bool) - indicator showing whether the plot should be displayed on the screen
+        - debug (bool) - indicator showing whether the plot should be displayed on the screen  - now doesnt work because matsolver
     RETURN:
         None
     """
@@ -254,10 +259,15 @@ def total_band(st_name, vasprun_path, kpoints_file_path, ylim=(-10, 10), method=
         
     if not file_name:
         file_name = os.getcwd() + '/band_structures/' + f'{name_png}.png'
+    
+    folder = os.path.dirname(file_name)
+    if folder != '' and not os.path.exists(folder):
+        os.makedirs(folder, exist_ok=True)
+
     plt.savefig(file_name)
 
-    if debug:
-        plt.show()
+    # if debug:
+    #     plt.show()
 
 
 def parse_ion_names(file_path):
@@ -409,7 +419,7 @@ def rgbline(ax, k, e, red, green, blue, alpha=20):
     ax.add_collection(lc)
 
 
-def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10, 10), method=None, file_name='',
+def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10, 10), method=None, file_name=None,
                    debug=False):
     """
     This function is used to build plot of the orbital projected electronic band structure for some element
@@ -424,7 +434,7 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
         - method (str) - name of the method that was used to find kpath, just for title
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
-        - debug (bool) - indicator showing whether the plot should be displayed on the screen
+        - debug (bool) - indicator showing whether the plot should be displayed on the screen - now doesnt work because matsolver
     RETURN:
         None
     """
@@ -514,14 +524,16 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
         name_png = f'{st_name}'
 
     if not file_name:
-        file_name = os.getcwd() + '/band_structures/' + f'{name_png}.png'
+        file_name = os.getcwd() + '/band_structures/' + f'{name_png}_proj_{element}.png'
+    
+    folder = os.path.dirname(file_name)
+    if folder != '' and not os.path.exists(folder):
+        os.makedirs(folder, exist_ok=True)
+
     plt.savefig(file_name)
 
-    path = os.getcwd() + '/band_structures/' + f'{name_png}_proj_{element}.png'
-    plt.savefig(path)
-
-    if debug:
-        plt.show()
+    # if debug:
+    #     plt.show()
 
 
 def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10, 10), mode='total',
@@ -540,7 +552,7 @@ def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
         - method (str) - name of the method that was used to find kpath (just for title)
-        - debug (bool) - indicator showing whether the plot should be displayed on the screen
+        - debug (bool) - indicator showing whether the plot should be displayed on the screen - now doesnt work because matsolver
     RETURN:
         None
     TODO:
