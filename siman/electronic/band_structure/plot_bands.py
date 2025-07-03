@@ -4,7 +4,12 @@ Author: Kobernik Tatiana
 
 import numpy as np
 import xml.etree.ElementTree as ET
+
+import matplotlib
+matplotlib.use('Agg')  # for matsolver backend
 import matplotlib.pyplot as plt
+
+
 from matplotlib.collections import LineCollection
 import re
 from siman.header import printlog
@@ -192,7 +197,6 @@ def total_band(st_name, vasprun_path, kpoints_file_path, ylim=(-10, 10), method=
         - vbm_cbm_marker (bool) - indicator showing whether vbm and cbm points need to be marked on the plot
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
-        - debug (bool) - indicator showing whether the plot should be displayed on the screen
     RETURN:
         None
     """
@@ -201,7 +205,7 @@ def total_band(st_name, vasprun_path, kpoints_file_path, ylim=(-10, 10), method=
     kpoints_list, kpoints_dict = parse_kpoints(kpoints_file_path)
 
     if energies.size == 0:
-        printlog("ERROR: energy array is empty. Check the XML file.")
+        printlog("ERROR: energy array is empty. Check the XML file", imp = 'y')
         return
 
     kpath = compute_k_distances(kpoints)
@@ -254,10 +258,12 @@ def total_band(st_name, vasprun_path, kpoints_file_path, ylim=(-10, 10), method=
         
     if not file_name:
         file_name = os.getcwd() + '/band_structures/' + f'{name_png}.png'
-    plt.savefig(file_name)
+    
+    folder = os.path.dirname(file_name)
+    if folder != '' and not os.path.exists(folder):
+        os.makedirs(folder, exist_ok=True)
 
-    if debug:
-        plt.show()
+    plt.savefig(file_name)
 
 
 def parse_ion_names(file_path):
@@ -277,12 +283,12 @@ def parse_ion_names(file_path):
 
     atominfo = root.find(".//atominfo")
     if atominfo is None:
-        printlog("ERROR from parse_ion_names: Tag <atominfo> not found!")
+        printlog("ERROR from parse_ion_names: Tag <atominfo> not found!", imp = 'y')
         exit()
 
     atoms_array = atominfo.find(".//array[@name='atoms']")
     if atoms_array is None:
-        printlog("ERROR from parse_ion_names: Tag <array name='atoms'> not found!")
+        printlog("ERROR from parse_ion_names: Tag <array name='atoms'> not found!", imp = 'y')
         exit()
 
     ion_names = []
@@ -311,7 +317,7 @@ def parse_nband(file_path):
     if nbands_tag is not None:
         nbands = int(nbands_tag.text.strip())
     else:
-        printlog("ERROR from parse_projected: NBANDS not found")
+        printlog("ERROR from parse_projected: NBANDS not found", imp = 'y')
         exit()
 
     return nbands
@@ -341,7 +347,7 @@ def parse_vasprun_projected(file_path, ion_names):
 
     projected_array = root.find(".//calculation/projected/array")
     if projected_array is None:
-        printlog("ERROR from parse_projected: tag projected -> array not found")
+        printlog("ERROR from parse_projected: tag projected -> array not found", imp = 'y')
         exit()
 
     projected_bands = dict()
@@ -409,8 +415,7 @@ def rgbline(ax, k, e, red, green, blue, alpha=20):
     ax.add_collection(lc)
 
 
-def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10, 10), method=None, file_name='',
-                   debug=False):
+def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10, 10), method=None, file_name=None):
     """
     This function is used to build plot of the orbital projected electronic band structure for some element
     It saves the plot to .png file
@@ -424,7 +429,6 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
         - method (str) - name of the method that was used to find kpath, just for title
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
-        - debug (bool) - indicator showing whether the plot should be displayed on the screen
     RETURN:
         None
     """
@@ -440,7 +444,7 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
     kpoints, energies, valent_band_num = parse_vasprun_total(vasprun_path)
 
     if not nbands:
-        printlog("ERROR: energy array is empty. Check the XML file.")
+        printlog("ERROR: energy array is empty. Check the XML file", imp = 'y')
         exit()
 
     kpath = compute_k_distances(kpoints)
@@ -514,14 +518,13 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
         name_png = f'{st_name}'
 
     if not file_name:
-        file_name = os.getcwd() + '/band_structures/' + f'{name_png}.png'
+        file_name = os.getcwd() + '/band_structures/' + f'{name_png}_proj_{element}.png'
+    
+    folder = os.path.dirname(file_name)
+    if folder != '' and not os.path.exists(folder):
+        os.makedirs(folder, exist_ok=True)
+
     plt.savefig(file_name)
-
-    path = os.getcwd() + '/band_structures/' + f'{name_png}_proj_{element}.png'
-    plt.savefig(path)
-
-    if debug:
-        plt.show()
 
 
 def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10, 10), mode='total',
@@ -540,7 +543,6 @@ def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
         - method (str) - name of the method that was used to find kpath (just for title)
-        - debug (bool) - indicator showing whether the plot should be displayed on the screen
     RETURN:
         None
     TODO:
@@ -551,7 +553,7 @@ def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10
             print('Please, enter the element for projected')
         else:
             projected_band(st_name, vasprun_path, kpoints_file_path, element, method=method, ylim=ylim,
-                           file_name=file_name, debug=debug)
+                           file_name=file_name)
     elif mode == "total":
         total_band(st_name, vasprun_path, kpoints_file_path, ylim=ylim, method=None, vbm_cbm_marker=vbm_cbm_marker,
-                   file_name=file_name, debug=debug)
+                   file_name=file_name)

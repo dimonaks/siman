@@ -2,18 +2,11 @@
 Author: Kobernik Tatiana
 """
 import os
-import sys
-from siman.header import db
+import re
 from siman.calc_manage import smart_structure_read, add_loop, res_loop
 from siman.set_functions import read_vasp_sets
-import time
-import itertools
-from mp_api.client import MPRester
-import seekpath
-import re
 from siman.header import printlog
 from siman import header
-from siman.functions import element_name_inv
 
 
 def create_POSCAR(st, st_name, home_path, debug=False):
@@ -39,12 +32,12 @@ def create_POSCAR(st, st_name, home_path, debug=False):
     path_to_POSCAR = f'{path_to_main_folder}/{st_name}.POSCAR'
 
     if debug:
-        print(f'\n\nFrom create_POSCAR: the file {path_to_POSCAR} was crested')
+        printlog(f'\n\nFrom create_POSCAR: the file {path_to_POSCAR} was crested', imp = 'y')
 
     return path_to_POSCAR, path_to_main_folder
 
 
-def find_kpath(st=None, method="AFLOW", path_to_POSCAR=None, debug=False):
+def find_kpath(st=None, siman_st=None, method="AFLOW", path_to_POSCAR=None, refer_path_to_KPOINTS=None, debug=False):
     """
     The function finds a highly symmetric k-path for a given structure and creates an input KPOINTS file for calculations
     Currently, two path detection methods are supported: using libraries AFLOW and seekpath
@@ -52,68 +45,88 @@ def find_kpath(st=None, method="AFLOW", path_to_POSCAR=None, debug=False):
 
     INPUT:
         - st <class 'pymatgen.core.structure.Structure'> - structure
+        - siman_st <class 'siman.core.structure.Structure'> - structure
         - method (str) - the method of path detection ("AFLOW", "seekpath" or "reference")
         - path_to_POSCAR (str) - path to POSCAR file with the structure
+        - refer_path_to_KPOINTS (str) - path to reference KPOINTS file for band structure
         - debug (bool) - if True, shows the obtained k-path to created KPOINTS
     RETURN:
         - k_path (list of tuples) - list with coordinates and names of k-points in the obtained k-path in the format for siman set
                                     Example: [128 */number of points per line/*), ('G', 0.0, 0.0, 0.0), ('X', 0.5, 0.0, 0.5), ('W', 0.5, 0.25, 0.75), ...]
     """
-    current_folder = os.getcwd()
-    print(current_folder)
-
+    
     if method == "AFLOW":
         if not path_to_POSCAR:
-            print("\n\n! ERROR --- From find_kpath with AFLOW: there is no path_to_POSCAR\n\n")
+            printlog("ERROR --- From find_kpath with AFLOW: there is no path_to_POSCAR", imp = 'y')
             exit()
         if not header.PATH2AFLOW:
-            print("\n\n! ERROR --- From find_kpath with AFLOW: there is no path to AFLOW software. Please, add PATH2AFLOW in the simanrc.py\n\n")
+            printlog("ERROR --- From find_kpath with AFLOW: there is no path to AFLOW software. Please, add PATH2AFLOW in the simanrc.py", imp = 'y')
             exit()
 
         os.environ["PATH"] = f"{os.path.dirname(header.PATH2AFLOW)}:{os.environ.get('PATH', '')}"
-        os.system(f"{header.PATH2AFLOW} --kpath < {path_to_POSCAR} > KPOINTS")
+        path_to_dir = '/'.join(path_to_POSCAR.split('/')[:-1])
+        path_to_KPOINTS = os.path.join(path_to_dir, 'KPOINTS.band')
 
-        k_path = band_set_from_KPOINTS()
-        os.remove('KPOINTS')
+        os.system(f"{header.PATH2AFLOW} --kpath < {path_to_POSCAR} > {path_to_KPOINTS}")
+
+        k_path = band_set_from_KPOINTS(path_to_KPOINTS=path_to_KPOINTS)
+        os.remove(f"{path_to_KPOINTS}")
 
     elif method == "seekpath":
-        if not st:
-            print("\n\n! ERROR --- From find_kpath with seekpath: there is no structure info\n\n")
+        if not st and not siman_st:
+            printlog("ERROR --- From find_kpath with seekpath: there is no structure info", imp = 'y')
             exit()
-        k_path = seekpath_method(st)
+        k_path = seekpath_method(st=st, siman_st=siman_st)
 
     elif method == 'reference':
-        k_path = band_set_from_KPOINTS()
+        if not refer_path_to_KPOINTS:
+            printlog("ERROR --- From find_kpath with reference: there is no refer_path_to_KPOINTS", imp = 'y')
+            exit()
+        k_path = band_set_from_KPOINTS(path_to_KPOINTS=refer_path_to_KPOINTS)
 
     else:
-        print("\n\nERROR: The method of k-path detection is set incorrectly!\n\n")
+        printlog("ERROR: The method of k-path detection is set incorrectly!", imp = 'y')
         exit()
 
     if debug:
-        print("\n\nFrom find_kpath: generated k_path is\n\n", k_path)
-
-    os.chdir(f'{current_folder}')
+        printlog(f"From find_kpath: generated k_path is {k_path}", imp = 'y')
 
     return k_path
 
 
-def seekpath_method(st):
+def seekpath_method(st=None, siman_st=None):
     """
     The function finds a highly symmetric k-path by seekpath library
 
     INPUT:
-        - st <class 'pymatgen.core.structure.Structure'> - structure
+        ** you need to provide one of them **
+        - st <class 'pymatgen.core.structure.Structure'> - structure 
+        - siman_st <class 'siman.core.structure.Structure'> - structure
     RETURN:
         - k_path (list of tuples) - list with coordinates and names of k-points in the obtained k-path in the format for siman set
                                     Example: [128 */number of points per line/*, ('G', 0.0, 0.0, 0.0), ('X', 0.5, 0.0, 0.5), ('W', 0.5, 0.25, 0.75), ...]
     """
-    lattice = list(list(elem) for elem in st.lattice.matrix)
-    coords = []
-    atoms_num = []
-    for site in st.sites:
-        coords.append(list(site.frac_coords))
-        atoms_num.append(element_name_inv(site.specie.name))
-    seekpath_out = seekpath.get_path((lattice, coords, atoms_num))
+    import seekpath
+    from siman.functions import element_name_inv
+
+    seekpath_input = []
+    if st:
+        lattice = list(list(elem) for elem in st.lattice.matrix)
+        coords = []
+        atoms_num = []
+        for site in st.sites:
+            coords.append(list(site.frac_coords))
+            atoms_num.append(element_name_inv(site.specie.name))
+        seekpath_input = (lattice, coords, atoms_num)
+    elif siman_st:
+        seekpath_input.append(siman_st.rprimd)
+        seekpath_input.append(siman_st.xred)
+        seekpath_input.append([element_name_inv(elem) for elem in siman_st.get_elements()])
+        seekpath_input = (seekpath_input)
+    else:
+        printlog('ERROR: You did not provide the structure for seekpath method', imp = 'y')
+
+    seekpath_out = seekpath.get_path(seekpath_input)
     points_coord, path_list = seekpath_out['point_coords'], seekpath_out['path']
 
     k_path = [40]
@@ -129,22 +142,20 @@ def seekpath_method(st):
     return k_path
 
 
-def band_set_from_KPOINTS(path_to_KPOINTS=None):
+def band_set_from_KPOINTS(path_to_KPOINTS):
     """
     The function gets k-path in format for siman set from the ready KPOINTS file
 
     INPUT:
-        - path_to_KPOINTS (str) - path to KPOINTS file; if None, the file will be searched in the current directory
+        - path_to_KPOINTS (str) - path to KPOINTS file
     RETURN:
         - k_path (list of tuples) - list with coordinates and names of k-points in the obtained k-path in the format for siman set
                                     Example: [128 */number of points per line/*, ('G', 0.0, 0.0, 0.0), ('X', 0.5, 0.0, 0.5), ('W', 0.5, 0.25, 0.75), ...]
     """
-    if path_to_KPOINTS:
-        os.chdir(path_to_KPOINTS)
 
     k_path = []
     pattern = r'(?i)Gamma'
-    with open('KPOINTS', 'r') as file:
+    with open(path_to_KPOINTS, 'r') as file:
         for line in file:
             if "!" in line:
                 data = line.replace("\\", "").split()
@@ -155,6 +166,7 @@ def band_set_from_KPOINTS(path_to_KPOINTS=None):
                     point_name = data[-1]
                     if k_path and (len(k_path) == 1 or (len(k_path) >= 1 and k_path[-1][0] != point_name)):
                         k_path.append((point_name, float(data[0]), float(data[1]), float(data[2])))
+    
     return k_path
 
 
