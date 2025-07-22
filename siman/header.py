@@ -29,7 +29,7 @@ EXCLUDE_NODES = False
 MEM_CPU = None
 AUTO_UPDATE_DB = False # if True, then execute write_database() at the end of add() and res()
 
-#Global variables
+#Global control variables
 final_vasp_clean     = True 
 clean_vasp_files     = []
 clean_vasp_files_ignore = []
@@ -60,7 +60,8 @@ PATH2AFLOW = None
 NEBMAKERTOOL = 'nebmake.py'
 ABSOLUTE_PATH2PROJECT = None
 
-
+#global internal var
+temp = {} # dict to store temp var
 
 #1. Read default global settings for siman package
 from siman.default_project_conf import *

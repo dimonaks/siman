@@ -749,7 +749,7 @@ class Calculation(object):
                     default is {'first':1, 'last':1, 'ax':None, 'hide_xlabels':False, 'pad':None}; see fit_and_plot()
             - nneighbors
 
-            fit_and_plot arguments can be used
+            fit_and_plot arguments can be used, see description there
 
         RETURN:
 
@@ -780,6 +780,7 @@ class Calculation(object):
         xlabel = pm.get('xlabel') or '$E-E_F$, eV'
         ylabel = pm.get('ylabel') or 'Total DOS, states/eV'
         DOSCAR = pm.get('DOSCAR')
+        write_xls = pm.get('write_xls')
         color_dicts = pm.get('color_dicts') or [
                 None, {'s': 'k', 'p': 'r', 'p6': '#FF0018', 'd': 'g'}]
 
@@ -871,6 +872,7 @@ class Calculation(object):
             efermi_shift = efermi_shift,
             neighbors = nneighbors,
             DOSCAR =DOSCAR,
+            write_xls = write_xls,
             show = 0,  plot_param = {
             'figsize': (6,3), 
             'first':multi['first'], 'last':multi['last'], 'ax':multi['ax'], 'pad':multi['pad'], 'hide_xlabels':multi['hide_xlabels'],
@@ -944,6 +946,7 @@ class Calculation(object):
                 color_dict = color_dicts[i%2],
                 image_name = image_name, 
                 DOSCAR =DOSCAR,
+                write_xls = write_xls,
 
                          # invert_spins = invert_spins,
                          # show_gravity = (1, 'p6', (-10, 10)),
@@ -1274,7 +1277,8 @@ class Calculation(object):
 
         elif 'XDATCAR' in filetype:
             self.path['xdatcar'] = path_to_file
-
+        elif 'WAVECAR' in filetype:
+            self.path['wavecar'] = path_to_file
 
         # print(self.cluster_address)
         # print(self.project_path_cluster+'/')

@@ -21,6 +21,11 @@ try:
 except:
     print('Warning ase is not installed. I need ase to parse to DOSCAR. install ase with    pip install ase')
 
+try:
+    from ase.calculators.vasp import VaspDos
+except:
+    print('Warning ase is not installed. I need ase to parse to DOSCAR. install ase with    pip install ase')
+
 
 from siman import header
 from siman.header import printlog
@@ -136,13 +141,69 @@ def det_gravity(dos, Erange = (-100, 0), key = None):
 
 
 
+def save_nested_dict_to_xlsx(data: dict, filename: str, sheet_name: str = 'Sheet1'):
+    """
+    Save a nested dictionary of x/y series to an Excel (.xlsx) file.
+
+    INPUT:
+    ----------
+    - data (dict)
+        Dictionary in the form
+        {
+            'series1': {'x': [...], 'y': [...]},
+            'series2': {'x': [...], 'y': [...]},
+            ...
+        }
+        All inner dictionaries must share the same 'x' list.
+    - filename (str)
+        Path (including name) of the output .xlsx file.
+    - sheet_name (str) , optional
+        Name of the worksheet to create. Default is 'Sheet1'.
+
+
+    Notes
+    -----
+    * The first column of the sheet is labeled **'x'** and contains the
+      common x-values.
+    * Each outer key becomes a column whose values come from the corresponding
+      inner `'y'` list.
+    * If *filename* already exists, it will be overwritten.
+
+    Author: ChatGPT 3
+
+
+    """
+    # Grab any 'x' list (they are identical across inner dicts)
+
+    try:
+        import pandas as pd          # локальный «ленивый» импорт
+    except ImportError as exc:
+        raise RuntimeError(
+            "Cannot save to XLSX because pandas is not installed. "
+            "Install it with `pip install pandas openpyxl`."
+        ) from exc
+
+
+    first_key = next(iter(data))
+    x_values = data[first_key]['x']
+
+    # Build DataFrame: first column 'x', remaining columns = outer keys
+    df = pd.DataFrame({'x': x_values})
+    for name, inner in data.items():
+        df[name] = inner['y']
+    # Write to Excel without the index column
+    printlog('Writing xls file',filename+'.xlsx', imp = 'y')
+    df.to_excel(filename+'.xlsx', sheet_name=sheet_name, index=False)
+
+    return
 
 
 def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
     orbitals = ('s'), up = None, neighbors = 6, show = 1, labels = None,
     path = 'dos', xlim = (None, None), ylim = (None,None), savefile = True, plot_param = {}, suf2 = '', nsmooth = 3,
     lts2 = '--', split_type = 'octa', plot_spin_pol = 1, show_gravity = None, 
-    efermi_origin = True, efermi_shift = 0, invert_spins  = 0, name_suffix = '', image_name = None, color_dict = None, DOSCAR = None):
+    efermi_origin = True, efermi_shift = 0, invert_spins  = 0, name_suffix = '', 
+    image_name = None, color_dict = None, DOSCAR = None, write_xls = False):
     """
     cl1 (CalculationVasp) - object created by add_loop()
     dostype (str) - control which dos to plot:
@@ -203,6 +264,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     invert_spins
         invert spin up and spin down, now only for partial d and p
+
+    DOSCAR (str) - explicit path to DOSCAR used for plotting DOS
+    write_xls (bool) - write xls file with corresponding data, which can be used to plot DOS
+
+
 
 
     #0 s     1 py     2 pz     3 px    4 dxy    5 dyz    6 dz2    7 dxz    8 dx2 
@@ -842,12 +908,19 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
             plot_param['ylabel'] = ylabel
 
 
+        # print(args.keys())
+        if write_xls:
+            save_nested_dict_to_xlsx(args, image_name)
+        # sys.exit()
+
+
         fit_and_plot(show = show, image_name = image_name, hor = True,
         # title = cl1.name.split('.')[0]+'; V='+str(round(cl1.vol) )+' $\AA^3$; Impurity: '+el,
         **plot_param, 
         **args
         )
         # printlog("Writing file", image_name, imp = 'Y')
+        
 
 
 

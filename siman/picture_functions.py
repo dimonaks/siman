@@ -437,7 +437,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
 
     keys = []
     shift = 0
-    return_results = []
+    return_results = {'E0':[], 'V0':[]}
     for key in sorted(data):
         keys.append(key)
         if scatter:
@@ -527,8 +527,14 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
             if 'ls' in con_other_args:
                 ''
                 del xyf[-1]
-            # print(xyf)
-            ax.plot(*xyf, alpha = alpha, **con_other_args)
+            # print('conf', con_other_args)
+            # print('xyf', xyf)
+            # sys.exit()
+            if 'yerr' in con_other_args:
+                ax.errorbar(xyf[0], xyf[1], fmt = xyf[2], capsize=5, alpha = alpha, **con_other_args)
+
+            else:
+                ax.plot(*xyf, alpha = alpha, **con_other_args)
 
 
             #second x axis
@@ -554,17 +560,44 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
          
 
                 # ax.plot(x_range, fit_y1, xyf[2][0]+'--', )
-                ax.plot(x_range, fit_y1, '--', )
+                ax.plot(x_range, fit_y1, '--', label = 'Fit '+str(key))
 
                 x_min  = fit_func1.deriv().r[power-2] #derivative of function and the second cooffecient is minimum value of x.
                 y_min  = fit_func1(x_min)
-                return_results.append(y_min)
-                print('y_min is ', y_min)
-                from scipy import stats
-                slope, intercept, r_value, p_value, std_err = stats.linregress(xyf[0], xyf[1])
-                print ('R^2 = {:5.2f} for {:s}'.format(r_value**2, key))
+                return_results['E0'].append(y_min)
+                return_results['V0'].append(x_min)
+                # print('Energy minimum is {:.6f} eV'.format( y_min ))
+                # print('Rel energy minimum is {:.0f} mueV'.format( (y_min - min(xyf[1]))*1e6 ))
+                # print('Eqv volume is {:.5f} A^3'.format(x_min) )
+                # from scipy import stats
+                # slope, intercept, r_value, p_value, std_err = stats.linregress(xyf[0], xyf[1])
+                # print ('R^2 = {:5.2f} for {:s}'.format(r_value**2, key))
+                if 1:
+                    x = xyf[0]
+                    y = xyf[1]
 
 
+
+                    # Предсказанные значения
+                    y_pred = fit_func1(x)
+
+                    # R²
+                    ss_res = np.sum((y - y_pred) ** 2)  # сумма квадратов остатков
+                    ss_tot = np.sum((y - np.mean(y)) ** 2)  # общая сумма квадратов
+                    r2 = 1 - (ss_res / ss_tot)
+
+                    rmse = np.sqrt(np.mean((y - y_pred)**2))
+                    # Дополнительно можно посчитать среднеквадратичную ошибку (RMSE)
+                    print(f"R² = {r2:.8f}, RMSE = {rmse*1e6:.2f} ueV")
+                    if min(xyf[0]) < x_min < max(xyf[0]):
+                        ax.axvline(x_min, color='k', lw = 0.5, alpha = 0.6, ls = '-', label = 'root '+str(key)) # vertical line at 0 always 
+                    else:
+                        printlog('Root x_min is beyonod the range')
+                    # print(f"RMSE = {rmse*1e6:.0f} mueV")
+
+                    # # Средняя абсолютная ошибка (MAE)
+                    # mae = np.mean(np.abs(y - y_pred))
+                    # print(f"MAE = {mae*1e6:.0f} mueV")
 
 
 

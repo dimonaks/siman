@@ -67,7 +67,6 @@ vasp_other_keys = [
 'VDW_RADIUS',
 'VDW_SCALING',
 'VDW_CNRADIUS',
-'LWANNIER90_RUN',
 'IVDW',
 'VDW_D',
 'MDALGO',
@@ -197,6 +196,11 @@ vasp_other_keys = [
 'LORBMOM',
 'LNONCOLLINEAR',
 'LMONO',
+'LWANNIER90', 'LWRITE_MMN_AMN', 'LWRITE_UNK', 'NUM_WANN', 'LWRITE_SPN', 'WANNIER90_WIN', 'LWANNIER90_RUN',
+'QSPIRAL', 'LSPIRAL', 'ENINI', 'ENMAX', 'LZEROZ',
+
+
+
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -388,13 +392,17 @@ class InputSet():
                     "s.params['"+key+"']", str(self.params[key])), imp='Y', end='\n')
 
             printlog('ngkpt:', self.ngkpt, imp='Y')
-            printlog('add_nbands:', self.add_nbands, imp='Y')
+            printlog('add_nbands:', self.add_nbands, ';old name was add_nbands, it is still used to name set property', imp='Y')
             if hasattr(self, 'mul_nbands'):
                 printlog('mul_nbands:', self.mul_nbands, imp='Y')
+            if hasattr(self, 'mul_nbands_small_cell'):
+                printlog('mul_nbands_small_cell:', self.mul_nbands_small_cell, 'used if natom < 9', imp='Y')
+
             # print(self.calculator)
 
             if hasattr(self, 'calculator') and self.calculator == 'vasp':
                 printlog('POTDIR:', self.potdir, imp='Y', end='\n')
+        
         elif self.calculator == 'qe':
             for key in self.params:
                 if self.params[key] == None:
@@ -433,6 +441,7 @@ class InputSet():
             self.tolmxf *= -1
 
         self.toldfe = vp.get('EDIFF') or 1e-4
+        self.toldfe = float(self.toldfe)
         # self.vasp_params['EDIFF'] = self.toldfe * c1
         # self.vasp_params['NELM'] = self.nstep
         # self.vasp_params['NSW'] = self.ntime
@@ -704,6 +713,7 @@ class InputSet():
         old = self.add_nbands
 
         self.add_nbands = arg
+        self.mul_nbands = arg
 
         if old == arg:
             print_and_log("Warning! You did not change  " +
