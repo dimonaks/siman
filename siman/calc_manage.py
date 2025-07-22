@@ -1689,17 +1689,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     # run_on_server("mkdir -p "+cl.dir, addr = cl.cluster_address)
 
             if id[2] == first_version:
-                write_batch_header(cl, batch_script_filename = batch_script_filename,
+                path_to_job, scrdir = write_batch_header(cl, batch_script_filename = batch_script_filename,
                     schedule_system = cl.schedule_system, 
                     path_to_job = header.project_path_cluster+'/'+cl.dir, 
                     job_name = cl.id[0]+"."+cl.id[1], corenum = corenum  )
+                header.temp['path_to_job'] = path_to_job
+                header.temp['scrdir'] = scrdir
 
-
-
-
-
-        # print(cl.init.printme())
-        # sys.exit()
 
         if cl.path["input_geo"]:
 
@@ -1806,7 +1802,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 
                 write_batch_body(cl, mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile, 
-                    mpi = mpi, corenum = corenum )
+                    mpi = mpi, corenum = corenum, path_to_job = header.temp['path_to_job'], scrdir = header.temp['scrdir'] )
                 
                 list_to_copy.extend( cl.make_incar() )
                 
@@ -1821,6 +1817,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     printlog('I include parent chgcar for upload:', params['cl_parent'].path['charge'], 'file renamed to CHGCAR; no copy on cluster will be attemted.', imp = 'y')
                     # sys.exit()
                     list_to_copy.append(path_charge)
+                
                 elif params.get('chgcar'):
                     if not os.path.exists(params['chgcar']):
                         printlog("Error! provided chgcar is missing!", params['chgcar'])
@@ -1829,7 +1826,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     printlog('I include provided chgcar for upload:', params['chgcar'], 'and rename to CHGCAR', imp = 'y')
                     list_to_copy.append(path_charge)
 
-
+                if params.get('wavecar'):
+                    if not os.path.exists(params['wavecar']):
+                        printlog("Error! provided wavecar is missing!", params['wavecar'])
+                    path_wavecar = cl.dir + '/WAVECAR'
+                    shutil.copy(params['wavecar'], path_wavecar)
+                    printlog('I include provided wavecar for upload:', params['wavecar'], 'and rename to WAVECAR', imp = 'y')
+                    list_to_copy.append(path_wavecar)
 
 
                 if 'atat' in cl.calc_method:
@@ -2952,7 +2955,7 @@ def res_loop(it, setlist, verlist, analys_type = None,
                 # sys.exit()
 
 
-            if 'shiftk_average' in cl.calc_method:
+            if cl.calc_method and 'shiftk_average' in cl.calc_method:
                 file = cl.get_file('ENERGIES', up='up2')
                 # print(file)
                 shiftk_energies = []

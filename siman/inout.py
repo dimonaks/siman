@@ -1680,12 +1680,11 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 gstress.append( round( float(line.split('=')[2].split()[0])*1000 *100, 3 )  )
             #if "Total" in line:
                 #gstress.append( red_prec(float(line.split()[4])*1000 *100, 1000 )  )
-            if "volume of cell" in line:
-                try:                     
-                    self.end.vol = float(line.split()[4])
-                except ValueError: 
-                    printlog("Warning! Cant read volume in calc "+self.name+"\n")
-                #print self.vol      
+            # if "volume of cell" in line: #commented, because, the vol provided in OUTCAR has low precision, calculated below from rprimd
+            #     try:                     
+            #         self.end.vol = float(line.split()[4])
+            #     except ValueError: 
+            #         printlog("Warning! Cant read volume in calc "+self.name+"\n")
 
             if "generate k-points for:" in line: 
                 self.ngkpt = tuple(  [int(n) for n in line.split()[3:]]  )
@@ -1777,16 +1776,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
             if re_lengths.search(line):
-                self.vlength = [red_prec( float(l),1000 ) for l in outcarlines[i_line + 1].split()[0:3]]
-                #print self.vlength
-            # else:
-                # printlog('Warning! length of vectors is absent in OUTCAR')
+                self.vlength = [float(l) for l in outcarlines[i_line + 1].split()[0:3]]
 
             if "in kB" in line:
-                # print(line)
-                # try:
                 line = line.replace('-', ' -')
-                # print(line)
                 lines_str = line.split()[2:]
                 try:
                     self.stress = [float(i)*100 for i in lines_str]  # in MPa 
@@ -2008,29 +2001,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 e_af_ii = line.split()[3]
                 self.e_added_field_ion.append(float(e_af_ii))
 
-                # print(line)
-
-
-                # for i in range(1,4):
-                #     line = outcarlines[i_line+i]
-                #     print(line)
-
-
-
-            # if 'irreducible k-points:': in line:
-            #     self.nkpt = int(line.split()[1])
-
-
-
-
             i_line += 1
-        # sys.exit()
-        #Check total drift
-        
-
-
-
-
 
 
     try:
@@ -2061,10 +2032,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         self.maxforce = maxforce[-1][1]
     except:
         self.maxforce = 0
-    # if max_magnitude < self.set.toldff/10: max_magnitude = self.set.toldff
-    # print 'magn', magnitudes
-    # print 'totdr', tdrift
-    # print 'max_magnitude', max_magnitude
+
     try: 
         
         if max_magnitude < self.set.tolmxf: 
@@ -2072,34 +2040,22 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     except:
         ''
 
-    #if any(d > 0.001 and d > max_magnitude for d in tdrift):
     if max_tdrift > 0.001 and max_tdrift > max_magnitude:
         
         printlog( "Total drift is too high! At the end one component is {:2.1f} of the maximum force, check output!\n".format(max_tdrift)  )
         pass
-    #else: maxdrift = 
-    # print magn
+
+
     if tot_mag_by_atoms:
         self.end.magmom = tot_mag_by_atoms[-1].tolist()
 
     """update xred"""
     self.end.update_xred()
 
-    # print(self.init.zval)
-    # self.end.zval = self.init.zval
+    self.end.get_volume() #property
 
-
-
-
-
-
-
-
-    #print "init pressure = ",self.extpress_init,"; final pressure =",self.extpress
-    #print self.end.xred
-    #self.vol = np.dot( self.rprimd[0], np.cross(self.rprimd[1], self.rprimd[2])  ); #volume
     nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
-    #print "Stress:", self.stress
+
     v = self.vlength
     self.end.vlength = self.vlength
 
@@ -2146,12 +2102,13 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         e_diff_md = (self.list_e_sigma0[-1] - self.list_e_sigma0[-2])*1000 #meV
 
     e_diff = (e_sig0_prev - e_sig0)*1000 #meV
-    # print(e_diff)
+    # print('E diff is ', e_diff)
+    # print('toldfe ', type(toldfe) )
     self.e_diff = e_diff #convergence
     if abs(e_diff) > float(toldfe)*1000:
         toldfe_warning = '!'
         printlog("Attention!, SCF was not converged to desirable prec", 
-            round(e_diff,3), '>', toldfe*1000, 'meV', imp = 'y')
+            '{:.1e}'.format(e_diff), '>', float(toldfe)*1000, 'meV', imp = 'y')
     else:
         toldfe_warning = ''
 
@@ -2226,7 +2183,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
     # lens = ("%.2f;%.2f;%.2f" % (v[0],v[1],v[2] ) ).center(j[19])
     lens = "{:4.2f}, {:4.2f}, {:4.2f}".format(v[0],v[1],v[2] ) 
-    r1 = ("%.2f" % ( v[0] ) ).center(j[19])            
+    r1 = ("%.2f" % ( v[0] ) ).center(j[19])
     vol = ("%.1f" % ( self.end.vol ) ).center(j[20])
     nat = ("%i" % ( self.end.natom ) ).center(j[21])
     try:

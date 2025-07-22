@@ -5433,19 +5433,12 @@ def get_voltage_profile(objs = None, up = 0, x_last = 1):
     objs (dict) - dictionary of calculation objects with concetration used as keys; an example is below
     up (bool) - update res_loop
     x_last (float) - last concentration
+
+    return also volumes
     """
 
-    #structures found by atat
-    if 0:
-        objs = { # concentration of vacancies, example
-        0.0   :db['xnvp.2uce.0'],
-        0.125 :db['xnvp.2uce.122'],
-        0.25  :db['xnvp.2uce.195'],
-        0.375 :db['xnvp.2uce.54'],
-        0.625 :db['xnvp.2uce.71'],
-        0.75  :db['xnvp.2uce.73'],
-        1.0   :db['xnvp.2uce.1'],
-        }
+    volumes = []
+    concs   = []
     x1 = list(sorted(objs.keys()))
 
 
@@ -5467,12 +5460,11 @@ def get_voltage_profile(objs = None, up = 0, x_last = 1):
     for i in range(len(xs)):
         x = xs[i]
         cl = objs[xs[i]]
-        # if not hasattr(cl, 'e0'):
+        print(cl.end.vol)
+        volumes.append(cl.end.vol/cl.end.natom * 72)
+        concs.append(x)
         if up:
             cl.res(up = 'up1')
-        name = 'Na'+str(1-x)+'VPO4F'
-        # print(name)
-        # cl.end.write_cif(filename = 'cif/'+name)
 
 
     for i in range(len(xs))[:-1] :
@@ -5498,5 +5490,5 @@ def get_voltage_profile(objs = None, up = 0, x_last = 1):
 
     # print(es_inv)
     # print(xs_inv)
-    return xs2, es_inv, ylim
+    return xs2, es_inv, ylim, concs, volumes
 

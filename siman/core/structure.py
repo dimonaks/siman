@@ -495,14 +495,31 @@ class Structure():
         return groups_size, groups_nums
 
 
-    def get_mag_tran(self, to_ox = None, silent = 0):
-        #show formatted mag moments of transition metals 
-        #to_ox - convert to oxidation state, substract from to_ox
-        # if to_ox is negative, then m-to_ox
-        l, mag_numbers = self.get_maglist([8])
+    def get_mag_tran(self, to_ox = None, silent = 0, fmt = '5.2f', extra_el = None):
+        """
+        Print formatted magnetic moments of transition elements, oxygen, and provided extra elements
+        
+        INPUT:
+            - to_ox - convert to oxidation state, substract from to_ox
+                     if to_ox is negative, then m-to_ox
+            - silent (bool) - if true do not print
+            - fmt (str) - format used for printing
+            - extra_el (list) - list with extra elements to show
+        RETURN:
+            list of magmom of transition elements, oxygen and provided extra elements
+        """
+        if extra_el is None:
+            extra_el = []
+        extra_el.append('O') #always show oxygen
+        zels = [invert(el) for el in extra_el ]
 
-        keys = list(mag_numbers.keys())#[0]
-        print('The following TM are found:', keys)
+
+        l, mag_numbers = self.get_maglist(zels)
+
+        keys = list(mag_numbers.keys())
+
+        if not silent:
+            print('The following TM are found:', keys)
 
         mag = list(np.array(self.magmom)[l])
         magnetic = None
@@ -514,9 +531,9 @@ class Structure():
             mag = mag[len(mag_numbers[key]):]
             # print(magnetic)
 
-            s = ' '.join(['{:5.2f} ']*len(magnetic))
+            s = ' '.join(['{:'+fmt+'} ']*len(magnetic))
             
-            s0 = ' '.join(['{:5d} ']*len(magnetic))
+            # s0 = ' '.join(['{:5d} ']*len(magnetic))
 
             # print(*mag_numbers[key])
             if not silent:
@@ -525,6 +542,7 @@ class Structure():
                 # print(magnetic)
                 print(' '+s.format(*magnetic))
             magnetic_all += magnetic
+            
             if to_ox:
                 if to_ox > 0:
                     ox = [to_ox-abs(m) for m in magnetic]
@@ -4068,10 +4086,8 @@ class Structure():
     @property
     def vlen(self):
         #return vector lengths
-        r = self.rprimd
-        n = np.linalg.norm
-        return n(r[0]), n(r[1]), n(r[2])
-
+        return np.linalg.norm(self.rprimd, axis=1)
+    
 
     def run_vasp(self):
 

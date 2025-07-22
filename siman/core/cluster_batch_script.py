@@ -1,9 +1,10 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 import os, sys
-from siman.small_functions import list2string,is_list_like
+from siman.small_functions import list2string,is_list_like, makedir
 from siman import header
 from siman.header import printlog
+from pathlib import Path
 
 def write_batch_header(cl, batch_script_filename = None,
     schedule_system = None, path_to_job = None, job_name = 'SuperJob', corenum = None):
@@ -11,9 +12,21 @@ def write_batch_header(cl, batch_script_filename = None,
     Write header for different schedule systems
     path_to_job (str) - absolute path to job folder 
     """
+
+
+
     NC = str(corenum)
     with open(batch_script_filename,'w', newline = '') as f:
-
+        path_to_job = str(Path(path_to_job))
+        if cl.cluster.get('scratch') :
+            scrdir = str(Path(cl.cluster['scratch']) / cl.dir)
+            printlog('Scratch dir for calculation is ', scrdir, imp = 'y')
+            # makedir(scrdir)
+            # run_on_server
+            # f.write('mkdir -p '+path_to_job+'\n')
+            # path_to_job = scrdir
+        else:
+            scrdir = None #path_to_job
 
         if schedule_system == 'SGE':
             if 'shell' in header.cluster:
@@ -139,7 +152,7 @@ def write_batch_header(cl, batch_script_filename = None,
             
             hc = header.cluster
             if '~' in path_to_job:
-                print_and_log('Error! For slurm std err and out you need full paths')
+                printlog('Error! For slurm std err and out you need full paths')
 
             f.write("#!/bin/bash   \n")
             f.write("#SBATCH -J "+job_name+"\n")
@@ -151,8 +164,8 @@ def write_batch_header(cl, batch_script_filename = None,
 
             f.write("#SBATCH -N 1\n")
             f.write("#SBATCH -n "+str(corenum)+"\n")
-            f.write("#SBATCH -o "+path_to_job+"sbatch.out\n")
-            f.write("#SBATCH -e "+path_to_job+"sbatch.err\n")
+            f.write("#SBATCH -o "+path_to_job+"/sbatch.out\n")
+            f.write("#SBATCH -e "+path_to_job+"/sbatch.err\n")
             if header.MEM_CPU:
                 f.write("#SBATCH --mem-per-cpu=7675\n") # this is mem per core
             
@@ -174,7 +187,15 @@ def write_batch_header(cl, batch_script_filename = None,
                     f.write("#SBATCH --exclude=node-amg11\n")
                 # f.write("#SBATCH --mail-user=\n")
                 # f.write("#SBATCH --mail-type=END\n")
-            f.write("cd "+path_to_job+"\n")
+            
+            if scrdir:
+                f.write('mkdir -pv  '+scrdir+'\n')
+                f.write("cp "+path_to_job+"/* "+scrdir+'\n')
+                f.write("cd "+scrdir+"\n")
+
+            else:
+                f.write("cd "+path_to_job+"\n")
+
             # f.write("export OMP_NUM_THREADS=1\n")
 
             if 'modules' in header.cluster:
@@ -193,13 +214,17 @@ def write_batch_header(cl, batch_script_filename = None,
         if cl.calculator == 'gaussian':
             f.write('export GAUSS_SCRDIR=/scr/$SLURM_JOB_USER/$SLURM_JOB_ID\n')
 
+        # if cl.cluster.get('scratch'):
+
+        #     f.write('mkdir -p '+scrdir+'\n')
+        #     f.write('cd '+scrdir+'\n')
 
         f.write("touch RUNNING\n")
 
 
 
 
-    return
+    return path_to_job, scrdir
 
 
 
@@ -215,6 +240,13 @@ def prepare_input(cl, prevcalcver = None, option = None, input_geofile = None, n
 
         curver - current version
     """  
+
+    # if cl.cluster.get('scratch'):
+    #     scrdir = str(Path(cl.cluster['scratch']) / cl.dir)
+    #     printlog('Scratch dir for calculation is ', scrdir, imp = 'y')
+    #     # makedir(scrdir)
+    #     # run_on_server
+    #     f.write('mkdir -p '+scrdir+'\n')
 
 
     if write:
@@ -664,7 +696,9 @@ def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, 
 
 
 def write_footer(cl, set_mod = '', run_tool_flag = True, 
-    savefile = None, final_analysis_flag = True, neb_flag = None, f = None, mpi = False, corenum = 1, option = None,parrallel_run_command=None, output_files_names = None):
+    savefile = None, final_analysis_flag = True, neb_flag = None, f = None, mpi = False, 
+    corenum = 1, option = None,parrallel_run_command=None, output_files_names = None,
+    path_to_job = '', scrdir = ''):
     """footer"""
     
 
@@ -840,8 +874,10 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
 
         f.write('rm RUNNING\n')
-
-
+        if scrdir:
+            f.write('mv '+scrdir+'/* '+ path_to_job+'\n')
+            f.write('rm -r '+scrdir+'\n')
+    
 
     return contcar_file, subfolders
 
@@ -855,7 +891,9 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
     prevcalcver = None, savefile = None, schedule_system = None,
     output_files_names = None,
     mode = None,
-    batch_script_filename = None, mpi = False, corenum = None):
+    batch_script_filename = None, mpi = False, corenum = None,
+    path_to_job = '', scrdir = ''
+    ):
     """
     Create job script for cluster for different calculation types, such as volume scan, neb, and so on.
     without arguments writes header, otherwise appends sequence of calculations.
@@ -966,7 +1004,9 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
             # print(savefile)
             # sys.exit()
             contcar_file, subfolders = write_footer(self, set_mod = set_mod, run_tool_flag = run_tool_flag, savefile = savefile,
-             final_analysis_flag = final_analysis_flag, neb_flag = neb_flag, f = f, mpi = mpi, corenum = corenum, option = option, parrallel_run_command=parrallel_run_command, output_files_names = output_files_names)
+             final_analysis_flag = final_analysis_flag, neb_flag = neb_flag, f = f, mpi = mpi, corenum = corenum, 
+             option = option, parrallel_run_command=parrallel_run_command, 
+             output_files_names = output_files_names, path_to_job = path_to_job, scrdir = scrdir)
 
         
         if k < nsets-1 and contcar_file:

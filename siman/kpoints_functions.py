@@ -1,12 +1,72 @@
 #!/usr/bin/env python3
 """ 
-Author: Kartamyshev A.I. (Darth Feiwante)
+Copyright (c) Siman Development Team.
+Distributed under the terms of the GNU License.
+Author: Kartamyshev A.I. (Darth Feiwante) + Aksyonov D.A
 """
-
+import math
+import numpy as np 
 import subprocess as SP
 import shutil as S
 from siman.small_functions import makedir
+from siman.geo import calc_recip_vectors
 from siman import header
+
+
+
+
+def ngkpt2kspacings(ngkpt, rprimd):
+    """
+    Calculate kspacing from ngkpt and rprimd (A)
+
+    INPUT:
+        - ngkpt (list of 3 int) - k-point grid
+        - rprimd (list of lists*3) - three primitive vectors in A
+
+
+    Author: Aksyonov D.A.
+    """
+    kspacing = []
+
+    recip = calc_recip_vectors(rprimd)
+
+    for i in 0, 1, 2:
+        if ngkpt[i] != 0:
+            a = np.linalg.norm( recip[i] ) / ngkpt[i]
+            # kspacing.append(red_prec(a))
+            kspacing.append(a)
+        else:
+            printlog('Warning! ngkpt = 0 in siman.geo.calc_kspacings()', imp='y')
+
+    return  kspacing
+
+def kspacing2ngkpt(kspacing, rprimd):
+    """
+    Calculate number of k-points for the given k-spacing in A^-1; The units align with VASP convention.
+    INPUT:
+        - kspacing (float) - spacing in reciprocal space in A^-1
+        - rprimd (list of lists*3) - three primitive vectors in A
+
+    RETURN:
+        - ngkpt (list*3 int)
+
+    TODO:
+        remove old small_functions.calc_ngkpt with different interface and use this instead
+
+    Author: Aksyonov D.A.
+    """
+    to_ang_local = 1
+    
+    N_from_kspacing = []
+    recip = calc_recip_vectors(rprimd)
+
+    for i in 0, 1, 2:
+        N_from_kspacing.append( math.ceil( (np.linalg.norm(recip[i]) / to_ang_local) / kspacing) )
+
+    print('Actual k-spacings are {:.2f}, {:.2f}, {:.2f}'.format(*ngkpt2kspacings(N_from_kspacing, rprimd)) )
+
+    return N_from_kspacing
+
 
 
 def make_vaspkit_kpoints(type_calc='', type_lattice='', poscar='', list_kpoints=[], kpoints_density=0.02, k_cutoff=0.015, num_points=6, folder_vaspkit=''):
@@ -36,7 +96,7 @@ def make_vaspkit_kpoints(type_calc='', type_lattice='', poscar='', list_kpoints=
         - Add more common lattices such as bcc, fcc etc.
         - Add another types of calculations requiring the specific KPOINTS files
 
-
+    Author: Kartamyshev A.I.
     """
 
     makedir(folder_vaspkit)
@@ -88,7 +148,7 @@ def insert_0weight_kpoints(ibzkpt='', list_kpoints=[], folder_kpoints=''):
     TODO
         Some improvements
 
-
+    Author: Kartamyshev A.I.
     """
     f = open(ibzkpt)
     l = f.readlines()

@@ -5,6 +5,8 @@ from siman.classes import CalculationVasp
 def setup_shiftk_average(cl, params, list_to_copy):
     """
     Prepare configuration file and pickle file for shiftk_average calculation regime
+
+    Author: Aksyonov D.A.
     """
     print('ngkpt serialized', cl.set.ngkpt)
     # sys.exit()
@@ -18,6 +20,7 @@ def setup_shiftk_average(cl, params, list_to_copy):
     pm['vasp_com'] = cl.cluster['vasp_com']
     pm['v'] = cl.id[2]
     pm['chgcar'] = params['chgcar']
+    pm['wavecar'] = params.get('wavecar')
 
     with io.open('shiftk_conf.json', 'w', newline = '') as fp:
         json.dump(pm, fp)
