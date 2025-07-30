@@ -392,7 +392,9 @@ class InputSet():
                     "s.params['"+key+"']", str(self.params[key])), imp='Y', end='\n')
 
             printlog('ngkpt:', self.ngkpt, imp='Y')
-            printlog('add_nbands:', self.add_nbands, ';old name was add_nbands, it is still used to name set property', imp='Y')
+            if hasattr(self, 'add_nbands'):
+                printlog('add_nbands:', self.add_nbands, ';old name was add_nbands, it is still used to name set property', imp='Y')
+            
             if hasattr(self, 'mul_nbands'):
                 printlog('mul_nbands:', self.mul_nbands, imp='Y')
             if hasattr(self, 'mul_nbands_small_cell'):

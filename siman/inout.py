@@ -2105,10 +2105,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     # print('E diff is ', e_diff)
     # print('toldfe ', type(toldfe) )
     self.e_diff = e_diff #convergence
-    if abs(e_diff) > float(toldfe)*1000:
+    if abs(e_diff) - float(toldfe)*1000 > 1e-3 :
         toldfe_warning = '!'
         printlog("Attention!, SCF was not converged to desirable prec", 
-            '{:.1e}'.format(e_diff), '>', float(toldfe)*1000, 'meV', imp = 'y')
+            '{:.1e}'.format(e_diff), 'meV >', float(toldfe)*1000, 'meV', imp = 'y')
     else:
         toldfe_warning = ''
 

@@ -1731,7 +1731,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         cl.des = ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
 
 
-
+        # print() 
 
         cl.check_kpoints(params.get('ngkpt'))    
 
@@ -1839,7 +1839,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                     setup_atat_step2(cl, params, list_to_copy)
 
-                elif 'shiftk_average' in calc_method:
+                elif 'shiftk_average' in cl.calc_method:
 
                     setup_shiftk_average(cl, params, list_to_copy)
 

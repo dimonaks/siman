@@ -58,3 +58,7 @@ class Molecule(Molecule_pymatgen):
         elif 'vesta' in program:
             runBash(header.PATH2VESTA+' "'+filename+'"', detached = True)
         return
+
+    def get_volume(self):
+        printlog('Molecule has no volume!', imp = 'n')
+        return 0

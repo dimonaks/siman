@@ -2,6 +2,6 @@
 cd "$(dirname "$0")"
 git checkout simanaks
 git add .
-git commit -m 'scratch '
+git commit -m 'gaussian update '
 git push origin simanaks
 
