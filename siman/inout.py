@@ -39,13 +39,16 @@ if pymatgen_flag:
 
 def determine_file_format(input_geo_file):
 
-    supported_file_formats = {'abinit':'.geo',   'vasp':'POSCAR',   'cif':'.cif', 'xyz':'.xyz'} #format name:format specifier
+    # supported_file_formats = 
+    # {'abinit':'.geo',   'vasp':['POSCAR', 'vasp', 'CONTCAR'],   'cif':['.cif', '.mcif'], 'xyz':'.xyz'} #format name:format specifier
 
     if ('POSCAR' in input_geo_file or 'CONTCAR' in input_geo_file) and not '.geo' in input_geo_file:
         input_geo_format = 'vasp'
     elif '.vasp' in input_geo_file:
         input_geo_format = 'vasp'
     elif '.cif' in input_geo_file:
+        input_geo_format = 'cif'
+    elif '.mcif' in input_geo_file:
         input_geo_format = 'cif'
     elif '.geo' in input_geo_file:
         input_geo_format = 'abinit'
@@ -145,9 +148,14 @@ def cif2poscar(cif_file, poscar_file):
 
         si = s._sites[0]
 
-        # print(dir(si))
+        # print(dir(s))
+        if 'magmom' in si.properties:
+            magmom = [list(si.properties['magmom']) for si in s._sites]
+        else:
+            magmom = [None]
+        # print(magmom)
         # print(si.specie)
-
+        # print(s)
         # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
         # sf = SpacegroupAnalyzer(s, ) #
         # sc = sf.get_conventional_standard_structure() # magmom are set to None
@@ -171,7 +179,7 @@ def cif2poscar(cif_file, poscar_file):
         printlog('Error! Support of cif files requires pymatgen or cif2cell; install it with "pip install pymatgen" or provide POSCAR or Abinit input file')
 
 
-    return
+    return magmom
 
 
 
@@ -249,10 +257,11 @@ def smart_structure_read(filename = None, curver = 1, calcul = None, input_folde
 
 
     elif input_geo_format == 'cif':
-        
-        cif2poscar(input_geo_file, input_geo_file.replace('.cif', '.POSCAR'))
-        input_geo_file = input_geo_file.replace('.cif', '.POSCAR')
-        cl.read_poscar(input_geo_file)
+        ext = '.'+input_geo_file.split('.')[-1] # could be mcif
+        poscar_file = input_geo_file.replace(ext, '.POSCAR')
+        magmom = cif2poscar(input_geo_file, poscar_file)
+        cl.read_poscar(poscar_file)
+        cl.init.magmom = magmom
 
     elif input_geo_format == 'xyz':
         #version = 1

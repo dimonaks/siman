@@ -373,8 +373,14 @@ class CalculationVasp(Calculation):
     def update_incar(self, parameter = None, value = None, u_ramp_step = None, write = True, f = None, run = False,):    
         """Modifications of INCAR. Take attention that *parameter* will be changed to new *value*
         if it only already exist in INCAR.  *u_ramp_step*-current step to determine u,
-        *write*-sometimes just the return value is needed. 
+        
+        INPUT: 
+            - *write*-sometimes just the return value is needed. 
+            - f (file object) - run script file 
         Returns U value corresponding to *u_ramp_step*.
+
+    
+
         """
 
 
