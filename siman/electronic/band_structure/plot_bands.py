@@ -8,8 +8,6 @@ import xml.etree.ElementTree as ET
 import matplotlib
 matplotlib.use('Agg')  # for matsolver backend
 import matplotlib.pyplot as plt
-
-
 from matplotlib.collections import LineCollection
 import re
 from siman.header import printlog
@@ -17,6 +15,24 @@ import os
 from collections import defaultdict
 from matplotlib.lines import Line2D
 
+
+def _fix_margins(fig=None, *, left=0.15, right=0.82, top=0.90, bottom=0.14):
+    """
+    The function is designed to align the size of graphs for total and projected band structures. 
+    Fixes the same fields around the graph.
+
+    INPUT:
+        - fig (matplotlib.figure.Figure) - the object of the matplotlib shape that needs to be indented
+        - left (float) - left margin (0–1, fraction of width)
+        - right (float) - right margin (0–1, fraction of width); a place for a legend/void (0.80 ≈ 20% of the width)
+        - top (float) - top margin (0–1, fraction of height)
+        - bottom (float) - bottom margin (0–1, fraction of height) 
+    RETURN:
+        None
+    """
+    fig.subplots_adjust(left=left, right=right,
+                        bottom=bottom, top=top)
+    
 
 def find_vbm_cbm(energies, valent_band_num):
     """
@@ -58,7 +74,7 @@ def lattice_from_vasprun(file_path):
     return np.array(lattice)
 
 
-def parse_kpoints_for_band(file_path):
+def parse_vasprun_kpoints(file_path):
     """
     The function parses k-points from vasprun.xml
     Used to plot band structure
@@ -97,23 +113,22 @@ def parse_efermi(file_path):
     return efermi
 
 
-def parse_vasprun_total(file_path):
+def parse_total_energies(file_path, valent_band_num):
     """
-    This function parses total energy values from vasprun.xml output file
+    The function parses total energy's array from vasprun.xml
 
     INPUT:
         - file_path (str) - path to vasprun.xml file
-    RETURN:
-        - kpoints (list of tuples) - list with coordinates of all kpoints at which energies were calculated
-        - energies (numpy.ndarray) - array of arrays with energy values for all calculated bands
         - valent_band_num (int) - valence band number
+    RETURN:
+        - energies (np.array) - array of arrays with energy values for all calculated bands;
+                                the energies are shifted so that the valence band maximum is at 0 eV;
+                                the energies are rounded to 4 decimal places;
     """
     tree = ET.parse(file_path)
     root = tree.getroot()
 
     energies = []
-
-    kpoints = parse_kpoints_for_band(file_path)
 
     spin_set = root.find(".//set[@comment='spin 1']")
     if spin_set is not None:
@@ -126,15 +141,35 @@ def parse_vasprun_total(file_path):
 
     energies = np.array(energies).T if energies else np.array([])
 
+    if energies.size == 0:
+        printlog("ERROR: energy array is empty. Check the XML file", imp = 'y')
+        return
+
+    vbm, _ = find_vbm_cbm(energies, valent_band_num)
+    energies = energies - vbm
+    energies = np.round(energies, 4)
+
+    return energies
+
+
+def parse_valense_band_num(file_path):
+    """
+    The function parses valence band number from vasprun.xml
+
+    INPUT:
+        - file_path (str) - path to vasprun.xml file
+    RETURN:
+        - valent_band_num (int) - valence band number
+    """
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+
     nelect_tag = root.find(".//i[@name='NELECT']")
     if nelect_tag is not None:
         nelect = float(nelect_tag.text.strip())
         valent_band_num = int(nelect / 2)
-        vbm, cbm = find_vbm_cbm(energies, valent_band_num)
-
-    energies = energies - vbm
-
-    return kpoints, energies, valent_band_num
+    
+    return valent_band_num
 
 
 def parse_kpoints(file_path):
@@ -179,77 +214,114 @@ def compute_k_distances(kpoints):
     for i in range(1, len(kpoints)):
         dist = np.linalg.norm(np.array(kpoints[i]) - np.array(kpoints[i - 1]))
         distances.append(distances[-1] + dist)
+
     return np.array(distances)
 
 
-def total_band(st_name, vasprun_path, kpoints_file_path, ylim=(-10, 10), method=None, vbm_cbm_marker=False,
-                  file_name='', debug=False):
+def prepare_kpoints(vasprun_path, kpoints_file_path):
+    """
+    INPUT:
+        - vasprun_path (str) - path to the vasprun.xml file
+        - kpoints_file_path (str) - path to the KPOINTS file for band structure
+    RETURN:
+        kpath, high_symmetric_kpoints, high_symmetric_kpoints_labels, valent_band_num
+        - kpath (np.array) - list with linear distances between points
+        - high_symmetric_kpoints (list of floats) - list with elements from 'kpath' corresponding to highly symmetrical k-points
+        - high_symmetric_kpoints_labels (list of str) - list with names of highly symmetrical k-points
+        - valent_band_num (int) - valence band number
+    """
+
+    all_kpoints = parse_vasprun_kpoints(vasprun_path) # all_kpoints - list of tuples with coordinates in 3D dimension; all range
+    valent_band_num = parse_valense_band_num(vasprun_path)
+    _ , kpoints_names = parse_kpoints(kpoints_file_path) # kpoints_names - dictionary
+                                                                            
+    kpath = compute_k_distances(all_kpoints)
+
+    high_symmetric_kpoints = [kpath[i] for i, k in enumerate(all_kpoints) if k in kpoints_names]
+    high_symmetric_kpoints_labels = [kpoints_names[k] for k in all_kpoints if k in kpoints_names]
+
+    return kpath, high_symmetric_kpoints, high_symmetric_kpoints_labels, valent_band_num
+
+
+def total_band(energies, kpath, high_symmetric_kpoints, high_symmetric_kpoints_labels, valent_band_num, st_name, ylim=(-10, 10), method=None, vbm_cbm_marker=False,
+                  file_name='', title=''):
     """
     This function is used to build plot of the total electronic band structure
     It saves the plot to .png file
 
     INPUT:
+        - energies (numpy.ndarray) - array of arrays with energy values for all calculated bands
+        - kpath (np.array) - list with linear distances between points
+        - high_symmetric_kpoints (list of floats) - list with elements from 'kpath' corresponding to highly symmetrical k-points
+        - high_symmetric_kpoints_labels (list of str) - list with names of highly symmetrical k-points
+        - valent_band_num (int) - valence band number
         - st_name (str) - name of the structure which will be noted in title
-        - vasprun_path (str) - path to the vasprun.xml file
-        - kpoints_file_path (str) - path to the KPOINTS file for band structure
-        - ylim (tuple of floats) - energy range of the band structure and DOS plots, units are eV
+        - ylim (tuple of floats) - energy range of the band structure, units are eV
         - method (str) - name of the method that was used to find kpath, just for title
         - vbm_cbm_marker (bool) - indicator showing whether vbm and cbm points need to be marked on the plot
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
+        - title (str) - manual title for figure
     RETURN:
         None
     """
-
-    kpoints, energies, valent_band_num = parse_vasprun_total(vasprun_path)
-    kpoints_list, kpoints_dict = parse_kpoints(kpoints_file_path)
-
-    if energies.size == 0:
-        printlog("ERROR: energy array is empty. Check the XML file", imp = 'y')
-        return
-
-    kpath = compute_k_distances(kpoints)
-
-    plt.figure(figsize=(8, 6), dpi=100)
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=100)
     line_color = (0.2, 0.5, 0.8, 0.8)
     font = {'family': 'serif', 'size': 24}
     plt.rc('font', **font)
 
     for energy_band in energies:
-        plt.plot(kpath, energy_band, color=line_color, linewidth=1)
+        ax.plot(kpath, energy_band, color=line_color, linewidth=1)
 
-    tick_positions = [kpath[i] for i, k in enumerate(kpoints) if k in kpoints_dict]
-    tick_labels = [kpoints_dict[k] for k in kpoints if k in kpoints_dict]
+    tick_positions = high_symmetric_kpoints
+    tick_labels = high_symmetric_kpoints_labels
 
-    plt.xticks(tick_positions, tick_labels, fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.xlabel("k-points", fontsize=16)
-    plt.ylabel("E - E$_f$ (eV)", fontsize=16)
-    if method:
-        plt.title(f"Total band structure for {st_name}\nMethod of k-path finding {method}\n", fontsize=19)
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, fontsize=14)
+    ax.tick_params(axis='y', labelsize=14)
+    ax.set_xlabel("k-points", fontsize=16)
+    ax.set_ylabel("E - E$_f$ (eV)", fontsize=16)
+    if title:
+        ax.set_title(title, fontsize=19)
     else:
-        plt.title(f"Total band structure for {st_name}\n", fontsize=19)
+        if method:
+            ax.set_title(f"Total band structure. Method {method}", fontsize=19)
+        else:
+            ax.set_title(f"Total band structure", fontsize=19)
+
+    ax.grid(False)
+    ax.set_xlim(min(kpath), max(kpath))
+    ax.set_ylim(ylim)
 
     for pos in tick_positions:
-        plt.axvline(x=pos, color='black', linestyle='-', linewidth=0.7)
+        ax.axvline(
+            x=pos,
+            color="black",
+            linestyle="-",
+            linewidth=0.7,
+            zorder=5
+        )
 
-    plt.axhline(y=0, color='black', linestyle='-', linewidth=0.7)
-    plt.grid(False)
-    plt.xlim(min(kpath), max(kpath))
-    plt.ylim(ylim)
+    ax.axhline(
+        y=0,
+        color="black",
+        linestyle="-",
+        linewidth=0.7,
+        zorder=5
+    )
 
     if vbm_cbm_marker and valent_band_num:
         vbm, cbm = find_vbm_cbm(energies, valent_band_num)
 
         vbm_x_id = np.where(energies[valent_band_num-1] == vbm)[0]
         for id in vbm_x_id:
-            plt.scatter(kpath[id], vbm, color='r')
+            ax.scatter(kpath[id], vbm, color='r')
 
         cbm_x_id = np.where(energies[valent_band_num] == cbm)[0]
         for id in cbm_x_id:
-            plt.scatter(kpath[id], cbm, color='g')
+            ax.scatter(kpath[id], cbm, color='g')
 
-    plt.tight_layout()
+    _fix_margins(fig)
 
     if method:
         name_png = f'{st_name}_{method}'
@@ -263,7 +335,7 @@ def total_band(st_name, vasprun_path, kpoints_file_path, ylim=(-10, 10), method=
     if folder != '' and not os.path.exists(folder):
         os.makedirs(folder, exist_ok=True)
 
-    plt.savefig(file_name)
+    fig.savefig(file_name, dpi=100)
 
 
 def parse_ion_names(file_path):
@@ -300,38 +372,17 @@ def parse_ion_names(file_path):
     return ion_names
 
 
-def parse_nband(file_path):
-    """
-    The function parses number of calculated bands from vasprun.xml
-
-    INPUT:
-        - file_path (str) - path to vasprun.xml file
-    RETURN:
-        - nbands (int) - number of bands
-    """
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-
-    nbands_tag = root.find(".//incar/i[@name='NBANDS']")
-
-    if nbands_tag is not None:
-        nbands = int(nbands_tag.text.strip())
-    else:
-        printlog("ERROR from parse_projected: NBANDS not found", imp = 'y')
-        exit()
-
-    return nbands
-
-
-def parse_vasprun_projected(file_path, ion_names):
+def parse_vasprun_projected(file_path, ion_names, nbands, selected_k_indices=None):
     """
     The function parses the projected energy of different orbitals of all ions in the structure
-    from vasprun.xml output file
+    from vasprun.xml output file with optional k-point thinning
 
     INPUT:
         - file_path (str) - path to vasprun.xml file
         - ion_names (list of str) - from parse_ion_names function - list with names of the ions
                                     in the order in which they are calculated in the .xml file
+        - nbands (int) - number of bands
+        - selected_k_indices (list of int or np.ndarray) - indices of k-points to keep after thinning
     RETURN:
         - kpoints (list of tuples) - list with coordinates of all kpoints at which energies were calculated
         - projected_bands (dict) - dictionary with information about the contribution of a certain ion to the energy of each orbital
@@ -342,22 +393,34 @@ def parse_vasprun_projected(file_path, ion_names):
     tree = ET.parse(file_path)
     root = tree.getroot()
 
-    nbands = parse_nband(file_path)
-    kpoints = parse_kpoints_for_band(file_path)
-
     projected_array = root.find(".//calculation/projected/array")
     if projected_array is None:
-        printlog("ERROR from parse_projected: tag projected -> array not found", imp = 'y')
+        printlog("ERROR from parse_projected: tag projected -> array not found", imp='y')
         exit()
 
-    projected_bands = dict()
+    projected_bands = {}
 
-    spin_sets = [child for child in projected_array.findall(".//set")
-                 if child.get("comment") and re.match(r"spin\s*\d+", child.get("comment"))]
+    spin_sets = [
+        child for child in projected_array.findall(".//set")
+        if child.get("comment") and re.match(r"spin\s*\d+", child.get("comment"))
+    ]
 
     for spin in spin_sets:
-        projected_bands[spin.get("comment")] = [[] for _ in range(nbands)]
-        for kpoint_set in spin.findall("set"):
+        spin_name = spin.get("comment")
+        kpoint_sets = list(spin.findall("set"))
+        n_kpoints = len(kpoint_sets)
+
+        if selected_k_indices is None:
+            selected_k_indices = np.arange(n_kpoints)
+
+        projected_bands[spin_name] = [[] for _ in range(nbands)]
+
+        for k_idx in selected_k_indices:
+            if k_idx >= n_kpoints:
+                continue  # protection against index out of range
+
+            kpoint_set = kpoint_sets[k_idx]
+
             for band_id, band_set in enumerate(kpoint_set.findall("set")):
                 if band_id >= nbands:
                     break
@@ -365,21 +428,21 @@ def parse_vasprun_projected(file_path, ion_names):
                 kpoint_data = {}
                 for ion_idx, r in enumerate(band_set.findall("r")):
                     values = list(map(float, r.text.split()))
-                    s_val = values[0]
-                    p_val = sum(values[1:4])  # px, py, pz
-                    d_val = sum(values[4:])  # dxy, dyz, dz2, dxz, x2-y2
+                    s_val = round(values[0], 4)
+                    p_val = round(sum(values[1:4]), 4)
+                    d_val = round(sum(values[4:]), 4)
 
                     ion_name = ion_names[ion_idx]
                     if ion_name not in kpoint_data:
-                        kpoint_data[ion_name] = defaultdict(float)
+                        kpoint_data[ion_name] = {'s': 0.0, 'p': 0.0, 'd': 0.0}
 
                     kpoint_data[ion_name]['s'] += s_val
                     kpoint_data[ion_name]['p'] += p_val
                     kpoint_data[ion_name]['d'] += d_val
 
-                projected_bands[spin.get("comment")][band_id].append(kpoint_data)
+                projected_bands[spin_name][band_id].append(kpoint_data)
 
-    return kpoints, projected_bands
+    return projected_bands
 
 
 def rgbline(ax, k, e, red, green, blue, alpha=20):
@@ -398,10 +461,9 @@ def rgbline(ax, k, e, red, green, blue, alpha=20):
         - alpha (float) - transparancy
     RETURN:
         None
+
     SOURCE:
         http://nbviewer.ipython.org/urls/raw.github.com/dpsanders/matplotlib-examples/master/colorline.ipynb
-    TODO:
-        Some improvements
     """
     pts = np.array([k, e]).T.reshape(-1, 1, 2)
     seg = np.concatenate([pts[:-1], pts[1:]], axis=1)
@@ -415,57 +477,55 @@ def rgbline(ax, k, e, red, green, blue, alpha=20):
     ax.add_collection(lc)
 
 
-def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10, 10), method=None, file_name=None):
+def projected_band(energies, project_energies, kpath, high_symmetric_kpoints, high_symmetric_kpoints_labels, st_name, element, 
+                           ylim=(-10, 10), valent_band_num=None, vbm_cbm_marker=None, method=None, file_name=None, title=''):
     """
     This function is used to build plot of the orbital projected electronic band structure for some element
     It saves the plot to .png file
 
     INPUT:
+        - energies (numpy.ndarray) - array of arrays with energy values for all calculated bands
+        - project_energies (dict) - from parse_vasprun_projected function - dictionary with information about 
+                                                the contribution of a certain ion to the energy of each orbital
+        - kpath (np.array) - list with linear distances between points
+        - high_symmetric_kpoints (list of floats) - list with elements from 'kpath' corresponding to highly symmetrical k-points
+        - high_symmetric_kpoints_labels (list of str) - list with names of highly symmetrical k-points
         - st_name (str) - name of the structure which will be noted in title
-        - vasprun_path (str) - path to the vasprun.xml file
-        - kpoints_file_path (str) - path to the KPOINTS file for band structure
         - element (str) - name of element for which the projected band structure will be built
         - ylim (tuple of floats) - energy range of the band structure and DOS plots, units are eV
+        - valent_band_num (int) - valence band number
+        - vbm_cbm_marker (bool) - indicator showing whether vbm and cbm points need to be marked on the plot
         - method (str) - name of the method that was used to find kpath, just for title
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
+        - title (str) - manual title for figure
     RETURN:
         None
     """
-    nbands = parse_nband(vasprun_path)
-    kpoints_list, kpoints_dict = parse_kpoints(kpoints_file_path)
+    
+    nbands = len(energies)
 
-    ion_names = parse_ion_names(vasprun_path)
-    if element not in ion_names:
-        print("\n\nERROR: element for projected band structure not in structure's ions list\n\n")
-        exit()
-
-    kpoints, pbands = parse_vasprun_projected(vasprun_path, ion_names)
-    kpoints, energies, valent_band_num = parse_vasprun_total(vasprun_path)
-
-    if not nbands:
-        printlog("ERROR: energy array is empty. Check the XML file", imp = 'y')
-        exit()
-
-    kpath = compute_k_distances(kpoints)
-
-    font = {'family': 'serif', 'size': 20}
+    font = {'family': 'serif', 'size': 24}
     plt.rc('font', **font)
-    fig = plt.figure(figsize=(8, 6), dpi=100)
+    fig = plt.figure(figsize=(10, 6), dpi=100)
     ax1 = plt.subplot()
     ax1.set_ylim(ylim[0], ylim[1])
     ax1.set_xlim(min(kpath), max(kpath))
-    if method:
-        fig.suptitle(f"Orbital projected band structure for {st_name}\nElement {element}\nMethod of k-path finding {method}", fontsize=19)
-    else:
-        fig.suptitle(f"Orbital projected band structure for {element}\nElement {element}", fontsize=19)
 
-    contrib = np.zeros((nbands, len(kpoints), 3))
+    if title:
+        fig.suptitle(title, fontsize=19)
+    else:
+        if method:
+            fig.suptitle(f"Orbital projected band structure for {element}\nMethod of k-path finding {method}", fontsize=19)
+        else:
+            fig.suptitle(f"Orbital projected band structure for {element}", fontsize=19)
+
+    contrib = np.zeros((nbands, len(kpath), 3))
     for b in range(nbands):
-        for k in range(len(kpoints)):
-            sc = pbands['spin1'][b][k][element]["s"] ** 2
-            pc = pbands['spin1'][b][k][element]["p"] ** 2
-            dc = pbands['spin1'][b][k][element]["d"] ** 2
+        for k in range(len(kpath)):
+            sc = project_energies['spin1'][b][k][element]["s"] ** 2
+            pc = project_energies['spin1'][b][k][element]["p"] ** 2
+            dc = project_energies['spin1'][b][k][element]["d"] ** 2
             tot = sc + pc + dc
             if tot != 0.0:
                 contrib[b, k, 0] = sc / tot
@@ -489,8 +549,8 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
     # fermi level at 0
     ax1.axhline(y=0, color='black', linestyle='-', linewidth=0.7)
 
-    tick_positions = [kpath[i] for i, k in enumerate(kpoints) if k in kpoints_dict]
-    tick_labels = [kpoints_dict[k] for k in kpoints if k in kpoints_dict]
+    tick_positions = high_symmetric_kpoints
+    tick_labels = high_symmetric_kpoints_labels
 
     ax1.set_xticks(tick_positions)
     ax1.set_xticklabels(tick_labels, fontsize=16)
@@ -504,13 +564,23 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
         Line2D([0], [0], color='b', lw=2, label='d')
     ]
 
-    # ax1.legend(handles=legend_elements, bbox_to_anchor=(-0.09, 1), loc='upper right', prop={'size': 16})
+    if vbm_cbm_marker and valent_band_num:
+        vbm, cbm = find_vbm_cbm(energies, valent_band_num)
+
+        vbm_x_id = np.where(energies[valent_band_num-1] == vbm)[0]
+        for id in vbm_x_id:
+            ax1.scatter(kpath[id], vbm, color='black', zorder=10)
+
+        cbm_x_id = np.where(energies[valent_band_num] == cbm)[0]
+        for id in cbm_x_id:
+            ax1.scatter(kpath[id], cbm, color='black', zorder=10)
+
     ax1.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.15, 1), prop={'size': 16})
-    # ax1.legend(handles=legend_elements, bbox_to_anchor=(-0.25, 1), loc='upper left', prop={'size': 16})
 
     plt.subplots_adjust(wspace=0)
     plt.grid(False)
-    plt.tight_layout()
+
+    _fix_margins(fig)
 
     if method:
         name_png = f'{st_name}_{method}'
@@ -524,11 +594,60 @@ def projected_band(st_name, vasprun_path, kpoints_file_path, element, ylim=(-10,
     if folder != '' and not os.path.exists(folder):
         os.makedirs(folder, exist_ok=True)
 
-    plt.savefig(file_name)
+    plt.savefig(file_name, dpi=100)
 
 
-def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10, 10), mode='total',
-               vbm_cbm_marker=False, file_name='', method="", debug=False):
+def thinning_total(kpath, high_symmetric_kpoints, energies, thinning_coeff):
+    """
+    The function is designed to thin out points in the kpoint and total energies arrays. 
+    It is necessary to reduce the volume of files while saving band structures data (uses in matsolver).
+
+    INPUT:
+        - kpath (np.array) - list with linear distances between points
+        - high_symmetric_kpoints (list of floats) - list with elements from 'kpath' corresponding to highly symmetrical k-points
+        - energies (numpy.ndarray) - array of arrays with energy values for all calculated bands
+        - thinning_coeff (int) - the thinning coefficient, the number of k points between highly 
+                                    symmetrical ones, will be reduced by this number of times
+    RETURN:
+        - new_kpath (np.array) - thinned kpath array
+        - new_energies (numpy.ndarray) - thinned energies array
+        - selected_indices (np.array) - indices of k-points that were kept after thinning (uses in projected band structure)
+    """
+    high_symmetric_kpoints_idx = []
+    i, j = 0, 0
+
+    while i < len(kpath) and j < len(high_symmetric_kpoints):
+        if kpath[i] == high_symmetric_kpoints[j]:
+            high_symmetric_kpoints_idx.append(i)
+            j += 1
+        i += 1
+
+    selected_indices = []
+
+    start = 0
+    for finish in high_symmetric_kpoints_idx:
+        if finish - start > 1:
+            idx = list(range(start, finish, thinning_coeff))
+        else:
+            idx = list(range(start, finish))
+
+        selected_indices.extend(idx)
+        start = finish
+
+    if start < len(kpath):
+        idx = list(range(start, len(kpath)))
+        selected_indices.extend(idx)
+
+    selected_indices = np.array(sorted(set(selected_indices)), dtype=int)
+
+    new_kpath = np.asarray(kpath)[selected_indices]
+    new_energies = energies[:, selected_indices]
+
+    return new_kpath, new_energies, selected_indices
+
+
+def plot_bands(st_name, vasprun_path, kpoints_file_path, thinning_coeff=1, element=None, ylim=(-15, 10), mode='total',
+               vbm_cbm_marker=False, file_name='', method=None, title=''):
     """
     The function is a wrapper for total_band and projected_band functions
     It is used to plot the total or projected band structure
@@ -537,23 +656,45 @@ def plot_bands(st_name, vasprun_path, kpoints_file_path, element=None, ylim=(-10
         - st_name (str) - name of the structure which will be noted in title
         - vasprun_path (str) - path to the vasprun.xml file
         - kpoints_file_path (str) - path to the KPOINTS file for band structure
+        - thinning_coeff (int) - the thinning coefficient, the number of k points between highly 
+                                    symmetrical ones, will be reduced by this number of times
         - element (str) - name of element for which the projected band structure will be built
         - ylim (tuple of floats) - energy range of the band structure and DOS plots, units are eV
+        - mode (str) - shows type of the band structure (total or projected)
         - vbm_cbm_marker (bool) - indicator showing whether vbm and cbm points need to be marked on the plot
         - file_name (str) - global path to the file where the plot should be saved.
                             The default path = os.getcwd() + '/band_structures/' + f'{st_name}_{method}.png'
         - method (str) - name of the method that was used to find kpath (just for title)
+        - title (str) - manual title for figure
     RETURN:
         None
-    TODO:
-        Some improvements
     """
+    if thinning_coeff < 1:
+        printlog('Thinning coefficient must be >= 1')
+        return None
+    
+    kpath, high_symmetric_kpoints, high_symmetric_kpoints_labels, valent_band_num  = prepare_kpoints(vasprun_path, kpoints_file_path)
+    energies = parse_total_energies(vasprun_path, valent_band_num)
+    full_len_energies = len(energies)
+
+    selected_indices = None
+    if thinning_coeff > 1:
+        kpath, energies, selected_indices = thinning_total(kpath, high_symmetric_kpoints, energies, thinning_coeff)
+
     if mode == 'projected':
         if not element:
-            print('Please, enter the element for projected')
+            printlog('Please, enter the element for projected')
         else:
-            projected_band(st_name, vasprun_path, kpoints_file_path, element, method=method, ylim=ylim,
-                           file_name=file_name)
+            ion_names = parse_ion_names(vasprun_path)
+            if element not in ion_names:
+                printlog("\n\nERROR: element for projected band structure not in structure's ions list\n\n")
+                exit()
+
+            projected_energies = parse_vasprun_projected(vasprun_path, ion_names, full_len_energies, selected_k_indices=selected_indices)
+
+            projected_band(energies, projected_energies,
+                           kpath, high_symmetric_kpoints, high_symmetric_kpoints_labels, st_name, element, ylim=ylim,
+                           vbm_cbm_marker=vbm_cbm_marker, valent_band_num=valent_band_num, file_name=file_name, title=title)
     elif mode == "total":
-        total_band(st_name, vasprun_path, kpoints_file_path, ylim=ylim, method=None, vbm_cbm_marker=vbm_cbm_marker,
-                   file_name=file_name)
+        total_band(energies, kpath, high_symmetric_kpoints, high_symmetric_kpoints_labels, valent_band_num, st_name, ylim=ylim, method=method, vbm_cbm_marker=vbm_cbm_marker,
+                            file_name=file_name, title=title)
