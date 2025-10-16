@@ -465,7 +465,7 @@ def analysis_script(cl, write = True, f = None ):
     return
 
 
-def name_mod_U_last(cl):
+def name_mod_U_last(cl, f):
     name_mod_last = 'U'+str(
                 cl.update_incar(parameter = 'LDAUU', 
                     u_ramp_step = cl.set.u_ramping_nstep-1, write = False, f = f)).replace('.','') #used to det last U
@@ -636,7 +636,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
     return contcar_file
 
 
-def u_ramp_prepare(cl):
+def u_ramp_prepare(cl, f):
     if 'u_ramping' in cl.calc_method:
         u = cl.update_incar(parameter = 'LDAUU', u_ramp_step = cl.set.u_ramping_nstep-1, write = False, f = f)
         name_mod   = '.U'+str(u).replace('.', '')
@@ -719,7 +719,7 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
             subfolders.append(n_st)
 
 
-        name_mod, name_mod_last = u_ramp_prepare(cl)
+        name_mod, name_mod_last = u_ramp_prepare(cl, f)
 
 
         start = '1'+name_mod+'.OUTCAR '
