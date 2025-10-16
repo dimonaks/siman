@@ -2014,6 +2014,8 @@ def calc_barriers(mode = '', del_ion = '', new_ion = '', func = 'gga+u', show_fi
                     # print(pd.get('show'))
                     if pd.get('show') is None:
                         show = 'fomep'
+                        # show = 'fomep.neb_geo'
+                        # pd['center_on_moving'] = 1
                     else:
                         show = pd['show']
                     # sys.exit()

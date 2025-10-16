@@ -566,6 +566,7 @@ def fit_and_plot(ax = None, power = None, xlabel = None, ylabel = None,
                 y_min  = fit_func1(x_min)
                 return_results['E0'].append(y_min)
                 return_results['V0'].append(x_min)
+                return_results['fit_func'] = fit_func1
                 # print('Energy minimum is {:.6f} eV'.format( y_min ))
                 # print('Rel energy minimum is {:.0f} mueV'.format( (y_min - min(xyf[1]))*1e6 ))
                 # print('Eqv volume is {:.5f} A^3'.format(x_min) )
