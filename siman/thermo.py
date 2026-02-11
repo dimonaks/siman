@@ -104,4 +104,99 @@ def O2(T, c2ev = 0, P = 1):
     return G, dH, S
 
 
+def H2(T, c2ev=0, P=1):
+    """
+    Shomate (NIST) for H2(g) 
+    https://webbook.nist.gov/cgi/cbook.cgi?ID=C1333740&Table=on&Type=JANAFG
+    Returns G, dH, S where:
+      dH = H°(T) - H°(298.15) in kJ/mol
+      S  in J/mol/K (includes pressure correction)
+      G  = dH - T*S/1000 in kJ/mol
+    P in bar, referenced to 1 bar.
+    """
+    t = T / 1000
+
+    if 298.0 <= T <= 1000.0:
+        A, B, C, D, E, F, Gc, Hc = 33.066178, -11.363417, 11.432816, -2.772874, -0.158558, -9.980797, 172.707974, 0.0
+    elif 1000.0 < T <= 2500.0:
+        A, B, C, D, E, F, Gc, Hc = 18.563083, 12.257357, -2.859786, 0.268238, 1.977990, -1.147438, 156.288133, 0.0
+    elif 2500.0 < T <= 6000.0:
+        A, B, C, D, E, F, Gc, Hc = 43.413560, -4.293079, 1.272428, -0.096876, -20.533862, -38.515158, 162.081354, 0.0
+    else:
+        raise ValueError("T out of supported range for H2 Shomate (298–6000 K).")
+
+    dH = A*t + B*t**2/2 + C*t**3/3 + D*t**4/4 - E/t + F - Hc
+    S  = A*np.log(t) + B*t + C*t**2/2 + D*t**3/3 - E/(2*t**2) + Gc
+
+    # pressure correction (ideal gas), reference 1 bar
+    S_P = -header.R * np.log(P)
+    S = S + S_P
+
+    G = dH - (T * S)/1000 # convert to kj/mol from j/mol
+
+    if c2ev:
+        S  = header.J_mol_T2eV_T * S
+        dH = header.kJ_mol2eV * dH
+        G  = header.kJ_mol2eV * G
+
+    return G, dH, S
+
+
+def N2(T, c2ev=0, P=1):
+    """
+    Shomate (NIST) for N2(g)
+    https://webbook.nist.gov/cgi/cbook.cgi?ID=C7727379&Table=on&Type=JANAFG
+    Returns G, dH, S where:
+      dH = H°(T) - H°(298.15) in kJ/mol
+      S  in J/mol/K (includes pressure correction)
+      G  = dH - T*S/1000 in kJ/mol
+    P in bar, referenced to 1 bar.
+    """
+
+    t = T / 1000.0
+
+    if 100.0 <= T <= 500.0:
+        A, B, C, D, E, F, Gc, Hc = 28.98641, 1.853978, -9.647459, 16.63537, 0.000117, -8.671914, 226.4168, 0.0
+    elif 500.0 < T <= 2000.0:
+        A, B, C, D, E, F, Gc, Hc = 19.50583, 19.88705, -8.598535, 1.369784, 0.527601, -4.935202, 212.3900, 0.0
+    elif 2000.0 < T <= 6000.0:
+        A, B, C, D, E, F, Gc, Hc = 35.51872, 1.128728, -0.196103, 0.014662, -4.553760, -18.97091, 224.9810, 0.0
+    else:
+        raise ValueError("T out of supported range for N2 Shomate (100–6000 K).")
+
+    dH = A*t + B*t**2/2 + C*t**3/3 + D*t**4/4 - E/t + F - Hc
+    S  = A*np.log(t) + B*t + C*t**2/2 + D*t**3/3 - E/(2*t**2) + Gc
+
+    # pressure correction (ideal gas), reference 1 bar
+    S_P = -header.R * np.log(P)
+    S = S + S_P
+
+    G = dH - (T * S)/1000 # convert to kj/mol from j/mol
+
+    if c2ev:
+        S  = header.J_mol_T2eV_T * S
+        dH = header.kJ_mol2eV * dH
+        G  = header.kJ_mol2eV * G
+
+    return G, dH, S
+
+
+def ZPE_for_molecule(molecule):
+    """
+    Returns the zero-point energy correction for N2, H2 molecule in eV
+    Data from https://cccbdb.nist.gov
+    """
+
+    h = 4.135667696e-15  # Planck constant in eV·s
+    c = 2.99792458e10    # Speed of light in cm/s
+
+    if molecule == 'N2':
+        wave_vector = 1165.0 # in cm^-1
+    if molecule == 'H2':
+        wave_vector = 2080.6 # in cm^-1
+
+    zpe = h * c * wave_vector
+    return zpe
+
+
 
