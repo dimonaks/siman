@@ -4,6 +4,7 @@ from __future__ import division, unicode_literals, absolute_import
 from operator import itemgetter
 import copy, traceback, datetime, sys, os, glob, shutil, re, io, json
 from itertools import product
+import tempfile
 
 import numpy as np
 
@@ -365,6 +366,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             't' - XDATCAR
             'z' - OSZICAR
             'w' - WAVECAR
+            'r' - REPORT
 
         - ifolder - explicit path to folder where to search for input geo file.
 
@@ -455,6 +457,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         - params (dic) - dictionary of additional parameters, please move here numerous arguments
             
             - 'occmatrix' - explicit path to occmatrix file
+            - 'iconst_str' - list of strings of ICONST file needed for constrained AIMD
             - 'update_set_dic' (dict) - additional parameters to override the existing set
             - 'monte' - dictionary with parameters for Monte-Carlo regime
                 
@@ -1726,6 +1729,23 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 except:
                     printlog('Attention! no OCCMATRIX file was found!!!')
 
+        if 'iconst_str' in params or ('LBLUEOUT' in cl.set.vasp_params and cl.set.vasp_params['LBLUEOUT'] == 1): #copy iconst file
+            if 'iconst_str' in params:
+                # with tempfile.NamedTemporaryFile('w', delete=False) as tmp:
+                #     tmp.writelines(params['iconst_str'])
+                #     tmp_path = tmp.name
+
+                # shutil.copyfile(tmp_path, cl.dir+'/ICONST' ) # file is provided explicitly
+                # os.remove(tmp_path)
+                with open(cl.dir + '/ICONST', 'w') as f:
+                    f.writelines(params['iconst_str'])
+
+
+            else:
+                # try:
+                #     shutil.copyfile(dir_1+'/ICONST', cl.dir+'/ICONST' )
+                # except:
+                    printlog('Attention! no ICONST file was found!!!')
 
         # if cl.des:
         cl.des = ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
@@ -3519,7 +3539,7 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
             # print groundstate_st_id
             # print m.get_data(groundstate_st_id, data_type='vasp', prop='hubbards')
         
-        st_pmg =  m.get_structure_by_material_id(groundstate_st_id, final=True)
+        st_pmg =  m.get_structure_by_material_id(groundstate_st_id)
         
         if 'conv' in mat_proj_cell:
             from pymatgen.symmetry.analyzer import SpacegroupAnalyzer

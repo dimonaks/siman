@@ -2446,51 +2446,62 @@ def create_surface(st, miller_index, min_slab_size = 10, min_vacuum_size = 10, s
     return slabs[surface_i]
 
 
-def stoichiometry_criteria(st1,st2):
-
-    natom1 = st1.get_natom()
-    natom2 = st2.get_natom()
-
-    tra1 = st1.get_transition_elements()
-    tra2 = st2.get_transition_elements()
-    ntra1 = len(tra1)
-    if ntra1 == 0: 
-        ntra1 = natom1
-    ntra2 = len(tra2)
-    if ntra2 == 0: 
-        ntra2 = natom2
-    rat1 = natom1/ntra1
-    rat2 = natom2/ntra2
-    mul = ntra1/ntra2
-
-    if rat1 == rat2:
-        return 1
-    else:
-        return 0
-
-def stoichiometry_criteria2(st1,st2, silent = 1):
-    atoms1 = st1.get_elements()
-    atoms2 = st2.get_elements()
-
+def stoichiometry_criteria(st_slab, st_bulk, silent=True, tol=1e-6):
     from collections import Counter
-    el_dict1 = Counter(atoms1)
-    el_dict2 = Counter(atoms2)
-    el1 = list(el_dict1.keys())[0]
-    el2 = list(el_dict1.keys())[1]
-    # print(el_dict1)
-    # print(el_dict2)
-    ratio1 = el_dict1[el1]/el_dict1[el2]
-    ratio2 = el_dict2[el1]/el_dict2[el2]
+    """
+     Check whether slab stoichiometry is preserved with respect to the bulk structure.
 
-    if ratio1 == ratio2:
+    Stoichiometry is preserved if there exists a single scaling factor k such that:
+        N_slab(element) = k * N_bulk(element)
+    for all elements.
+
+    Parameters
+    ----------
+    st_bulk : Structure() - Reference bulk structure
+    st_slab : Structure() - Slab or supercell structure
+    silent : bool
+        If False, print diagnostic messages
+    tol : float
+        Numerical tolerance for ratio comparison
+    """
+
+    # Count elements in bulk and slab
+    c_bulk = Counter(st_bulk.get_elements())
+    c_slab = Counter(st_slab.get_elements())
+    
+    # 1. Check that both structures contain the same set of elements
+    if set(c_bulk) != set(c_slab):
         if not silent:
-            print('Stoichiometric')
-        return 1
-    else:
-        if not silent:
-            print('Non-stoichiometric')
-            print(round(ratio1,2), round(ratio2,2))
+            print("Warning! Different set of elements")
+            print("bulk:", dict(c_bulk))
+            print("slab:", dict(c_slab))
         return 0
+
+    # 2. Compute scaling ratios for each element
+    ratios = []
+    for el in c_bulk:
+        if c_bulk[el] == 0:
+            return 0
+        ratios.append(c_slab[el] / c_bulk[el])
+
+    # 3. Check that all ratios are equal within tolerance
+    ref = ratios[0]
+    for r in ratios[1:]:
+        if abs(r - ref) > tol:
+            if not silent:
+                print("❌ Non-stoichiometric")
+                for el in c_bulk:
+                    print(f"{el}: bulk={c_bulk[el]}, slab={c_slab[el]}, ratio={c_slab[el]/c_bulk[el]:.3f}")
+            return 0
+
+    if not silent:
+        print(f"✅ Stoichiometric (scale factor ≈ {ref:.3f})")
+        # for el in c_bulk:
+        #     print(f"{el}: bulk={c_bulk[el]}, slab={c_slab[el]}, ratio={c_slab[el]/c_bulk[el]:.3f}")
+        
+
+
+    return 1
 
 def symmetry_criteria(st):
     from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -2826,7 +2837,7 @@ def create_ads_molecule(st, molecule = ['O'], mol_xc = [[0,0,0]], conf_i = [0], 
 
 
     adsorbate = Molecule(molecule, mol_xc)
-    ads_structs = asf_pm.generate_adsorption_structures(adsorbate,repeat=None, min_lw=8.0,  find_args=find_args)
+    ads_structs = asf_pm.generate_adsorption_structures(adsorbate,repeat=None, min_lw=5.0,  find_args=find_args)
     print('\nI\'ve found ',len(ads_structs), ' configurations for ', molecule, ' on the surface\n')
 
     st_ads_pack = []
@@ -3195,43 +3206,71 @@ def triangle_area_points(v1, v2, v3):
     return a
 
 
-def sl_misfit(st1,st2, silent = 0):
+def slab_misfit(st1,st2, silent = 0):
+    '''
+    Calculates difference between two slabs x,y sizes (Misfit)
+    '''
     size1 = st1.rprimd_len()
     size2 = st2.rprimd_len()
-    misfit = [(j-i)*100/j for i,j in zip(size1,size2)]
+    misfit1 = [(j-i)*100/j for i,j in zip(size1,size2)]
+    # misfit2 = [(j-i)*100/j for i,j in zip(size1,[size2[1],size2[0],size2[2]])]
     # print('\n\nSize 1: {},{},{} A'.format(round(size1[0],2),round(size1[1],2),round(size1[2],2)))
     # print('Size 2: {},{},{} A'.format(round(size2[0],2),round(size2[1],2),round(size2[2],2)))
     if silent == 0:
-        print('Misfit: {},{} % \n\n'.format(round(misfit[0],2),round(misfit[1],2)))
-    return misfit
+        print('Misfit: {},{} % \n\n'.format(round(misfit1[0],2),round(misfit1[1],2)))
+        # print('Misfit: {},{} % \n\n'.format(round(misfit2[0],2),round(misfit2[1],2)))
+    return misfit1
 
-def fit2host(st_host, st_oxide):
+def fit2host(st_host, st_film):
     replic = [1,1,1]
-    misf = sl_misfit(st_host,st_oxide, silent = 1)
-    for m in (0,1):
-        if 60 < abs(misf[m]) < 150:
-            replic[m] +=1
-        elif 150 < abs(misf[m]) < 250:
-            replic[m] +=2
-        elif 250 < abs(misf[m]) < 350:
-            replic[m] +=3
-        elif 350 < abs(misf[m]) < 450:
-            replic[m] +=3
-    st_oxide = st_oxide.replic(replic)
+    misf1 = slab_misfit(st_host,st_film, silent = 1)
+    st_film_rot = st_film.copy().exchange_axes_with_atoms(0,1)
+    # st_film_rot.update_xred()
+    misf2 = slab_misfit(st_host,st_film_rot, silent = 1)
+    st_films = []
+    print(st_film.rprimd_len())
+    print(st_film_rot.rprimd_len())
 
-    return st_oxide
+    
+    for misf in [misf1,misf2]: 
+
+        for m in (0,1):
+            if 60 < abs(misf[m]) < 150:
+                replic[m] +=1
+            elif 150 < abs(misf[m]) < 250:
+                replic[m] +=2
+            elif 250 < abs(misf[m]) < 350:
+                replic[m] +=3
+            elif 350 < abs(misf[m]) < 450:
+                replic[m] +=3
+        st_films.append(st_film.copy().replic(replic))
+
+    misf1 = slab_misfit(st_host,st_films[0], silent = 1)
+    misf2 = slab_misfit(st_host,st_films[1], silent = 1)
+
+    print(f'Misf1: {misf1[0]:f} {misf1[1]:f}\nMisf2: {misf2[0]:f} {misf2[1]:f}')
+    if sum(abs(i) for i in misf1) < sum(abs(i) for i in misf2):
+        st_film_new = st_films[0]
+        print(f'Final misfit: {misf1[0]:.1f},{misf1[1]:.1f} % \n')
+    else:
+        st_film_new = st_films[1]
+        print(f'Final misfit: {misf2[0]:.1f},{misf2[1]:.1f} % \n')
 
 
-def hkl_slab(st, st_host, hkl, i_suf = None):
+    return st_film_new
 
-    os.remove('/home/anton/media/vasp/log_best1')
-    f = open('/home/anton/media/vasp/log_best1', 'a')
+
+def hkl_slab(st, st_host, hkl, i_suf = None, path = 'filename'):
+
+
+    os.remove(path)
+    f = open(path, 'a')
     if slabs2:
         if not i_suf:
             for sl_i in range(0,len(slabs2)):
                 # print(hkl)
                 st2_new = st.update_from_pymatgen(slabs2[sl_i])
-                misf = sl_misfit(st_host,st2_new, silent = 0)
+                misf = slab_misfit(st_host,st2_new, silent = 0)
 
                 replic = [1,1,1]
                 for m in (0,1):
@@ -3239,7 +3278,7 @@ def hkl_slab(st, st_host, hkl, i_suf = None):
                         replic[m] +=1
                 st2_new = st2_new.replic(replic)
                 # print(replic)
-                misf = sl_misfit(st_host,st2_new, silent = 1)
+                misf = slab_misfit(st_host,st2_new, silent = 1)
                 print(hkl, sl_i)
                 string = str(hkl) + ' ' + str(sl_i) + '  Misfit: {},{} % \n\n'.format(round(misf[0],2),round(misf[1],2))
                 if abs(misf[0]) < 20 and abs(misf[1])<20:
@@ -3249,25 +3288,22 @@ def hkl_slab(st, st_host, hkl, i_suf = None):
     return misf, slabs2
 
 
-def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0, 
+def create_interface_solid(st_host, st_film, hkl_host, i_suf_host = 0, 
     seek_mode = 0, seek_range = [0,2], check_shift = None, 
-    hkl_lio = None, i_suf_lio = None, size = [5,5], ads_pos = None, z_shift = 1.5, lio_thick = 8):
+    hkl_film = None, i_suf_film = None, size = [5,5], ads_pos = None, z_shift = 1.5, film_thickness = 8):
 
 
     st1_init = st_host.copy()
-    st2_init = st_oxide.copy()
+    st2_init = st_film.copy()
     
-    if suf_host:
+    if hkl_host:
         sc1 = st1_init.get_conventional_cell()#.replic([2,2,1])
-        slabs1 = create_surface2(sc1, suf_host, shift = None, min_slab_size = 10, min_vacuum_size = 15, 
-                 surface_i = 0, oxidation = None, suf = '', 
-                 symmetrize = 1, cut_thickness = 0, return_one = 0, lll_reduce = 1, primitive = 1)
+        slabs1 = create_surface2(sc1, hkl_host, surface_i = 0,  min_slab_size =10, min_vacuum_size = 25, symmetrize = True, lll_reduce = 1, primitive = 1)
         slab1 = sc1.update_from_pymatgen(slabs1[i_suf_host])
-        # slab1 = slabs1
         mul_matrix = ortho_vec(slab1.rprimd, [5,5,15], silent = 1) # matrix which allows to obtain supercell close to 10x10x10 A cube 
-        st1 = create_supercell(slab1, mul_matrix, silent = 1)
+        slab1 = create_supercell(slab1, mul_matrix, silent = 1)
     else:
-        st1 = st_host
+        slab1 = st_host
 
 
     
@@ -3278,33 +3314,28 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
                     hkl = [h,k,l]
 
                     if hkl != [0,0,0]:
-                        slabs2 = create_surface2(st2_init, hkl, shift = None, min_slab_size = 10, min_vacuum_size = 25, surface_i = 0, oxidation = None, suf = '', 
-                        primitive = 1, symmetrize = 0, cut_thickness = None, return_one = 0, write_poscar = 0, lll_reduce  = 1)
+                        slabs2 = create_surface2(st2_init, hkl, surface_i = 0,  min_slab_size =10, min_vacuum_size = 25, symmetrize = True, lll_reduce = 1, primitive = 1)
                         for sl in range(0,len(slabs2)):
                             print(hkl, sl)
-                            st2 = st2_init.update_from_pymatgen(slabs2[sl])
-                            slab_2 = fit2host(st1, st2)
-                            sl_misfit(st1, slab_2, silent = 0)
+                            slab2 = st2_init.update_from_pymatgen(slabs2[sl])
+                            slab2 = fit2host(slab1, slab2)
+                            # slab_misfit(slab1, slab2, silent = 0)
     else:
 
-        slabs2 = create_surface2(st2_init, hkl_lio, shift = 0, min_slab_size = lio_thick, min_vacuum_size = 15, surface_i = i_suf_lio, oxidation = None, suf = '', 
-                primitive = 0, symmetrize = 0, cut_thickness = 0, return_one = 1, write_poscar = 0, lll_reduce  = 1)
-        # st2 = st2_init.update_from_pymatgen(slabs2[i_suf_lio])
-        st2 = slabs2
-        # st2.jmol()
-        slab_2 = fit2host(st1, st2)
-        st2_init = slab_2
+        slabs2 = create_surface2(st2_init, hkl_film, surface_i = i_suf_film,  min_slab_size =film_thickness, min_vacuum_size = 25, symmetrize = True, lll_reduce = 1, primitive = 1)
+        slab2 = st2_init.update_from_pymatgen(slabs2[i_suf_film])
+        slab2 = fit2host(slab1, slab2)
 
         from siman.impurity import make_interface
         z_max1 = 0
-        z_max2 = 50
-        st1 = st1.add_vacuum(2,40)
-        for r in st1.xcart:
+        z_min2 = 50
+        slab1 = slab1.add_vacuum(2,40)
+        for r in slab1.xcart:
             if r[2] > z_max1:
                 z_max1 = r[2]
-        for r in slab_2.xcart:
-            if r[2] < z_max2:
-                z_max2 = r[2]
+        for r in slab2.xcart:
+            if r[2] < z_min2:
+                z_min2 = r[2]
         
 
         if 0:
@@ -3382,15 +3413,16 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
                         print('\nGood interface!\n\n')
 
 
-        print('\n\n\n', st1.rprimd, slab_2.rprimd, '\n\n\n',st1.get_angles(), slab_2.get_angles(),)
+        print('\n\n\n', slab1.rprimd, slab2.rprimd, '\n\n\n',slab1.get_angles(), slab2.get_angles(),)
+        
+
         if ads_pos:
             interface_list = []
             suf_ats2 = (slab_2.get_surface_atoms('OLiNa', surface = 0, surface_width=0.5))
-            # print(suf_ats2)
             xc1 = ads_pos
             for at in suf_ats2[0:]:
-                xc2 = slab_2.xcart[at]
-                mat0, pas_scaled2 = make_interface(st1, xc1, slab_2, xc2)
+                xc2 = slab2.xcart[at]
+                mat0, pas_scaled2 = make_interface(slab1, xc1, slab2, xc2)
                 # mat0.jmol(rep=[3,3,1])
                 interface_list.append(mat0)
                 interface_list.append(pas_scaled2)
@@ -3402,7 +3434,7 @@ def create_interface_solid(st_host, st_oxide, suf_host, i_suf_host = 0,
 
 
 
-        mat2, pas_scaled2 = make_interface(st1, [0, 4, z_max1+z_shift], slab_2, [0, 0.626, z_max2],)
+        mat2, pas_scaled2 = make_interface(slab1, [0, 4, z_max1+z_shift], slab2, [0, 0.626, z_min2],)
        
         # st_wide = st1.add_vacuum(2,15)
         # mat3, pas_scaled3 = make_interface(st_wide, [0, 4, z_max1+10.5], slab_2, [0, 0.626, z_max2],)

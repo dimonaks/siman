@@ -187,6 +187,10 @@ vasp_other_keys = [
 'LANGEVIN_GAMMA_L',
 'LANGEVIN_GAMMA',
 'PMASS',
+'LBLUEOUT',
+'ANDERSEN_PROB',
+'LNONCOLLINEAR', 
+'KPAR',
 'ZAB_VDW',
 'IWAVPR',
 'NBLOCK',
@@ -194,13 +198,10 @@ vasp_other_keys = [
 'KPAR',
 'LMIXTAU',
 'LORBMOM',
-'LNONCOLLINEAR',
 'LMONO',
 'LWANNIER90', 'LWRITE_MMN_AMN', 'LWRITE_UNK', 'NUM_WANN', 'LWRITE_SPN', 'WANNIER90_WIN', 'LWANNIER90_RUN',
 'QSPIRAL', 'LSPIRAL', 'ENINI', 'ENMAX', 'LZEROZ',
 'VCA',
-
-
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 

@@ -99,7 +99,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     x_final = None, xr_final = None,
     upload_vts = False,
     center_on_moving = True,
-    run = False, add_loop_dic = None, old_behaviour = None, params = None
+    run = False, add_loop_dic = None, old_behaviour = None, params = None,
+    idpp = 0
      ):
 
 
@@ -370,7 +371,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
                 # printlog('atom ', type_atom_to_move, 'will be moved', imp ='y')
 
-                if i_atom_to_move:
+                if i_atom_to_move != None:
                     printlog('add_neb(): *i_atom_to_move* = ', i_atom_to_move, 'is used', imp ='y')
                     numbers = [[i_atom_to_move]]
                     i_void_start = 1
@@ -379,7 +380,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
                     numbers = determine_symmetry_positions(st, atom_to_move)
 
-                # print(numbers)
+                print('+++++++++++++++++++++++++++',numbers)
                 # sys.exit()
                 if len(numbers)>0:
                     printlog('Please choose position using *i_void_start* :', [i+1 for i in range(len(numbers))],imp = 'y' )
@@ -867,7 +868,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         else:
            # a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
            # print(a)
-           nebmaker('POSCAR1','POSCAR2', images)
+           printlog('Starting nebmaker ...', imp = 'y')
+           nebmaker('POSCAR1','POSCAR2', images, idpp = False)
            dst = it_new+'_all'
            makedir(dst+'/any')
            for f in ['00', '01', '02', '03', '04']:

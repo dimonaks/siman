@@ -294,6 +294,10 @@ class Structure():
         xr = copy.deepcopy(self.xred)
         r = copy.deepcopy(self.rprimd)
 
+        st.rprimd[i1_r] = r[i2_r]
+        st.rprimd[i2_r] = r[i1_r]
+
+
         for i in range(0,st.natom):
             st.xcart[i][i1_r] = xc[i][i2_r] 
             st.xcart[i][i2_r] = xc[i][i1_r] 
@@ -587,7 +591,10 @@ class Structure():
         return mag_grouped
 
 
-        
+
+
+
+
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
@@ -978,6 +985,8 @@ class Structure():
         r = self.rprimd
         n = np.linalg.norm
         return n(r[0]), n(r[1]), n(r[2])
+
+
 
 
 
@@ -1911,6 +1920,8 @@ class Structure():
             ''
             # print ('No!')
 
+        if hasattr(st, 'select') and any(st.select):
+            del st.select[i]
 
 
         st.natom-=1
@@ -2076,6 +2087,35 @@ class Structure():
 
         # print(st.get_elements())
         return st
+
+    def remove_atoms_randomly(self, el, n_at2remove, clear_magmom = 1):
+        """
+        remove N atoms of element type *el*
+        st (Structure)
+        el (str) - element name
+        n_at2remove (int) - total number of atoms, which must be removed
+        clear_magmom - by default magmom is cleared
+
+        """
+
+        from scipy.stats import qmc
+        
+        el_nums_list = self.get_elements_by_el_name(el)
+
+        sampler = qmc.Sobol(d=1, scramble=True)
+        sobol_vals = sampler.random(n_at2remove).flatten()  
+        indices = (sobol_vals * len(el_nums_list)).astype(int) 
+    
+        atoms_to_remove = []
+        for i in indices:
+            if i not in atoms_to_remove:
+                atoms_to_remove.append(i)
+            if len(atoms_to_remove) == n_at2remove:
+                break
+        st_new = self.remove_atoms(atoms_to_remove, clear_magmom = clear_magmom)
+        printlog('remove_atoms_randomly(): Atoms', atoms_to_remove, 'were removed')
+
+        return st_new
 
 
     def del_layers(self, xred_range = None, xcart_range = None):
@@ -2283,11 +2323,15 @@ class Structure():
 
 
 
-    def add_vacuum(self, vector_i, thickness):
+    def add_vacuum(self, vector_i, thickness, direction = '+'):
         """
         Allows to add or remove vacuum along one of the rprimd vectors
         vector_i (int) - index of vector along which vacuum should be added 0, 1, 2
         thickness (float) - thickness of added (positive) or removed (negative) vacuum 
+
+        direction (str, optional) - Direction where vacuum is added:
+                '+' (default) -> vacuum added "above" (positive direction of lattice vector)
+                '-' -> vacuum added "below" (negative direction of lattice vector)
 
 
         TODO:
@@ -2295,11 +2339,23 @@ class Structure():
 
         """
         st = copy.deepcopy(self)
-        v = st.rprimd[vector_i]
+        v = st.rprimd[vector_i].copy()
         v_l = np.linalg.norm(v)
         new_len = v_l+thickness
 
+        # scale the vector
         st.rprimd[vector_i]*=new_len/v_l
+
+        if direction == '+':
+            # default: do nothing, vacuum above
+            pass
+        elif direction == '-':
+            # shift atoms up by thickness
+            shift_vec = st.rprimd[vector_i] - v
+            st = st.shift_atoms(vector_cart=shift_vec, return2cell=0)
+        else:
+            raise ValueError("direction must be '+' or '-'")
+ 
 
         st.update_xred()
         st.name+='_vac'

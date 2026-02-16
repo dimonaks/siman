@@ -171,6 +171,8 @@ def write_batch_header(cl, batch_script_filename = None,
             
             if 'partition' in hc:
                 f.write('#SBATCH -p '+hc['partition']+'\n')
+            if 'exclude' in hc:
+                f.write('#SBATCH --exclude='+hc['exclude']+'\n')
 
             if 'any_commands' in header.cluster:
                 lines = header.cluster['any_commands']
@@ -182,9 +184,9 @@ def write_batch_header(cl, batch_script_filename = None,
             # f.write("#SBATCH -I other=avx\n") # AVX2 instructions for new node to improve speed by 18% 
 
             # f.write("#SBATCH --nodelist=node-amg03\n")
-            if header.siman_run: #only for me
-                if header.EXCLUDE_NODES:
-                    f.write("#SBATCH --exclude=node-amg11\n")
+            # if header.siman_run: #only for me
+            #     if header.EXCLUDE_NODES:
+            #         f.write("#SBATCH --exclude=node-amg11\n")
                 # f.write("#SBATCH --mail-user=\n")
                 # f.write("#SBATCH --mail-type=END\n")
             

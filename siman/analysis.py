@@ -4,6 +4,7 @@ from __future__ import division, unicode_literals, absolute_import
 import os, copy, shutil, sys
 import numpy as np
 
+
 try:
     import scipy
     from scipy import interpolate
@@ -1733,7 +1734,14 @@ def ads_en(cl_slab_ads, cl_slab, ads_at = 'O'):
 
 def wulff(st, miller_list = None, e_surf_list = None, show = 0):
 
+    import os
+    import matplotlib.pyplot as plt
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
     from pymatgen.core.structure import Structure
+    from pymatgen.analysis.wulff import WulffShape
+
+
+
     stpm = st.convert2pymatgen()
 
     lat = stpm.lattice
@@ -1746,11 +1754,12 @@ def wulff(st, miller_list = None, e_surf_list = None, show = 0):
     print(dire.get_space_group_info())
     print(recp.get_space_group_info())
     # print(lat)
-    from pymatgen.analysis.wulff import WulffShape
     WS = WulffShape(lat, miller_list, e_surf_list)
     # print(dir(WS))
+    print(WS.area_fraction_dict)
     anisotropy = WS.anisotropy
     weighted_surface_energy = WS.weighted_surface_energy
     if show:
-        WS.show()
+        fig = WS.get_plot()
+        plt.show(block=True)
     return anisotropy, weighted_surface_energy

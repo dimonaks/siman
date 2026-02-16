@@ -1756,10 +1756,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
                 de_each_md_list.append(de_each_md)
 
-            if "kinetic energy EKIN   =" in line:
-                self.ekin = float(line.split()[4])
-                self.list_ekin.append(self.ekin)
-
+          
             if "(temperature" in line:
                 self.list_temp.append(float(line.split()[-2]))
 
@@ -1774,12 +1771,16 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if "free  energy   TOTEN  =" in line:
                 #self.energy = float(line.split()[4])
-                self.energy_free = float(line.split()[4]) #F free energy
+                self.energy_free = float(line.split()[4]) # F free energy
             
             if "energy   ETOTAL =" in line:
-                self.etotal = float(line.split()[4]) #Total energy in MD simulation
+                self.etotal = float(line.split()[4]) # Total energy in MD simulation
                 self.list_etotal.append(self.etotal)
             
+            if "kinetic energy EKIN   =" in  line:
+                self.ekin = float(line.split()[4]) # Kinetic energy in MD simulation
+                self.list_ekin.append(self.ekin)
+
 
 
 
@@ -1853,14 +1854,17 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
             if "Iteration" in line:
-                self.mdstep = int(line.split('(')[0].split()[2].strip())
-                iterat +=1
-                # print self.mdstep
-                # print line
-                if mdstep_old != self.mdstep:
-                    nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
-                niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
-                mdstep_old = self.mdstep
+                try:
+                    self.mdstep = int(line.split('(')[0].split()[2].strip())
+                    iterat +=1
+                    # print self.mdstep
+                    # print line
+                    if mdstep_old != self.mdstep:
+                        nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
+                    niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
+                    mdstep_old = self.mdstep
+                except ValueError:
+                    print(line)
 
 
             if 'number of electron ' in line:
@@ -1886,14 +1890,13 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
             if 'magnetization (x)' in line:
-                # print(line)
+
                 mags = []
                 if ifmaglist is not None:
                     for j in range(self.end.natom):
                         mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
                     
                     tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
-                    # print(ifmaglist)
                     tot_mag_by_mag_atoms.append(np.array(mags)[ifmaglist])
                 # print tot_mag_by_atoms
                 # magnetic_elements
