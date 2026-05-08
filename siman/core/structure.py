@@ -510,7 +510,8 @@ class Structure():
         """
         if extra_el is None:
             extra_el = []
-        extra_el.append('O') #always show oxygen
+        extra_el.append('O') #always show oxygen and sulfur
+        extra_el.append('S') #always show oxygen and sulfur
         zels = [invert(el) for el in extra_el ]
 
 
@@ -1761,6 +1762,9 @@ class Structure():
 
 
         els = st.get_elements()
+        if order is None:
+            order = 'alphabet'
+
 
         if 'alphabet' in order:
             order =  list(sorted(set(els)))
@@ -1801,6 +1805,7 @@ class Structure():
         st.magmom = magmom
         st.typat = typat
         st.znucl = znucl
+        st.ntypat = len(st.znucl)
         st.update_xred()
         st.name+='_r'
         # st.write_poscar()
@@ -4009,7 +4014,7 @@ class Structure():
 
 
     def jmol(self, shift = None, r = 0, show_voids = False, rep = None, program = 'jmol'):
-        """open structure in Jmol or vesta
+        """open structure in Jmol or vesta, ovito
         
         INPUT:
         shift (list) - shift vector  in reduced coordinates
@@ -4025,6 +4030,7 @@ class Structure():
         program - 
             'jmol'
             'vesta'
+            'ovito'
         
         """
         st = copy.deepcopy(self)
@@ -4068,7 +4074,8 @@ class Structure():
             elif 'vesta' in program:
                 runBash(header.PATH2VESTA+' '+filename, detached = True)
             elif 'ovito' in program:
-                runBash(header.PATH2VESTA+' '+filename, detached = True)
+                filename = self.path['xdatcar']
+                runBash(header.PATH2OVITO+' '+filename, detached = True)
 
         return
 

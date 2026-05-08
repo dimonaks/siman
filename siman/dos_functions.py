@@ -233,6 +233,7 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
 
     plot_param - dict of parameters to fit_and_plot
         dashes - control of dahsed lines
+        fill - 1
 
     suf2 - additional suffix for label
     name_suffix - modify name
@@ -456,9 +457,9 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
         
 
         if cl2:
-            numbers_list.append([iatom2, iatom2]) # for cl2 only one atom is supported
+            # numbers_list.append([iatom2, iatom2]) # for cl2 only one atom is supported
             printlog('Warning! for cl2 p6 and d6 doesnot work and will show DOS for central atom')
-            if type(iatom) == int: #for the cases when we need to build surrounding around specific atom in this calculation - just use number of atom
+            if type(iatom2) == int: #for the cases when we need to build surrounding around specific atom in this calculation - just use number of atom
                 t = cl2.end.typat[iatom2]
                 z = cl2.end.znucl[t-1]
                 el = element_name_inv(z)
@@ -468,11 +469,14 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                 surround_center = iatom2
                 el = 'undef'
 
-            local_atoms2 = local_surrounding(surround_center, cl2.end, neighbors, control = 'atoms', periodic = True)
+            if surround_center is not None:
+                local_atoms2 = local_surrounding(surround_center, cl2.end, neighbors, control = 'atoms', periodic = True)
 
-            numbers2 = local_atoms2[2]
-            numbers_list.append(numbers2) # for cl2 only one atom is supported
-            calcs.append(cl2)
+                numbers2 = local_atoms2[2]
+                numbers_list.append(numbers2) # for cl2 only one atom is supported
+                calcs.append(cl2)
+            else:
+                printlog('Error! iatom2 is not provided!')
 
         for cl, d, numbers in zip(calcs, dos, numbers_list):
             
@@ -617,11 +621,11 @@ def plot_dos(cl1, cl2 = None, dostype = None, iatom = None, iatom2= None,
                     d.d.append(  [ sum(x) for x in zip(*dlist) ] )
 
 
-            d.p6 = [ sum(pi[1:])/n_sur for pi in zip(*d.p) ] #sum over neighbouring atoms now only for spin up
+            d.p6 = [ sum(pi[1:])/n_sur for pi in zip(*d.p) ] #sum over neighbouring atoms for non spin
             
             if spin_pol:
-                d.p6_up   = [ sum(pi[1:])/n_sur for pi in zip(*d.p_up)   ] #sum over neighbouring atoms now only for spin up
-                d.p6_down = [ sum(pi[1:])/n_sur for pi in zip(*d.p_down) ] #sum over neighbouring atoms now only for spin up
+                d.p6_up   = [ sum(pi[1:])/n_sur for pi in zip(*d.p_up)   ] #sum over neighbouring atoms for spin up
+                d.p6_down = [ sum(pi[1:])/n_sur for pi in zip(*d.p_down) ] #sum over neighbouring atoms for spin down
             
 
             d.d6 = [ sum(di[1:])/n_sur for di in zip(*d.d) ]#sum over neighbouring atoms

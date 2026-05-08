@@ -4326,7 +4326,11 @@ def process_cathode_material(projectname, step = 1, target_x = 0, update = 0, pa
     pf = pn.split('_')[0] # project_folder
 
     # print()
+
     p = params
+    if p is None:
+        p = {}
+
     prim  = p.get('primitive')
     scale_region  = p.get('scale_region') or (-3, 5)
     show_fit  = p.get('show_fit')
