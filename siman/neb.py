@@ -865,12 +865,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         if init_neb_geo_fld:
             printlog('Check neb files at', init_neb_geo_fld, imp = 'y')
         else:
-           # a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3')
-           # print(a)
+           # a = runBash(header.PATH2NEBMAKE+' POSCAR1 POSCAR2 3') # old way
            nebmaker('POSCAR1','POSCAR2', images)
            dst = it_new+'_all'
            makedir(dst+'/any')
-           for f in ['00', '01', '02', '03', '04']:
+           for f in range(images+2):
+              f = f'{f:02d}'
               shutil.move(f+'/POSCAR', dst+'/POSCAR'+f)
               shutil.rmtree(f)
 

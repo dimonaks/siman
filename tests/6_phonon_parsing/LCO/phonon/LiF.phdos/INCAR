@@ -1,0 +1,21 @@
+SYSTEM =  scale: scaled "images" for LiF.['phdos'].1; no description for these set, see history
+ADDGRID = .TRUE.
+ALGO = Normal
+EDIFF = 1e-08
+ENAUG = 700.0
+ENCUT = 400
+IBRION = 6
+ISIF = 2
+ISMEAR = 0
+ISTART = 0
+KGAMMA = .TRUE.
+LPLANE = .TRUE.
+LREAL = Auto
+NBANDS = 48
+NELM = 50
+NFREE = 2
+NSW = 1
+POTIM = 0.015
+PREC = Accurate
+SIGMA = 0.1
+

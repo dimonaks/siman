@@ -2,7 +2,7 @@
 from __future__ import division, unicode_literals, absolute_import 
 import os, io, re, math, sys, glob
 from csv import reader
-
+import traceback
 
 import numpy  as np
 try:
@@ -142,8 +142,8 @@ def cif2poscar(cif_file, poscar_file):
         # print(cif_file)
         parser = CifParser(cif_file)
         # s = parser.get_structures(primitive = True)[0]
-        s = parser.get_structures(primitive = 0)[0]
-        # s = parser.parse_structures(primitive = 0)[0]
+        # s = parser.get_structures(primitive = 0)[0]
+        s = parser.parse_structures(primitive = 0)[0]
         
 
         si = s._sites[0]
@@ -417,14 +417,22 @@ def read_xyz(st, filename, rprimd = None):
 
 
 def read_poscar(st, filename, new = True):
-    # from classes import Structure
-    #read poscar
+    """
+    POSCAR parser
+
+    INPUT:
+        filename (str) - path to POSCAR or CONTCAR
+        new (bool) - used for st.name 
+
+    RETURN:
+        Structure()
+
+    """
+
     selective_dynamics = None
 
     elements_list = []
 
-    # st = Structure()
-    
     if new:
         st.name = os.path.basename(filename).replace('POSCAR', '').replace('CONTCAR', '')
     
@@ -440,19 +448,9 @@ def read_poscar(st, filename, new = True):
         
         if new:
             st.des = name
-        # print self.name, "self.name"
 
-
-        # st.name = self.name
-        # print(f.readline())
         mul_str = f.readline()
-        # print(filename)
-        # print(name)
-        # print(mul_str)
-        # sys.exit()
         mul = float( mul_str.split('!')[0] )
-        # print 'mul', mul
-
 
         st.rprimd = []
         for i in 0, 1, 2:
@@ -461,35 +459,127 @@ def read_poscar(st, filename, new = True):
 
         st.nznucl = []
 
-        ilist = f.readline().split() #nznucl of elements?
-        
+        # читаем блок с названиями элементов и их количествами,
+        # поддерживая перенос и для строки элементов, и для строки чисел
+
+        ilist = f.readline().split()  # первая строка после lattice / coords block
+
         try:
             int(ilist[0])
             vasp5 = False
-        except:
+        except ValueError:
             vasp5 = True
 
 
         if vasp5:
             printlog('Vasp5 detected')
-            for el in ilist:
-                elements_list.append(el)
-            printlog('elements_list:', elements_list)
 
-            ilist = f.readline().split()
+            # 1. Считываем все строки с символами элементов,
+            # пока не встретим строку, начинающуюся с числа
+            elements_tokens = ilist[:]
+
+            while True:
+                pos = f.tell()
+                next_line = f.readline()
+                if not next_line:
+                    raise RuntimeError('Unexpected EOF while reading element symbols/counts in POSCAR')
+
+                next_tokens = next_line.split()
+                if not next_tokens:
+                    continue
+
+                try:
+                    int(next_tokens[0])
+                    # это уже строка(и) с количествами
+                    ilist = next_tokens
+                    break
+                except ValueError:
+                    # это продолжение списка элементов
+                    elements_tokens.extend(next_tokens)
+
+            elements_list.extend(elements_tokens)
+            # printlog('elements_list:', elements_list)
+
+            # 2. Считываем все строки с количествами,
+            # пока не наберем столько чисел, сколько элементов
+            counts_tokens = ilist[:]
+            while len(counts_tokens) < len(elements_list):
+                next_line = f.readline()
+                if not next_line:
+                    raise RuntimeError('Unexpected EOF while reading atom counts in POSCAR')
+
+                next_tokens = next_line.split()
+                if not next_tokens:
+                    continue
+
+                counts_tokens.extend(next_tokens)
+
+            if len(counts_tokens) != len(elements_list):
+                raise RuntimeError(
+                    f'Number of atom counts ({len(counts_tokens)}) does not match '
+                    f'number of element symbols ({len(elements_list)})'
+                )
+
+            ilist = counts_tokens
+
         else:
             printlog('Vasp4 detected')
+            # в VASP4 обычно сразу идет строка с количествами,
+            # но на всякий случай тоже поддержим перенос на несколько строк
+            counts_tokens = ilist[:]
+
+            while True:
+                # проверяем, что все токены уже целые числа
+                all_int = True
+                for tok in counts_tokens:
+                    try:
+                        int(tok)
+                    except ValueError:
+                        all_int = False
+                        break
+
+                if not all_int:
+                    raise RuntimeError(f'Unexpected non-integer token in VASP4 atom counts: {counts_tokens}')
+
+                # смотрим следующую строку: если она тоже состоит только из чисел,
+                # считаем ее продолжением списка количеств
+                pos = f.tell()
+                next_line = f.readline()
+                if not next_line:
+                    break
+
+                next_tokens = next_line.split()
+                if not next_tokens:
+                    continue
+
+                next_all_int = True
+                for tok in next_tokens:
+                    try:
+                        int(tok)
+                    except ValueError:
+                        next_all_int = False
+                        break
+
+                if next_all_int:
+                    counts_tokens.extend(next_tokens)
+                else:
+                    # это уже следующая секция файла
+                    f.seek(pos)
+                    break
+
+            ilist = counts_tokens
 
 
-        
+        # printlog('atom counts tokens:', ilist)
+
         for z in ilist:
-            st.nznucl.append( int(z)  )
+            st.nznucl.append(int(z))
 
 
         temp_line = f.readline()
 
-        if temp_line[0] in ['s', 'S']:
-            printlog('selective dynamics detected') 
+        if temp_line and temp_line[0] in ['s', 'S']:
+            printlog('selective dynamics detected')
             selective_dynamics = True
             temp_line = f.readline()
 
@@ -555,7 +645,7 @@ def read_poscar(st, filename, new = True):
         if vel1 and vellen > 1e-12:
             vec = vel1.split()
             velocities.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
-            printlog('Reading velocities from POS/CONT-CAR', imp = 'y')
+            printlog('Reading velocities from POS/CONT-CAR', imp = '')
             for i in range(len(coordinates)-1): # vel for first atom is already read
                 vec = f.readline().split()
                 velocities.append( np.asarray([float(vec[0]), float(vec[1]), float(vec[2])]) )
@@ -564,7 +654,7 @@ def read_poscar(st, filename, new = True):
             newline = f.readline() # new empty line between blocks
             start = f.readline() # something appears after velocity
             if start:
-                printlog('Reading predictor-corrector from POS/CONT-CAR', imp = 'y')
+                printlog('Reading predictor-corrector from POS/CONT-CAR', imp = '')
                 predictor = start+f.read()
                 # print(predictor)
                 # sys.exit()
@@ -837,7 +927,7 @@ def write_xyz(st = None, path = None, filename = None, file_name = None,
         st = replic(st, mul = replications, inv = 1 )
   
     def update_var(st):
-        if st.natom != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat): 
+        if st.natom != len(st.xcart) != len(st.typat):# or len(st.znucl) != max(st.typat): 
             printlog( "Error! write_xyz: check your arrays.\n\n"    )
 
         if st.xcart is [None] :
@@ -1308,10 +1398,12 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
     if contcar_exist:
         try:
-            self.end = read_poscar(self.end, path_to_contcar, new = False) # read from CONTCAR
+            self.end = read_poscar(self.end, path_to_contcar, new=False)
             contcar_read = True
-        except:
+
+        except Exception:
             contcar_read = False
+            traceback.print_exc()
         if not contcar_read:
             printlog('Attention!, error in CONTCAR:', path_to_contcar, '. I use data from outcar')
 
@@ -1366,7 +1458,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         self.list_e_without_entr = []
         self.list_e_conv = [] # convergence of energy - all steps
         self.list_ekin = [] # convergence of kinetic energy - all steps
-
+        self.list_efree = []
         # try:
         #     self.end = copy.deepcopy(self.init) # below needed end values will be updated
         # except:
@@ -1563,10 +1655,11 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
                 if any(v > 1e-3 for v in low+high):
-                    printlog("W(q)/X(q) are too high, check output!\n", 'Y') # see here https://www.vasp.at/wiki/index.php/ROPT
-                    printlog('Low + high = ', low+high, imp = 'Y' )
-                    printlog('see here https://www.vasp.at/wiki/index.php/ROPT', imp = 'Y' )
-                    printlog([v > 1e-3 for v in low+high], imp = 'Y' )
+                    if header.vasp_lowhigh_warning:
+                        printlog("W(q)/X(q) are too high, check output!\n", 'Y') # see here https://www.vasp.at/wiki/index.php/ROPT
+                        printlog('Low + high = ', low+high, imp = 'Y' )
+                        printlog('see here https://www.vasp.at/wiki/index.php/ROPT', imp = 'Y' )
+                        printlog([v > 1e-3 for v in low+high], imp = 'Y' )
             
             if "direct lattice vectors" in line:
                 if 'md_geo' in show or not contcar_read:
@@ -1775,9 +1868,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
             if "free  energy   TOTEN  =" in line:
                 #self.energy = float(line.split()[4])
                 self.energy_free = float(line.split()[4]) #F free energy
+                self.list_efree.append(self.energy_free)
             
             if "energy   ETOTAL =" in line:
-                self.etotal = float(line.split()[4]) #Total energy in MD simulation
+                self.etotal = float(line.split()[4]) #Total energy in MD simulation, free + kinetic
                 self.list_etotal.append(self.etotal)
             
 
@@ -2466,7 +2560,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         plt.ylabel('DOS' )
         # plt.plot(finefreq, y, '-') 
         # filename = 'figs/'+str(self.id)+'.pdf'
-        from siman import header
+        # from siman import header
         if header.SIMAN_WEB:
             path_l = cl.path['output'].replace('400.OUTCAR','')
             plt.tight_layout()
@@ -2493,7 +2587,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
     printlog("Reading of results completed\n\n", imp = 'n')
     self.end.outfile = path_to_outcar
     
-    from siman import header
+    # from siman import header
 
     if header.pymatgen_flag:
         ''

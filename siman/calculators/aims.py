@@ -2,6 +2,7 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
 from siman.core.calculation import Calculation
+from siman.inout import read_aims_out
 
 class CalculationAims(Calculation):
     """object for Aims code """

@@ -334,8 +334,9 @@ class Calculation(object):
             printlog("Error! Unknown geotype \n")
             raise RuntimeError
 
-        if st.natom != len(st.xred) != len(st.xcart) != len(st.typat) or len(st.znucl) != max(st.typat):
-            printlog("Error! write_geometry: check your arrays.", imp='Y')
+        if st.natom != len(st.xred) != len(st.xcart) != len(st.typat):# or len(st.znucl) != max(st.typat):
+            print('natom',st.natom, len(st.xred), len(st.xcart), len(st.typat), 'ntyp', len(st.znucl), max(st.typat))
+            printlog("Error! Calculation.write_geometry(): check your arrays.", imp='Y')
             raise RuntimeError
 
         # print (st.magmom)
@@ -1249,8 +1250,8 @@ class Calculation(object):
         filetype (str) - 'CHG', 'CHGCAR', etc just the name of file in calculation folder
         nametype (str) - 'asoutcar' - update filetype to OUTCAR format
         up (str) - control flag 
-            '1' - do not update
-            '2' - update
+            '1' in up - do not update
+            '2' in up - update
 
         root - root calculation folder location of file
 
@@ -1554,6 +1555,439 @@ class Calculation(object):
         print('e0_fu: e0_fu=', e0_fu)
 
         return e0_fu
+
+
+    # MD helpers
+    def plot_md_energies(
+        self,
+        smooth_window=100,
+        tail_fraction=0.3,
+        use_smoothed_for_metric=True,
+        metric_series=None,
+        ensemble = 'NVT',
+        time_units="ps",
+        show=True,
+        savepath=None,
+        figsize=(9, 5),
+        dpi=140,
+    ):
+        """
+        Plot MD energies and temperature vs time and estimate plateau quality.
+
+        Parameters
+        ----------
+        smooth_window : int, number of steps
+            Window size for moving average. If 1, no smoothing is applied.
+        tail_fraction : float, default 0.3
+            Fraction of the trajectory tail used for plateau analysis.
+            Must be in (0, 1].
+        use_smoothed_for_metric : bool, default True
+            If True, plateau metric is computed for smoothed data.
+            Otherwise raw data are used.
+        metric_series : str, default "etotal"
+            Which series to use for plateau metric:
+            "etotal", "epot", "ekin", "temp"
+        ensemble: str 
+            "NVT", "NVE", 'NPT', detrmines which metric to use
+        time_units : str, default "ps"
+            "fs" or "ps"
+        show : bool, default True
+            Whether to show the figure.
+        savepath : str or None, default None
+            If not None, save figure to this path.
+        figsize : tuple, default (9, 5)
+            Matplotlib figure size.
+        dpi : int, default 140
+            Figure dpi.
+
+        Returns
+        -------
+        result : dict
+            Dictionary with computed metrics and matplotlib objects.
+        """
+        import matplotlib.pyplot as plt
+        self.set.update()
+
+        plt.rcParams.update({
+            "font.size": 8,          # базовый размер
+            "axes.titlesize": 9,     # title
+            "axes.labelsize": 8,     # подписи осей
+            "xtick.labelsize": 7,    # цифры оси x
+            "ytick.labelsize": 7,    # цифры оси y
+            "legend.fontsize": 7,    # легенда
+        })
+
+
+        if metric_series is None:
+            if 'NVT' in ensemble:
+                metric_series = 'epot'
+            elif 'NVE' in ensemble:
+                metric_series = 'etotal'
+            elif 'NPT' in ensemble:
+                metric_series = 'epot'
+                #also check volume pressure and enthalpy
+
+
+        # ---------- checks ----------
+        n = len(self.list_etotal)
+        if n == 0:
+            raise ValueError("self.list_etotal is empty")
+
+
+        natom = float(self.end.natom)
+
+        arrays = {
+            "etotal": np.asarray(self.list_etotal, dtype=float) / natom,
+            "epot": np.asarray(self.list_efree, dtype=float) / natom,
+            "ekin": np.asarray(self.list_ekin, dtype=float) / natom,
+            "temp": np.asarray(self.list_temp, dtype=float),
+            }
+        for name, arr in arrays.items():
+            if len(arr) != n:
+                raise ValueError(
+                    f"Length mismatch: {name} has length {len(arr)}, expected {n}"
+                )
+
+        if smooth_window < 1:
+            raise ValueError("smooth_window must be >= 1")
+        smooth_window = int(smooth_window)
+
+        if not (0 < tail_fraction <= 1):
+            raise ValueError("tail_fraction must be in (0, 1]")
+
+        timestep_fs = float(self.set.setup["timestep"])
+        time_fs = np.arange(n, dtype=float) * timestep_fs
+
+        if time_units == "ps":
+            time = time_fs / 1000.0
+            time_label = "Time (ps)"
+            slope_unit = "eV/atom/ps"
+            temp_slope_unit = "K/ps"
+        elif time_units == "fs":
+            time = time_fs
+            time_label = "Time (fs)"
+            slope_unit = "eV/atom/fs"
+            temp_slope_unit = "K/fs"
+        else:
+            raise ValueError("time_units must be 'fs' or 'ps'")
+
+        # ---------- moving average ----------
+        def moving_average(y, window):
+            y = np.asarray(y, dtype=float)
+            if window <= 1:
+                return y.copy()
+            if window > len(y):
+                raise ValueError("smooth_window is larger than trajectory length")
+            kernel = np.ones(window, dtype=float) / window
+            return np.convolve(y, kernel, mode="valid")
+
+        def smooth_time(x, window):
+            if window <= 1:
+                return x.copy()
+            return x[window - 1:]
+
+        smoothed = {k: moving_average(v, smooth_window) for k, v in arrays.items()}
+        time_s = smooth_time(time, smooth_window)
+
+        # ---------- choose series for metric ----------
+        if metric_series not in arrays:
+            raise ValueError("metric_series must be one of: etotal, epot, ekin, temp")
+
+        # trend data (can be smoothed)
+        y_trend = smoothed[metric_series] if use_smoothed_for_metric else arrays[metric_series]
+        x_trend = time_s if use_smoothed_for_metric else time
+
+        # raw data (always raw, for noise estimate)
+        y_raw = arrays[metric_series]
+        x_raw = time
+
+        n_trend = len(y_trend)
+        n_tail = max(5, int(round(n_trend * tail_fraction)))
+        if n_tail >= n_trend:
+            n_tail = n_trend
+
+        # tail used for slope/trend
+        x_tail = x_trend[-n_tail:]
+        y_tail = y_trend[-n_tail:]
+
+        # ---------- plateau metric ----------
+        # linear trend on tail
+        coeffs = np.polyfit(x_tail, y_tail, 1)
+        slope = coeffs[0]
+        intercept = coeffs[1]
+
+        y_fit = slope * x_tail + intercept
+
+        # systematic drift during tail interval
+        drift_tail = abs(slope) * (x_tail[-1] - x_tail[0]) if len(x_tail) > 1 else 0.0
+
+        # use RAW data on same time interval for fluctuation estimate
+        tail_start_time = x_tail[0]
+        raw_mask = x_raw >= tail_start_time
+
+        x_raw_tail = x_raw[raw_mask]
+        y_raw_tail = y_raw[raw_mask]
+
+        # remove same trend from raw signal
+        y_raw_fit = slope * x_raw_tail + intercept
+        raw_residuals = y_raw_tail - y_raw_fit
+
+        sigma_tail = np.std(raw_residuals, ddof=1) if len(raw_residuals) > 1 else 0.0
+        rms_res = np.sqrt(np.mean(raw_residuals**2))
+
+        if sigma_tail > 0:
+            plateau_score = drift_tail / sigma_tail
+        else:
+            plateau_score = np.inf if drift_tail > 0 else 0.0
+
+        # R^2 for trend fit
+        ss_res = np.sum((y_tail - y_fit) ** 2)
+        ss_tot = np.sum((y_tail - np.mean(y_tail)) ** 2)
+        r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 1.0
+        
+
+
+        r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 1.0
+
+        if plateau_score < 0.5:
+            plateau_quality = "very good"
+        elif plateau_score < 1.0:
+            plateau_quality = "good"
+        elif plateau_score < 2.0:
+            plateau_quality = "moderate"
+        else:
+            plateau_quality = "poor"
+
+        if metric_series == "temp":
+            metric_unit = temp_slope_unit
+        else:
+            metric_unit = slope_unit
+
+        # ---------- print metrics ----------
+        print(f"Plateau analysis for: {metric_series}")
+        print(f"Tail fraction used         : {tail_fraction:.1f}")
+        print(f"Tail points used           : {n_tail}")
+        print(f"Smoothing window           : {smooth_window} steps")
+        print(f"Metric from smoothed data  : {use_smoothed_for_metric}")
+        print(f"Slope on tail             : {slope:.3f} {metric_unit}")
+        print(f"Std. dev. on tail         : {sigma_tail:.4f} eV/atom")
+        # print(f"Tail drift               : {drift_tail:.4f} eV/atom")
+        # print(f"RMS residuals            : {rms_res:.2f} - deviation of tail from linear")
+        print(f"Plateau score            : {plateau_score:.3f} - main metric drift/dev, should be <1 ")
+        # print(f"Tail trend R^2           : {r2:.2f} - linear fit of tail")
+        print(f"Plateau quality          : {plateau_quality}")
+
+        # ---------- plotting ----------
+        fig, ax1 = plt.subplots(figsize=figsize, dpi=dpi)
+        ax2 = ax1.twinx()
+
+        # Raw data in faint style
+        # ax1.plot(time, arrays["etotal"], lw=0.8, alpha=0.30, label="E_total raw")
+        # ax1.plot(time, arrays["epot"],   lw=0.8, alpha=0.30, label="E_pot raw")
+        # ax1.plot(time, arrays["ekin"],   lw=0.8, alpha=0.30, label="E_kin raw")
+        # ax2.plot(time, arrays["temp"],   lw=0.8, alpha=0.30, label="T raw")
+
+        # Smoothed data in stronger style
+        # ax1.plot(time_s, smoothed["etotal"], lw=1.8, label="E_total")
+        ax1.plot(time_s, smoothed["epot"],   lw=1.8, label="E_pot")
+        # ax1.plot(time_s, smoothed["ekin"],   lw=1.8, label="E_kin")
+        ax2.plot(time_s, smoothed["temp"],   lw=0.8, ls="-", color = 'k', label="T")
+
+        ax1.plot(
+            x_tail,
+            y_fit,
+            "--",
+            lw=1.2,
+            label=f"{metric_series} tail fit"
+        )
+
+
+
+        # Highlight tail used for metric
+        ax1.axvspan(x_tail[0], x_tail[-1], alpha=0.08)
+
+
+
+
+        temp_plot = smoothed["temp"]   # или arrays["temp"], если хочешь по raw
+        t_mean = np.mean(temp_plot)
+        t_amp = np.max(temp_plot) - np.min(temp_plot)
+
+        # хотим, чтобы реальные колебания занимали только 15% высоты оси
+        target_fraction = 0.15
+
+        if t_amp > 0:
+            ylim_span = t_amp / target_fraction
+        else:
+            ylim_span = max(100.0, 0.2 * t_mean)
+
+        ax2.set_ylim(
+            t_mean - ylim_span / 2,
+            t_mean + ylim_span / 2
+        )
+
+
+
+
+
+        ax1.set_xlabel(time_label, )
+        ax1.set_ylabel("Energy (eV/atom)",)
+        ax2.set_ylabel("Temperature (K)", )
+
+        title = (
+            f"MD energies and temperature | plateau({metric_series}) = {plateau_score:.2f} "
+            f"[{plateau_quality}], slope = {slope:.3f} {metric_unit}"
+        )
+        ax1.set_title(title, )
+
+
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc="best", fontsize=9)
+
+        ax1.grid(alpha=0.25)
+        fig.tight_layout()
+
+        if savepath is not None:
+            fig.savefig(savepath, bbox_inches="tight")
+
+        if show:
+            plt.show()
+
+        return {
+            "fig": fig,
+            "ax_energy": ax1,
+            "ax_temp": ax2,
+            "time": time,
+            "time_smoothed": time_s,
+            "raw": arrays,
+            "smoothed": smoothed,
+            "metric_series": metric_series,
+            "tail_fraction": tail_fraction,
+            "tail_points": n_tail,
+            "smooth_window": smooth_window,
+            "use_smoothed_for_metric": use_smoothed_for_metric,
+            "slope": slope,
+            "slope_unit": metric_unit,
+            "sigma_tail": sigma_tail,
+            "drift_tail": drift_tail,
+            "rms_residuals": rms_res,
+            "plateau_score": plateau_score,
+            "r2_tail": r2,
+            "plateau_quality": plateau_quality,
+        }
+
+    def md_tail_stats(
+        self,
+        series="epot",
+        tail_fraction=0.3,
+        time_units="ps",
+        per_atom=True,
+        verbose=True,
+    ):
+        """
+        Compute mean, standard deviation, and slope for selected MD quantity
+        over the last tail_fraction part of the trajectory.
+        """
+
+        import numpy as np
+
+        self.set.update()
+
+        n = len(self.list_etotal)
+        if n == 0:
+            raise ValueError("Empty MD trajectory")
+
+        if not (0 < tail_fraction <= 1):
+            raise ValueError("tail_fraction must be in (0, 1]")
+
+        factor = float(self.end.natom) if per_atom else 1.0
+
+        data = {
+            "etotal": np.asarray(self.list_etotal, dtype=float) / factor,
+            "epot":   np.asarray(self.list_efree, dtype=float) / factor,
+            "ekin":   np.asarray(self.list_ekin, dtype=float) / factor,
+            "temp":   np.asarray(self.list_temp, dtype=float),
+        }
+
+        if series not in data:
+            raise ValueError("series must be one of: etotal, epot, ekin, temp")
+
+        y = data[series]
+
+        timestep_fs = float(self.set.setup["timestep"])
+        time = np.arange(n, dtype=float) * timestep_fs
+
+        if time_units == "ps":
+            time /= 1000.0
+        elif time_units != "fs":
+            raise ValueError("time_units must be 'fs' or 'ps'")
+
+        n_tail = max(5, int(round(n * tail_fraction)))
+        n_tail = min(n_tail, n)
+
+        x_tail = time[-n_tail:]
+        y_tail = y[-n_tail:]
+        tail_time = x_tail[-1] - x_tail[0]
+        mean = np.mean(y_tail)
+        std = np.std(y_tail, ddof=1) if n_tail > 1 else 0.0
+        slope = np.polyfit(x_tail, y_tail, 1)[0] if n_tail > 1 else 0.0
+
+        if series == "temp":
+            unit = "K"
+        else:
+            unit = "eV/atom" if per_atom else "eV"
+
+        slope_unit = f"{unit}/{time_units}"
+
+        if verbose:
+            print(f"MD stat for: {series}")
+            # print(f"Tail fraction : {tail_fraction:.1f}")
+            # print(f"Tail points   : {n_tail}")
+            print(f"Tail time  : {tail_time:.1f} {time_units}")
+            print(f"Mean       : {mean:.3f} {unit}")
+            print(f"Std dev    : {std:.3f} {unit}")
+            print(f"Slope      : {slope:.3f} {slope_unit}")
+
+        return {
+            "series": series,
+            "tail_fraction": tail_fraction,
+            "tail_points": n_tail,
+            "mean": mean,
+            "std": std,
+            "slope": slope,
+            "unit": unit,
+            "slope_unit": slope_unit,
+            "x_tail": x_tail,
+            "y_tail": y_tail,
+        }
+
+
+
+    def msd(self, el = 'Li'):
+
+        import mlyzed as md
+
+        if 'xdatcar' not in self.path:
+            printlog('Download XDATCAR', imp = 'y')
+            self.get_file('XDATCAR', nametype = 'asoutcar')
+
+        traj = md.Trajectory.from_file(self.path['xdatcar']) # any ASE readable format
+        msd = md.classical_msd(traj, specie = el, timestep = 1)
+        # msd = md.block_msd(traj, specie = 'Li', timestep = 1)
+        # msd = md.windowed_msd(traj, specie = 'Li', timestep = 1)
+        msd.plot(show = True)
+
+        return msd
+
+    def ovito(self):
+        self.end.path = self.path
+        if 'xdatcar' not in self.path:
+            printlog('Download XDATCAR', imp = 'y')
+            self.get_file('XDATCAR', nametype = 'asoutcar')
+        self.end.ovito()
+
+
 
     @property
     def e0_at(self,):

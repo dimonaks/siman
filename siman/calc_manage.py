@@ -3519,7 +3519,8 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
             # print groundstate_st_id
             # print m.get_data(groundstate_st_id, data_type='vasp', prop='hubbards')
         
-        st_pmg =  m.get_structure_by_material_id(groundstate_st_id, final=True)
+        # st_pmg =  m.get_structure_by_material_id(groundstate_st_id, final=True)
+        st_pmg =  m.get_structure_by_material_id(groundstate_st_id)
         
         if 'conv' in mat_proj_cell:
             from pymatgen.symmetry.analyzer import SpacegroupAnalyzer

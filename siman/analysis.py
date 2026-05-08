@@ -700,7 +700,8 @@ def fit_a(conv, n, description_for_archive, analysis_type, show, push2archive):
         if 'angle' in analysis_type:
             eos = EquationOfState(alphas, etotlist, eos = 'sjeos')
         else:
-            eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
+            # eos = EquationOfState(vlist, etotlist, eos = 'sjeos')
+            eos = EquationOfState(vlist, etotlist, eos = 'taylor')
         # import inspect
 
         # print (inspect.getfile(EquationOfState))

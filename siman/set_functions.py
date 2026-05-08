@@ -227,6 +227,7 @@ aims_keys = [
     'k_grid',
     'default_initial_moment',
     'spin',
+
 ]
 
 'put here quantum espresso keys'
@@ -322,8 +323,14 @@ class InputSet():
 
     """
 
-    def __init__(self, ise=None, path_to_potcar=None, calculator='vasp'):
+    def __init__(self, ise = None, path_to_potcar = None, calculator = 'vasp'):
+        """
+        
+        Important fields:
+        self.setup (dict) :
+            timestep, fs -> time step in MD simulations
 
+        """
         # super(InputSet, self).__init__()
         self.ise = ise
         self.name = ise
@@ -337,8 +344,9 @@ class InputSet():
 
         self.params = {}
         self.qe_params = {}  # tmp
+        self.setup = {'timestep'} # dict with code-independent parameters; converted from params; Mixture of Abinit, VASP, and Lammps keywords are used;
 
-        self.vasp_params = self.params  # params for any code!
+        self.vasp_params = self.params  # params for any code!, but code-dependent keywords
         self.mul_enaug = 1
         self.history = "Here is my uneasy history( :\n"
         self.tsmear = None
@@ -417,6 +425,10 @@ class InputSet():
         return
 
     def update(self):
+        """
+        Update internal calculator-independent setting from calculator-specific parameters.
+
+        """
         # deprecated, but still can be usefull
         # print_and_log('Updating set ...\n')
         # c1 = 1; c2 = 1
@@ -462,8 +474,11 @@ class InputSet():
         else:
             self.spin_polarized = False
 
+        if not hasattr(self, 'setup'):
+            self.setup = {}
 
-
+        if 'POTIM' in self.params:
+            self.setup['timestep'] = self.params['POTIM']
         # require fix
         # if 'KPOINTS' not in self.params.keys() and 'KSPACING' not in self.params.keys():
         #     self.vasp_params['KSPACING'] = 0.2

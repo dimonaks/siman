@@ -56,6 +56,8 @@ def O2(T, c2ev = 0, P = 1):
     c2ev - convert to eV
     P - pressure in bar
 
+    What about ZPE? Where are they? 
+
     return in kJ/mol entalpy and Gibss and J/mol/K for entropy or in eV and eV/K
     return G, H, S
     """

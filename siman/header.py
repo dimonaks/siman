@@ -60,8 +60,20 @@ PATH2AFLOW = None
 NEBMAKERTOOL = 'nebmake.py'
 ABSOLUTE_PATH2PROJECT = None
 
+
+#global code-specific control
+vasp_lowhigh_warning = True
+
+
+
+
+
 #global internal var
 temp = {} # dict to store temp var
+
+
+
+
 
 #1. Read default global settings for siman package
 from siman.default_project_conf import *
@@ -195,6 +207,7 @@ def _update_configuration(filename, pfolder = None, clusters=None):
         project_folder = os.path.dirname(filename)
     else:
         project_folder = None
+        printlog('No project_folder (pfolder). Please provide it in _update_configuration')
         pass
 
     configfile_name = os.path.basename(filename)
@@ -217,7 +230,8 @@ def _update_configuration(filename, pfolder = None, clusters=None):
     'RAMDISK', 'SIMAN_WEB', 'WALLTIME_LIMIT', 
     'geo_folder', 'path_to_images', 'path_to_paper', 
     'path_to_wrapper', 'pmgkey', 'reorganize', 'CLUSTERS', 'mpkey', 'PARSE_OUTPUT_ON_CLUSTER', 'ABSOLUTE_PATH2PROJECT',
-    'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE', 'AUTO_UPDATE_DB', 'warnings', 'PATH2EDITOR', 'PATH2AFLOW', 'NEBMAKERTOOL']
+    'PATH2SHELVE_DBSUP', 'PATH2SHELVE_DB', 'PATH2HISTORYFILE', 
+    'AUTO_UPDATE_DB', 'warnings', 'PATH2EDITOR', 'PATH2AFLOW', 'NEBMAKERTOOL', 'vasp_lowhigh_warning']
 
     for var in config_vars:
         try: 
