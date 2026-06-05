@@ -10,7 +10,14 @@ from siman.header import printlog, runBash
 
 class Molecule(Molecule_pymatgen):
     """Class for molecule structure representation based on pymatgen Molecule """
-    
+    def __init__(self, species=None, coords=None, *args, **kwargs):
+
+        if species is None:
+            species = []
+        if coords is None:
+            coords = []
+
+        super().__init__(species, coords, *args, **kwargs)
     @classmethod
     def cast(cls, some_a: Molecule_pymatgen, filename = None):
         """Cast  Molecule_pymatgen into MyA."""

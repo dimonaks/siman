@@ -1286,6 +1286,8 @@ class Calculation(object):
         # sys.exit()
         if hasattr(self, 'cluster'):
             address = self.cluster['address']
+        else:
+            address = None
         if header.override_cluster_address:
             if hasattr(self, 'cluster') and self.cluster.get('name'):
                 clust = header.CLUSTERS[self.cluster['name']]

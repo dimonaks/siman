@@ -21,13 +21,16 @@ from pymatgen.electronic_structure.core import Spin
 class CalculationGaussian(Calculation):
     """object for Gaussian"""
     def __init__(self, inset = None, iid = None, output = None):
-        super(CalculationGaussian, self).__init__(inset, iid, output)
         self.len_units = 'Angstrom'
         self.calculator = 'gaussian'
-
-    def set_output_filenames(self, out_name, version):
+        super(CalculationGaussian, self).__init__(inset, iid, output)
+        self.init = Molecule()
+    def set_output_filenames(self, out_name = None, version = 1):
         cl = self
-        cl.path["output"] = cl.dir+cl.name+'.out'
+        if out_name:
+            cl.path["output"] = out_name
+        else:
+            cl.path["output"] = cl.dir+cl.name+'.out'
 
 
 
@@ -192,6 +195,8 @@ class CalculationGaussian(Calculation):
 
             if 'Sum of electronic and thermal Free Energies=' in line:
                 self.e_gibbs = f(line.split()[-1]) # 
+            if 'Standard basis' in line:
+                self.basis = line.split(':')[1]
 
 
 
@@ -208,8 +213,10 @@ class CalculationGaussian(Calculation):
         """
         to_eV = header.to_eV
         cl = self
-        filename = cl.download(load) # wrapper for downloading output files
-
+        if load:
+            filename = cl.download(load) # wrapper for downloading output files
+        else:
+            filename = cl.path['output']
 
         # cl.state = check_output(filename, 'Normal termination of Gaussian', load)
         cl.state = check_output(filename, 'Elapsed time', load)
@@ -243,12 +250,24 @@ class CalculationGaussian(Calculation):
 
             head   = 'Energy | Dipole, D | HOMO, eV | LUMO, eV | Gap, eV | basis'
             basis = cl.set.params['basis_set']
+            if not basis:
+                basis = cl.basis
+
+            # print('e0    =', cl.e0)
+            # print('dipole=', cl.dipole)
+            # print('homo  =', cl.homo)
+            # print('lumo  =', cl.lumo)
+            # print('gap   =', cl.gap)
+            # print('basis   =', basis)
+
             outstr = f'{cl.e0:7.5f} eV | {cl.dipole:5.2f} D | {cl.homo:5.2f} eV | {cl.lumo:5.2f} eV | {cl.gap:5.2f} eV | {basis:s}'
             
             cl.go = go
             cl.end =  Molecule.cast(go.final_structure)
             if hasattr(cl.init, 'name'):
                 cl.end.name = cl.init.name + '_end'
+            else:
+                cl.end.name = os.path.basename(cl.path['output']).replace('.out', '')
             # print(go.cart_forces)
             # print(cl.end.name)
 
