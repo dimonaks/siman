@@ -495,7 +495,7 @@ class Structure():
         return groups_size, groups_nums
 
 
-    def get_mag_tran(self, to_ox = None, silent = 0, fmt = '5.2f', extra_el = None):
+    def get_mag_tran_old(self, to_ox = None, silent = 0, fmt = '5.2f', extra_el = None):
         """
         Print formatted magnetic moments of transition elements, oxygen, and provided extra elements
         
@@ -556,6 +556,88 @@ class Structure():
 
 
         return magnetic_all
+
+    def get_mag_tran(self, to_ox=None, silent=0, fmt='5.2f', extra_el=None):
+        """
+        Print formatted magnetic moments of transition elements, oxygen, sulfur,
+        and provided extra elements.
+
+        Supports both scalar magmom:
+            [m1, m2, m3, ...]
+
+        and vector magmom:
+            [mx1, my1, mz1, mx2, my2, mz2, ...]
+        """
+
+        if extra_el is None:
+            extra_el = []
+
+        extra_el = list(extra_el)  # avoid modifying external list
+        extra_el.append('O')
+        extra_el.append('S')
+
+        zels = [invert(el) for el in extra_el]
+
+        l, mag_numbers = self.get_maglist(zels)
+        keys = list(mag_numbers.keys())
+
+        if not silent:
+            print('The following TM are found:', keys)
+
+        magmom = np.array(self.magmom)
+
+        natom = len(self.xcart) if hasattr(self, 'xcart') else len(l)
+
+        if magmom.ndim == 1 and len(magmom) == 3 * natom:
+            magmom = magmom.reshape((natom, 3))
+            vector_magmom = True
+        elif magmom.ndim == 2 and magmom.shape[1] == 3:
+            vector_magmom = True
+        else:
+            vector_magmom = False
+
+        mag = magmom[l]
+
+        magnetic_all = []
+
+        start = 0
+        for key in keys:
+            n = len(mag_numbers[key])
+            magnetic = mag[start:start+n]
+            start += n
+
+            if not silent:
+                print('\n Znucl:  ', key)
+
+                if vector_magmom:
+                    for num, m in zip(mag_numbers[key], magnetic):
+                        print(f'{num:5d}: ' + ' '.join([f'{x:{fmt}}' for x in m]))
+                else:
+                    s = ' '.join(['{:'+fmt+'}'] * len(magnetic))
+                    print(' ' + s.format(*magnetic))
+
+            if vector_magmom:
+                magnetic_all += magnetic.tolist()
+                mag_abs = np.linalg.norm(magnetic, axis=1)
+            else:
+                magnetic_all += list(magnetic)
+                mag_abs = np.abs(magnetic)
+
+            if to_ox:
+                if to_ox > 0:
+                    ox = [to_ox - m for m in mag_abs]
+                else:
+                    ox = [m + to_ox for m in mag_abs]
+
+                s2 = ' '.join(['{:5.1f}+'] * len(ox))
+
+                if not silent:
+                    print(s2.format(*ox))
+                    print('Average {:5.1f}+'.format(sum(ox) / len(ox)))
+
+        return magnetic_all
+
+
 
 
     def get_mag(self, silent = 0):
@@ -2914,7 +2996,7 @@ class Structure():
         
         headers = ['nn', 'No.', 'El', 'Dist, A']
 
-        if hasattr(st, 'oxi_state') and len(st.oxi_state) > 0:
+        if hasattr(st, 'oxi_state') and st.oxi_state and len(st.oxi_state) > 0:
             oxi_state = 1
 
         if oxi_state:
@@ -3253,6 +3335,158 @@ class Structure():
 
         return st
 
+
+    def localize_polaron_on_bridging_bonds(self, i, d, nn=6, nn_bridge=6,
+                                           anions=None, cations=None,
+                                           min_other_cations=1,
+                                           max_center_dist=None,
+                                           magmom=None):
+        """
+        Localize small polaron at atom i by elongating only bridging i-A-M bonds.
+        PBC-aware version.
+
+        A neighbor A is treated as bridging if:
+            1) A is an anion neighbor of atom i;
+            2) A has at least min_other_cations neighboring cations besides atom i.
+
+        INPUT:
+            - i (int): index of polaron center, from 0
+            - d (float): shift in angstrom; positive increases i-A distance
+            - nn (int): number of nearest neighbors around atom i
+            - nn_bridge (int): number of nearest neighbors around candidate anion A
+            - anions (list/set): atomic numbers of anions; default header.ANION_ELEMENTS
+            - cations (list/set): atomic numbers of possible cation centers;
+                                  default header.TRANSITION_ELEMENTS
+            - min_other_cations (int): minimum number of additional cations bonded to A
+            - max_center_dist (float): maximum i-A distance to be elongated
+            - magmom (float): magnetic moment on atom i
+
+        RETURN:
+            - st (Structure): structure with elongated selected bridging bonds
+
+        AUTHOR:
+            Aksyonov DA
+        """
+
+        st = copy.deepcopy(self)
+
+        center_z = st.get_el_z(i)
+        center_name = st.get_el_name(i)
+
+        if anions is None:
+            anions = set(header.ANION_ELEMENTS)
+        else:
+            anions = set(anions)
+
+        if cations is None:
+            cations = set(header.TRANSITION_ELEMENTS)
+        else:
+            cations = set(cations)
+
+        if center_z not in cations:
+            printlog('Warning! provided element ', center_name,
+                     ' is not in cations list, I hope you know what you are doing. ')
+
+        silent = 1
+        if 'n' in header.warnings or 'e' in header.warnings:
+            silent = 0
+
+        dic = st.nn(i, nn, from_one=0, silent=silent)
+
+        selected = []
+        selected_els = []
+
+        for j, xj_pbc in zip(dic['numbers'][1:], dic['xcart'][1:]):
+
+            A_z = st.get_el_z(j)
+            A_name = st.get_el_name(j)
+
+            if A_z not in anions:
+                continue
+
+            # PBC-aware center-anion distance
+            R_center_A = st.distance(i1=i, i2=j)
+
+            if max_center_dist is not None and R_center_A > max_center_dist:
+                continue
+
+            dic_A = st.nn(j, nn_bridge, from_one=0, silent=1)
+
+            other_cations = []
+            for k in dic_A['numbers'][1:]:
+                if k == i:
+                    continue
+
+                if st.get_el_z(k) in cations:
+                    other_cations.append(k)
+
+            printlog('-- candidate ', j, A_name,
+                     ' R= ', R_center_A,
+                     ' other_cations= ', other_cations, imp='n')
+
+            if len(other_cations) >= min_other_cations:
+                selected.append((j, xj_pbc, R_center_A))
+                selected_els.append(A_name)
+
+        if len(selected) == 0:
+            printlog('Warning! No selected bridging anion bonds found for atom ',
+                     i, ' ', center_name, imp='y')
+            return st
+
+        distances_before = [R for j, xj_pbc, R in selected]
+
+        printlog(
+            'Average ' + center_name + '-' + str(set(selected_els)) +
+            ' selected bridging distance before localization is {:.2f} A'.format(
+                np.mean(distances_before)
+            ),
+            imp='n'
+        )
+
+        xc = st.xcart[i]
+
+        for j, xj_pbc, R in selected:
+            # xj_pbc is the nearest periodic image of atom j relative to atom i
+            # vector from anion image to central atom
+            v = xc - xj_pbc
+            vn = np.linalg.norm(v)
+
+            if vn < 1e-8:
+                printlog('Warning! zero distance for atoms ', i, j, imp='y')
+                continue
+
+            # move real atom j away from atom i along the PBC-aware bond direction
+            st.xcart[j] = st.xcart[j] - v * (d / vn)
+
+        st.update_xred()
+
+        distances_after = []
+        for j, xj_pbc, R in selected:
+            distances_after.append(st.distance(i1=i, i2=j))
+
+        printlog(
+            'Average ' + center_name + '-' + str(set(selected_els)) +
+            ' selected bridging distance after localization is {:.2f} A'.format(
+                np.mean(distances_after)
+            ),
+            imp='n'
+        )
+
+        printlog('Elongated selected bridging anions: ',
+                 [j for j, xj_pbc, R in selected], imp='n')
+
+        st.name += 'pol_bridge' + str(i + 1)
+        # sys.exit()
+        # print(magmom, len(st.magmom),st.natom)
+        if magmom and len(st.magmom) == st.natom:
+            # print('setting magmom')
+            st.magmom[i] = magmom
+
+        return st
+
+
+
+
     def localize_ox_polaron(self, i, d_a, d_tm, nn = 6, mag = None):
         """
         Localize small polaron at oxygen atom by adjusting distances
@@ -3481,6 +3715,164 @@ class Structure():
 
 
         return st
+
+
+
+
+    def find_polaron(self, target_magmom=1.0, deloc_threshold=0.05,
+                     use_abs=True, from_one=0, silent=False):
+        """
+        Find the main polaron center from self.magmom and print delocalized parts.
+
+        The main polaron center is the atom whose magnetic moment is closest to
+        target_magmom. Delocalized parts are atoms with magnetic moments larger
+        than deloc_threshold, excluding the main center.
+
+        INPUT:
+            - target_magmom (float): expected magnetic moment of the main polaron
+            - deloc_threshold (float): minimum moment for delocalized polaron parts
+            - use_abs (bool): if True, use absolute values of magnetic moments
+            - from_one (bool): if True, print atom numbers from 1
+            - silent (bool): if True, do not print information
+
+        RETURN:
+            - dict with main polaron and delocalized parts
+
+        AUTHOR:
+            Aksyonov DA
+        """
+
+        if not hasattr(self, 'magmom') or self.magmom is None:
+            printlog('Error! self.magmom is not found', imp='y')
+            return None
+
+        if len(self.magmom) != self.natom:
+            printlog('Error! len(self.magmom) != self.natom', imp='y')
+            return None
+
+        els = self.get_elements()
+
+        if len(els) != self.natom:
+            printlog('Error! len(self.get_elements()) != self.natom', imp='y')
+            return None
+
+        mag = np.array(self.magmom, dtype=float)
+
+        if use_abs:
+            mag_for_search = np.abs(mag)
+            target = abs(target_magmom)
+        else:
+            mag_for_search = mag
+            target = target_magmom
+
+        # main polaron center
+        i_pol = int(np.argmin(np.abs(mag_for_search - target)))
+
+        polaron = {
+            'number': i_pol + 1 if from_one else i_pol,
+            'index': i_pol,
+            'element': els[i_pol],
+            'magmom': mag[i_pol],
+            'abs_magmom': abs(mag[i_pol]),
+            'target_magmom': target_magmom,
+            'error': abs(mag_for_search[i_pol] - target)
+        }
+
+        delocalized = []
+
+        for i, m in enumerate(mag):
+            if i == i_pol:
+                continue
+
+            m_check = abs(m) if use_abs else m
+
+            if m_check > deloc_threshold:
+                dist = self.distance(i1=i_pol, i2=i)
+
+                delocalized.append({
+                    'number': i + 1 if from_one else i,
+                    'index': i,
+                    'element': els[i],
+                    'magmom': m,
+                    'abs_magmom': abs(m),
+                    'distance': dist
+                })
+
+        delocalized = sorted(delocalized, key=lambda x: abs(x['magmom']), reverse=True)
+
+        if 0:#not silent:
+            printlog('Main polaron center:', imp='y')
+            printlog(
+                '  atom {0} {1}: magmom = {2:.3f} mu_B, |magmom| = {3:.3f} mu_B'.format(
+                    polaron['number'],
+                    polaron['element'],
+                    polaron['magmom'],
+                    polaron['abs_magmom']
+                ),
+                imp='y'
+            )
+
+            if len(delocalized) == 0:
+                printlog(
+                    'No delocalized parts with |magmom| > {:.3f} mu_B'.format(
+                        deloc_threshold
+                    ),
+                    imp='y'
+                )
+            else:
+                printlog(
+                    'Delocalized polaron parts with |magmom| > {:.3f} mu_B:'.format(
+                        deloc_threshold
+                    ),
+                    imp='y'
+                )
+
+                for d in delocalized:
+                    printlog(
+                        '  atom {0} {1}: magmom = {2:.3f} mu_B, |magmom| = {3:.3f} mu_B, '
+                        'distance to main polaron = {4:.2f} A'.format(
+                            d['number'],
+                            d['element'],
+                            d['magmom'],
+                            d['abs_magmom'],
+                            d['distance']
+                        ),
+                        imp='y'
+                    )
+
+        if not silent:
+
+            print('\nPolaron analysis:')
+            print('{:<3s} {:>5s} {:>8s} {:>8s}'.format(
+                'El', 'Atom', 'Moment', 'Dist(A)'
+            ))
+
+            print('{:<3s} {:>5d} {:>8.3f} {:>8s}'.format(
+                polaron['element'],
+                polaron['number'],
+                polaron['magmom'],
+                '-'
+            ))
+
+            for d in delocalized:
+                print('{:<3s} {:>5d} {:>8.3f} {:>8.2f}'.format(
+                    d['element'],
+                    d['number'],
+                    d['magmom'],
+                    d['distance']
+                ))
+
+
+        return {
+            'polaron': polaron,
+            'delocalized': delocalized
+        }
+
+
+
+
+
+
 
     def get_coordination(self, el, silent = 1, symprec = 0.1):
         """

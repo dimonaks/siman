@@ -1548,6 +1548,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         spin_polarized = None
         ifmaglist = None
         self.mags_step = []
+        self.magmom_dir = {'x':[], 'y':[], 'z':[]}
         self.vlength = 0
 
         for line in outcarlines:
@@ -1994,8 +1995,23 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 # ifmaglist
                 # self.tot_mag_by_atoms = tot_mag_by_atoms
                 self.mags_step.append(mags)
+                self.magmom_dir['x'] = np.array(mags)
 
+            if 'magnetization (y)' in line:
+                # print(line)
+                mags = []
+                if ifmaglist is not None:
+                    for j in range(self.end.natom):
+                        mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
+                self.magmom_dir['y'] = np.array(mags)
 
+            if 'magnetization (z)' in line:
+                # print(line)
+                mags = []
+                if ifmaglist is not None:
+                    for j in range(self.end.natom):
+                        mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
+                self.magmom_dir['z'] = np.array(mags)
 
             if 'LDAUU' in line:
                 ldauu = line
@@ -2148,9 +2164,20 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
         printlog( "Total drift is too high! At the end one component is {:2.1f} of the maximum force, check output!\n".format(max_tdrift)  )
         pass
 
+    if len(self.magmom_dir['x']):
+        if all(len(self.magmom_dir.get(c, [])) for c in ('y', 'z')):
+            self.end.magmom = np.column_stack(
+                [self.magmom_dir[c] for c in ('x', 'y', 'z')]
+            ).ravel().tolist()
+        else:
+            self.end.magmom = self.magmom_dir['x'].tolist()
 
-    if tot_mag_by_atoms:
-        self.end.magmom = tot_mag_by_atoms[-1].tolist()
+        # self.end.magmom = tot_mag_by_atoms[-1].tolist()
+
+    # elif 'I_CONSTRAINED_M' in self.set.vp:
+        # printlog('I take moments form OSZCAR for I_CONSTRAINED_M mode', imp = 'y')
+
+
 
     """update xred"""
     self.end.update_xred()

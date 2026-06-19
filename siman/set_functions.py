@@ -208,6 +208,7 @@ siman_keys = [
 'universal', # universal paramater with any content
 'u_ramping_region', #deprecated
 'u_ramping_nstep', #number of u ramping steps
+'u_start', #starting u for u_ramping, default 0
 'magnetic_moments',
 'afm_ordering',
 'set_sequence',# sequence of sets

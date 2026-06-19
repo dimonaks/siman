@@ -1645,6 +1645,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 printlog('sequence set mode: set', curset.ise,':', end = '\n')
             # print(params['update_set_dic'])
             curset.load(params['update_set_dic'], inplace = True)
+            # print('start set actualization')
+            # print(curset.vasp_params)
             cl.actualize_set(curset, params = params)
 
 

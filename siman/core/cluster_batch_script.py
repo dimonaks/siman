@@ -508,8 +508,17 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
         if write: 
             f.write("#U-ramping run:\n")  
 
+        # printlog('Warning! I change ICHARG to 1 to continue from CHGCAR')
+        # cl.actualize_set(params = {'ICHARG':1})
         # name_mod_last = '.'+name_mod_U_last()
-        name_mod_last = '.U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
+        # print(cl.set.u_start)
+        # sys.exit()
+        if hasattr(cl.set, 'u_start') and cl.set.u_start:
+            name_mod_last = '.U'+str(cl.set.u_start) #since u_ramp starts from u = 00, it is more correct to continue from 00
+        else:
+            name_mod_last = '.U00' #since u_ramp starts from u = 00, it is more correct to continue from 00
+        
+
         if penult_set_name:
             name_mod_last += '.'+penult_set_name #however, for multiset run, the structure for u=00 exists only
                                               #for penult set or maybe even for the first only set
@@ -527,7 +536,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
         if copy_poscar_flag:
             usteps = range(cl.set.u_ramping_nstep)
         else:
-            usteps = [cl.set.u_ramping_nstep-1]  # now it the case of sequence_set for contin sets only the last U is used
+            usteps = [cl.set.u_ramping_nstep-1]  # now in the case of sequence_set for contin sets only the last U is used
 
         u_last = 100
         for i_u in usteps:
@@ -546,6 +555,8 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
                     f.write("cp CONTCAR POSCAR   #u-ramp preparation\n")                
 
     # print(savefile)
+            if 'c' in savefile and 'c!' not in savefile:
+                savefile = savefile.replace('c', 'c!') # copy chargcar
             contcar_file = mv_files_according_versions(cl, savefile, v, 
                 name_mod = name_mod, write = write, rm_chg_wav = '', f = f)
         

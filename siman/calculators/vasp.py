@@ -385,6 +385,10 @@ class CalculationVasp(Calculation):
 
 
         # self = st 
+        if hasattr(self.set, 'u_start') and self.set.u_start:
+            u_start = self.set.u_start
+        else:
+            u_start = 0 
         u_step = None
         if parameter == 'LDAUU':
             #Update only non-zero elements of LDAUU with value
@@ -397,7 +401,7 @@ class CalculationVasp(Calculation):
             for i, u in enumerate(set_LDAUU_list):
                 if u == 0:
                     continue
-                u_step = np.linspace(0, u, self.set.u_ramping_nstep)[u_ramp_step]
+                u_step = np.linspace(u_start, u, self.set.u_ramping_nstep)[u_ramp_step]
                 u_step = np.round(u_step, 1)
                 # new_LDAUU_list[i] = value
                 new_LDAUU_list[i] = u_step
@@ -545,11 +549,11 @@ class CalculationVasp(Calculation):
     def actualize_set(self, curset = None, params = None):
         """
         Makes additional processing of set parameters, which also depends on calculation
-        e.g. adding parameters for atat, etc.
+        e.g. adding parameters for atat, etc. Can be run only once!
 
         INPUT:
 
-            - curset (str) - name of the current set
+            - curset (str) - set object
             - params (dict) - dictionary with additional parameters from add_loop()
 
 
@@ -585,6 +589,7 @@ class CalculationVasp(Calculation):
             ldau = True
 
             if 1:
+                # print(vp['LDAUL'])
                 'This block checks if more types for one element should be added to structure'
                 uels_set = vp['LDAUL'].keys()
                 # print(uels_set)
@@ -1435,7 +1440,7 @@ class CalculationVasp(Calculation):
         
 
 
-    def get_occ_mat(self, i):
+    def get_occ_mat(self, i, silent = 1):
         """
         return occupation matrix for atom i (from zero)
 
@@ -1449,8 +1454,27 @@ class CalculationVasp(Calculation):
         # i_mag = i_tran.index(i)
         # print(i, i_mag)
         # print( self.occ_matrices )
+        occ = self.occ_matrices.get(i)
+        if not silent:
+            digits = 2
+            zero_tol=1e-8
+            width = digits + 4
 
-        return self.occ_matrices.get(i)
+            for i, row in enumerate(occ):
+
+                vals = []
+                for x in row:
+                    if abs(x) < zero_tol:
+                        x = 0.0
+
+                    vals.append(f'{x:{width}.{digits}f}')
+
+                print(f'{i:2d}: ' + ' '.join(vals))
+
+
+
+
+        return occ
 
     def set_occ_mat(self, i, m):
         """
