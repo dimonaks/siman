@@ -372,8 +372,8 @@ class Calculation(object):
             if len(st.magmom) > 0 and not None in st.magmom:
                 mag_str = ' '.join(np.array(st.magmom).astype(str))
                 f.write("magmom "+'\n'.join(wrap(mag_str)) + "\n")
-                if len(st.typat) != len(st.magmom):
-                    printlog('Error! Check size of your magmom list')
+                if len(st.typat) != len(st.magmom) and  3*len(st.typat) != len(st.magmom):
+                    printlog('Error! siman.calculation; Check size of your magmom list')
 
             f.write("acell 1 1 1\n")
 

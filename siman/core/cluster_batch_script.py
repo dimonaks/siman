@@ -1034,7 +1034,13 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
     else:
         out = None
     # print 'write_sge() out=', out
+    
+    if self.calculator == 'gaussian':
+        out = None # currently output name is set in  cl.set_output_filenames
+
+
+
     f.close()
     
-    return  out#return OUTCAR name
+    return  out #return OUTCAR name
     

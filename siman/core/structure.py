@@ -670,6 +670,46 @@ class Structure():
         return mag_grouped
 
 
+    def get_magmom(self, i, fmt='7.3f', silent=False):
+        """
+        Return magnetic moment of atom i.
+
+        collinear:
+            [m1, m2, ...]
+
+        non-collinear:
+            [mx1,my1,mz1,mx2,my2,mz2,...]
+        """
+
+        mag = np.asarray(self.magmom, dtype=float)
+
+        if len(mag) == self.natom:
+
+            m = float(mag[i])
+
+            if not silent:
+                print(f'Atom {i}: m = {m:{fmt}} μB')
+
+            return m
+
+        elif len(mag) == 3 * self.natom:
+
+            m = mag[3*i:3*i+3]
+            mabs = np.linalg.norm(m)
+
+            if not silent:
+                print(
+                    f'Atom {i}: '
+                    f'({m[0]:{fmt}}, {m[1]:{fmt}}, {m[2]:{fmt}}) '
+                    f'|m| = {mabs:{fmt}} μB'
+                )
+
+            return m
+
+        else:
+            raise RuntimeError(
+                f'Cannot interpret magmom: len={len(mag)}, natom={self.natom}'
+            )
         
 
     def set_magnetic_config(self, element, moments):
@@ -3724,30 +3764,22 @@ class Structure():
         """
         Find the main polaron center from self.magmom and print delocalized parts.
 
-        The main polaron center is the atom whose magnetic moment is closest to
-        target_magmom. Delocalized parts are atoms with magnetic moments larger
-        than deloc_threshold, excluding the main center.
+        Supports both scalar magmom:
+            [m1, m2, m3, ...]
 
-        INPUT:
-            - target_magmom (float): expected magnetic moment of the main polaron
-            - deloc_threshold (float): minimum moment for delocalized polaron parts
-            - use_abs (bool): if True, use absolute values of magnetic moments
-            - from_one (bool): if True, print atom numbers from 1
-            - silent (bool): if True, do not print information
+        and vector/non-collinear magmom:
+            [mx1, my1, mz1, mx2, my2, mz2, ...]
+            or
+            [[mx1, my1, mz1], [mx2, my2, mz2], ...]
+
+        For vector magmom, the search is done by |m| = sqrt(mx^2 + my^2 + mz^2).
 
         RETURN:
-            - dict with main polaron and delocalized parts
-
-        AUTHOR:
-            Aksyonov DA
+            dict with main polaron and delocalized parts
         """
 
         if not hasattr(self, 'magmom') or self.magmom is None:
             printlog('Error! self.magmom is not found', imp='y')
-            return None
-
-        if len(self.magmom) != self.natom:
-            printlog('Error! len(self.magmom) != self.natom', imp='y')
             return None
 
         els = self.get_elements()
@@ -3756,112 +3788,166 @@ class Structure():
             printlog('Error! len(self.get_elements()) != self.natom', imp='y')
             return None
 
-        mag = np.array(self.magmom, dtype=float)
+        mag_raw = np.array(self.magmom, dtype=float)
+
+        vector_magmom = False
+
+        if mag_raw.ndim == 1:
+            if len(mag_raw) == self.natom:
+                mag = mag_raw
+                mag_norm = np.abs(mag_raw)
+
+            elif len(mag_raw) == 3 * self.natom:
+                mag = mag_raw.reshape((self.natom, 3))
+                mag_norm = np.linalg.norm(mag, axis=1)
+                vector_magmom = True
+
+            else:
+                printlog(
+                    f'Error! len(self.magmom) should be self.natom or 3*self.natom; '
+                    f'got len(self.magmom) = {len(mag_raw)}, self.natom = {self.natom}',
+                    imp='y'
+                )
+                return None
+
+        elif mag_raw.ndim == 2:
+            if mag_raw.shape == (self.natom, 3):
+                mag = mag_raw
+                mag_norm = np.linalg.norm(mag, axis=1)
+                vector_magmom = True
+            else:
+                printlog(
+                    f'Error! self.magmom shape should be ({self.natom}, 3); '
+                    f'got {mag_raw.shape}',
+                    imp='y'
+                )
+                return None
+
+        else:
+            printlog('Error! unsupported self.magmom format', imp='y')
+            return None
 
         if use_abs:
-            mag_for_search = np.abs(mag)
+            mag_for_search = mag_norm
             target = abs(target_magmom)
         else:
-            mag_for_search = mag
+            if vector_magmom:
+                # Для векторного magmom без abs используем z-компоненту,
+                # так как знак полного вектора не определён.
+                mag_for_search = mag[:, 2]
+            else:
+                mag_for_search = mag
+
             target = target_magmom
 
-        # main polaron center
         i_pol = int(np.argmin(np.abs(mag_for_search - target)))
+
+        if vector_magmom:
+            pol_magmom = mag[i_pol].tolist()
+            pol_abs_magmom = float(mag_norm[i_pol])
+            pol_magmom_print = pol_abs_magmom
+        else:
+            pol_magmom = float(mag[i_pol])
+            pol_abs_magmom = float(abs(mag[i_pol]))
+            pol_magmom_print = pol_magmom
 
         polaron = {
             'number': i_pol + 1 if from_one else i_pol,
             'index': i_pol,
             'element': els[i_pol],
-            'magmom': mag[i_pol],
-            'abs_magmom': abs(mag[i_pol]),
+            'magmom': pol_magmom,
+            'abs_magmom': pol_abs_magmom,
             'target_magmom': target_magmom,
-            'error': abs(mag_for_search[i_pol] - target)
+            'error': float(abs(mag_for_search[i_pol] - target)),
+            'vector_magmom': vector_magmom,
         }
 
         delocalized = []
 
-        for i, m in enumerate(mag):
+        for i in range(self.natom):
             if i == i_pol:
                 continue
 
-            m_check = abs(m) if use_abs else m
+            if use_abs:
+                m_check = mag_norm[i]
+            else:
+                m_check = mag[i, 2] if vector_magmom else mag[i]
 
             if m_check > deloc_threshold:
                 dist = self.distance(i1=i_pol, i2=i)
+
+                if vector_magmom:
+                    m_value = mag[i].tolist()
+                    abs_m_value = float(mag_norm[i])
+                else:
+                    m_value = float(mag[i])
+                    abs_m_value = float(abs(mag[i]))
 
                 delocalized.append({
                     'number': i + 1 if from_one else i,
                     'index': i,
                     'element': els[i],
-                    'magmom': m,
-                    'abs_magmom': abs(m),
-                    'distance': dist
+                    'magmom': m_value,
+                    'abs_magmom': abs_m_value,
+                    'distance': dist,
+                    'vector_magmom': vector_magmom,
                 })
 
-        delocalized = sorted(delocalized, key=lambda x: abs(x['magmom']), reverse=True)
-
-        if 0:#not silent:
-            printlog('Main polaron center:', imp='y')
-            printlog(
-                '  atom {0} {1}: magmom = {2:.3f} mu_B, |magmom| = {3:.3f} mu_B'.format(
-                    polaron['number'],
-                    polaron['element'],
-                    polaron['magmom'],
-                    polaron['abs_magmom']
-                ),
-                imp='y'
-            )
-
-            if len(delocalized) == 0:
-                printlog(
-                    'No delocalized parts with |magmom| > {:.3f} mu_B'.format(
-                        deloc_threshold
-                    ),
-                    imp='y'
-                )
-            else:
-                printlog(
-                    'Delocalized polaron parts with |magmom| > {:.3f} mu_B:'.format(
-                        deloc_threshold
-                    ),
-                    imp='y'
-                )
-
-                for d in delocalized:
-                    printlog(
-                        '  atom {0} {1}: magmom = {2:.3f} mu_B, |magmom| = {3:.3f} mu_B, '
-                        'distance to main polaron = {4:.2f} A'.format(
-                            d['number'],
-                            d['element'],
-                            d['magmom'],
-                            d['abs_magmom'],
-                            d['distance']
-                        ),
-                        imp='y'
-                    )
+        delocalized = sorted(
+            delocalized,
+            key=lambda x: x['abs_magmom'],
+            reverse=True
+        )
 
         if not silent:
 
             print('\nPolaron analysis:')
-            print('{:<3s} {:>5s} {:>8s} {:>8s}'.format(
-                'El', 'Atom', 'Moment', 'Dist(A)'
-            ))
 
-            print('{:<3s} {:>5d} {:>8.3f} {:>8s}'.format(
-                polaron['element'],
-                polaron['number'],
-                polaron['magmom'],
-                '-'
-            ))
-
-            for d in delocalized:
-                print('{:<3s} {:>5d} {:>8.3f} {:>8.2f}'.format(
-                    d['element'],
-                    d['number'],
-                    d['magmom'],
-                    d['distance']
+            if vector_magmom:
+                print('{:<3s} {:>5s} {:>9s} {:>9s} {:>9s} {:>9s} {:>8s}'.format(
+                    'El', 'Atom', 'mx', 'my', 'mz', '|m|', 'Dist(A)'
                 ))
 
+                print('{:<3s} {:>5d} {:>9.3f} {:>9.3f} {:>9.3f} {:>9.3f} {:>8s}'.format(
+                    polaron['element'],
+                    polaron['number'],
+                    polaron['magmom'][0],
+                    polaron['magmom'][1],
+                    polaron['magmom'][2],
+                    polaron['abs_magmom'],
+                    '-'
+                ))
+
+                for d in delocalized:
+                    print('{:<3s} {:>5d} {:>9.3f} {:>9.3f} {:>9.3f} {:>9.3f} {:>8.2f}'.format(
+                        d['element'],
+                        d['number'],
+                        d['magmom'][0],
+                        d['magmom'][1],
+                        d['magmom'][2],
+                        d['abs_magmom'],
+                        d['distance']
+                    ))
+
+            else:
+                print('{:<3s} {:>5s} {:>8s} {:>8s}'.format(
+                    'El', 'Atom', 'Moment', 'Dist(A)'
+                ))
+
+                print('{:<3s} {:>5d} {:>8.3f} {:>8s}'.format(
+                    polaron['element'],
+                    polaron['number'],
+                    polaron['magmom'],
+                    '-'
+                ))
+
+                for d in delocalized:
+                    print('{:<3s} {:>5d} {:>8.3f} {:>8.2f}'.format(
+                        d['element'],
+                        d['number'],
+                        d['magmom'],
+                        d['distance']
+                    ))
 
         return {
             'polaron': polaron,

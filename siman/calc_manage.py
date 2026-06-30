@@ -1751,6 +1751,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         
 
             """Filenames section"""
+            # print(out_name)
+            # sys.exit()
             cl.set_output_filenames(out_name, version)
 
 

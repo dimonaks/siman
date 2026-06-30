@@ -25,6 +25,7 @@ class CalculationGaussian(Calculation):
         self.calculator = 'gaussian'
         super(CalculationGaussian, self).__init__(inset, iid, output)
         self.init = Molecule()
+    
     def set_output_filenames(self, out_name = None, version = 1):
         cl = self
         if out_name:
