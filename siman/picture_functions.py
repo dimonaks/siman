@@ -29,6 +29,7 @@ try:
     size = 26 #for DOS
     # size = 16 #for two coloumn figures
     mpl.rc('font',family='Serif')
+    # mpl.rc('font',family='Arial')
     # mpl.rc('xtick', labelsize= size) 
     # mpl.rc('ytick', labelsize= size) 
     # mpl.rc('axes', labelsize = size) 
@@ -83,8 +84,161 @@ from siman.geo import replic
 # from dos.functions import plot_dos
 # from ase.utils.eos import EquationOfState
 
+
+def old_interpolate_path(atom_pos):
+    atom_pos = np.array(atom_pos)
+    data = atom_pos.T #
+    tck, u = interpolate.splprep(data) #now we get all the knots and info about the interpolated spline
+    path = interpolate.splev(np.linspace(0,1,800), tck) #increase the resolution by increasing the spacing, 500 in this example
+    path = np.array(path)
+
+
+    diffs = np.diff(path.T, axis = 0)
+    path_length =  np.linalg.norm( diffs, axis = 1).sum()
+    # print('u', u)
+
+    mep_pos =  np.array([p*path_length for p in u])
+
+    # print('Mep_pos', mep_pos)
+    return path, mep_pos, path_length
+
+def interpolate_path(atom_pos, n_points=800, k=3, s=0.0):
+    """
+    Interpolate a 3D migration path with improved numerical stability.
+    Path is parameterized by arc length to avoid spline overshooting
+    and spurious jumps between input points.
+
+    INPUT:
+
+        - atom_pos (array-like):
+            List/array of atomic coordinates representing the migration
+            pathway. Shape (N, 3). Points are assumed to follow the
+            physical order of the path.
+
+        - n_points (int):
+            Number of interpolated points along the path. Higher values
+            provide finer resolution.
+
+        - k (int):
+            Spline order. Recommended values:
+                1 – piecewise linear (most stable)
+                2 – quadratic (smooth, low overshooting)
+                3 – cubic (smoothest, but may oscillate)
+            Note: k is automatically reduced if too large for dataset.
+
+        - s (float):
+            Smoothing parameter (SciPy splprep). Use s=0 for exact
+            interpolation through all input points. Small positive values
+            reduce noise and oscillations.
+
+    RETURN:
+
+        path (ndarray):
+            Interpolated coordinates along the path, shape (n_points, 3).
+
+        mep_pos (ndarray):
+            Cumulative arc length at each interpolated point (in Å or
+            the same units as input coordinates).
+
+        path_length (float):
+            Total length of the interpolated path.
+
+    AUTHOR:
+
+        Aksyonov D.A. using ChatGPT 5.1
+    """
+    atom_pos = np.asarray(atom_pos, float)  # (N, 3)
+
+    # ------------------------------------------------------------------
+    # 1) Compute raw arc length (for original points)
+    # ------------------------------------------------------------------
+    diffs = np.diff(atom_pos, axis=0)
+    seg_len = np.linalg.norm(diffs, axis=1)
+    cum_raw = np.concatenate(([0.0], np.cumsum(seg_len)))
+    total_length = cum_raw[-1]
+
+    # нормированные u-параметры (для splprep)
+    u = cum_raw / total_length if total_length > 0 else np.zeros_like(cum_raw)
+
+    # ------------------------------------------------------------------
+    # 2) Fit spline x(u), y(u), z(u)
+    # ------------------------------------------------------------------
+    data = atom_pos.T  # (3, N)
+    k_eff = min(k, len(atom_pos) - 1)
+
+    tck, _ = interpolate.splprep(data, u=u, k=k_eff, s=s)
+
+    # ------------------------------------------------------------------
+    # 3) High-resolution interpolation
+    # ------------------------------------------------------------------
+    u_new = np.linspace(0.0, 1.0, n_points)
+    path = np.array(interpolate.splev(u_new, tck)).T  # (n_points, 3)
+
+    # arc length for the interpolated path
+    diffs_new = np.diff(path, axis=0)
+    seg_new = np.linalg.norm(diffs_new, axis=1)
+    cum_new = np.concatenate(([0.0], np.cumsum(seg_new)))
+
+    # ------------------------------------------------------------------
+    # 4) mep_pos длиной как atom_pos
+    # ------------------------------------------------------------------
+    mep_pos_raw = u * cum_new[-1]   # масштабируем на общую длину сплайна
+
+    return path, cum_new, mep_pos_raw, cum_new[-1]
+
+def unwrap_path(atom_pos, rprimd):
+    """
+    Unwrap a 3D trajectory in a periodic cell using the minimum-image convention.
+
+    INPUT:
+
+        - atom_pos (array-like):
+            Cartesian coordinates of the migrating atom, shape (N, 3).
+
+        - rprimd (array-like):
+            Lattice vectors defining the simulation cell, given as three
+            3D vectors (in the same units as atom_pos), e.g.:
+                rprimd = [
+                    [a1x, a1y, a1z],
+                    [a2x, a2y, a2z],
+                    [a3x, a3y, a3z],
+                ]
+
+    RETURN:
+
+        - unwrapped_pos (ndarray):
+            Unwrapped Cartesian coordinates, shape (N, 3), where
+            successive points follow the shortest path in fractional space.
+
+    AUTHOR:
+
+        Aksyonov D.A. using ChatGPT 5.1
+    """
+    atom_pos = np.asarray(atom_pos, float)        # (N, 3)
+    # Build lattice matrix with vectors as columns: A @ frac = cart
+    A = np.vstack(rprimd).T                       # (3, 3)
+
+    # 1) Cartesian -> fractional: frac = A^{-1} * cart
+    frac = np.linalg.solve(A, atom_pos.T).T       # (N, 3)
+
+    # 2) Unwrap in fractional coordinates using minimum image
+    unwrapped_frac = np.empty_like(frac)
+    unwrapped_frac[0] = frac[0]
+    for i in range(1, len(frac)):
+        df = frac[i] - frac[i - 1]
+        # shift difference to [-0.5, 0.5) along each lattice direction
+        df -= np.round(df)
+        unwrapped_frac[i] = unwrapped_frac[i - 1] + df
+
+    # 3) Back to Cartesian: cart = A * frac
+    unwrapped_pos = (A @ unwrapped_frac.T).T
+    return unwrapped_pos
+
+
+
 def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = None, 
-    plot = 1, fitplot_args = None, style_dic = None, datafile = None, ver_line_nums = None, annotates = None):
+    plot = 1, fitplot_args = None, style_dic = None, datafile = None, ver_line_nums = None, annotates = None
+    ,rprimd = None, fontsize = None):
     """
     Used for NEB method
     atom_pos (list) - xcart positions of diffusing atom along the path or just coordinates along one line (for polarons)
@@ -103,6 +257,8 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     
     annotates (list of str) - list with annotations for each points
     
+    rprimd (list of arrays) - used to unwrap the path
+
     """
 
 
@@ -123,30 +279,38 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     # print
     if is_list_like(atom_pos[0]):
-        atom_pos = np.array(atom_pos)
-        data = atom_pos.T #
-        tck, u= interpolate.splprep(data) #now we get all the knots and info about the interpolated spline
-        path = interpolate.splev(np.linspace(0,1,500), tck) #increase the resolution by increasing the spacing, 500 in this example
-        path = np.array(path)
-
-
-        diffs = np.diff(path.T, axis = 0)
-        path_length =  np.linalg.norm( diffs, axis = 1).sum()
-        mep_pos =  np.array([p*path_length for p in u])
-
+        # print(atom_pos)
+        n_points = 800
+        if rprimd:
+            unwrapped = unwrap_path(atom_pos, rprimd)
+        else:
+            unwrapped = atom_pos
+        path_T, mep_interp, mep_pos, path_length = interpolate_path(unwrapped, n_points=n_points, k=1, s=0.0)
+        path = path_T.T
+        # path, mep_pos, path_length = old_interpolate_path(atom_pos, )
+        # print(mep_pos)
     else:
         mep_pos = atom_pos
         path_length  = atom_pos[-1]
 
     if 0: #plot the path in 3d
+        atom_pos = np.array(atom_pos)
+        data = atom_pos.T
+
         fig = plt.figure()
-        ax = Axes3D(fig)
-        ax.plot(data[0], data[1], data[2], label='originalpoints', lw =2, c='Dodgerblue')
+        ax = fig.add_subplot(111, projection='3d')
+
+        ax.plot(data[0], data[1], data[2],
+                label='originalpoints', lw=2, c='Dodgerblue')
+        
         ax.plot(path[0], path[1], path[2], label='fit', lw =2, c='red')
+
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
         ax.legend()
+
         plt.show()
-
-
 
 
 
@@ -161,7 +325,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
 
     
     
-    xnew = np.linspace(0, path_length, 1000)
+    xnew = np.linspace(0, path_length, n_points)
 
     # ynew = spline(mep_pos, eners, xnew )
     # spl = CubicSpline(mep_pos, eners, bc_type = 'natural' ) # second-derivative zero
@@ -170,7 +334,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
     # spl = CubicSpline(mep_pos, eners, bc_type = 'clamped' ) #first derivative zero
 
     ver_lines = None
-    if ver_line_nums:
+    if ver_line_nums and len(ver_line_nums) == 2:
         i1 = mep_pos[ver_line_nums[0]]
         i2 = mep_pos[ver_line_nums[1]]
         ver_lines = [{'x':(i1+i2)/2, 'c':'k', 'lw':1, 'ls':'--'} ]
@@ -214,6 +378,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
             'annotates':annotates, 'annotate_arrowprops':None, 'annotate_color':'k'}, 
             spline = {'x':xnew, 'y':ynew, 'fmt':style_dic['l'], 'label':None, 'color':style_dic.get('color')}, 
         image_name =  image_name, filename = filename, show = show, ver_lines = ver_lines, annotate = annotate,
+        fontsize = fontsize, 
         **fitplot_args)
 
         # print(image_name, filename)

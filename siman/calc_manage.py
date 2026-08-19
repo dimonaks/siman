@@ -1648,6 +1648,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 printlog('sequence set mode: set', curset.ise,':', end = '\n')
             # print(params['update_set_dic'])
             curset.load(params['update_set_dic'], inplace = True)
+            # print('start set actualization')
+            # print(curset.vasp_params)
             cl.actualize_set(curset, params = params)
 
 
@@ -1761,6 +1763,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         
 
             """Filenames section"""
+            # print(out_name)
+            # sys.exit()
             cl.set_output_filenames(out_name, version)
 
 
@@ -3531,6 +3535,7 @@ def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj
             # print groundstate_st_id
             # print m.get_data(groundstate_st_id, data_type='vasp', prop='hubbards')
         
+
         st_pmg =  m.get_structure_by_material_id(groundstate_st_id)
         
         if 'conv' in mat_proj_cell:

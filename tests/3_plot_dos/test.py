@@ -123,11 +123,23 @@ def test2(cl):
 
 
 
+def test3(cl1, cl2):
+    Co_atoms = cl1.end.get_specific_elements([27])
+    Ni_atoms = cl2.end.get_specific_elements([28])
+    # print(Co_atoms)
+    plot_dos(cl1, cl2,  dostype = 'partial', iatom = Co_atoms[0], iatom2 = Ni_atoms[0], orbitals = ['d', 'p6'])
+
 
 if __name__== "__main__":
     
-    cl = CalculationVasp(output = 'LCO_Mn/1.OUTCAR')
-    cl.read_results(show='')
-
-    test1(cl)
-    test2(cl)
+    # cl = CalculationVasp(output = 'LCO_Mn/1.OUTCAR')
+    cl2 = CalculationVasp(output = 'LiCoO2_r3m.su.s10.ifn.as0AS1AP120.if.udos/1.OUTCAR')
+    cl3 = CalculationVasp(output = 'LiNiO2_p2c.su.s10.as0.if.udos/1.OUTCAR')
+    # cl.read_results(show='')
+    out = cl2.read_results(show='')
+    out = cl3.read_results(show='')
+    # print(out)
+    # cl2.end.printme()
+    # test1(cl)
+    # test2(cl)
+    test3(cl2, cl3)

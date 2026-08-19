@@ -993,7 +993,7 @@ def check_output(filename, check_string, load):
     """
     Check if file exist and it is finished by search for check_string
     """
-
+    # print(filename)
     if filename and os.path.exists(filename):
 
         out = grep_file(check_string, filename, reverse = True)

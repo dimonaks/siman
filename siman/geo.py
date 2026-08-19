@@ -1010,7 +1010,7 @@ def find_mul_mat(rprimd1, rprimd2, silent = 0, mul = 1):
 
 
 
-def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1), silent = 0, test_natom = 1): 
+def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01, mul = (1,1,1), silent = 0, test_natom = 1, skip_numbers = None): 
 
     """ 
     st (Structure) -  
@@ -1022,8 +1022,16 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     mp    (int)  include additionall atoms before cutting supecell
     test_natom (bool) - test if the number of atoms is correct after transformation
     test_overlap (bool) - check if atoms are overlapping -  quite slow
+
+    skip_numbers (list) - atomic numbers in st, which will be not replicated
+
     """ 
+    
+    if skip_numbers is None:
+        skip_numbers = []
+
     sc = st.new() 
+    
     # st = st.return_atoms_to_cell()
     sc.name = st.name+'_supercell'
     # sc.rprimd = list(np.dot(mul_matrix, st.rprimd))
@@ -1105,6 +1113,9 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
         for xr, xc,  t, m, n in zip(xred_mul, xcart_mul, st.typat, st.magmom, numbers):
             # if 0<xr[0]<1 and 0<xr[1]<1 and 0<xr[2]<1:
                 # print (xr)
+            if n in sc.init_numbers and n in skip_numbers:
+                continue
+
             if all([0-b <= r < 1-b for r, b in zip(xr, bounds)]): #only that in sc.rprimd box are needed
                 sc.xcart.append( xc )
                 sc.xred.append ( xr )
