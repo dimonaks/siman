@@ -18,7 +18,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     # packages=['siman'],
     # data_files=[(os.path.expanduser("~"), ['siman/simanrc.py'])],
-    install_requires=['numpy', 'tabulate', 'pymatgen', 'pandas', 'scipy', 'six', 'matplotlib', 'ase', 'paramiko', 'adjustText', 'mp-api'],
+    install_requires=['numpy', 'tabulate', 'pymatgen', 'pandas', 'scipy', 'six', 'matplotlib', 'ase', 'paramiko', 'adjustText', 'mp-api', 'tblite'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License (GPL)",
