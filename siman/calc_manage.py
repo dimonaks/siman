@@ -952,7 +952,9 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
                     pname = st.name
 
                 st = copy.deepcopy(st)
-                # st.magmom = [None] # added on 24.06.2017
+                curset = varset[inputset] if inputset in varset else None
+                if not hasattr(curset, 'magmom') or curset.magmom is None:
+                    st.magmom = [None]
 
                 write_xyz(st, file_name = st.name+'_used_for_scaling', path = xyz_folder)
                 # print(scale_region)
