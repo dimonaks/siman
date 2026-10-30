@@ -172,7 +172,7 @@ def cal_chg_diff_files(chg_file1, chg_file2, cl3=None, wcell=0, chg = 'CHGCAR'):
 
 def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
     """
-    Return the the value of charge density (filetype = CHGCAR) or electrostatic potential (filetype = LOCPOT) 
+    Return the the value of charge density (filetype = CHGCAR) 
     along z direction of slab; 
 
     chgfile - full path to the file with charge density
@@ -228,6 +228,88 @@ def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
     if plot:
         # print(z_coord, elst)
         fit_and_plot(a=(z_coord, elst, '-b'), xlabel = 'Z coordinate, $\AA$', 
-            ylabel = 'Potential, eV', filename = 'figs/'+cl.id[0]+'_pot')
+            ylabel = 'Potential, eV', filename = 'figs/'+cl.id[0]+'_pot', show=1)
 
     return z_coord, elst
+
+
+def locpot_z_profile(cl, axis=2,filename='1.LOCPOT', plot=False, return_numpy=False):
+    """
+    Calculate planar-averaged electrostatic potential from VASP LOCPOT.
+
+    INPUT
+    ----------
+    cl : Calculation object
+
+    axis : int
+        Averaging direction:
+            0 -> x
+            1 -> y
+            2 -> z (default)
+
+    filename : str
+        LOCPOT filename.
+
+    plot : bool
+        Plot potential profile.
+
+    return_numpy : bool
+        Return numpy arrays if True.
+
+    RETURN
+    -------
+    coord : list or np.ndarray
+        Coordinates in Angstrom.
+
+    potential : list or np.ndarray
+        Planar-averaged electrostatic potential in eV.
+
+    AUTHOR:
+
+    A.Boev
+    """
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    from pymatgen.io.vasp.outputs import Locpot
+
+    # Read LOCPOT
+    locpot_path = cl.get_file(filetype=filename)
+
+    locpot = Locpot.from_file(locpot_path)
+
+    # Planar average
+    potential = locpot.get_average_along_axis(axis)
+
+    potential = np.array(potential)
+
+    # Lattice vector length
+    lattice = locpot.structure.lattice
+
+    axis_length = lattice.abc[axis]
+
+    # Coordinate array
+    coord = np.linspace(
+        0,
+        axis_length,
+        len(potential),
+        endpoint=False
+    )
+
+    # Plot
+    if plot:
+
+        plt.figure(figsize=(7,4))
+        plt.plot(coord, potential)
+        xlabel = ['x (Å)', 'y (Å)', 'z (Å)'][axis]
+        plt.xlabel(xlabel)
+        plt.ylabel('Electrostatic potential (eV)')
+        plt.tight_layout()
+        plt.show()
+
+    # Return
+    if return_numpy:
+        return coord, potential
+
+    return coord.tolist(), potential.tolist()
