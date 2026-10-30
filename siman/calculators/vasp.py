@@ -328,17 +328,26 @@ class CalculationVasp(Calculation):
                     elif key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
                         mag = self.init.magmom
 
-                        if isinstance(mag[0], (list, tuple)):  # vector magmom
+                        # 1. Non-collinear mode (nested vectors: [[mx1,my1,mz1], ...])
+                        if isinstance(mag[0], (list, tuple)):  
                             magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order]
                             flat_list = [str(c) for vec in magmom_aligned_with_poscar for c in vec]
                             f.write('MAGMOM = ' + ' '.join(flat_list) + '\n')
-                        else:  # scalar magmom
+
+                        # 2. Non-collinear mode (flat 1D array: [mx1,my1,mz1,mx2,my2,mz2,...])
+                        elif len(mag) == 3 * natom:
+                            # Восстанавливаем mag3, нарезая плоский массив по 3 компоненты
+                            mag3 = [mag[i:i+3] for i in range(0, len(mag), 3)]
+                            mag3_aligned = [mag3[i] for i in poscar_atom_order]
+                            # Снова уплотняем в плоскую строку, но уже с правильным порядком атомов
+                            flat_list = [str(c) for vec in mag3_aligned for c in vec]
+                            f.write('MAGMOM = ' + ' '.join(flat_list) + '\n')
+
+                        # 3. Standard collinear mode (scalar magmom)
+                        else:  
                             magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order]
                             print(magmom_aligned_with_poscar)
                             f.write('MAGMOM = ' + list2string(magmom_aligned_with_poscar) + '\n')
-                        # magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order ]
-                        # f.write('MAGMOM = '+list2string(magmom_aligned_with_poscar)+"\n") #magmom from geo file has higher preference
-
                    
                     elif vp[key] == None:
                         ''
