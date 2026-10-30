@@ -321,9 +321,9 @@ def push_figure_to_archive(local_figure_path, caption, figlabel = None, autocomp
         caption+=' for '+figlabel 
 
     tex_text = \
-    ("\\begin{{figure}} \n\includegraphics[width=\columnwidth]{{{:s}}}\n"
-    "\caption{{\label{{fig:{:s}}} {:s} }}\n"
-    "\end{{figure}}\n").format(figfile, figlabel, caption )
+    ("\\begin{{figure}} \n\\includegraphics[width=\\columnwidth]{{{:s}}}\n"
+    "\\caption{{\\label{{fig:{:s}}} {:s} }}\n"
+    "\\end{{figure}}\n").format(figfile, figlabel, caption )
 
 
     # print (tex_text)

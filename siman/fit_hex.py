@@ -200,8 +200,8 @@ def fit_hex(shag_a,shag_c,npoint_a,npoint_c,it,ise,verlist,calc,gb_volume = Fals
         fig.colorbar(surf, shrink=0.5, aspect=5)
     elif type_plot == 'contourf':
         cs = plt.contourf(x_setca, y_setca, z_setca, locator=LinearLocator(numticks = 50), cmap=cm.rainbow)
-        cs.ax.set_xlabel('$a, \AA$')
-        cs.ax.set_ylabel('$c, \AA$')
+        cs.ax.set_xlabel('$a, \\AA$')
+        cs.ax.set_ylabel('$c, \\AA$')
         cbar = plt.colorbar(format = FormatStrFormatter('%.0f'))
         cbar.set_label('$E, eV$', fontsize = 21)
 

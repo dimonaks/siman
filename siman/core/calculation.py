@@ -1017,7 +1017,7 @@ class Calculation(object):
             show = True
 
         fit_and_plot(pot=(z_coord1, elst1, '-b', ),
-                     xlabel='Z coordinate, $\AA$',
+                     xlabel='Z coordinate, $\\AA$',
                      ylabel='Potential, eV', legend=None, fontsize=12,
                      show=show, hor_lines=[{'y': elst1[0]}],
                      filename=filename
@@ -1244,7 +1244,7 @@ class Calculation(object):
 
         return
 
-    def get_file(self, filetype='', nametype='', up='up1', root=0):
+    def get_file(self, filetype='', nametype='', up='up1', root=0, progress=None):
         """
         allow to get any file of type filetype 
         cl - (Calculation) 
@@ -1256,11 +1256,17 @@ class Calculation(object):
 
         root - root calculation folder location of file
 
+        progress (bool) - print a download bar. The default shows it for a direct
+            call and hides it while res_loop() is downloading the same files.
+
         Comment
             initially used for chg files - rename!
         """
 
         setting_sshpass(self)
+        if progress is None:
+            import inspect
+            progress = not any(frame.function == 'res_loop' for frame in inspect.stack())
         # print(filetype)
 
         if nametype == 'asoutcar':
@@ -1310,7 +1316,7 @@ class Calculation(object):
         else:
             # printlog('File', path_to_file, 'was not found. Trying to update from server')
             out = get_from_server(
-                path2file_cluster, os.path.dirname(path_to_file), addr=address)
+                path2file_cluster, os.path.dirname(path_to_file), addr=address, progress=progress)
             if out:
                 printlog('File', path2file_cluster, 'was not found! checking remote and local archives ...', imp = 'Y')
                 # printlog(out, imp  = 'Y')
@@ -1327,7 +1333,7 @@ class Calculation(object):
                 path_to_file_scratch = header.PATH2ARCHIVE+'/'+pp+'/'+path_to_file
 
                 out = get_from_server(path_to_file_scratch, os.path.dirname(
-                    path_to_file), addr=self.cluster['address'])
+                    path_to_file), addr=self.cluster['address'], progress=progress)
 
                 if out:
                     printlog('File', path_to_file_scratch, 'was not found, trying local archive path', imp = 'n')

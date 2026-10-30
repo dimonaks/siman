@@ -1568,7 +1568,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
             if 'NGXF=' in line:
                 # print(line)
-                l = re.sub("[^\d\.\ ]", "", line) #remove everything except digits, dot, and space
+                l = re.sub("[^\\d\\.\\ ]", "", line) #remove everything except digits, dot, and space
                 # sys.exit()
                 self.ngxf = [int(n) for n in l.split()] # ngxf, ngyf, ngzf
                 # print(self.ngxf ) 
@@ -2848,6 +2848,244 @@ def read_structure(filename = None, format = None, object_type = None, silent = 
     return st
 
 
+def _vasp_float(text):
+    return float(str(text).replace('D', 'E').replace('d', 'e'))
+
+
+_RE_OSZ_ELEC = re.compile(
+    r'^(DAV|RMM|CG|DAI)\s*:\s*(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)(?:\s+(\S+))?'
+)
+_RE_OSZ_ION = re.compile(
+    r'^\s*(\d+)\s+F=\s*(\S+)\s+E0=\s*(\S+)\s+d E =\s*(\S+)'
+)
+_RE_OSZ_MAG = re.compile(r'mag=\s*(\S+)')
+_RE_OSZ_KV = re.compile(
+    r'([A-Za-z_]+)=\s*([+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[EeDd][+-]?\d+)?)'
+)
+
+
+def _cpm_record(line, kind):
+    kv = dict(_RE_OSZ_KV.findall(line))
+    rec = {
+        'nstep': int(float(kv['NSTEP'])),
+        'n_ele': _vasp_float(kv['N_ele']),
+        'mu_e': _vasp_float(kv['mu_e']),
+        'target_mu': _vasp_float(kv['TARGETMU']),
+        'cap': _vasp_float(kv['cap']) if 'cap' in kv else None,
+    }
+    if kind == 'scf':
+        rec['scf'] = int(float(kv['SCF']))
+    else:
+        rec['gce'] = _vasp_float(kv['GCE']) if 'GCE' in kv else None
+    return rec
+
+
+def parse_oszicar_text(text, cpm_only=False):
+    """
+    Parse one OSZICAR (or a VASP stdout log that echoes it).
+
+    Electronic constant-potential steps are ``CPM-scf`` lines:
+    current chemical potential ``mu_e`` and target ``TARGETMU``.
+    Grand-canonical energy is on ``CPM-ion`` lines, one per ionic step.
+
+    cpm_only (bool) - read only CPM-scf and CPM-ion lines.
+    """
+    electronic = []
+    block = []
+    ionic = []
+    cpm_scf = []
+    cpm_ion = []
+    ionic_step = 0
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith('CPM-scf'):
+            try:
+                cpm_scf.append(_cpm_record(line, 'scf'))
+            except (KeyError, ValueError):
+                printlog('Warning! Could not parse CPM-scf line:', line)
+            continue
+        if line.startswith('CPM-ion'):
+            try:
+                cpm_ion.append(_cpm_record(line, 'ion'))
+            except (KeyError, ValueError):
+                printlog('Warning! Could not parse CPM-ion line:', line)
+            continue
+        if cpm_only:
+            continue
+
+        elec = _RE_OSZ_ELEC.match(line)
+        if elec:
+            rmsc = elec.group(8)
+            block.append({
+                'algo': elec.group(1),
+                'n': int(elec.group(2)),
+                'e': _vasp_float(elec.group(3)),
+                'de': _vasp_float(elec.group(4)),
+                'deps': _vasp_float(elec.group(5)),
+                'ncg': int(elec.group(6)),
+                'rms': _vasp_float(elec.group(7)),
+                'rmsc': _vasp_float(rmsc) if rmsc else None,
+            })
+            continue
+
+        ion = _RE_OSZ_ION.match(line)
+        if ion:
+            ionic_step += 1
+            for step in block:
+                step['ionic_step'] = ionic_step
+            if block:
+                electronic.append(block)
+            block = []
+            mag = _RE_OSZ_MAG.search(line)
+            ionic.append({
+                'nstep': int(ion.group(1)),
+                'f': _vasp_float(ion.group(2)),
+                'e0': _vasp_float(ion.group(3)),
+                'de': _vasp_float(ion.group(4)),
+                'mag': _vasp_float(mag.group(1)) if mag else None,
+            })
+
+    if block:
+        ionic_step += 1
+        for step in block:
+            step['ionic_step'] = ionic_step
+        electronic.append(block)
+
+    return {
+        'electronic': electronic,
+        'ionic': ionic,
+        'cpm_scf': cpm_scf,
+        'cpm_ion': cpm_ion,
+    }
+
+
+def _read_osz_text(path):
+    if path.endswith('.gz'):
+        import gzip
+        with gzip.open(path, 'rt', errors='replace') as f:
+            return f.read()
+    with open(path, 'r', errors='replace') as f:
+        return f.read()
+
+
+def _empty_oszicar():
+    return {'files': [], 'electronic': [], 'ionic': [], 'cpm_scf': [], 'cpm_ion': []}
+
+
+def _extend_oszicar(merged, part, seen_scf, seen_ion, take_geometry):
+    if take_geometry:
+        merged['electronic'].extend(part['electronic'])
+        merged['ionic'].extend(part['ionic'])
+    for rec in part['cpm_scf']:
+        key = (rec['nstep'], rec['scf'], rec['n_ele'], rec['mu_e'])
+        if key not in seen_scf:
+            seen_scf.add(key)
+            merged['cpm_scf'].append(rec)
+    for rec in part['cpm_ion']:
+        key = (rec['nstep'], rec['n_ele'], rec['mu_e'], rec.get('gce'))
+        if key not in seen_ion:
+            seen_ion.add(key)
+            merged['cpm_ion'].append(rec)
+
+
+def locate_oszicar(path_to_outcar=None, directory=None, extra_paths=None):
+    """Return (oszicar_paths, log_paths) that exist on disk."""
+    oszicar = []
+    logs = []
+    seen = set()
+
+    def add(path, bucket):
+        if path and path not in seen and os.path.isfile(path):
+            seen.add(path)
+            bucket.append(path)
+
+    if extra_paths:
+        for path in extra_paths:
+            name = os.path.basename(path)
+            if name.endswith('.log'):
+                add(path, logs)
+            else:
+                add(path, oszicar)
+
+    if path_to_outcar:
+        directory = directory or os.path.dirname(path_to_outcar) or '.'
+        base = os.path.basename(path_to_outcar)
+        if 'OUTCAR' in base:
+            versioned = path_to_outcar.replace('OUTCAR', 'OSZICAR')
+            add(versioned, oszicar)
+            add(versioned + '.gz', oszicar)
+
+    if directory and os.path.isdir(directory) and not oszicar:
+        add(os.path.join(directory, 'OSZICAR'), oszicar)
+        add(os.path.join(directory, 'OSZICAR.gz'), oszicar)
+
+    if directory and os.path.isdir(directory):
+        for path in sorted(glob.glob(os.path.join(directory, '*.log'))):
+            add(path, logs)
+
+    return oszicar, logs
+
+
+def load_oszicar(path_to_outcar=None, directory=None, extra_paths=None, use_logs=False):
+    """
+    Read OSZICAR next to an OUTCAR.
+
+    VASPsol constant-potential history (``CPM-scf``, ``CPM-ion``) is taken
+    from OSZICAR. If that file has ``CPM-ion`` lines but no electronic
+    ``CPM-scf`` lines, both series are read from the VASP ``*.log``.
+    Pass the log itself through ``extra_paths`` to parse it directly.
+
+    Returns a dict with keys files, electronic, ionic, cpm_scf, cpm_ion,
+    or None when nothing was found.
+    """
+    osz_files, log_files = locate_oszicar(path_to_outcar, directory, extra_paths)
+    if not osz_files and not log_files:
+        return None
+
+    merged = _empty_oszicar()
+    seen_scf = set()
+    seen_ion = set()
+
+    for path in osz_files:
+        part = parse_oszicar_text(_read_osz_text(path), cpm_only=False)
+        _extend_oszicar(merged, part, seen_scf, seen_ion, take_geometry=True)
+        merged['files'].append(path)
+
+    if not osz_files:
+        if extra_paths or use_logs:
+            for path in log_files:
+                text = _read_osz_text(path)
+                explicit = extra_paths and path in extra_paths
+                if not explicit and 'CPM-scf' not in text and 'CPM-ion' not in text:
+                    continue
+                part = parse_oszicar_text(text, cpm_only=not explicit)
+                _extend_oszicar(merged, part, seen_scf, seen_ion, take_geometry=explicit)
+                merged['files'].append(path)
+    elif (use_logs or merged['cpm_ion']) and not merged['cpm_scf']:
+        # Electronic CP lines are in the job log when OSZICAR only has CPM-ion.
+        # Take both series from that log so mu and GCE belong to the same run.
+        best = None
+        best_path = None
+        for path in log_files:
+            text = _read_osz_text(path)
+            if 'CPM-scf' not in text:
+                continue
+            part = parse_oszicar_text(text, cpm_only=True)
+            if best is None or len(part['cpm_scf']) > len(best['cpm_scf']):
+                best = part
+                best_path = path
+        if best and best['cpm_scf']:
+            merged['cpm_scf'] = best['cpm_scf']
+            if best['cpm_ion']:
+                merged['cpm_ion'] = best['cpm_ion']
+            merged['files'].append(best_path)
+
+    if not (merged['electronic'] or merged['ionic'] or merged['cpm_scf'] or merged['cpm_ion']):
+        return None
+    return merged
 def read_cpvasp_oszicar(cl, filename='OSZICAR', parse_cpm_ion=True,parse_cpm_scf=True, plot=False, up='up1'):
     """
     Read CP-VASP information from OSZICAR.

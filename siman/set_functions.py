@@ -214,9 +214,9 @@ vasp_other_keys = [
 'LWANNIER90', 'LWRITE_MMN_AMN', 'LWRITE_UNK', 'NUM_WANN', 'LWRITE_SPN', 'WANNIER90_WIN', 'LWANNIER90_RUN',
 'QSPIRAL', 'LSPIRAL', 'ENINI', 'ENMAX', 'LZEROZ',
 'VCA',
-'FERMICONVERGENCE',
-'EFERMI',
-'LVACPOTAV'
+'ISOL', 'LCEP', 'NESCHEME', 'TARGETMU', 'CAP_MAX', 'FERMICONVERGE', 
+'EFERMI', 'LVACPOTAV'
+
 ]
 vasp_keys = vasp_electronic_keys+vasp_ionic_keys+vasp_other_keys
 
@@ -229,6 +229,7 @@ siman_keys = [
 'afm_ordering',
 'set_sequence',# sequence of sets
 'savefile', #additional keys pointing which files should be saved
+'savesol', #which VASPsol files to keep; see parse_savesol()
 'k_band_structure', # list, first position is number of points, then high-symmetry k-points in the form ['G', 0, 0, 0] in reciprocal space for calculating band structure 
 'path2pot', # path to folder with potentials - used with potdir; if not provided that header.path2potentials is used
 'path_to_potcar', # explicit path to potential - depreacated
@@ -495,7 +496,11 @@ class InputSet():
             self.setup = {}
 
         if 'POTIM' in self.params:
+            # Ensure self.setup is a dictionary
+            if not isinstance(self.setup, dict):
+                self.setup = {}
             self.setup['timestep'] = self.params['POTIM']
+            
         # require fix
         # if 'KPOINTS' not in self.params.keys() and 'KSPACING' not in self.params.keys():
         #     self.vasp_params['KSPACING'] = 0.2

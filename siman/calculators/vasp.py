@@ -15,7 +15,7 @@ from siman.small_functions import return_xred, makedir, angle, is_string_like, c
 from siman.functions import (read_vectors, read_list, words, read_string,
      element_name_inv, invert, calculate_voronoi, 
     get_from_server, push_to_server, run_on_server, smoother, file_exists_on_server, check_output)
-from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
+from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out, load_oszicar
 from siman.geo import (image_distance, replic, calc_recip_vectors, calc_kspacings, xred2xcart, xcart2xred, 
 local_surrounding, local_surrounding2, determine_symmetry_positions, remove_closest, remove_vacuum, make_neutral, 
 rms_between_structures, rms_between_structures2)
@@ -1007,7 +1007,7 @@ class CalculationVasp(Calculation):
 
         fit_and_plot(data = {'x': forces, 'y':energies, 'fmt':'-o', 
             'annotates': annotates, 'annotate_fontsize':10, 'annotate_arrowprops':None}, annotate = 1,
-            xlabel = lab+' force on atom (meV/$\AA$)', ylabel = 'Energy per cell relative to min (meV)',
+            xlabel = lab+' force on atom (meV/$\\AA$)', ylabel = 'Energy per cell relative to min (meV)',
             show = 1)
 
 
@@ -1084,6 +1084,203 @@ class CalculationVasp(Calculation):
         return
 
 
+
+
+    def _constant_potential(self):
+        """True when this calculation targets an electron chemical potential."""
+        sources = []
+        if hasattr(self, 'set') and getattr(self.set, 'vasp_params', None):
+            sources.append(self.set.vasp_params)
+        params = getattr(self, 'params', None)
+        if isinstance(params, dict):
+            update = params.get('update_set_dic')
+            if isinstance(update, dict):
+                sources.append(update)
+        off = (None, False, '.FALSE.', '.False.', 'False', 'F', 'false')
+        for block in sources:
+            for key, value in block.items():
+                name = str(key).upper()
+                if name == 'LCEP' and value not in off:
+                    return True
+                if name == 'TARGETMU' and value is not None:
+                    return True
+        return False
+
+
+    def _vasp_stdout_log(self):
+        if getattr(self, 'name', None):
+            return self.name + '.log'
+        if getattr(self, 'id', None) and len(self.id) >= 3:
+            return '{}.{}.{}.log'.format(self.id[0], self.id[1], self.id[2])
+        return None
+
+
+    def _vaspsol_calculation(self):
+        """True when the run can write VASPsol files or an OSZICAR chemical potential."""
+        if getattr(self, 'savesol', None) not in (None, ''):
+            return True
+        if hasattr(self, 'set') and getattr(self.set, 'savesol', None) not in (None, ''):
+            return True
+        sources = []
+        if hasattr(self, 'set') and getattr(self.set, 'vasp_params', None):
+            sources.append(self.set.vasp_params)
+        params = getattr(self, 'params', None)
+        if isinstance(params, dict):
+            update = params.get('update_set_dic')
+            if isinstance(update, dict):
+                sources.append(update)
+        off = (None, False, '.FALSE.', '.False.', 'False', 'F', 'false')
+        for block in sources:
+            for key, value in block.items():
+                name = str(key).upper()
+                if name in ('LSOL', 'LCEP') and value not in off:
+                    return True
+                if name == 'ISOL' and value not in (None, False, 0):
+                    return True
+                if name == 'TARGETMU' and value is not None:
+                    return True
+        return False
+
+
+    @staticmethod
+    def _is_oszicar_name(name):
+        """True for OSZICAR, 1.OSZICAR, or the same names with .gz."""
+        if not name or name in ('.', '..'):
+            return False
+        stem = name[:-3] if name.endswith('.gz') else name
+        if stem == 'OSZICAR':
+            return True
+        dot = stem.find('.')
+        if dot <= 0 or not stem[0].isdigit():
+            return False
+        rest = stem[dot + 1:]
+        return rest == 'OSZICAR' or rest.rsplit('.', 1)[-1] == 'OSZICAR'
+
+
+    def _fetch_oszicar(self, path_to_outcar, load):
+        """Download versioned or plain OSZICAR from the remote calculation folder."""
+        from siman.functions import run_on_server
+
+        remote_dir = (self.project_path_cluster.rstrip('/') + '/' + self.dir.strip('/')).replace('\\', '/')
+        address = None
+        if getattr(self, 'cluster', None):
+            address = self.cluster.get('address')
+        if not address:
+            address = getattr(self, 'cluster_address', None)
+        quoted = "'" + remote_dir.replace("'", "'\\''") + "'"
+        listing = run_on_server('ls -1 ' + quoted, address)
+        if not listing or 'No such file' in listing:
+            return
+
+        found = []
+        for line in listing.splitlines():
+            name = os.path.basename(line.strip())
+            if self._is_oszicar_name(name):
+                found.append(name)
+        plain = set(found)
+        found = [name for name in found if not (name.endswith('.gz') and name[:-3] in plain)]
+        if not found:
+            printlog('No OSZICAR in', remote_dir, imp = 'y')
+            return
+
+        out_base = os.path.basename(self.path.get('output') or path_to_outcar or '')
+        prefix = out_base[:-len('OUTCAR')] if out_base.endswith('OUTCAR') else ''
+        printlog('Downloading OSZICAR:', ' '.join(found), imp = 'y')
+        for name in found:
+            suffix = name[len(prefix):] if prefix and name.startswith(prefix) else ''
+            bare = suffix[:-3] if suffix.endswith('.gz') else suffix
+            if bare == 'OSZICAR':
+                self.get_file(suffix, nametype = 'asoutcar', up = load)
+            else:
+                self.get_file(name, up = load)
+
+
+    def read_oszicar(self, path = None, path_to_outcar = None, show = '', use_logs = None, warn = True):
+        """
+        Parse OSZICAR for this calculation.
+
+        Standard DAV/RMM iterations and ionic ``F= / E0=`` lines are stored on
+        ``oszicar_electronic`` and ``oszicar_ionic``.
+
+        VASPsol constant-potential lines:
+
+        - ``cpm_scf`` — one record per electronic step: ``mu_e`` (current
+          chemical potential), ``target_mu`` (TARGETMU), ``n_ele``, ``scf``,
+          ``cap``. Also ``list_mu_e`` and ``list_target_mu``.
+        - ``cpm_ion`` — one record per ionic step, including the grand
+          canonical energy. ``list_gce`` is that series and ``gce`` is the
+          last value. ``mu_e`` and ``target_mu`` on the calculation are this
+          final ionic step (the potential the run ended at).
+
+        path — parse this file only.
+        path_to_outcar — look for ``*.OSZICAR`` next to this OUTCAR.
+        show — include ``mu``, ``gce``, or ``osz`` to print every CPM step.
+        """
+        if path:
+            data = load_oszicar(extra_paths = [path])
+        else:
+            if path_to_outcar is None and hasattr(self, 'path'):
+                path_to_outcar = self.path.get('output')
+            directory = self.dir if hasattr(self, 'dir') else None
+            if directory is None and path_to_outcar:
+                directory = os.path.dirname(path_to_outcar)
+            if use_logs is None:
+                use_logs = self._constant_potential()
+            data = load_oszicar(path_to_outcar = path_to_outcar, directory = directory, use_logs = use_logs)
+        if not data:
+            if warn and self._constant_potential():
+                printlog('OSZICAR with chemical potential was not found for', getattr(self, 'id', ''), imp = 'y')
+            return None
+
+        self.oszicar = data
+        self.cpm_scf = data['cpm_scf']
+        self.cpm_ion = data['cpm_ion']
+        self.oszicar_electronic = data['electronic']
+        self.oszicar_ionic = data['ionic']
+        self.list_mu_e = [rec['mu_e'] for rec in data['cpm_scf']]
+        self.list_target_mu = [rec['target_mu'] for rec in data['cpm_scf']]
+        self.list_gce = [rec['gce'] for rec in data['cpm_ion'] if rec.get('gce') is not None]
+        self.mu_e = None
+        self.target_mu = None
+        self.gce = self.list_gce[-1] if self.list_gce else None
+        self.n_ele = None
+        # Final potential of the run is the last ionic CPM line. The electronic
+        # series (list_mu_e) stays on cpm_scf, which is printed before that step ends.
+        if data['cpm_ion']:
+            self.mu_e = data['cpm_ion'][-1]['mu_e']
+            self.target_mu = data['cpm_ion'][-1]['target_mu']
+            self.n_ele = data['cpm_ion'][-1]['n_ele']
+        elif data['cpm_scf']:
+            self.mu_e = data['cpm_scf'][-1]['mu_e']
+            self.target_mu = data['cpm_scf'][-1]['target_mu']
+            self.n_ele = data['cpm_scf'][-1]['n_ele']
+
+        n_elec = sum(len(block) for block in data['electronic'])
+        if data['cpm_scf'] or data['cpm_ion']:
+            bits = ['OSZICAR: {:d} electronic iterations, {:d} ionic steps'.format(
+                n_elec, len(data['ionic']))]
+            if data['cpm_scf']:
+                bits.append('{:d} CP electronic steps, last mu_e={:.6f} eV, TARGETMU={:.6f} eV'.format(
+                    len(data['cpm_scf']), data['cpm_scf'][-1]['mu_e'], data['cpm_scf'][-1]['target_mu']))
+            if self.gce is not None:
+                bits.append('final mu_e={:.6f} eV, TARGETMU={:.6f} eV, GCE={:.6f} eV over {:d} ionic steps, N_ele={:.6f}'.format(
+                    self.mu_e, self.target_mu, self.gce, len(self.list_gce), self.n_ele))
+            elif self.mu_e is not None:
+                bits.append('mu_e={:.6f} eV, TARGETMU={:.6f} eV'.format(self.mu_e, self.target_mu))
+            printlog('; '.join(bits), imp = 'y')
+        elif n_elec or data['ionic']:
+            printlog('OSZICAR: {:d} electronic iterations, {:d} ionic steps'.format(
+                n_elec, len(data['ionic'])), imp = 'n')
+
+        if show and any(key in show for key in ('mu', 'gce', 'osz')):
+            for rec in data['cpm_scf']:
+                printlog('CPM-scf NSTEP={nstep:d} SCF={scf:d} N_ele={n_ele:.6f} mu_e={mu_e:.6f} TARGETMU={target_mu:.6f}'.format(**rec), imp = 'Y')
+            for rec in data['cpm_ion']:
+                gce = rec.get('gce')
+                gce_s = '{:.6f}'.format(gce) if gce is not None else 'n/a'
+                printlog('CPM-ion NSTEP={:d} N_ele={:.6f} mu_e={:.6f} TARGETMU={:.6f} GCE={}'.format(
+                    rec['nstep'], rec['n_ele'], rec['mu_e'], rec['target_mu'], gce_s), imp = 'Y')
+        return data
 
 
     def read_results(self, load = '', out_type = '', voronoi = False, show = '', choose_outcar = None, alkali_ion_number = None, only_load = False):
@@ -1193,7 +1390,7 @@ class CalculationVasp(Calculation):
         if 'o' in load and hasattr(self, 'cluster_address'):
 
             #reduce size of downloadable file by removing occupations: vasp 4 and 5
-            command_reduce = """ssh {0:s} nbands=\`grep \\"NBANDS=\\" \{1:s} \| awk \\'{{print \$NF - 1}}\\'\`\; sed -i -e \\"/band No./,+\${{nbands}}d\\" \{1:s} """.format(
+            command_reduce = """ssh {0:s} nbands=\\`grep \\"NBANDS=\\" \\{1:s} \\| awk \\'{{print \\$NF - 1}}\\'\\`\\; sed -i -e \\"/band No./,+\\${{nbands}}d\\" \\{1:s} """.format(
                 self.cluster['address'], join(self.project_path_cluster, path_to_outcar) )
 
 
@@ -1258,6 +1455,9 @@ class CalculationVasp(Calculation):
             self.get_file(os.path.basename(path_to_waveder), up = load)
             self.get_file(os.path.basename(self.dir+'/WAVEDER'), up = load)
 
+        if ('o' in load or 'z' in load) and self._vaspsol_calculation():
+            self._fetch_oszicar(path_to_outcar, load)
+
 
 
 
@@ -1301,6 +1501,22 @@ class CalculationVasp(Calculation):
                 printlog('read_results():',cl.id, 'probably was not submitted:', cl.dir, imp = 'y')
 
 
+        osz = self.read_oszicar(path_to_outcar = path_to_outcar, show = show, warn = False)
+        if (getattr(self, 'mu_e', None) is None and self._constant_potential()
+                and ('o' in load or 'z' in load) and hasattr(self, 'cluster_address')):
+            logname = self._vasp_stdout_log()
+            if logname:
+                self.get_file(logname, up = load)
+                osz = self.read_oszicar(path_to_outcar = path_to_outcar, show = show, use_logs = True, warn = False)
+        if getattr(self, 'mu_e', None) is None and self._constant_potential():
+            printlog('OSZICAR with chemical potential was not found for', getattr(self, 'id', ''), imp = 'y')
+        if osz is not None and isinstance(outst, str):
+            if getattr(self, 'gce', None) is not None:
+                outst += ' | mu={:.4f} target={:.4f} GCE={:.4f}'.format(
+                    self.mu_e, self.target_mu, self.gce)
+            elif getattr(self, 'mu_e', None) is not None:
+                outst += ' | mu={:.4f} target={:.4f}'.format(self.mu_e, self.target_mu)
+
         return outst
 
 
@@ -1336,6 +1552,210 @@ class CalculationVasp(Calculation):
         return self.get_file(filetype = 'CHGCAR', **kwargs)
 
 
+    def visualize_grid(self, file='PHI', program='vesta'):
+        """
+        Convert a saved volumetric file to a cube and open it.
+
+        The file name is the VASP name, without the version. Version 2 and
+        file ``'PHI'`` reads ``2.PHI`` (or ``2.PHI.gz``) from the calculation
+        directory. A job that still has the plain name ``PHI`` is used when
+        the versioned file is absent. The cube is written next to that file
+        and then opened.
+
+        INPUT:
+            file (str) - grid name: ``'PHI'``, ``'LOCPOT'``, ``'CHGCAR'``,
+                ``'SSOLV'``, ``'RHOION'``, and the other VASPsol grids.
+            program (str) - viewer. ``'vesta'`` calls ``Structure.vesta()``,
+                the same launcher as ``cl.end.vesta()``. ``'jmol'`` and
+                ``'ovito'`` use their launchers.
+
+        OUTPUT:
+            str - path of the written cube file.
+
+        Raises:
+            ValueError - file name is empty or the viewer is unknown.
+            FileNotFoundError - the versioned grid is not in the calculation directory.
+            RuntimeError - the grid could not be converted, or ``cl.end`` is
+                missing so ``.vesta()`` cannot be called.
+        """
+        name = str(file).strip() if file is not None else ''
+        if not name or name in ('.', '..'):
+            raise ValueError('visualize_grid(): file name is empty')
+        viewer = str(program).strip().lower() if program is not None else ''
+        if viewer not in ('vesta', 'jmol', 'ovito'):
+            raise ValueError('visualize_grid(): unknown program %r; use vesta, jmol, or ovito' % program)
+
+        source = self._versioned_grid(name)
+        cube = source[:-3] + '.cube' if source.endswith('.gz') else source + '.cube'
+        try:
+            from pymatgen.io.vasp.outputs import Locpot
+            grid = Locpot.from_file(source)
+            if 'total' not in getattr(grid, 'data', {}):
+                raise RuntimeError('no volumetric grid in ' + source)
+            grid.to_cube(cube, comment=os.path.basename(source))
+        except (ValueError, FileNotFoundError, RuntimeError):
+            raise
+        except Exception as exc:
+            raise RuntimeError('visualize_grid(): failed to convert %s to cube: %s' % (source, exc))
+
+        if not os.path.isfile(cube):
+            raise RuntimeError('visualize_grid(): cube was not written: ' + cube)
+
+        if getattr(self, 'end', None) is None:
+            raise RuntimeError('visualize_grid(): calculation has no end structure, so .%s() cannot open the cube' % viewer)
+        printlog('Opening', cube, 'with', viewer, imp = 'y')
+        if viewer == 'vesta':
+            self.end.vesta(filename=cube)
+        elif viewer == 'jmol':
+            self.end.jmol(filename=cube, program='jmol')
+        else:
+            self.end.ovito(filename=cube)
+        return cube
+
+
+    def _versioned_grid(self, name):
+        """Return the grid in this calculation directory.
+
+        Prefer ``{version}.{name}`` and its ``.gz`` copy. Jobs finished before
+        that rename leave the plain VASP name, so ``PHI`` is accepted too.
+        """
+        directory = os.path.normpath(self.dir)
+        names = []
+        output = self.path.get('output') if getattr(self, 'path', None) else None
+        if output and os.path.basename(output).endswith('OUTCAR'):
+            prefix = os.path.basename(output)[:-len('OUTCAR')]
+            names.append(prefix + name)
+        if getattr(self, 'id', None) and len(self.id) >= 3:
+            names.append('%s.%s' % (self.id[2], name))
+        names.append(name)
+        candidates = []
+        for grid_name in names:
+            path = os.path.join(directory, grid_name)
+            if path not in candidates:
+                candidates.append(path)
+        for path in candidates:
+            if os.path.isfile(path):
+                return path
+            if os.path.isfile(path + '.gz'):
+                return path + '.gz'
+        raise FileNotFoundError('visualize_grid(): %s was not found. Looked for %s' % (name, ', '.join(candidates)))
+
+
+    def plot_cp_convergence(self):
+        """
+        Plot chemical potential and grand canonical energy versus constant-potential SCF step.
+
+        mu and the printed GCE come from CPM-scf and CPM-ion in OSZICAR. GCE is
+        written only on CPM-ion, so earlier points are E(sigma->0) minus
+        TARGETMU times the electron surplus over the OUTCAR NELECT.
+
+        INPUT:
+            none. The calculation version selects ``{version}.OSZICAR`` and
+            ``{version}.OUTCAR`` in the calculation directory.
+
+        OUTPUT:
+            str - path of the PNG written to ``figs/{name}_cp_conv.png`` at 450 dpi.
+            The figure has three panels: mu (red), TARGETMU minus mu (blue),
+            and GCE (green).
+
+        Raises:
+            FileNotFoundError - OSZICAR or OUTCAR is missing.
+            RuntimeError - the OSZICAR has no CPM-scf or CPM-ion lines.
+        """
+        import matplotlib.pyplot as plt
+
+        outcar = self.path.get('output') if getattr(self, 'path', None) else None
+        if not outcar or not os.path.isfile(outcar):
+            raise FileNotFoundError('plot_cp_convergence(): OUTCAR is missing for %s' % (self.id,))
+        folder = os.path.dirname(outcar)
+        oszicar = os.path.join(folder, os.path.basename(outcar).replace('OUTCAR', 'OSZICAR'))
+        if not os.path.isfile(oszicar):
+            plain = os.path.join(folder, 'OSZICAR')
+            oszicar = plain if os.path.isfile(plain) else None
+        if not oszicar:
+            raise FileNotFoundError('plot_cp_convergence(): OSZICAR is missing for %s' % (self.id,))
+
+        from siman.inout import parse_oszicar_text
+        with open(oszicar, 'r', errors='replace') as handle:
+            parsed = parse_oszicar_text(handle.read())
+        records = [('scf', rec) for rec in parsed['cpm_scf']] + [('ion', rec) for rec in parsed['cpm_ion']]
+        if not records:
+            raise RuntimeError('plot_cp_convergence(): no CPM-scf or CPM-ion lines in %s' % oszicar)
+
+        sigma = []
+        nelect0 = None
+        with open(outcar, 'r', errors='replace') as handle:
+            for line in handle:
+                if nelect0 is None and 'NELECT' in line and 'total number of electrons' in line:
+                    nelect0 = float(line.split('=')[1].split()[0])
+                if 'energy(sigma->0)' in line:
+                    sigma.append(float(line.split('=')[-1]))
+
+        dav = 0
+        taken = []
+        with open(oszicar, 'r', errors='replace') as handle:
+            for line in handle:
+                stripped = line.strip()
+                if stripped.startswith('DAV:') or stripped.startswith('RMM:'):
+                    dav += 1
+                elif stripped.startswith('CPM-'):
+                    taken.append(dav)
+                    dav = 0
+        energies = []
+        cursor = 0
+        for count in taken:
+            cursor += count
+            energies.append(sigma[cursor - 1] if 0 < cursor <= len(sigma) else None)
+
+        labels, mu, gap_mev, gce = [], [], [], []
+        target = records[0][1]['target_mu']
+        for (kind, rec), energy in zip(records, energies):
+            labels.append(str(rec['scf']) if kind == 'scf' else 'ion')
+            mu.append(rec['mu_e'])
+            gap_mev.append((target - rec['mu_e']) * 1000.0)
+            if rec.get('gce') is not None:
+                gce.append(rec['gce'])
+            elif energy is not None and nelect0 is not None:
+                gce.append(energy - target * (rec['n_ele'] - nelect0))
+            else:
+                gce.append(float('nan'))
+
+        tol_mev = None
+        incar = os.path.join(folder, 'INCAR')
+        if os.path.isfile(incar):
+            with open(incar, 'r', errors='replace') as handle:
+                for line in handle:
+                    key = line.split('=')[0].strip().upper()
+                    if key == 'FERMICONVERGE':
+                        tol_mev = float(line.split('=')[1].split()[0]) * 1000.0
+
+        x = list(range(len(labels)))
+        fig, axes = plt.subplots(3, 1, figsize=(7, 8), sharex=True)
+        axes[0].plot(x, mu, 'o-', color='red', label=r'$\mu_e$')
+        axes[0].axhline(target, color='red', ls='--', label='TARGETMU %.3f eV' % target)
+        axes[0].set_ylabel(r'$\mu_e$ (eV)')
+        axes[0].legend()
+        axes[1].plot(x, gap_mev, 'o-', color='blue', label=r'TARGETMU $- \mu_e$')
+        if tol_mev is not None:
+            axes[1].axhline(tol_mev, color='blue', ls='--', label='FERMICONVERGE %.3g meV' % tol_mev)
+        axes[1].set_ylabel(r'TARGETMU $- \mu_e$ (meV)')
+        axes[1].legend()
+        axes[2].plot(x, gce, 'o-', color='green', label='GCE')
+        axes[2].set_ylabel('GCE (eV)')
+        axes[2].set_xlabel('constant-potential SCF step')
+        axes[2].legend()
+        axes[2].set_xticks(x)
+        axes[2].set_xticklabels(labels)
+        fig.tight_layout()
+
+        calc_nam = self.name if getattr(self, 'name', None) not in (None, '', 'noname') else '.'.join(str(part) for part in self.id)
+        out_dir = os.path.join(os.getcwd(), 'figs')
+        if not os.path.isdir(out_dir):
+            os.makedirs(out_dir)
+        path = os.path.join(out_dir, f'{calc_nam}_cp_conv.png')
+        fig.savefig(path, dpi=450)
+        plt.show()
+        return path
 
 
     def bader(self):

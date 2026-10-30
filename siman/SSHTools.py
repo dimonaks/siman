@@ -6,7 +6,9 @@
 
 import paramiko
 import os
+import sys
 import hashlib
+import shutil
 
 class SSHTools:
 	user=""; host=""; pkeypath=""; pkey=""; port=22
@@ -62,11 +64,53 @@ class SSHTools:
 		self.ssh.close()
 		return
 ###############################################################################################
-	def get( self, source, dest ):
+	def _get_file(self, sftp, source, dest, progress=False):
+		# Sequential copy. Paramiko's pipelined sftp.get stalls or stops
+		# on files larger than about 200 MB when the SSH window is small.
+		try:
+			channel = sftp.get_channel()
+			if channel is not None and getattr(channel, 'lock', None) is not None:
+				channel.lock.acquire()
+				try:
+					channel.in_window_size = max(getattr(channel, 'in_window_size', 0), 2147483647)
+					channel.out_window_size = max(getattr(channel, 'out_window_size', 0), 2147483647)
+				finally:
+					channel.lock.release()
+		except Exception:
+			pass
+		try:
+			size = sftp.stat(source).st_size
+		except Exception:
+			size = 0
+		name = os.path.basename(source)
+		copied = 0
+		shown = -1
+		with sftp.open(source, 'rb') as remote_file, open(dest, 'wb') as local_file:
+			remote_file.MAX_REQUEST_SIZE = 1024 * 1024
+			while True:
+				block = remote_file.read(8 * 1024 * 1024)
+				if not block:
+					break
+				local_file.write(block)
+				copied += len(block)
+				if not progress:
+					continue
+				percent = int(100 * copied / size) if size else 100
+				if percent != shown:
+					shown = percent
+					filled = 30 * percent // 100
+					bar = '#' * filled + '-' * (30 - filled)
+					sys.stdout.write('\r%s  [%s] %3d%%' % (name, bar, percent))
+					sys.stdout.flush()
+		if progress and shown >= 0:
+			sys.stdout.write('\n')
+			sys.stdout.flush()
+
+	def get( self, source, dest, progress=False ):
 		# print(source, dest )
 		self.ssh.connect(self.host,username=self.user,pkey=self.pkey,port=self.port)
 		sftp = self.ssh.open_sftp()
-		sftp.get(source,dest)
+		self._get_file(sftp, source, dest, progress=progress)
 		sftp.close()
 		self.ssh.close()
 		return
@@ -74,7 +118,7 @@ class SSHTools:
 	def sget( self, source, dest, keeplocal=False ):
 		self.ssh.connect(self.host,username=self.user,pkey=self.pkey,port=self.port)
 		sftp = self.ssh.open_sftp()
-		sftp.get(source,dest)
+		self._get_file(sftp, source, dest)
 		sftp.close()
 		self.ssh.close()
 		s=self.run("md5sum "+source)

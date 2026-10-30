@@ -320,7 +320,7 @@ def choose_cluster(cluster_name, corenum, nodes, cluster_settings = None):
 def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None, 
     up = 'up2', inherit_option = None, id_from = None, inherit_args = None, confdic = None,
     i_atom_to_remove = None,
-    coord = 'direct', savefile = header.default_savefile, show = '', comment = '', 
+    coord = 'direct', savefile = header.default_savefile, savesol = None, show = '', comment = '', 
     input_geo_format = None, input_kpoints=None, ifolder = None, input_geo_file = None, input_st = None,
     corenum = None,
     calc_method = None, u_ramping_region = None, it_folder = None, 
@@ -385,6 +385,34 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             'z' - OSZICAR
             'w' - WAVECAR
             'r' - REPORT
+
+        - savesol - which VASPsol files are kept. Same role as savefile.
+            Put it on the set (``'savesol': 'phi,rb'``) or pass it here.
+            None leaves VASPsol files as VASP wrote them.
+            '' saves none of them. 'all' saves every file below.
+            '!' copies instead of moving. Every kept file is moved to
+            ``{version}.{FILE}`` and gzip-compressed (``1.VSOLV.gz``), as CHGCAR is.
+            Unlisted files from this set are deleted (``rm -f``).
+
+            Files written for both ISOL=1 and ISOL=2:
+                phi        PHI       electrostatic potential, should be the same as LOCPOT
+                phs / phis PHI_SOLV  electrostatic potential from the solvent
+                vs         VSOLV     cavity correction to the KS potential
+                rb         RHOB      bound charge density
+                ri         RHOION    electrolyte ionic charge density
+            Files written only for ISOL=1:
+                s          S         solvent cavity
+            Files written only for ISOL=2:
+                el         ELOC      electrostatic field in the z direction
+                p          P         solvent polarization density in the z direction
+                vd         SVDW      vdW cavity
+                ss         SSOLV     solvent cavity
+                si         SION      ionic cavity
+                sd         SDIEL     dielectric cavity
+                sc         SCAV      cavity used for calculating the cavity formation
+                                      free energy, equal to SSOLV by default unless
+                                      R_CAV is specified
+            See siman.core.cluster_batch_script.parse_savesol.
 
         - ifolder - explicit path to folder where to search for input geo file.
 
@@ -1419,7 +1447,8 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
                 u_ramping_region = u_ramping_region,
                 mat_proj_st_id = mat_proj_st_id,
                 output_files_names = output_files_names,
-                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, corenum = header.corenum)
+                run = run, input_st = input_st, check_job = check_job, params = params, mpi = mpi, corenum = header.corenum,
+                savesol = savesol)
             
             prevcalcver = v
 
@@ -1448,7 +1477,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
     inherit_option = None, prevcalcver = None, coord = 'direct', savefile = None, input_geo_format = 'abinit', 
     input_geo_file = None, input_kpoints=None, calc_method = None, u_ramping_region = None,
     mat_proj_st_id = None, output_files_names = None, run = None, input_st = None, check_job = 1, params = None, 
-    mpi = False, corenum = None):
+    mpi = False, corenum = None, savesol = None):
     """
 
     INPUT:
@@ -1682,6 +1711,15 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 if s not in savefile:
                     savefile+=s
 
+        if savesol is None and hasattr(cl.set, 'savesol'):
+            savesol = cl.set.savesol
+        elif getattr(cl.set, 'savesol', None) not in (None, ''):
+            if savesol not in (None, ''):
+                savesol = str(savesol) + ',' + str(cl.set.savesol)
+            else:
+                savesol = cl.set.savesol
+        cl.savesol = savesol
+
 
         if hasattr(cl.set, 'u_ramping_nstep') and cl.set.u_ramping_nstep:
             printlog("Attention! U ramping method is detected from set\n\n")
@@ -1777,13 +1815,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             out_name = write_batch_body(cl, str(version)+".POSCAR", version, 
                 inherit_option, prevcalcver, savefile, 
                 schedule_system = cl.schedule_system, mode = 'body',
-                batch_script_filename = batch_script_filename, mpi = mpi, corenum = corenum)
+                batch_script_filename = batch_script_filename, mpi = mpi, corenum = corenum,
+                savesol = savesol)
             
         
 
             """Filenames section"""
-            # print(out_name)
-            # sys.exit()
             cl.set_output_filenames(out_name, version)
 
 
@@ -1837,7 +1874,8 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 
                 write_batch_body(cl, mode = 'footer', schedule_system = cl.schedule_system, option = inherit_option, 
                     output_files_names = output_files_names, batch_script_filename = batch_script_filename, savefile = savefile, 
-                    mpi = mpi, corenum = corenum, path_to_job = header.temp['path_to_job'], scrdir = header.temp['scrdir'] )
+                    mpi = mpi, corenum = corenum, path_to_job = header.temp['path_to_job'], scrdir = header.temp['scrdir'],
+                    savesol = savesol)
                 
                 list_to_copy.extend( cl.make_incar() )
                 
@@ -2523,7 +2561,8 @@ def res_loop(it, setlist, verlist, analys_type = None,
 
         - up (str):
             - 'up1' - just read local output files. If files are missing, they will be attempted for download from cluster
-            - 'up2' - download output files from cluster , overwrite local files, and read them
+            - 'up2' - download output files from cluster , overwrite local files, and read them.
+              A constant-potential run also downloads OSZICAR.
             - 'un' - try to read output, even when calculation was finished with error, but the correct version exist e.g. 1.OUTCAR
             - 'un2' - try to read output when the running script was killed, and only output with original name exists, e.g. OUTCAR
 
@@ -2565,7 +2604,7 @@ def res_loop(it, setlist, verlist, analys_type = None,
         - push2archive (bool) - if True produced images are copied to header.project_conf.path_to_images
         - cluster (str) - name of cluster, used to override current cluster name to download output from the provided one
         - check_job - (bool) check status on server, use 0 if no internet connection
-        - log_flag (bool) - if False, the logs "is unfinished; return \{\} []" will not be shown; used for band_structure/non_self_consist_calc
+        - log_flag (bool) - if False, the logs "is unfinished; return \\{\\} []" will not be shown; used for band_structure/non_self_consist_calc
 
 
         
@@ -3052,7 +3091,7 @@ def res_loop(it, setlist, verlist, analys_type = None,
                     if 'p' in show[0]:
                         plt.plot(cl.maxforce_list, )
                         plt.xlabel('MD step')
-                        plt.ylabel('Max. force on atom (meV/$\AA$)')
+                        plt.ylabel('Max. force on atom (meV/$\\AA$)')
                         plt.show()
                 
 

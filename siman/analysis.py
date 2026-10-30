@@ -1418,7 +1418,7 @@ def polaron_analysis(cl, readfiles):
             ver = False,
             xlim = (-0.02, 0.02+max(pos1_fine)),
             filename = 'figs/'+name_without_ext,
-            xlabel = 'Position, (${\AA}$)',
+            xlabel = 'Position, (${\\AA}$)',
             ylabel = 'Energy, eV'
             )
 

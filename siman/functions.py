@@ -238,7 +238,58 @@ def file_exists_on_server(file, addr):
 
 
 
-def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz = True):
+def _rsync_with_progress(command, remote_file):
+    """Run rsync and print the share of the file already copied.
+
+    Returns '' on success. On failure returns the rsync output, which contains
+    the word 'error' so get_from_server can try the .gz copy.
+    """
+    import subprocess
+    import re
+
+    printlog('running in BASH:', command, '\n')
+    name = os.path.basename(str(remote_file).rstrip('/'))
+    percent = re.compile(r'(\d+)%')
+    process = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
+    pending = b''
+    shown = None
+    while True:
+        chunk = process.stdout.read(4096)
+        if not chunk:
+            break
+        pending += chunk
+        text = pending.decode('utf-8', errors='replace')
+        matches = percent.findall(text)
+        if matches:
+            value = int(matches[-1])
+            if value != shown:
+                shown = value
+                filled = 30 * value // 100
+                bar = '#' * filled + '-' * (30 - filled)
+                sys.stdout.write('\r%s  [%s] %3d%%' % (name, bar, value))
+                sys.stdout.flush()
+    process.wait()
+    output = pending.decode('utf-8', errors='replace')
+    if process.returncode:
+        if shown is not None:
+            sys.stdout.write('\n')
+            sys.stdout.flush()
+        return output if 'error' in output.lower() else 'error: ' + output
+    # rsync --info=progress2 stays at 0% for one remote file until the size is
+    # known. A successful exit means the whole file is here.
+    if shown is not None and shown < 100:
+        filled = 30
+        bar = '#' * filled
+        sys.stdout.write('\r%s  [%s] %3d%%' % (name, bar, 100))
+        sys.stdout.flush()
+    if shown is not None:
+        sys.stdout.write('\n')
+        sys.stdout.flush()
+    return ''
+
+
+def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz = True, progress = False):
     """
     Download files using either  paramiko (higher priority) or rsync; 
     For paramiko header.ssh_object should be defined
@@ -272,7 +323,7 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
             # try:
             if exist:
                 printlog('Using paramiko: ssh_object.get(): from  to ', file, to_file)
-                header.ssh_object.get(file,  to_file  )
+                header.ssh_object.get(file,  to_file, progress = progress)
                 out = ''
             # except FileNotFoundError:
             else:
@@ -287,15 +338,17 @@ def get_from_server(files = None, to = None, to_file = None,  addr = None, trygz
 
         elif header.sshpass:
             #com = 'rsync --rsh='+"'sshpass -f /home/aksenov/.ssh/p ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
-            com = 'rsync --rsh='+"'sshpass -f "+header.path2pass+" ssh' "  +' -uaz  '+addr+':'+file+ ' '+to_file
-
-            out = runBash(com)
-            # print(addr)
-            # sys.exit()
+            flags = '-uaz --info=progress2 --no-inc-recursive --outbuf=N' if progress else '-uaz'
+            com = 'rsync --rsh='+"'sshpass -f "+header.path2pass+" ssh' "  +' '+flags+' '+addr+':'+file+ ' '+to_file
+            out = _rsync_with_progress(com, file) if progress else runBash(com)
 
         else:
             # print(addr,file,to_file)
-            out = runBash('rsync -uaz  '+addr+':'+file+ ' '+to_file)
+            if progress:
+                out = _rsync_with_progress(
+                    'rsync -uaz --info=progress2 --no-inc-recursive --outbuf=N '+addr+':'+file+ ' '+to_file, file)
+            else:
+                out = runBash('rsync -uaz  '+addr+':'+file+ ' '+to_file)
 
 
 
@@ -762,7 +815,7 @@ def headers():
     d="&"
     header_for_bands= "Set".ljust(j[0])+d+"Etot".center(j[1])+d+"a1,a2".center(j[2])+d+"c".center(j[3])\
                 +d+"time, m".center(j[4])+d+"ittime, s".center(j[5])+d+"Nmd,Avr.".rjust(j[6])+d\
-                +"Warn!"+d+"nband"+d+"Added, \%"+"\\\\"
+                +"Warn!"+d+"nband"+d+"Added, \\%"+"\\\\"
 
     header_for_ecut= "Set".ljust(j[0])+d+"Etot".center(j[1])+d+"a1,a2".center(j[2])+d+"c".center(j[3])\
                 +d+"time, m".center(j[4])+d+"ittime, s".center(j[5])+d+"Nmd,Avr.".rjust(j[6])+d\

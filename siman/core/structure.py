@@ -673,46 +673,6 @@ class Structure():
         return mag_grouped
 
 
-    def get_magmom(self, i, fmt='7.3f', silent=False):
-        """
-        Return magnetic moment of atom i.
-
-        collinear:
-            [m1, m2, ...]
-
-        non-collinear:
-            [mx1,my1,mz1,mx2,my2,mz2,...]
-        """
-
-        mag = np.asarray(self.magmom, dtype=float)
-
-        if len(mag) == self.natom:
-
-            m = float(mag[i])
-
-            if not silent:
-                print(f'Atom {i}: m = {m:{fmt}} μB')
-
-            return m
-
-        elif len(mag) == 3 * self.natom:
-
-            m = mag[3*i:3*i+3]
-            mabs = np.linalg.norm(m)
-
-            if not silent:
-                print(
-                    f'Atom {i}: '
-                    f'({m[0]:{fmt}}, {m[1]:{fmt}}, {m[2]:{fmt}}) '
-                    f'|m| = {mabs:{fmt}} μB'
-                )
-
-            return m
-
-        else:
-            raise RuntimeError(
-                f'Cannot interpret magmom: len={len(mag)}, natom={self.natom}'
-            )
         
 
     def set_magnetic_config(self, element, moments):
@@ -3405,35 +3365,37 @@ class Structure():
         return dv
 
 
-
-
-
-
-
-    def localize_polaron(self, i, d, nn = 6, magmom = None):
+    def localize_polaron_dist(self, i_center, d=0.0, nn=6, axis=None, direction=None, mode='axis_expand', target_distance=None):
         """
-        Localize small polaron at transition metal by adjusting TM-A distances
+        localization small polaron at transition metal by adjusting TM-O distances
+        with distortions
+        i_center - number of transition atom, from 0
+        d - shift in angstrom; positive increase TM-O, negative reduce TM-O
+            or shift along *direction* 
+            (optional, not used in 'center_tm' or 'perfect_octa' modes)
+        nn - number of neighbors
+        axis - axis of octahedra, 0, 1, 2,
+        direction - vector to shift central atom in reduced coordinates
 
-        INPUT:
-            - i (int) - number of transition atom, from 0
-            - d (float) - shift in angstrom; positive increase TM-O, negative reduce TM-O distance
-            - nn (int) - number of neigbours
-            - magmom (float) - magnetic moment on atom with polaron
+            Axes of octahedra are determined relative to cartesian coordinates
+        mode 
+            'axis_expand'
+            'shift_center'
+            'center_tm'        # Move only TM to centroid
+            'perfect_octa'     # Move both TM and ligands to perfect octahedron
+        target_distance - desired TM-ligand distance for 'perfect_octa' mode
+                          (if None, uses average of current distances)
 
-        RETURN:
-
-            - st (Structure) - structure with localized polaron at atom i
-
-        AUTHOR:
-
-            Aksyonov DA
-        
+        TODO
+        Make it more general to include any ligands; now only O and F are supported
+        Make for other topologies, now tested only for octa
 
         """
 
+        print("SCEEB")
         st = copy.deepcopy(self)
-        TM = st.get_el_z(i)
-        TM_name = st.get_el_name(i)
+        TM = st.get_el_z(i_center)
+        TM_name = st.get_el_name(i_center)
         if TM not in header.TRANSITION_ELEMENTS:
             printlog('Warning! provided element ', TM_name, 'is not a transition metal, I hope you know what you are doing. ')
 
@@ -3441,44 +3403,243 @@ class Structure():
         if 'n' in header.warnings or 'e' in header.warnings:
             silent = 0
 
-        dic = st.nn(i, nn, from_one = 0, silent = silent)
-        els = dic['el'][1:]
-        unique_neighbours_els = set(els)
-        for A in unique_neighbours_els:
-            z = invert(A)
-            if z not in header.ANION_ELEMENTS:
-                printlog('Warning! provided element ', z, 'is not an anion element, I hope you know what you are doing. ')
+        np.set_printoptions(formatter={'float': '{: 6.2f}'.format})
 
-        # print(els)
-        printlog('Average '+TM_name+'-'+str(unique_neighbours_els)+' distance before localization is {:.2f} A'.format(dic['av']), imp = 'n')
+        dic = st.nn(i_center, nn, from_one = 0, silent = silent)
+        av = dic['av(A-O,F)']
+        printlog('Average TM-O distance before localization is {:.2f}'.format(av), imp = '')
 
-        #updated xcart
-        xc = st.xcart[i]
-        for j, x in zip(dic['numbers'][1:], dic['xcart'][1:]):
-            x1 = st.xcart[j]
-            
-            # print(xc, x)
-            v = xc-x
-            # print(v)
+        xc = st.xcart[i_center]
+        ligand_xcart = [x-xc for x in  dic['xcart'][1:]]
+        ligand_order = copy.copy(list(dic['numbers'][1:]))
+
+        # Find octahedron axes (same as before)
+        pairs = []
+        order = []
+        i=0
+        for i1, x1 in zip(ligand_order, ligand_xcart):
+            for i2, x2 in zip(ligand_order[i+1:], ligand_xcart[i+1:]):
+                ssum = np.linalg.norm(x1+x2 )
+                if ssum < av/2:
+                    pairs.append(x1)
+                    pairs.append(x2)
+                    order.append(i1)
+                    order.append(i2)
+            i+=1
+        if len(pairs) < len(ligand_xcart):
+            for i1, x1 in zip(ligand_order, ligand_xcart):
+                if id(x1) in map(id, pairs):
+                    continue
+                else:
+                    pairs.append(x1)
+                    pairs.append(xc-xc)
+                    order.append(i1)
+                    order.append(dic['numbers'][0])
+
+        pairs_new = [0]* len(pairs)
+        order_new = [0]* len(order)
+        iz = np.argmax(np.abs(np.array(pairs).dot([0,0,1]) ))//2
+        pairs_new[4] = copy.copy(pairs[iz*2])
+        pairs_new[5] = copy.copy(pairs[iz*2+1])
+        order_new[4] = order[iz*2]
+        order_new[5] = order[iz*2+1]
+        del pairs[iz*2+1]
+        del pairs[iz*2]
+        del order[iz*2+1]
+        del order[iz*2]        
+        ix = np.argmax(np.array(pairs).dot([1,0,0]) )//2
+        iy = np.argmax(np.array(pairs).dot([0,1,0]) )//2
+        
+        q1 = sum(np.sign(pairs[0][0:2]))-sum(np.sign(pairs[1][0:2]))
+        q2 = sum(np.sign(pairs[2][0:2]))-sum(np.sign(pairs[3][0:2]))
+
+        if q1 > q2:
+            pairs_new[0:4] = pairs
+            order_new[0:4] = order
+        else:
+            pairs_new[0:2] = pairs[2:4]
+            pairs_new[2:4] = pairs[0:2]
+            order_new[0:2] = order[2:4]
+            order_new[2:4] = order[0:2]
+
+        if mode == 'shift_center':
+            v = np.dot( direction, st.rprimd)
             vn = np.linalg.norm(v)
-            mul = d/vn
-            # print(vn, mul)
-            dv = v * mul
-            # print(st.xcart[j])
-            st.xcart[j] = st.xcart[j] -  dv 
-            # print(st.xcart[j])
+            dv = v/vn*d
+            st.xcart[i_center] = st.xcart[i_center] + dv
+
+        if mode == 'axis_expand':
+            for i in order_new[axis*2:axis*2+2]:
+                x = st.xcart[i]
+                v = xc-x
+                vn = np.linalg.norm(v)
+                if vn < 0.1:
+                    mul = 0
+                else:
+                    mul = d/vn
+                dv = v * mul
+                st.xcart[i] = st.xcart[i] - dv
+
+        if mode == 'center_tm':
+            ligand_positions = []
+            for idx in ligand_order:
+                ligand_positions.append(st.xcart[idx])
+            centroid = np.mean(ligand_positions, axis=0)
+            st.xcart[i_center] = centroid
+            printlog('Moved TM atom to geometric center of ligands', imp='')
+            printlog('TM displacement: {:.4f} Å'.format(np.linalg.norm(centroid - xc)), imp='')
+
+        # Create perfect octahedron
+        if mode == 'perfect_octa':
+            """
+            Moves both TM and ligands to create a perfect octahedron.
+            
+            Steps:
+            1. Find the centroid of all ligands (center of octahedron)
+            2. Determine the three principal axes from the octahedron
+            3. Place ligands at equal distances along these axes
+            4. Place TM at the centroid
+            
+            This creates a perfectly symmetric octahedron with all TM-ligand
+            distances equal.
+            """
+            # Get current ligand positions relative to centroid
+            ligand_positions = []
+            for idx in ligand_order:
+                ligand_positions.append(st.xcart[idx])
+            
+            # Calculate centroid (center of octahedron)
+            centroid = np.mean(ligand_positions, axis=0)
+            
+            # Calculate vectors from centroid to each ligand
+            vectors = []
+            for pos in ligand_positions:
+                vectors.append(pos - centroid)
+            
+            # Find the three principal axes using the octahedron pairs
+            # The vectors should come in opposite pairs
+            axes = []
+            used_indices = set()
+            
+            for i, v1 in enumerate(vectors):
+                if i in used_indices:
+                    continue
+                # Find the opposite ligand (approximately anti-parallel)
+                best_match = None
+                best_dot = -2.0  # Minimum possible dot product
+                for j, v2 in enumerate(vectors):
+                    if i == j or j in used_indices:
+                        continue
+                    # For perfect octahedron, opposite vectors should be anti-parallel
+                    dot_product = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+                    if dot_product < best_dot:
+                        best_dot = dot_product
+                        best_match = j
+                
+                if best_match is not None and best_dot < -0.5:  # Reasonably opposite
+                    # Average the two opposite vectors to get the axis direction
+                    axis_dir = (v1 - vectors[best_match]) / 2
+                    axes.append(axis_dir)
+                    used_indices.add(i)
+                    used_indices.add(best_match)
+            
+            # If we didn't find all 3 axes, use the original pairs
+            if len(axes) < 3:
+                printlog('Warning: Could not find 3 orthogonal axes, using original pairs', imp='')
+                axes = []
+                for idx in range(0, len(pairs_new), 2):
+                    if idx+1 < len(pairs_new):
+                        axes.append(pairs_new[idx])
+            
+            # Make axes orthogonal using Gram-Schmidt process
+            if len(axes) >= 3:
+                # Normalize and orthogonalize
+                axes_normalized = []
+                for ax in axes:
+                    if np.linalg.norm(ax) > 0.001:
+                        axes_normalized.append(ax / np.linalg.norm(ax))
+                
+                # Gram-Schmidt orthogonalization
+                ortho_axes = []
+                for ax in axes_normalized:
+                    # Subtract projections onto previous axes
+                    for oa in ortho_axes:
+                        ax = ax - np.dot(ax, oa) * oa
+                    if np.linalg.norm(ax) > 0.001:
+                        ortho_axes.append(ax / np.linalg.norm(ax))
+                
+                # Ensure we have exactly 3 orthogonal axes
+                while len(ortho_axes) < 3:
+                    # Find a vector orthogonal to existing axes
+                    if len(ortho_axes) == 1:
+                        # Create a vector orthogonal to first axis
+                        new_ax = np.array([1, 0, 0])
+                        if abs(np.dot(new_ax, ortho_axes[0])) > 0.9:
+                            new_ax = np.array([0, 1, 0])
+                        new_ax = new_ax - np.dot(new_ax, ortho_axes[0]) * ortho_axes[0]
+                        ortho_axes.append(new_ax / np.linalg.norm(new_ax))
+                    elif len(ortho_axes) == 2:
+                        # Cross product of first two axes
+                        new_ax = np.cross(ortho_axes[0], ortho_axes[1])
+                        ortho_axes.append(new_ax / np.linalg.norm(new_ax))
+                
+                axes = ortho_axes
+            
+            # Determine target distance
+            if target_distance is None:
+                # Use average of current distances
+                current_distances = []
+                for pos in ligand_positions:
+                    current_distances.append(np.linalg.norm(pos - centroid))
+                target_distance = np.mean(current_distances)
+            
+            printlog('Target TM-ligand distance: {:.4f} Å'.format(target_distance), imp='')
+            
+            # Create perfect octahedron
+            # Place ligands at equal distances along the three orthogonal axes
+            new_ligand_positions = []
+            for ax in axes:
+                # Positive direction
+                new_ligand_positions.append(centroid + target_distance * ax)
+                # Negative direction
+                new_ligand_positions.append(centroid - target_distance * ax)
+            
+            # Move the TM to the centroid
+            st.xcart[i_center] = centroid
+            
+            # Move ligands to their new positions
+            for idx, new_pos in zip(ligand_order, new_ligand_positions):
+                st.xcart[idx] = new_pos
+            
+            printlog('Created perfect octahedron:', imp='')
+            printlog('  TM at centroid: ({:.4f}, {:.4f}, {:.4f})'.format(*centroid), imp='')
+            printlog('  All TM-ligand distances: {:.4f} Å'.format(target_distance), imp='')
+            
+            # Verify the octahedron
+            distances_after = []
+            for idx in ligand_order:
+                dist = np.linalg.norm(st.xcart[i_center] - st.xcart[idx])
+                distances_after.append(dist)
+            printlog('  Distance std deviation: {:.6f} Å'.format(np.std(distances_after)), imp='')
 
         st.update_xred()
 
-        dic = st.nn(i, nn, from_one = 0, silent = silent)
-        printlog('Average '+TM_name+'-'+str(unique_neighbours_els)+' distance after localization is {:.2f} A'.format(dic['av']), imp = 'n')
+        dic = st.nn(i_center, 6, from_one = 0, silent = silent)
+        printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+        
+        # Calculate and display individual distances
+        if mode in ['center_tm', 'perfect_octa']:
+            distances = []
+            for idx in ligand_order:
+                dist = np.linalg.norm(st.xcart[i_center] - st.xcart[idx])
+                distances.append(dist)
+            printlog('Individual TM-ligand distances after operation:', imp='')
+            for idx, dist in zip(ligand_order, distances):
+                printlog('  Ligand {}: {:.4f} Å'.format(idx, dist), imp='')
+            printlog('Mean: {:.4f} Å, Std: {:.6f} Å'.format(
+                np.mean(distances), np.std(distances)), imp='')
 
         st.name+='pol'+str(i+1)
-
-        if magmom and len(st.magmom) == st.natom:
-            print(st.magmom)
-            st.magmom[i] = magmom
-
 
         return st
 
@@ -3688,14 +3849,15 @@ class Structure():
 
             return st
             
-    def localize_polaron_dist(self, i_center, d, nn = 6, axis = None, direction = None, mode = 'axis_expand'):
+
+    def localize_polaron_dist(self, i_center, d=0.0, nn=6, axis=None, direction=None, mode='axis_expand', target_distance=None):
         """
-        
         localization small polaron at transition metal by adjusting TM-O distances
         with distortions
         i_center - number of transition atom, from 0
         d - shift in angstrom; positive increase TM-O, negative reduce TM-O
             or shift along *direction* 
+            (optional, not used in 'center_tm' or 'perfect_octa' modes)
         nn - number of neighbors
         axis - axis of octahedra, 0, 1, 2,
         direction - vector to shift central atom in reduced coordinates
@@ -3704,6 +3866,10 @@ class Structure():
         mode 
             'axis_expand'
             'shift_center'
+            'center_tm'        # Move only TM to centroid
+            'perfect_octa'     # NEW: Move both TM and ligands to perfect octahedron
+        target_distance - desired TM-ligand distance for 'perfect_octa' mode
+                          (if None, uses average of current distances)
 
         TODO
         Make it more general to include any ligands; now only O and F are supported
@@ -3719,7 +3885,6 @@ class Structure():
         silent = 1
         if 'n' in header.warnings or 'e' in header.warnings:
             silent = 0
-        # silent = 0
 
         np.set_printoptions(formatter={'float': '{: 6.2f}'.format})
 
@@ -3729,31 +3894,23 @@ class Structure():
 
         xc = st.xcart[i_center]
         ligand_xcart = [x-xc for x in  dic['xcart'][1:]]
-        # print(np.array(ligand_xcart))
-        ligand_order     = copy.copy(list(dic['numbers'][1:]))
+        ligand_order = copy.copy(list(dic['numbers'][1:]))
 
-
-
-        # find octahedron axes
-        pairs = []# first, second, and third pair are along first, second, and third octahedron axes
+        # Find octahedron axes (same as before)
+        pairs = []
         order = []
-        # if id(x1) in map(id, checked):
         i=0
         for i1, x1 in zip(ligand_order, ligand_xcart):
             for i2, x2 in zip(ligand_order[i+1:], ligand_xcart[i+1:]):
-                # print( x1+x2 )
-                ssum = np.linalg.norm(x1+x2 ) # for ideal octa should be zero for axis
-                if ssum < av/2: #should work even for highly distorted octahedra
+                ssum = np.linalg.norm(x1+x2 )
+                if ssum < av/2:
                     pairs.append(x1)
                     pairs.append(x2)
                     order.append(i1)
                     order.append(i2)
-                    # print(av, ssum)
             i+=1
         if len(pairs) < len(ligand_xcart):
-            #only two axes detected; i.e. pyramid; the third axis is determined relative to the center
             for i1, x1 in zip(ligand_order, ligand_xcart):
-                # if x1 in pairs:
                 if id(x1) in map(id, pairs):
                     continue
                 else:
@@ -3762,85 +3919,212 @@ class Structure():
                     order.append(i1)
                     order.append(dic['numbers'][0])
 
-        # print(np.array(pairs))
-
-        # check the order of pairs; to have first vector in positive xy quater
-        # and third vector #determine pair along z
-
         pairs_new = [0]* len(pairs)
         order_new = [0]* len(order)
-        # print(xc)
-        # print(np.array(dic['xcart'][1:]))
-        # print(np.array(pairs))
-        # print(order)
         iz = np.argmax(np.abs(np.array(pairs).dot([0,0,1]) ))//2
         pairs_new[4] = copy.copy(pairs[iz*2])
         pairs_new[5] = copy.copy(pairs[iz*2+1])
         order_new[4] = order[iz*2]
         order_new[5] = order[iz*2+1]
-        del pairs[iz*2+1] # 
+        del pairs[iz*2+1]
         del pairs[iz*2]
-        del order[iz*2+1] # 
+        del order[iz*2+1]
         del order[iz*2]        
         ix = np.argmax(np.array(pairs).dot([1,0,0]) )//2
         iy = np.argmax(np.array(pairs).dot([0,1,0]) )//2
         
-        q1 = sum(np.sign(pairs[0][0:2]))-sum(np.sign(pairs[1][0:2])) # for positive quater should be 4, for negative zero
+        q1 = sum(np.sign(pairs[0][0:2]))-sum(np.sign(pairs[1][0:2]))
         q2 = sum(np.sign(pairs[2][0:2]))-sum(np.sign(pairs[3][0:2]))
-        # print(q1, q2)
 
         if q1 > q2:
-            pairs_new[0:4] = order
+            pairs_new[0:4] = pairs
             order_new[0:4] = order
         else:
-            #swap axis 
             pairs_new[0:2] = pairs[2:4]
             pairs_new[2:4] = pairs[0:2]
             order_new[0:2] = order[2:4]
             order_new[2:4] = order[0:2]
 
-        # print(order)
-        # print(order_new)
-
-
         if mode == 'shift_center':
-            #shift along lattice vectors
-            #a12 
-            ''
-            v = np.dot( direction, st.rprimd) # cart
+            v = np.dot( direction, st.rprimd)
             vn = np.linalg.norm(v)
             dv = v/vn*d
-            # print(dv)
             st.xcart[i_center] = st.xcart[i_center] + dv
 
         if mode == 'axis_expand':
-            #expand or shring alond one of the axes by d
-            # axis = 0
-            # print(order_new[axis*2:axis*2+2])
             for i in order_new[axis*2:axis*2+2]:
                 x = st.xcart[i]
-                print(x)
                 v = xc-x
                 vn = np.linalg.norm(v)
                 if vn < 0.1:
-                    mul = 0 # central atom will not move! exatly what we need
+                    mul = 0
                 else:
                     mul = d/vn
                 dv = v * mul
-                st.xcart[i] = st.xcart[i] -  dv 
-                print(st.xcart[i] )
+                st.xcart[i] = st.xcart[i] - dv
 
-        # sys.exit()
+        if mode == 'center_tm':
+            ligand_positions = []
+            for idx in ligand_order:
+                ligand_positions.append(st.xcart[idx])
+            centroid = np.mean(ligand_positions, axis=0)
+            st.xcart[i_center] = centroid
+            printlog('Moved TM atom to geometric center of ligands', imp='')
+            printlog('TM displacement: {:.4f} Å'.format(np.linalg.norm(centroid - xc)), imp='')
+
+        # Create perfect octahedron
+        if mode == 'perfect_octa':
+            """
+            Moves both TM and ligands to create a perfect octahedron.
+            
+            Steps:
+            1. Find the centroid of all ligands (center of octahedron)
+            2. Determine the three principal axes from the octahedron
+            3. Place ligands at equal distances along these axes
+            4. Place TM at the centroid
+            
+            This creates a perfectly symmetric octahedron with all TM-ligand
+            distances equal.
+            """
+            # Get current ligand positions relative to centroid
+            ligand_positions = []
+            for idx in ligand_order:
+                ligand_positions.append(st.xcart[idx])
+            
+            # Calculate centroid (center of octahedron)
+            centroid = np.mean(ligand_positions, axis=0)
+            
+            # Calculate vectors from centroid to each ligand
+            vectors = []
+            for pos in ligand_positions:
+                vectors.append(pos - centroid)
+            
+            # Find the three principal axes using the octahedron pairs
+            # The vectors should come in opposite pairs
+            axes = []
+            used_indices = set()
+            
+            for i, v1 in enumerate(vectors):
+                if i in used_indices:
+                    continue
+                # Find the opposite ligand (approximately anti-parallel)
+                best_match = None
+                best_dot = -2.0  # Minimum possible dot product
+                for j, v2 in enumerate(vectors):
+                    if i == j or j in used_indices:
+                        continue
+                    # For perfect octahedron, opposite vectors should be anti-parallel
+                    dot_product = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+                    if dot_product < best_dot:
+                        best_dot = dot_product
+                        best_match = j
+                
+                if best_match is not None and best_dot < -0.5:  # Reasonably opposite
+                    # Average the two opposite vectors to get the axis direction
+                    axis_dir = (v1 - vectors[best_match]) / 2
+                    axes.append(axis_dir)
+                    used_indices.add(i)
+                    used_indices.add(best_match)
+            
+            # If we didn't find all 3 axes, use the original pairs
+            if len(axes) < 3:
+                printlog('Warning: Could not find 3 orthogonal axes, using original pairs', imp='')
+                axes = []
+                for idx in range(0, len(pairs_new), 2):
+                    if idx+1 < len(pairs_new):
+                        axes.append(pairs_new[idx])
+            
+            # Make axes orthogonal using Gram-Schmidt process
+            if len(axes) >= 3:
+                # Normalize and orthogonalize
+                axes_normalized = []
+                for ax in axes:
+                    if np.linalg.norm(ax) > 0.001:
+                        axes_normalized.append(ax / np.linalg.norm(ax))
+                
+                # Gram-Schmidt orthogonalization
+                ortho_axes = []
+                for ax in axes_normalized:
+                    # Subtract projections onto previous axes
+                    for oa in ortho_axes:
+                        ax = ax - np.dot(ax, oa) * oa
+                    if np.linalg.norm(ax) > 0.001:
+                        ortho_axes.append(ax / np.linalg.norm(ax))
+                
+                # Ensure we have exactly 3 orthogonal axes
+                while len(ortho_axes) < 3:
+                    # Find a vector orthogonal to existing axes
+                    if len(ortho_axes) == 1:
+                        # Create a vector orthogonal to first axis
+                        new_ax = np.array([1, 0, 0])
+                        if abs(np.dot(new_ax, ortho_axes[0])) > 0.9:
+                            new_ax = np.array([0, 1, 0])
+                        new_ax = new_ax - np.dot(new_ax, ortho_axes[0]) * ortho_axes[0]
+                        ortho_axes.append(new_ax / np.linalg.norm(new_ax))
+                    elif len(ortho_axes) == 2:
+                        # Cross product of first two axes
+                        new_ax = np.cross(ortho_axes[0], ortho_axes[1])
+                        ortho_axes.append(new_ax / np.linalg.norm(new_ax))
+                
+                axes = ortho_axes
+            
+            # Determine target distance
+            if target_distance is None:
+                # Use average of current distances
+                current_distances = []
+                for pos in ligand_positions:
+                    current_distances.append(np.linalg.norm(pos - centroid))
+                target_distance = np.mean(current_distances)
+            
+            printlog('Target TM-ligand distance: {:.4f} Å'.format(target_distance), imp='')
+            
+            # Create perfect octahedron
+            # Place ligands at equal distances along the three orthogonal axes
+            new_ligand_positions = []
+            for ax in axes:
+                # Positive direction
+                new_ligand_positions.append(centroid + target_distance * ax)
+                # Negative direction
+                new_ligand_positions.append(centroid - target_distance * ax)
+            
+            # Move the TM to the centroid
+            st.xcart[i_center] = centroid
+            
+            # Move ligands to their new positions
+            for idx, new_pos in zip(ligand_order, new_ligand_positions):
+                st.xcart[idx] = new_pos
+            
+            printlog('Created perfect octahedron:', imp='')
+            printlog('  TM at centroid: ({:.4f}, {:.4f}, {:.4f})'.format(*centroid), imp='')
+            printlog('  All TM-ligand distances: {:.4f} Å'.format(target_distance), imp='')
+            
+            # Verify the octahedron
+            distances_after = []
+            for idx in ligand_order:
+                dist = np.linalg.norm(st.xcart[i_center] - st.xcart[idx])
+                distances_after.append(dist)
+            printlog('  Distance std deviation: {:.6f} Å'.format(np.std(distances_after)), imp='')
 
         st.update_xred()
 
-        dic = st.nn(i, 6, from_one = 0, silent = silent)
+        dic = st.nn(i_center, 6, from_one = 0, silent = silent)
         printlog('Average TM-O distance after localization is {:.2f}'.format(dic['av(A-O,F)']), imp = '')
+        
+        # Calculate and display individual distances
+        if mode in ['center_tm', 'perfect_octa']:
+            distances = []
+            for idx in ligand_order:
+                dist = np.linalg.norm(st.xcart[i_center] - st.xcart[idx])
+                distances.append(dist)
+            printlog('Individual TM-ligand distances after operation:', imp='')
+            for idx, dist in zip(ligand_order, distances):
+                printlog('  Ligand {}: {:.4f} Å'.format(idx, dist), imp='')
+            printlog('Mean: {:.4f} Å, Std: {:.6f} Å'.format(
+                np.mean(distances), np.std(distances)), imp='')
 
         st.name+='pol'+str(i+1)
 
         return st
-
 
     def make_polarons(self, atoms, pol_type = 'hole', mag = None, silent = 1):
         """
@@ -3871,22 +4155,30 @@ class Structure():
         """
         Find the main polaron center from self.magmom and print delocalized parts.
 
-        Supports both scalar magmom:
-            [m1, m2, m3, ...]
+        The main polaron center is the atom whose magnetic moment is closest to
+        target_magmom. Delocalized parts are atoms with magnetic moments larger
+        than deloc_threshold, excluding the main center.
 
-        and vector/non-collinear magmom:
-            [mx1, my1, mz1, mx2, my2, mz2, ...]
-            or
-            [[mx1, my1, mz1], [mx2, my2, mz2], ...]
-
-        For vector magmom, the search is done by |m| = sqrt(mx^2 + my^2 + mz^2).
+        INPUT:
+            - target_magmom (float): expected magnetic moment of the main polaron
+            - deloc_threshold (float): minimum moment for delocalized polaron parts
+            - use_abs (bool): if True, use absolute values of magnetic moments
+            - from_one (bool): if True, print atom numbers from 1
+            - silent (bool): if True, do not print information
 
         RETURN:
-            dict with main polaron and delocalized parts
+            - dict with main polaron and delocalized parts
+
+        AUTHOR:
+            Aksyonov DA
         """
 
         if not hasattr(self, 'magmom') or self.magmom is None:
             printlog('Error! self.magmom is not found', imp='y')
+            return None
+
+        if len(self.magmom) != self.natom:
+            printlog('Error! len(self.magmom) != self.natom', imp='y')
             return None
 
         els = self.get_elements()
@@ -3895,166 +4187,112 @@ class Structure():
             printlog('Error! len(self.get_elements()) != self.natom', imp='y')
             return None
 
-        mag_raw = np.array(self.magmom, dtype=float)
-
-        vector_magmom = False
-
-        if mag_raw.ndim == 1:
-            if len(mag_raw) == self.natom:
-                mag = mag_raw
-                mag_norm = np.abs(mag_raw)
-
-            elif len(mag_raw) == 3 * self.natom:
-                mag = mag_raw.reshape((self.natom, 3))
-                mag_norm = np.linalg.norm(mag, axis=1)
-                vector_magmom = True
-
-            else:
-                printlog(
-                    f'Error! len(self.magmom) should be self.natom or 3*self.natom; '
-                    f'got len(self.magmom) = {len(mag_raw)}, self.natom = {self.natom}',
-                    imp='y'
-                )
-                return None
-
-        elif mag_raw.ndim == 2:
-            if mag_raw.shape == (self.natom, 3):
-                mag = mag_raw
-                mag_norm = np.linalg.norm(mag, axis=1)
-                vector_magmom = True
-            else:
-                printlog(
-                    f'Error! self.magmom shape should be ({self.natom}, 3); '
-                    f'got {mag_raw.shape}',
-                    imp='y'
-                )
-                return None
-
-        else:
-            printlog('Error! unsupported self.magmom format', imp='y')
-            return None
+        mag = np.array(self.magmom, dtype=float)
 
         if use_abs:
-            mag_for_search = mag_norm
+            mag_for_search = np.abs(mag)
             target = abs(target_magmom)
         else:
-            if vector_magmom:
-                # Для векторного magmom без abs используем z-компоненту,
-                # так как знак полного вектора не определён.
-                mag_for_search = mag[:, 2]
-            else:
-                mag_for_search = mag
-
+            mag_for_search = mag
             target = target_magmom
 
+        # main polaron center
         i_pol = int(np.argmin(np.abs(mag_for_search - target)))
-
-        if vector_magmom:
-            pol_magmom = mag[i_pol].tolist()
-            pol_abs_magmom = float(mag_norm[i_pol])
-            pol_magmom_print = pol_abs_magmom
-        else:
-            pol_magmom = float(mag[i_pol])
-            pol_abs_magmom = float(abs(mag[i_pol]))
-            pol_magmom_print = pol_magmom
 
         polaron = {
             'number': i_pol + 1 if from_one else i_pol,
             'index': i_pol,
             'element': els[i_pol],
-            'magmom': pol_magmom,
-            'abs_magmom': pol_abs_magmom,
+            'magmom': mag[i_pol],
+            'abs_magmom': abs(mag[i_pol]),
             'target_magmom': target_magmom,
-            'error': float(abs(mag_for_search[i_pol] - target)),
-            'vector_magmom': vector_magmom,
+            'error': abs(mag_for_search[i_pol] - target)
         }
 
         delocalized = []
 
-        for i in range(self.natom):
+        for i, m in enumerate(mag):
             if i == i_pol:
                 continue
 
-            if use_abs:
-                m_check = mag_norm[i]
-            else:
-                m_check = mag[i, 2] if vector_magmom else mag[i]
+            m_check = abs(m) if use_abs else m
 
             if m_check > deloc_threshold:
                 dist = self.distance(i1=i_pol, i2=i)
-
-                if vector_magmom:
-                    m_value = mag[i].tolist()
-                    abs_m_value = float(mag_norm[i])
-                else:
-                    m_value = float(mag[i])
-                    abs_m_value = float(abs(mag[i]))
 
                 delocalized.append({
                     'number': i + 1 if from_one else i,
                     'index': i,
                     'element': els[i],
-                    'magmom': m_value,
-                    'abs_magmom': abs_m_value,
-                    'distance': dist,
-                    'vector_magmom': vector_magmom,
+                    'magmom': m,
+                    'abs_magmom': abs(m),
+                    'distance': dist
                 })
 
-        delocalized = sorted(
-            delocalized,
-            key=lambda x: x['abs_magmom'],
-            reverse=True
-        )
+        delocalized = sorted(delocalized, key=lambda x: abs(x['magmom']), reverse=True)
+
+        if 0:#not silent:
+            printlog('Main polaron center:', imp='y')
+            printlog(
+                '  atom {0} {1}: magmom = {2:.3f} mu_B, |magmom| = {3:.3f} mu_B'.format(
+                    polaron['number'],
+                    polaron['element'],
+                    polaron['magmom'],
+                    polaron['abs_magmom']
+                ),
+                imp='y'
+            )
+
+            if len(delocalized) == 0:
+                printlog(
+                    'No delocalized parts with |magmom| > {:.3f} mu_B'.format(
+                        deloc_threshold
+                    ),
+                    imp='y'
+                )
+            else:
+                printlog(
+                    'Delocalized polaron parts with |magmom| > {:.3f} mu_B:'.format(
+                        deloc_threshold
+                    ),
+                    imp='y'
+                )
+
+                for d in delocalized:
+                    printlog(
+                        '  atom {0} {1}: magmom = {2:.3f} mu_B, |magmom| = {3:.3f} mu_B, '
+                        'distance to main polaron = {4:.2f} A'.format(
+                            d['number'],
+                            d['element'],
+                            d['magmom'],
+                            d['abs_magmom'],
+                            d['distance']
+                        ),
+                        imp='y'
+                    )
 
         if not silent:
 
             print('\nPolaron analysis:')
+            print('{:<3s} {:>5s} {:>8s} {:>8s}'.format(
+                'El', 'Atom', 'Moment', 'Dist(A)'
+            ))
 
-            if vector_magmom:
-                print('{:<3s} {:>5s} {:>9s} {:>9s} {:>9s} {:>9s} {:>8s}'.format(
-                    'El', 'Atom', 'mx', 'my', 'mz', '|m|', 'Dist(A)'
+            print('{:<3s} {:>5d} {:>8.3f} {:>8s}'.format(
+                polaron['element'],
+                polaron['number'],
+                polaron['magmom'],
+                '-'
+            ))
+
+            for d in delocalized:
+                print('{:<3s} {:>5d} {:>8.3f} {:>8.2f}'.format(
+                    d['element'],
+                    d['number'],
+                    d['magmom'],
+                    d['distance']
                 ))
 
-                print('{:<3s} {:>5d} {:>9.3f} {:>9.3f} {:>9.3f} {:>9.3f} {:>8s}'.format(
-                    polaron['element'],
-                    polaron['number'],
-                    polaron['magmom'][0],
-                    polaron['magmom'][1],
-                    polaron['magmom'][2],
-                    polaron['abs_magmom'],
-                    '-'
-                ))
-
-                for d in delocalized:
-                    print('{:<3s} {:>5d} {:>9.3f} {:>9.3f} {:>9.3f} {:>9.3f} {:>8.2f}'.format(
-                        d['element'],
-                        d['number'],
-                        d['magmom'][0],
-                        d['magmom'][1],
-                        d['magmom'][2],
-                        d['abs_magmom'],
-                        d['distance']
-                    ))
-
-            else:
-                print('{:<3s} {:>5s} {:>8s} {:>8s}'.format(
-                    'El', 'Atom', 'Moment', 'Dist(A)'
-                ))
-
-                print('{:<3s} {:>5d} {:>8.3f} {:>8s}'.format(
-                    polaron['element'],
-                    polaron['number'],
-                    polaron['magmom'],
-                    '-'
-                ))
-
-                for d in delocalized:
-                    print('{:<3s} {:>5d} {:>8.3f} {:>8.2f}'.format(
-                        d['element'],
-                        d['number'],
-                        d['magmom'],
-                        d['distance']
-                    ))
 
         return {
             'polaron': polaron,
@@ -4598,7 +4836,7 @@ class Structure():
 
 
 
-    def jmol(self, shift = None, r = 0, show_voids = False, rep = None, program = 'jmol'):
+    def jmol(self, shift = None, r = 0, show_voids = False, rep = None, program = 'jmol', filename = None):
         """open structure in Jmol or vesta, ovito
         
         INPUT:
@@ -4616,8 +4854,31 @@ class Structure():
             'jmol'
             'vesta'
             'ovito'
+        filename (str) - open this file instead of a structure written from self.
+            Used by CalculationVasp.visualize_grid().
         
         """
+        if filename:
+            quoted = '"' + str(filename) + '"'
+            if 'jmol' in program:
+                if not header.PATH2JMOL:
+                    printlog('Error! PATH2JMOL is not set', imp = 'Y')
+                    return
+                runBash(header.PATH2JMOL+' '+quoted, detached = True)
+            elif 'vesta' in program:
+                if not header.PATH2VESTA:
+                    printlog('Error! PATH2VESTA is not set', imp = 'Y')
+                    return
+                runBash(header.PATH2VESTA+' '+quoted, detached = True)
+            elif 'ovito' in program:
+                if not header.PATH2OVITO:
+                    printlog('Error! PATH2OVITO is not set', imp = 'Y')
+                    return
+                runBash(header.PATH2OVITO+' '+quoted, detached = True)
+            else:
+                printlog('Error! Unknown program', program, imp = 'Y')
+            return
+
         st = copy.deepcopy(self)
 
         if rep:

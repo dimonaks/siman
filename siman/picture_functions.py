@@ -357,7 +357,7 @@ def plot_mep(atom_pos, mep_energies, image_name = None, filename = None, show = 
         fitplot_args['xlim'] = (-0.05, None  )
 
     if 'xlabel' not in fitplot_args:
-        fitplot_args['xlabel'] = 'Reaction coordinate (${\\rm \AA}$)'
+        fitplot_args['xlabel'] = 'Reaction coordinate (${\\rm \\AA}$)'
 
 
     if 'ylabel' not in fitplot_args:
@@ -1442,9 +1442,9 @@ def plot_conv(list_of_calculations = None, calc = None,
         #print str(l[0])+'\n'+str(l[1])+'\n'+str(l[2])
 
 
-        xlabel = "Sizes, $\AA$"
+        xlabel = "Sizes, $\\AA$"
         ylabel = "Impurity energy, meV"
-        ylabel2 = "Impurity volume, $\AA^3$"
+        ylabel2 = "Impurity volume, $\\AA^3$"
         plt.figure()
         plt.title(str(name)+' other cells')
         plt.ylabel(ylabel)
@@ -1490,7 +1490,7 @@ def plot_conv(list_of_calculations = None, calc = None,
 
 
 
-        xlabel = "Distance between atoms, $\AA$"
+        xlabel = "Distance between atoms, $\\AA$"
         ylabel = "Interaction energy, meV"
         plt.figure()
         
@@ -1563,7 +1563,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         power = 3
 
         fit_ve = fit_and_plot(gb_volumes, e_gbs_init,  gb_volumes, e_gbs, power, 
-            name, "Grain boundary expansion (m$\AA$)", "Grain boundary energy (mJ/m$^2$)", 
+            name, "Grain boundary expansion (m$\\AA$)", "Grain boundary energy (mJ/m$^2$)", 
             image_name+"_fit_ve")
 
 
@@ -1581,7 +1581,7 @@ def plot_conv(list_of_calculations = None, calc = None,
 
 
         fit1 = fit_and_plot(pressures_init, gb_volumes,  pressures, gb_volumes, 1,
-            name, "External pressure (GPa)", "Grain boundary expansion (m$\AA$)", 
+            name, "External pressure (GPa)", "Grain boundary expansion (m$\\AA$)", 
             image_name+"_pv", lines = 'xy')
         #print fit1
         pulay = - calc[id].bulk_extpress
@@ -1616,7 +1616,7 @@ def plot_conv(list_of_calculations = None, calc = None,
 
         power = 3
         fit_ve = fit_and_plot(gb_volumes, e_gbs_init,  gb_volumes, e_gbs, power, 
-            name, "Excess volume ($m\AA$)", "Twin energy ($mJ/m^2$)", 
+            name, "Excess volume ($m\\AA$)", "Twin energy ($mJ/m^2$)", 
             image_name+"_fit_ve")
 
         vgb_min  = fit_ve.deriv().r[power-2]
@@ -1640,7 +1640,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         pulay = 500
 
         fit_ve = fit_and_plot(volumes, init_energies,  volumes, energies, power, 
-            name, "Volume ($\AA^3$)", "Energy  sigma->0 ($eV$)", 
+            name, "Volume ($\\AA^3$)", "Energy  sigma->0 ($eV$)", 
             image_name+"_fit_ve")
         
         Vmin  = fit_ve.deriv().r[power-2] # minimum volume at the minimum energy
@@ -1654,7 +1654,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         
 
         fit_pv = fit_and_plot(pressures_init, volumes,  pressures, volumes, 1,
-            name, "External pressure ($MPa$)", "Volume of cell ($\AA^3$)", 
+            name, "External pressure ($MPa$)", "Volume of cell ($\\AA^3$)", 
             image_name+"_fit_pv")
 
 
@@ -1698,7 +1698,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         plt.title(name)
         plt.plot(kpoints, energies,'bo-')
         plt.ylabel("Total energy (eV)")
-        plt.xlabel("KSPACING along 3rd recip. vector ($\AA ^{-1}$)")
+        plt.xlabel("KSPACING along 3rd recip. vector ($\\AA ^{-1}$)")
         plt.twinx()
         plt.plot(kpoints,times,'ro-')
         plt.ylabel("Elapsed time (min)")
@@ -1743,7 +1743,7 @@ def plot_conv(list_of_calculations = None, calc = None,
             plt.plot(clist, Z[i],'o-',label='a='+str(alist[i]))
         plt.legend()
         plt.ylabel("Total energy (eV)")
-        plt.xlabel("c parameter ($\AA$)")
+        plt.xlabel("c parameter ($\\AA$)")
         plt.savefig('images/'+str(conv[0])+'c')
 
         plt.figure()
@@ -1752,7 +1752,7 @@ def plot_conv(list_of_calculations = None, calc = None,
             plt.plot(alist, Zinv[j],'o-',label='c='+str(clist[j]))
         plt.legend()
         plt.ylabel("Total energy (eV)")
-        plt.xlabel("a parameter ($\AA$)")
+        plt.xlabel("a parameter ($\\AA$)")
         plt.savefig('images/'+str(conv[0])+'a')
 
         #Make contour
@@ -1761,7 +1761,7 @@ def plot_conv(list_of_calculations = None, calc = None,
         cbar = plt.colorbar(cf)
         cbar.ax.set_ylabel('Energy (eV)')
 
-        plt.xlabel('$a$ ($\AA$)')
+        plt.xlabel('$a$ ($\\AA$)')
         plt.ylabel('$c/a$')
 
         plt.legend()
