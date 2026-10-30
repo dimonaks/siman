@@ -304,7 +304,7 @@ def table_geometry(st_list = None, cl_list = None, show_angle = None, exp = None
         angle = ''
 
 
-    caption = "Lattice parameters (\AA), volume (\AA$^3$), and space group (spg)."
+    caption = "Lattice parameters (\\AA), volume (\\AA$^3$), and space group (spg)."
     return latex_table(rows, caption, 'tab:const', 'Structure & src & $a$ & $b$ & $c$ &'+angle+'& Vol. & spg' )
 
 def table_potentials(cl_list):

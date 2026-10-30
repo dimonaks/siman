@@ -3539,7 +3539,7 @@ def alkali_bar2(m, param = None, option = '', plot_type = 'bar', suf = '', reind
 
 
         # m_dAO_IS_piv.columns.name = 'A-(O,F) distance, $\AA$'
-        m_dAO_IS_piv.index.name =  'Change of A-(O,F) distance, $\AA$'
+        m_dAO_IS_piv.index.name =  'Change of A-(O,F) distance, $\\AA$'
         # print(m_dAO_IS_piv)  
 
 
@@ -3656,7 +3656,7 @@ def plot_UvsD(it1, it2, it_b, ise, sc_reg, n_imag, ise_b = None, v_b = None, suf
 
     if 1:
         fit_and_plot(U1 = (scales, U1, linetypes[0], legend[0]), U2 = (scales, U2, linetypes[1], legend[1]), 
-            image_name = 'figs/strain_'+suf, legend = legend[2], ylabel = 'Redox potential, V', xlabel = 'Compression, $\delta$, %',
+            image_name = 'figs/strain_'+suf, legend = legend[2], ylabel = 'Redox potential, V', xlabel = 'Compression, $\\delta$, %',
             ylim = ylim,
             ver_lines = ver_lines)
 
@@ -3693,7 +3693,7 @@ def plot_UvsD(it1, it2, it_b, ise, sc_reg, n_imag, ise_b = None, v_b = None, suf
                     # ld2 = (scales, np.array(sums['Li-O']) - np.array(sums['Li-O(b)']), 'g-', 'd Li-O'), 
 
 
-            image_name = 'figs/AO_dist_'+suf, legend = 'best', ncol = 1, ylabel = 'average A-O, A', xlabel = 'Compression, $\delta$, %', ylim = None)
+            image_name = 'figs/AO_dist_'+suf, legend = 'best', ncol = 1, ylabel = 'average A-O, A', xlabel = 'Compression, $\\delta$, %', ylim = None)
 
 
 

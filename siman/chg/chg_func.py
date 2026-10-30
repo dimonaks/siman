@@ -227,7 +227,7 @@ def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
 
     if plot:
         # print(z_coord, elst)
-        fit_and_plot(a=(z_coord, elst, '-b'), xlabel = 'Z coordinate, $\AA$', 
+        fit_and_plot(a=(z_coord, elst, '-b'), xlabel = 'Z coordinate, $\\AA$', 
             ylabel = 'Potential, eV', filename = 'figs/'+cl.id[0]+'_pot')
 
     return z_coord, elst

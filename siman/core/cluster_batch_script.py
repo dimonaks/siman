@@ -1,6 +1,6 @@
 # Copyright (c) Siman Development Team.
 # Distributed under the terms of the GNU License.
-import os, sys
+import os, sys, re
 from siman.small_functions import list2string,is_list_like, makedir
 from siman import header
 from siman.header import printlog
@@ -334,8 +334,168 @@ def run_command(cl, option, name, parrallel_run_command,
     return
 
 
+# VASPsol files. Short keys do not contain each other as prefixes except
+# where a longer key is matched first (p vs phi/phs, s vs ss/si/sd/sc).
+#
+# Files written for both ISOL=1 and ISOL=2:
+#   PHI       electrostatic potential, should be the same as LOCPOT
+#   PHI_SOLV  electrostatic potential from the solvent
+#   VSOLV     cavity correction to the KS potential
+#   RHOB      bound charge density
+#   RHOION    electrolyte ionic charge density
+# Files written only for ISOL=1:
+#   S         solvent cavity
+# Files written only for ISOL=2:
+#   ELOC      electrostatic field in the z direction
+#   P         solvent polarization density in the z direction
+#   SVDW      vdW cavity
+#   SSOLV     solvent cavity
+#   SION      ionic cavity
+#   SDIEL     dielectric cavity
+#   SCAV      cavity used for the cavity-formation free energy;
+#             equal to SSOLV by default unless R_CAV is specified
+VASPSOL_SAVE_KEYS = (
+    ('phis', 'PHI_SOLV'),
+    ('phs', 'PHI_SOLV'),
+    ('phi', 'PHI'),
+    ('vs', 'VSOLV'),
+    ('rb', 'RHOB'),
+    ('ri', 'RHOION'),
+    ('el', 'ELOC'),
+    ('ss', 'SSOLV'),
+    ('si', 'SION'),
+    ('sd', 'SDIEL'),
+    ('sc', 'SCAV'),
+    ('vd', 'SVDW'),
+    ('s', 'S'),
+    ('p', 'P'),
+)
+VASPSOL_FILENAME = dict(VASPSOL_SAVE_KEYS)
+VASPSOL_ALL = list(dict.fromkeys(filename for _, filename in VASPSOL_SAVE_KEYS))
+
+
+def parse_savesol(savesol):
+    """
+    Parse the savesol tag. Same idea as savefile: a string of keys selects
+    which files are moved to ``{version}.{FILE}``. Everything else in the
+    VASPsol list is removed.
+
+    None is left untouched (no lines are written).
+    '' saves nothing and deletes every known VASPsol file.
+    'all' or '*' saves every file below.
+
+    Keys, or the filenames themselves (comma, space, or semicolon separated).
+
+    Files written for both ISOL=1 and ISOL=2:
+
+        phi        PHI       electrostatic potential, should be the same as LOCPOT
+        phs / phis PHI_SOLV  electrostatic potential from the solvent
+        vs         VSOLV     cavity correction to the KS potential
+        rb         RHOB      bound charge density
+        ri         RHOION    electrolyte ionic charge density
+
+    Files written only for ISOL=1:
+
+        s          S         solvent cavity
+
+    Files written only for ISOL=2:
+
+        el         ELOC      electrostatic field in the z direction
+        p          P         solvent polarization density in the z direction
+        vd         SVDW      vdW cavity
+        ss         SSOLV     solvent cavity
+        si         SION      ionic cavity
+        sd         SDIEL     dielectric cavity
+        sc         SCAV      cavity used for calculating the cavity formation
+                             free energy, equal to SSOLV by default unless
+                             R_CAV is specified
+
+    '!' after a key copies the file instead of moving it.
+    Every kept file is gzip-compressed, the same ``gzip -f`` used for CHGCAR,
+    so ``VSOLV`` becomes ``1.VSOLV.gz``. '@' is accepted and does not change that.
+    Examples: 'phi', 'phirb', 'PHI,RHOB,S', 'phi!', ['PHI', 'RHOION'].
+
+    Returns None, or a list of (filename, copy, gzip). gzip is always True.
+    """
+    if savesol is None:
+        return None
+    if isinstance(savesol, (list, tuple)):
+        text = ','.join(str(item) for item in savesol)
+    else:
+        text = str(savesol).strip()
+    if text.lower() in ('all', '*'):
+        return [(name, False, True) for name in VASPSOL_ALL]
+    if re.search(r'[\s,;]+', text):
+        chosen = []
+        for token in re.split(r'[\s,;]+', text):
+            if token:
+                item = _savesol_token(token)
+                if item:
+                    chosen.append(item)
+        return chosen
+
+    keys = sorted(VASPSOL_FILENAME, key=len, reverse=True)
+    chosen = []
+    i = 0
+    n = len(text)
+    while i < n:
+        matched = False
+        for key in keys:
+            if text.startswith(key, i):
+                j = i + len(key)
+                copy = False
+                gzip = True
+                while j < n and text[j] in '!@':
+                    if text[j] == '!':
+                        copy = True
+                    else:
+                        gzip = True
+                    j += 1
+                chosen.append((VASPSOL_FILENAME[key], copy, gzip))
+                i = j
+                matched = True
+                break
+        if not matched:
+            printlog('Warning! savesol: skipped unknown character', repr(text[i]), 'in', text)
+            i += 1
+    return chosen
+
+
+def _savesol_token(token):
+    copy = '!' in token
+    gzip = True
+    name = token.replace('!', '').replace('@', '')
+    if not name:
+        return None
+    if name.lower() in VASPSOL_FILENAME:
+        return (VASPSOL_FILENAME[name.lower()], copy, gzip)
+    upper = name.upper()
+    if upper in VASPSOL_ALL:
+        return (upper, copy, gzip)
+    printlog('Warning! Unknown savesol entry', token)
+    return None
+
+
+def _write_savesol(f, savesol, pre):
+    spec = parse_savesol(savesol)
+    if spec is None or f is None:
+        return
+    saved = set()
+    for filename, copy, gzip in spec:
+        saved.add(filename)
+        dest = pre + '.' + filename
+        cmd = 'cp' if copy else 'mv'
+        f.write('if [ -f {0} ]; then {1} {0} {2}; fi\n'.format(filename, cmd, dest))
+        if gzip:
+            f.write('if [ -f {0} ]; then gzip -f {0}; fi\n'.format(dest))
+    remove = [name for name in VASPSOL_ALL if name not in saved]
+    if remove:
+        f.write('rm -f ' + ' '.join(remove) + '\n')
+    printlog('VASPsol files to be saved:', ','.join(name for name, _, _ in spec) or '(none)')
+
+
 def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True, 
-    rm_chg_wav = 'cw', f = None    ):    
+    rm_chg_wav = 'cw', f = None, savesol = None):    
     """3. Out files saving block
         
         rm_chg_wav - if True than CHGCAR and WAVECAR are removed
@@ -362,6 +522,8 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
 
             '!' follwed after key, e.g. 'c!' means that the CHGCAR will saved as well
             '@' follwed after the key, e.g. 'c@' means that the CHGCAR will be zipped
+
+        savesol - see parse_savesol(). None does not touch VASPsol files.
     """   
     printlog('The value of savefile is', savefile)
     
@@ -433,7 +595,8 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
                     else: 
                         header.clean_vasp_files.append(files_key_dict[i])                                                   
 
-
+            if savesol is not None:
+                _write_savesol(f, savesol, pre)
 
             if 0:
                 'obsolete'
@@ -478,7 +641,8 @@ def name_mod_U_last(cl, f):
 def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_flag = True,
     final_analysis_flag = True, penult_set_name = None, 
     curset = None, f = None, prevcalcver = None, option = None,
-    input_geofile = None, parrallel_run_command = None, mpi = False, corenum = 1):
+    input_geofile = None, parrallel_run_command = None, mpi = False, corenum = 1,
+    savesol = None):
     """
     cl (Calculation) - calculation object
     v (int) - version
@@ -558,7 +722,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
             if 'c' in savefile and 'c!' not in savefile:
                 savefile = savefile.replace('c', 'c!') # copy chargcar
             contcar_file = mv_files_according_versions(cl, savefile, v, 
-                name_mod = name_mod, write = write, rm_chg_wav = '', f = f)
+                name_mod = name_mod, write = write, rm_chg_wav = '', f = f, savesol = savesol)
         
 
 
@@ -607,7 +771,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
             run_command(cl, option = option, name = cl.name+name_mod, 
                 parrallel_run_command = parrallel_run_command, mpi = mpi, corenum = corenum,  f = f)
 
-            contcar_file = mv_files_according_versions(cl, savefile, version, name_mod = name_mod, f = f)
+            contcar_file = mv_files_according_versions(cl, savefile, version, name_mod = name_mod, f = f, savesol = savesol)
         
             cl.associated_outcars.append( v + name_mod +  ".OUTCAR"  )
 
@@ -640,7 +804,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
 
 
         contcar_file = mv_files_according_versions(cl, savefile, version, 
-            write = write, name_mod = name_mod, rm_chg_wav = rm_chg_wav, f = f)
+            write = write, name_mod = name_mod, rm_chg_wav = rm_chg_wav, f = f, savesol = savesol)
 
         cl.associated_outcars.append( version + name_mod +  ".OUTCAR"  )
 
@@ -709,7 +873,7 @@ def u_ramp_loop(cl, ver_prefix = '', subfolders = None, run_name_prefix = None, 
 def write_footer(cl, set_mod = '', run_tool_flag = True, 
     savefile = None, final_analysis_flag = True, neb_flag = None, f = None, mpi = False, 
     corenum = 1, option = None,parrallel_run_command=None, output_files_names = None,
-    path_to_job = '', scrdir = ''):
+    path_to_job = '', scrdir = '', savesol = None):
     """footer"""
     
 
@@ -863,7 +1027,7 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
             # sys.exit()
 
             contcar_file = mv_files_according_versions(cl, savefile, '100', 
-                name_mod = name_mod, write = True, rm_chg_wav = rm_chg_wav, f = f)
+                name_mod = name_mod, write = True, rm_chg_wav = rm_chg_wav, f = f, savesol = savesol)
 
         # sys.exit()
 
@@ -903,7 +1067,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
     output_files_names = None,
     mode = None,
     batch_script_filename = None, mpi = False, corenum = None,
-    path_to_job = '', scrdir = ''
+    path_to_job = '', scrdir = '', savesol = None
     ):
     """
     Create job script for cluster for different calculation types, such as volume scan, neb, and so on.
@@ -915,6 +1079,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
             - 'master'       - run serial on master 
         - prevcalcver (int) - version of previous calc; for the first version equal to None
         - savefile (str) - 'cdawx', where c-charge, d-dos, a- AECCAR, w-wavefile, x-xml
+        - savesol - VASPsol files to keep; see parse_savesol(). None leaves them as VASP wrote them.
         - schedule_system (str) - type of job scheduling system:
             - 'PBS' 
             - 'SGE' 
@@ -932,7 +1097,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
     
     f = open(batch_script_filename, 'a', newline = '')
 
-    printlog("The following output files will be saved: savefile =", savefile,)
+    printlog("The following output files will be saved: savefile =", savefile, "savesol =", savesol)
 
     if self.calculator == 'vasp':
         parrallel_run_command = self.cluster.get('vasp_com')
@@ -974,6 +1139,8 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
                 f.write('cp '+curset.ise+'.INCAR  INCAR\n')
                 if hasattr(curset, 'savefile') and len(curset.savefile) > 0:
                     savefile = curset.savefile 
+                if hasattr(curset, 'savesol'):
+                    savesol = curset.savesol 
 
 
             penult_set_name = sets[-2].ise
@@ -1003,7 +1170,8 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
                 penult_set_name = penult_set_name, curset = curset, 
                 f = f, prevcalcver = prevcalcver, option = option,
                 input_geofile = input_geofile, 
-                parrallel_run_command = parrallel_run_command, mpi = mpi, corenum = corenum)
+                parrallel_run_command = parrallel_run_command, mpi = mpi, corenum = corenum,
+                savesol = savesol)
 
             
 
@@ -1017,7 +1185,8 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
             contcar_file, subfolders = write_footer(self, set_mod = set_mod, run_tool_flag = run_tool_flag, savefile = savefile,
              final_analysis_flag = final_analysis_flag, neb_flag = neb_flag, f = f, mpi = mpi, corenum = corenum, 
              option = option, parrallel_run_command=parrallel_run_command, 
-             output_files_names = output_files_names, path_to_job = path_to_job, scrdir = scrdir)
+             output_files_names = output_files_names, path_to_job = path_to_job, scrdir = scrdir,
+             savesol = savesol)
 
         
         if k < nsets-1 and contcar_file:
@@ -1034,13 +1203,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
     else:
         out = None
     # print 'write_sge() out=', out
-    
-    if self.calculator == 'gaussian':
-        out = None # currently output name is set in  cl.set_output_filenames
-
-
-
     f.close()
     
-    return  out #return OUTCAR name
+    return  out#return OUTCAR name
     

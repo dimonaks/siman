@@ -105,7 +105,7 @@ def write_lat_in(st, params, dirpath):
 
                 # print(elan)
                 active_elements.append(el)
-                elann = re.split('(\d+)',elan)
+                elann = re.split('(\\d+)',elan)
                 printlog('Exctracting symmetry position of Na ', elann)
                 if len(elann) > 2:
                     ela = elann[0]
