@@ -208,10 +208,11 @@ def inherit_ngkpt(it_to, it_from, inputset):
     return
 
 
-def choose_cluster(cluster_name, corenum, nodes):
+def choose_cluster(cluster_name, corenum, nodes, cluster_settings = None):
     """
     *cluster_name* should be in header.project_conf.CLUSTERS dict
     nodes - number of nodes
+    cluster_settings (dict) - override settings of the selected cluster for this calculation
     """
 
     if cluster_name in header.CLUSTERS:
@@ -224,8 +225,24 @@ def choose_cluster(cluster_name, corenum, nodes):
         printlog('Attention!, cluster', cluster_name, 'is not found, using default', header.DEFAULT_CLUSTER)
         clust = header.CLUSTERS[header.DEFAULT_CLUSTER]
 
+    clust = copy.deepcopy(clust)
     clust['name'] = cluster_name
-    header.cluster = clust # dict
+    if cluster_settings is not None:
+        if not isinstance(cluster_settings, dict):
+            raise TypeError('cluster_settings should be a dictionary')
+
+        allowed_keys = {'address', 'homepath', 'schedule', 'corenum', 'nodes',
+                        'vasp_com', 'gaussian_command', 'qe_command', 'pythonpath', 'modules',
+                        'shell', 'pe', 'walltime', 'queue', 'partition', 'memory', 'procmemgb',
+                        'feature', 'any_commands', 'scratch', 'sshpass', 'path2pass', 'name'}
+        allowed_keys.update(clust)
+        unknown_keys = set(cluster_settings) - allowed_keys
+        if unknown_keys:
+            raise ValueError('Unknown cluster_settings keys: ' + ', '.join(sorted(map(repr, unknown_keys))))
+
+        clust.update(copy.deepcopy(cluster_settings))
+
+    header.cluster = clust
     header.cluster_address = clust['address']
     header.CLUSTER_ADDRESS = clust['address']
     
@@ -319,7 +336,8 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
     cluster = None, cluster_home = None,
     override = None,
     ssh_object = None,
-    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True, update_set = None
+    run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True, update_set = None,
+    cluster_settings = None
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -445,6 +463,10 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         - u_ramping_region - used with 'u_ramping'=tuple(u_start, u_end, u_step)
 
 
+        - cluster_settings (dict) - override settings of the selected cluster; missing keys are taken from header.CLUSTERS.
+                                    Unknown keys raise ValueError; a non-dictionary value raises TypeError.
+
+
         - cluster_home - override value of header.CLUSTERS
 
         cee_args - arguments for taking files from cee database; see get_structure_from_cee_database
@@ -521,7 +543,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         # if header.copy_to_cluster_flag:
         # print(params["nodes"])
 
-        choose_cluster(cluster, corenum, params.get("nodes"))
+        choose_cluster(cluster, corenum, params.get("nodes"), cluster_settings = cluster_settings)
         
         if run:
             prepare_run()
@@ -933,7 +955,9 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
                     pname = st.name
 
                 st = copy.deepcopy(st)
-                st.magmom = [None] # added on 24.06.2017
+                curset = varset[inputset] if inputset in varset else None
+                if not hasattr(curset, 'magmom') or curset.magmom is None:
+                    st.magmom = [None]
 
                 write_xyz(st, file_name = st.name+'_used_for_scaling', path = xyz_folder)
                 # print(scale_region)
