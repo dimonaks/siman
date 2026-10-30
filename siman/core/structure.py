@@ -283,25 +283,28 @@ class Structure():
 
     def exchange_axes_with_atoms(self, i1_r, i2_r):
         """
-        Exchange axes and rotate atoms
+        Exchange lattice axes along with the corresponding atomic coordinates.
 
-        INPUT:
-            i1_r
+        This operation rotates or reflects the entire atomic structure (both cell 
+        vectors and atom positions) to re-orient the system along new coordinate axes.
         
+        INPUT:
+            i1_r - (int) 0, 1, or 2 representing the initial axis to change
+            i2_r - (int) 0, 1, or 2 representing the final target axis
         """
         st = copy.deepcopy(self)
-        xc = copy.deepcopy(self.xcart)
-        xr = copy.deepcopy(self.xred)
-        r = copy.deepcopy(self.rprimd)
+        
+        # Swapping cell vectors
+        st.rprimd[i1_r], st.rprimd[i2_r] = st.rprimd[i2_r].copy(), st.rprimd[i1_r].copy()
 
-        for i in range(0,st.natom):
-            st.xcart[i][i1_r] = xc[i][i2_r] 
-            st.xcart[i][i2_r] = xc[i][i1_r] 
+        # Safely swapping coordinate components for each atom
+        for i in range(st.natom):
+            # Safe Python swap that works perfectly for both lists and NumPy arrays
+            st.xcart[i][i1_r], st.xcart[i][i2_r] = st.xcart[i][i2_r], st.xcart[i][i1_r]
+            st.xred[i][i1_r], st.xred[i][i2_r] = st.xred[i][i2_r], st.xred[i][i1_r]
 
-            st.xred[i][i1_r] = xr[i][i2_r] 
-            st.xred[i][i2_r] = xr[i][i1_r] 
-
-        # st.update_xred()
+        # Explicitly ensure consistency between cartesian and fractional coordinates
+        st.update_xred() 
 
         return st
 
@@ -1067,6 +1070,8 @@ class Structure():
 
 
 
+
+
     def pvec(self):
         """
         print primitive vectors in formatted way
@@ -1419,6 +1424,30 @@ class Structure():
         st = self
         # print()
         return np.linalg.norm( np.cross(st.rprimd[0] , st.rprimd[1]) )
+
+    def get_slab_range(self, axis = 2):
+        """
+        Returns slab's xcart range along normal to surface 
+
+        INPUT:
+            axis (integer) - axis normal to surface
+        
+        RETURN:
+            slab_range (list of floats)  returns a list of min and max value in A of slab range [zmin, zmax]
+
+        author - A. Boev 
+
+        """
+
+        xc_list = self.xcart
+        xc_i_list = [i[axis] for i in xc_list]
+
+        xc_i_min = min(xc_i_list)
+        xc_i_max = max(xc_i_list)
+
+        return [xc_i_min, xc_i_max]
+
+
 
 
     def printme(self):
@@ -1998,6 +2027,8 @@ class Structure():
             ''
             # print ('No!')
 
+        if hasattr(st, 'select') and any(st.select):
+            del st.select[i]
 
 
         st.natom-=1
@@ -2163,6 +2194,45 @@ class Structure():
 
         # print(st.get_elements())
         return st
+
+    def remove_atoms_randomly(self, el, n_at2remove, clear_magmom = 1):
+        """
+        Randomly remove a specified number of atoms of a given element type.
+
+        This method identifies all atoms of element 'el' and randomly selects 
+        'n_at2remove' atoms to delete from the structure using a quasi-random 
+        Sobol sequence.
+
+        INPUT:
+            el (str) - element name to be removed (e.g., 'O', 'Li')
+            n_at2remove (int) - total number of atoms of this element to remove
+            clear_magmom (int/bool) - if 1 (default), clears the magnetic moments list
+
+        RETURN:
+            st_new (Structure) - updated structure with selected atoms removed
+
+        AUTHOR:
+            Anton Boev
+        """
+
+        from scipy.stats import qmc
+        
+        el_nums_list = self.get_elements_by_el_name(el)
+
+        sampler = qmc.Sobol(d=1, scramble=True)
+        sobol_vals = sampler.random(n_at2remove).flatten()  
+        indices = (sobol_vals * len(el_nums_list)).astype(int) 
+    
+        atoms_to_remove = []
+        for i in indices:
+            if i not in atoms_to_remove:
+                atoms_to_remove.append(i)
+            if len(atoms_to_remove) == n_at2remove:
+                break
+        st_new = self.remove_atoms(atoms_to_remove, clear_magmom = clear_magmom)
+        printlog('remove_atoms_randomly(): Atoms', atoms_to_remove, 'were removed')
+
+        return st_new
 
 
     def del_layers(self, xred_range = None, xcart_range = None):
@@ -2370,11 +2440,15 @@ class Structure():
 
 
 
-    def add_vacuum(self, vector_i, thickness):
+    def add_vacuum(self, vector_i, thickness, direction = '+'):
         """
         Allows to add or remove vacuum along one of the rprimd vectors
         vector_i (int) - index of vector along which vacuum should be added 0, 1, 2
         thickness (float) - thickness of added (positive) or removed (negative) vacuum 
+
+        direction (str, optional) - Direction where vacuum is added:
+                '+' (default) -> vacuum added "above" (positive direction of lattice vector)
+                '-' -> vacuum added "below" (negative direction of lattice vector)
 
 
         TODO:
@@ -2382,11 +2456,23 @@ class Structure():
 
         """
         st = copy.deepcopy(self)
-        v = st.rprimd[vector_i]
+        v = st.rprimd[vector_i].copy()
         v_l = np.linalg.norm(v)
         new_len = v_l+thickness
 
+        # scale the vector
         st.rprimd[vector_i]*=new_len/v_l
+
+        if direction == '+':
+            # default: do nothing, vacuum above
+            pass
+        elif direction == '-':
+            # shift atoms up by thickness
+            shift_vec = st.rprimd[vector_i] - v
+            st = st.shift_atoms(vector_cart=shift_vec, return2cell=0)
+        else:
+            raise ValueError("direction must be '+' or '-'")
+ 
 
         st.update_xred()
         st.name+='_vac'
@@ -2602,29 +2688,50 @@ class Structure():
 
 
 
-    def shift_atoms(self, vector_red = None, vector_cart = None, return2cell = 1):
+    def shift_atoms(self, vector_red = None, vector_cart = None, return2cell = 1, atoms_to_shift = None):
         """
-        Shift all atoms according to *vector_red* or *vector_cart*
+        Shift atoms according to *vector_red* or *vector_cart*
         Use *return2cell* if atoms coordinates should be inside cell
+        atoms_to_shift - list of atoms to shift for example if you need to shift layers or part of slab in interface
         """
         st = copy.deepcopy(self)
-        if vector_cart is not None:
-            vec_cart = np.array(vector_cart)
-            for xc in st.xcart:
-                xc+=vec_cart
-            st.update_xred()
-            
-        elif vector_red is not None:
-            vec = np.array(vector_red)
-            for xr in st.xred:
-                xr+=vec
-            st.xred2xcart()
+
+        #Shift all atoms
+        if not atoms_to_shift:
+            if vector_cart is not None:
+                vec_cart = np.array(vector_cart)
+                for xc in st.xcart:
+                    xc+=vec_cart
+                st.update_xred()
+                
+            elif vector_red is not None:
+                vec = np.array(vector_red)
+                for xr in st.xred:
+                    xr+=vec
+                st.xred2xcart()
+        
+        #Shift part of atoms
+        else:
+            if vector_cart is not None:
+                vec_cart = np.array(vector_cart)
+                for i in atoms_to_shift:
+                    xc=st.xcart[i]
+                    xc+=vec_cart
+                st.update_xred()
+                
+            elif vector_red is not None:
+                vec = np.array(vector_red)
+                for i in atoms_to_shift:
+                    xr=st.xred[i]
+                    xr+=vec
+                st.xred2xcart()
 
         
         if return2cell:
             st = st.return_atoms_to_cell()
         return st
 
+    
 
     def shake_atoms(self, amplitude = 0.1, el_list = None, ):
         """

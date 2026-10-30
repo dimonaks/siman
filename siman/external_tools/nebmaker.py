@@ -52,7 +52,7 @@ else:
 			neb.interpolate(mic=True)
 		else:
 			neb.interpolate('idpp', mic=True)
-			dir_names = ['0'+str(i) if i < 10 else str(i) for i in range(len(images))]
+		dir_names = ['0'+str(i) if i < 10 else str(i) for i in range(len(images))]
 		for i, image in zip(dir_names,neb.images):
 			if not os.path.isdir(i):
 				os.mkdir(i)

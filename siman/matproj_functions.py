@@ -421,8 +421,7 @@ def calc_bulk_list2(data_list, suf = '', ise = '8m', status = None, up =None, co
     
     """
 
-    if suf != ''
-    : suf = f'.{suf}'
+    if suf != ''    : suf = f'.{suf}'
 
 
     for i in data_list:

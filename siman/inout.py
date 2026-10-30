@@ -1850,10 +1850,7 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
                 de_each_md_list.append(de_each_md)
 
-            if "kinetic energy EKIN   =" in line:
-                self.ekin = float(line.split()[4])
-                self.list_ekin.append(self.ekin)
-
+          
             if "(temperature" in line:
                 self.list_temp.append(float(line.split()[-2]))
 
@@ -1875,6 +1872,10 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
                 self.etotal = float(line.split()[4]) #Total energy in MD simulation, free + kinetic
                 self.list_etotal.append(self.etotal)
             
+            if "kinetic energy EKIN   =" in  line:
+                self.ekin = float(line.split()[4]) # Kinetic energy in MD simulation
+                self.list_ekin.append(self.ekin)
+
 
 
 
@@ -1948,14 +1949,17 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
             if "Iteration" in line:
-                self.mdstep = int(line.split('(')[0].split()[2].strip())
-                iterat +=1
-                # print self.mdstep
-                # print line
-                if mdstep_old != self.mdstep:
-                    nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
-                niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
-                mdstep_old = self.mdstep
+                try:
+                    self.mdstep = int(line.split('(')[0].split()[2].strip())
+                    iterat +=1
+                    # print self.mdstep
+                    # print line
+                    if mdstep_old != self.mdstep:
+                        nscflist.append( niter ) # add to list number of scf iterations during mdstep_old
+                    niter = int(line.split(')')[0].split('(')[-1].strip()) #number of scf iterations
+                    mdstep_old = self.mdstep
+                except ValueError:
+                    print(line)
 
 
             if 'number of electron ' in line:
@@ -1981,14 +1985,13 @@ def read_vasp_out(cl, load = '', out_type = '', show = '', voronoi = '', path_to
 
 
             if 'magnetization (x)' in line:
-                # print(line)
+
                 mags = []
                 if ifmaglist is not None:
                     for j in range(self.end.natom):
                         mags.append( float(outcarlines[i_line+j+4].split()[-1]) )
                     
                     tot_mag_by_atoms.append(np.array(mags))#[ifmaglist])
-                    # print(ifmaglist)
                     tot_mag_by_mag_atoms.append(np.array(mags)[ifmaglist])
                 # print tot_mag_by_atoms
                 # magnetic_elements
@@ -3083,3 +3086,215 @@ def load_oszicar(path_to_outcar=None, directory=None, extra_paths=None, use_logs
     if not (merged['electronic'] or merged['ionic'] or merged['cpm_scf'] or merged['cpm_ion']):
         return None
     return merged
+def read_cpvasp_oszicar(cl, filename='OSZICAR', parse_cpm_ion=True,parse_cpm_scf=True, plot=False, up='up1'):
+    """
+    Read CP-VASP information from OSZICAR.
+
+    Parses lines like:
+
+    CPM-ion: NSTEP=    1 N_ele=   281.307005 mu_e=  -1.978656 \
+        TARGETMU=  -1.980000 GCE= -.58577707E+03 cap=   1.297518
+
+    CPM-scf: NSTEP=    1 SCF=    9 N_ele=   281.407451 \
+        mu_e=  -1.901242 TARGETMU=  -1.980000 cap=   1.275375
+
+    PARAMETERS
+    ----------
+    filename : str
+        Path to OSZICAR.
+
+    parse_cpm_ion : bool
+        Parse CPM-ion lines.
+
+    parse_cpm_scf : bool
+        Parse CPM-scf lines.
+
+    plot : bool
+        Plot convergence graphs.
+
+    RETURNS
+    -------
+    data : dict
+
+        data['ion']
+            Dictionary with ionic-step quantities
+
+        data['scf']
+            Dictionary with SCF-step quantities
+
+    AUTHOR
+    ------
+    A.Boev
+    """
+
+    import re
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # ---------- regex patterns ----------
+
+    ion_pattern = re.compile(
+        r'CPM-ion:\s+NSTEP=\s*(\d+)'
+        r'.*?N_ele=\s*([-\d\.E+]+)'
+        r'.*?mu_e=\s*([-\d\.E+]+)'
+        r'.*?TARGETMU=\s*([-\d\.E+]+)'
+        r'.*?GCE=\s*([-\d\.E+]+)'
+        r'.*?cap=\s*([-\d\.E+]+)'
+    )
+
+    scf_pattern = re.compile(
+        r'CPM-scf:\s+NSTEP=\s*(\d+)'
+        r'.*?SCF=\s*(\d+)'
+        r'.*?N_ele=\s*([-\d\.E+]+)'
+        r'.*?mu_e=\s*([-\d\.E+]+)'
+        r'.*?TARGETMU=\s*([-\d\.E+]+)'
+        r'.*?cap=\s*([-\d\.E+]+)'
+    )
+
+    # ---------- storage ----------
+
+    ion_data = {
+        'NSTEP': [],
+        'N_ele': [],
+        'mu_e': [],
+        'TARGETMU': [],
+        'GCE': [],
+        'cap': []
+    }
+
+    scf_data = {
+        'NSTEP': [],
+        'SCF': [],
+        'N_ele': [],
+        'mu_e': [],
+        'TARGETMU': [],
+        'cap': []
+    }
+
+    # ---------- read file ----------
+    file_oszi = cl.get_file(filetype = filename,up=up)
+
+    with open(file_oszi, 'r') as f:
+
+        for line in f:
+
+            # ----- CPM-ion -----
+
+            if parse_cpm_ion and 'CPM-ion:' in line:
+
+                m = ion_pattern.search(line)
+
+                if m:
+
+                    ion_data['NSTEP'].append(int(m.group(1)))
+                    ion_data['N_ele'].append(float(m.group(2)))
+                    ion_data['mu_e'].append(float(m.group(3)))
+                    ion_data['TARGETMU'].append(float(m.group(4)))
+                    ion_data['GCE'].append(float(m.group(5)))
+                    ion_data['cap'].append(float(m.group(6)))
+
+            # ----- CPM-scf -----
+
+            if parse_cpm_scf and 'CPM-scf:' in line:
+
+                m = scf_pattern.search(line)
+
+                if m:
+
+                    scf_data['NSTEP'].append(int(m.group(1)))
+                    scf_data['SCF'].append(int(m.group(2)))
+                    scf_data['N_ele'].append(float(m.group(3)))
+                    scf_data['mu_e'].append(float(m.group(4)))
+                    scf_data['TARGETMU'].append(float(m.group(5)))
+                    scf_data['cap'].append(float(m.group(6)))
+
+    # # ---------- convert to numpy ----------
+
+    # if return_numpy:
+
+    #     for key in ion_data:
+    #         ion_data[key] = np.array(ion_data[key])
+
+    #     for key in scf_data:
+    #         scf_data[key] = np.array(scf_data[key])
+
+    # ---------- plotting ----------
+
+    if plot:
+
+        # ===== ionic convergence =====
+
+        if len(ion_data['NSTEP']) > 0:
+
+            fig, axs = plt.subplots(3, 1, figsize=(7, 10))
+
+            axs[0].plot(
+                ion_data['NSTEP'],
+                ion_data['mu_e'],
+                marker='o'
+            )
+
+            axs[0].plot(
+                ion_data['NSTEP'],
+                ion_data['TARGETMU'],
+                '--'
+            )
+
+            axs[0].set_ylabel('mu_e (eV)')
+            axs[0].set_title('CPM-ion convergence')
+
+            axs[1].plot(
+                ion_data['NSTEP'],
+                ion_data['N_ele'],
+                marker='o'
+            )
+
+            axs[1].set_ylabel('N_ele')
+
+            axs[2].plot(
+                ion_data['NSTEP'],
+                ion_data['cap'],
+                marker='o'
+            )
+
+            axs[2].set_ylabel('cap')
+            axs[2].set_xlabel('Ionic step')
+
+            plt.tight_layout()
+            plt.show()
+
+        # ===== SCF convergence =====
+
+        if len(scf_data['SCF']) > 0:
+
+            plt.figure(figsize=(7,4))
+
+            delta_mu = (
+                np.array(scf_data['mu_e']) -
+                np.array(scf_data['TARGETMU'])
+            )
+
+            plt.plot(
+                range(len(delta_mu)),
+                delta_mu,
+                marker='o'
+            )
+
+            plt.axhline(
+                0.0,
+                linestyle='--'
+            )
+
+            plt.xlabel('SCF iteration')
+            plt.ylabel(r'$\mu_e - \mu_{target}$ (eV)')
+            plt.title('CPM-scf convergence')
+
+            plt.tight_layout()
+            plt.show()
+
+    # ---------- return ----------
+
+    return {
+        'ion': ion_data,
+        'scf': scf_data
+        }

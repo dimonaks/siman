@@ -999,7 +999,8 @@ class Calculation(object):
             self.children.append(child)
 
         return child
-    
+
+
     def plot_locpot(self, filename=None):
         """
         Plot local electrostatic potential

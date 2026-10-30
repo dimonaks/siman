@@ -255,7 +255,7 @@ class CalculationVasp(Calculation):
                 elif vp['LNONCOLLINEAR']: 
                     printlog('LNONCOLLINEAR calculation detected; I double number of bands up to', vp['NBANDS'], imp = 'Y')
 
-                if 'LREAL' in vp and 'False' not in vp['LREAL']:
+                if 'LREAL' in vp and 'False' not in str(vp['LREAL']):
                     printlog('Warning! LREAL = .False. is suggested for SOC!', imp = 'Y')
 
 
@@ -277,7 +277,7 @@ class CalculationVasp(Calculation):
 
     def make_incar(self, filename = None):
         """Makes Incar file for current calculation and copy all
-        TO DO: there is no need to send all POSCAR files; It is enothg to send only one. However for rsync its not that crucial
+        TO DO: there is no need to send all POSCAR files; It is enough to send only one. However for rsync its not that crucial
         """
         #print "Begin make---------------------------------------------"
         
@@ -327,20 +327,27 @@ class CalculationVasp(Calculation):
                         ''
                     elif key == 'MAGMOM' and hasattr(self.init, 'magmom') and self.init.magmom and any(self.init.magmom): #
                         mag = self.init.magmom
-                        
-                        if len(mag) == natom:
-                            magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order ]
-                        
-                        elif len(mag) == 3*natom:
-                            
+
+                        # 1. Non-collinear mode (nested vectors: [[mx1,my1,mz1], ...])
+                        if isinstance(mag[0], (list, tuple)):  
+                            magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order]
+                            flat_list = [str(c) for vec in magmom_aligned_with_poscar for c in vec]
+                            f.write('MAGMOM = ' + ' '.join(flat_list) + '\n')
+
+                        # 2. Non-collinear mode (flat 1D array: [mx1,my1,mz1,mx2,my2,mz2,...])
+                        elif len(mag) == 3 * natom:
+                            # Восстанавливаем mag3, нарезая плоский массив по 3 компоненты
                             mag3 = [mag[i:i+3] for i in range(0, len(mag), 3)]
-                            
-                            mag3_aligned = [mag3[i] for i in poscar_atom_order ]
+                            mag3_aligned = [mag3[i] for i in poscar_atom_order]
+                            # Снова уплотняем в плоскую строку, но уже с правильным порядком атомов
+                            flat_list = [str(c) for vec in mag3_aligned for c in vec]
+                            f.write('MAGMOM = ' + ' '.join(flat_list) + '\n')
 
-                            magmom_aligned_with_poscar = [x for sublist in mag3_aligned for x in sublist]
-
-                        
-                        f.write('MAGMOM = '+list2string(magmom_aligned_with_poscar)+"\n") #magmom from geo file has higher preference
+                        # 3. Standard collinear mode (scalar magmom)
+                        else:  
+                            magmom_aligned_with_poscar = [mag[i] for i in poscar_atom_order]
+                            print(magmom_aligned_with_poscar)
+                            f.write('MAGMOM = ' + list2string(magmom_aligned_with_poscar) + '\n')
                    
                     elif vp[key] == None:
                         ''
@@ -713,15 +720,10 @@ class CalculationVasp(Calculation):
 
 
 
-        # print(hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom)
-        # print(self.init.magmom)
-        # print(None in self.init.magmom)
-        # sys.exit()
         magmom = []
         
         if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
             magmom = self.init.magmom
-
             printlog('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
         elif hasattr(curset, 'magnetic_moments') and curset.magnetic_moments:
@@ -875,7 +877,7 @@ class CalculationVasp(Calculation):
         if ('LSORBIT' in vp and vp['LSORBIT']) or ('LNONCOLLINEAR' in vp and vp['LNONCOLLINEAR']):
             if len(magmom) == 0:
                 printlog('Warning! magmom is empty')
-            elif len(magmom) == self.init.natom:
+            elif len(magmom) == self.init.natom and len(magmom[0]) == 1:
                 printlog('magmom is converted to [0,0, m, 0, 0, m ...] required for noncollinear calculations', imp = 'y')
                 magmom = [x for m in magmom for x in (0, 0, m)]
             else:
@@ -935,6 +937,8 @@ class CalculationVasp(Calculation):
         if 'OCCEXT' in self.set.vasp_params and self.set.vasp_params['OCCEXT'] == 1:
             list_to_copy.append(  os.path.join(d, 'OCCMATRIX')   )
 
+        if 'LBLUEOUT' in self.set.vasp_params and self.set.vasp_params['LBLUEOUT'] in [1, '.TRUE.']:
+            list_to_copy.append(  os.path.join(d, 'ICONST')   )
         
         if "up" in update: #Copy to server
             printlog('Files to copy:', list_to_copy)
@@ -1021,6 +1025,44 @@ class CalculationVasp(Calculation):
         plt.xlabel('Step')
         plt.ylabel('Energy per cell relative to min (meV)')
 
+        plt.show()
+        return
+
+    def plot_energy_total_step(self,):
+        """
+        Plot total energy relative to the minimum value versus MD steps.
+
+        This function calculates the total energy as a sum of electronic free 
+        energy (e_sigma0) and kinetic energy (list_ekin). It then computes 
+        the relative differences in meV and applies a LOWESS (Locally Weighted 
+        Scatterplot Smoothing) model to highlight the energy trend.
+
+        Returns:
+            None: Displays a matplotlib plot.
+        """
+        from siman.picture_functions import plt
+        import statsmodels.api as sm  # module to build a LOWESS model
+        import pandas as pd
+        import numpy as np
+
+        lowess = sm.nonparametric.lowess
+
+        steps = range(len(self.list_e_sigma0))
+        e_total = np.array(self.list_e_sigma0) + np.array(self.list_ekin)
+        de = 1000*(np.array(e_total)-e_total[-1])
+
+        temp_lowess = lowess(endog=de, exog=steps)
+        temp_lowess = pd.Series(temp_lowess[:, 1], index=range(len(de)))
+
+        
+        plt.plot(steps, de , '-o')
+
+        plt.plot(temp_lowess,    marker="o",    markersize=2,    linestyle="-")
+        # plt.xlabel('MD step')
+        # plt.ylabel('Energy per cell (eV')
+        plt.xlabel('Step')
+        plt.ylabel('Total energy rel. to min (meV)')
+        plt.tight_layout()
         plt.show()
         return
 
@@ -1921,8 +1963,6 @@ class CalculationVasp(Calculation):
         from siman.inout import write_occmatrix
         # print(self.get_path())
         # sys.exit()
-
-    
 
         return write_occmatrix(self.occ_matrices, self.get_path())
 
