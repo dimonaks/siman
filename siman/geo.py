@@ -3876,7 +3876,68 @@ def ewald_energy(self, oxi_state="no", silent=0):
     return ew_en.total_energy
 
 
+def generate_occupied_configurations(st, element, occ, nconf=10, seed=None, silent=0):
+    """
+    Generate configurations with a specified occupancy for symmetry non-equivalent positions.
+    
+    This function analyzes the unique crystallographic sites of a given element within the structure.
+    It then randomly sub-samples (removes) atoms from each symmetry group to satisfy the targeted 
+    fractional occupancy, producing a requested number of distinct configurations.
 
+    Args:
+        st (Structure): The initial fully-occupied input structure.
+        element (str): The periodic table symbol of the target element to modulate (e.g., 'Li', 'Na').
+        occ (dict or list): Targeted fractional occupancies (ranging from 0.0 to 1.0) for each 
+            non-equivalent symmetry site. Can be a dictionary like {'0': 0.76, '1': 0.48} 
+            or a flat list of floats matching the order of symmetry positions.
+        nconf (int, optional): Total number of random configurations to generate. Defaults to 10.
+        seed (int, optional): Random seed value to ensure exact reproducibility across multiple runs.
+        silent (int, optional): Control flag for console logging verbosity in `determine_symmetry_positions`. 
+            Defaults to 0.
+
+    Raises:
+        ValueError: If the number of detected symmetry groups does not match the number of provided occupancies.
+
+    Returns:
+        list of Structure: A list containing `nconf` uniquely generated `Structure` objects with targeted 
+            fractional occupancies, named automatically using the suffix format `_{element}_{index}`.
+    author - A. Boev 
+    """
+    import random
+    rng = random.Random(seed)
+
+    # Определяем симметрийные позиции элемента
+    sypos = determine_symmetry_positions(st, element, silent=silent)
+
+    # Переводим словарь occ в список, упорядоченный по ключам
+    if isinstance(occ, dict):
+        occ = [occ[str(i)] for i in range(len(sypos))]
+
+    if len(sypos) != len(occ):
+        raise ValueError(
+            f"Number of {element} positions ({len(sypos)}) "
+            f"does not match number of occupancies ({len(occ)})"
+        )
+
+    configs = []
+
+    for c in range(nconf):
+        atoms_to_remove = []
+
+        for group, occupation in zip(sypos, occ):
+            # Сколько атомов в данной симметрийной группе нужно удалить
+            n_remove = round(len(group) * (1 - occupation))
+            
+            # Случайный выбор атомов из группы для удаления
+            atoms_to_remove.extend(rng.sample(list(group), n_remove))
+
+        # Создаем новую структуру, удаляя выбранные атомы
+        st_new = st.remove_atoms(atoms_to_remove, clear_magmom=1)
+        st_new.name += f"_{element}_{c}"
+        
+        configs.append(st_new)
+
+    return configs
 
 
 

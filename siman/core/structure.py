@@ -675,12 +675,6 @@ class Structure():
         return mag_grouped
 
 
-<<<<<<< HEAD
-
-
-
-
-=======
     def get_magmom(self, i, fmt='7.3f', silent=False):
         """
         Return magnetic moment of atom i.
@@ -722,7 +716,6 @@ class Structure():
                 f'Cannot interpret magmom: len={len(mag)}, natom={self.natom}'
             )
         
->>>>>>> upstream/master
 
     def set_magnetic_config(self, element, moments):
         #set magnetic configuration based on symmetry non-equivalent positions
