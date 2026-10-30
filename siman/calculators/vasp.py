@@ -711,20 +711,10 @@ class CalculationVasp(Calculation):
 
 
 
-        # print(hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom)
-        # print(self.init.magmom)
-        # print(None in self.init.magmom)
-        # sys.exit()
         magmom = []
         
         if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
             magmom = self.init.magmom
-
-        # if params['update_set_dic']['MAGMOM']:
-        #     printlog('actualize_set(): Magnetic moments are determined from params:',params['update_set_dic']['MAGMOM'], imp = 'y')
-
-        # else:
-        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
             printlog('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
         elif hasattr(curset, 'magnetic_moments') and curset.magnetic_moments:
@@ -1030,24 +1020,17 @@ class CalculationVasp(Calculation):
         return
 
     def plot_energy_total_step(self,):
-        # print(self.maxforce)
-        # maxf = [m[1] for m in self.maxforce_list ]
-        # print(maxf)
-        from siman.picture_functions import plt
-        steps = range(len(self.list_energy_total))
-        plt.plot(steps, 1000*(np.array(self.list_etotal)-self.list_etotal[-1]) , '-o')
-        # plt.xlabel('MD step')
-        # plt.ylabel('Energy per cell (eV')
-        plt.xlabel('Step')
-        plt.ylabel('Total energy rel. to min (meV)')
-        plt.tight_layout()
-        plt.show()
-        return
+        """
+        Plot total energy relative to the minimum value versus MD steps.
 
-    def plot_energy_total_step2(self,):
-        # print(self.maxforce)
-        # maxf = [m[1] for m in self.maxforce_list ]
-        # print(maxf)
+        This function calculates the total energy as a sum of electronic free 
+        energy (e_sigma0) and kinetic energy (list_ekin). It then computes 
+        the relative differences in meV and applies a LOWESS (Locally Weighted 
+        Scatterplot Smoothing) model to highlight the energy trend.
+
+        Returns:
+            None: Displays a matplotlib plot.
+        """
         from siman.picture_functions import plt
         import statsmodels.api as sm  # module to build a LOWESS model
         import pandas as pd
@@ -1312,44 +1295,6 @@ class CalculationVasp(Calculation):
         return outst
 
 
-
-
-    def read_oszicar(path_to_file):
-
-        total_mags = []          # Список полной магнетизации на каждый шаг
-        atom_mags_per_step = []  # Список: каждый элемент — массив магнитных моментов атомов на шаге
-
-        with open(filename, 'r') as f:
-            lines = f.readlines()
-
-        current_atom_mags = []
-
-        for line in lines:
-            line = line.strip()
-
-            # Полная магнетизация
-            if "mag=" in line:
-                match = re.search(r"mag=\s*([-0-9.Ee+]+)", line)
-                if match:
-                    total_mags.append(float(match.group(1)))
-                
-                if current_atom_mags:
-                    atom_mags_per_step.append(current_atom_mags)
-                    current_atom_mags = []
-
-            # Поатомные магнитные моменты (по колонке M_int)
-            elif re.match(r'^\s*\d+\s', line):  # строка начинается с номера атома
-                parts = line.split()
-                if len(parts) >= 8:
-                    # M_int: три последние компоненты
-                    m_int = list(map(float, parts[5:8]))
-                    current_atom_mags.append(m_int)
-
-        # На случай, если последний шаг не завершился mag=
-        if current_atom_mags:
-            atom_mags_per_step.append(current_atom_mags)
-
-        return total_mags, atom_mags_per_step
 
 
     def determine_filenames(self, nametype = 'asoutcar'):

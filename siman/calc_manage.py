@@ -1743,7 +1743,6 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 #copy OCCMATRIX file as well             
                 dir_1 = os.path.dirname(cl.path["input_geo"] )
                 dir_2 = cl.dir
-                # sys.exit()
 
         if 'occmatrix' in params or ('OCCEXT' in cl.set.vasp_params and cl.set.vasp_params['OCCEXT'] == 1): #copy occfile
             if 'occmatrix' in params:
@@ -1765,11 +1764,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             else:
                 printlog('Attention! no ICONST file was found!!!', imp = 'Y')
 
-        # if cl.des:
         cl.des = ' '+struct_des[id[0]].des + '; ' + varset[id[1]].des
-
-
-        # print() 
 
         cl.check_kpoints(params.get('ngkpt'))    
 

@@ -283,30 +283,28 @@ class Structure():
 
     def exchange_axes_with_atoms(self, i1_r, i2_r):
         """
-        Exchange axes together with atoms 
+        Exchange lattice axes along with the corresponding atomic coordinates.
 
-        INPUT:
-            i1_r - 0,1,2 axis to change
-            i2_r - 0,1,2 final axis
+        This operation rotates or reflects the entire atomic structure (both cell 
+        vectors and atom positions) to re-orient the system along new coordinate axes.
         
+        INPUT:
+            i1_r - (int) 0, 1, or 2 representing the initial axis to change
+            i2_r - (int) 0, 1, or 2 representing the final target axis
         """
         st = copy.deepcopy(self)
-        xc = copy.deepcopy(self.xcart)
-        xr = copy.deepcopy(self.xred)
-        r = copy.deepcopy(self.rprimd)
+        
+        # Swapping cell vectors
+        st.rprimd[i1_r], st.rprimd[i2_r] = st.rprimd[i2_r].copy(), st.rprimd[i1_r].copy()
 
-        st.rprimd[i1_r] = r[i2_r]
-        st.rprimd[i2_r] = r[i1_r]
+        # Safely swapping coordinate components for each atom
+        for i in range(st.natom):
+            # Safe Python swap that works perfectly for both lists and NumPy arrays
+            st.xcart[i][i1_r], st.xcart[i][i2_r] = st.xcart[i][i2_r], st.xcart[i][i1_r]
+            st.xred[i][i1_r], st.xred[i][i2_r] = st.xred[i][i2_r], st.xred[i][i1_r]
 
-
-        for i in range(0,st.natom):
-            st.xcart[i][i1_r] = xc[i][i2_r] 
-            st.xcart[i][i2_r] = xc[i][i1_r] 
-
-            st.xred[i][i1_r] = xr[i][i2_r] 
-            st.xred[i][i2_r] = xr[i][i1_r] 
-
-        # st.update_xred()
+        # Explicitly ensure consistency between cartesian and fractional coordinates
+        st.update_xred() 
 
         return st
 
@@ -2239,12 +2237,22 @@ class Structure():
 
     def remove_atoms_randomly(self, el, n_at2remove, clear_magmom = 1):
         """
-        remove N atoms of element type *el*
-        st (Structure)
-        el (str) - element name
-        n_at2remove (int) - total number of atoms, which must be removed
-        clear_magmom - by default magmom is cleared
+        Randomly remove a specified number of atoms of a given element type.
 
+        This method identifies all atoms of element 'el' and randomly selects 
+        'n_at2remove' atoms to delete from the structure using a quasi-random 
+        Sobol sequence.
+
+        INPUT:
+            el (str) - element name to be removed (e.g., 'O', 'Li')
+            n_at2remove (int) - total number of atoms of this element to remove
+            clear_magmom (int/bool) - if 1 (default), clears the magnetic moments list
+
+        RETURN:
+            st_new (Structure) - updated structure with selected atoms removed
+
+        AUTHOR:
+            Anton Boev
         """
 
         from scipy.stats import qmc

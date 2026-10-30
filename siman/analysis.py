@@ -1756,8 +1756,7 @@ def wulff(st, miller_list = None, e_surf_list = None, show = 0):
     print(recp.get_space_group_info())
     # print(lat)
     WS = WulffShape(lat, miller_list, e_surf_list)
-    # print(dir(WS))
-    printlog('Area fraction: ',WS.area_fraction_dict, imp = 'y')
+    printlog('WulffShape area fraction dict: ',WS.area_fraction_dict, imp = 'y')
     anisotropy = WS.anisotropy
     weighted_surface_energy = WS.weighted_surface_energy
     if show:
