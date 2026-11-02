@@ -45,6 +45,7 @@ from siman.set_functions import init_default_sets
 from siman.database import push_figure_to_archive, write_database
 
 from siman.calculators.qe import CalculationQE
+from siman.calculators.triqs import write_parameters_for_vasp2triqs, write_dmft_config
 
 
 
@@ -1108,7 +1109,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         if input_geo_format == 'mat_proj':
             printlog("Taking structure", mat_proj_id,"with it name "+str(it)+" from materialsproject.org ...", imp = 'Y')
 
-            st = get_structure_from_matproj(it, it_folder, verlist[0], mat_proj_cell, mat_proj_id)
+            st = get_structure_from_matproj_new(it = it, it_folder =it_folder, ver = verlist[0], mat_proj_cell = mat_proj_cell, mat_proj_id = mat_proj_id)
             if it is None:
                 it = st.it
                 printlog("Giving name "+str(it), imp = 'Y')
@@ -1375,7 +1376,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
 
 
-        if up not in ('up1','up2','up3'): 
+        if up.split('.')[0] not in ('up1','up2','up3'): 
             printlog("Warning! You are in the test mode, to add please change up to up1; "); 
             sys.exit()
         
@@ -1583,7 +1584,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             # sys.exit()
             if '2' in cl.state or '5' in cl.state:
                 status = "ready"
-                if up != 'up2':
+                if 'up2' not in up:
                     cl.res(check_job = check_job, show = params['show'], **res_params) 
                     return
 
@@ -1597,12 +1598,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
             elif "4" in cl.state: 
                 status = "compl"
-                if up == 'up2':
+                if 'up2' in up:
                     cl.init.select = None
                 cl.res(check_job = check_job, show = params['show'], **res_params) 
                 # sys.exit()
 
-                if up != 'up2':
+                if 'up2' not in up:
                     return
 
 
@@ -1729,7 +1730,13 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
             printlog("Attention! afm_ordering method is detected from set\n\n")
             cl.calc_method.append('afm_ordering')
 
-
+        if hasattr(cl.set, 'triqs'):
+            printlog("Attention! triqs method is detected from set\n\n")
+            cl.calc_method.append('triqs')
+            if 'triqs_convert' not in params:
+                params['triqs_convert'] = {}
+            if 'triqs_config' not in params:
+                params['triqs_config'] = {}
 
 
 
@@ -1746,7 +1753,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 cl.prev.append(cl_prev)
 
 
-        if up in ['up1', 'up2', 'up3']:
+        if up.split('.')[0] in ['up1', 'up2', 'up3']:
             if not os.path.exists(cl.dir):
                 printlog('calc_manage.add_calculation() 1731: Creating local directory', cl.dir)
                 os.makedirs(cl.dir)
@@ -1807,7 +1814,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
         cl.check_kpoints(params.get('ngkpt'))    
 
 
-        if up in ['up1', 'up2', 'up3']:
+        if up.split('.')[0] in ['up1', 'up2', 'up3']:
             
             cl.write_structure(str(id[2])+".POSCAR", coord, inherit_option, prevcalcver)
             
@@ -1854,6 +1861,22 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 if 'polaron' in cl.calc_method or 'polaron2' in cl.calc_method:
                     conf_file = write_configuration_file_for_cluster(cl.name, header.vasp_command, params['polaron'])
                     list_to_copy.append(conf_file)
+
+                if 'triqs' in cl.calc_method:
+                    files = write_parameters_for_vasp2triqs(cl, params['triqs_convert'])
+                    # print(files)
+                    # sys.exit()
+                    runBash("chmod +x "+files[-2])
+                    runBash("chmod +x "+files[-1])
+                    list_to_copy.extend(files)   
+
+
+                    files = write_dmft_config(cl, params['triqs_config'], up = up)
+                    list_to_copy.extend(files)   
+                    runBash("chmod +x "+files[-1])
+
+
+
 
                 if input_kpoints:
                     list_to_copy.append(input_kpoints)
@@ -1925,11 +1948,19 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     cl.copy_to_cluster(list_to_copy, up)
 
                     batch_on_server = cl.project_path_cluster+'/'+batch_script_filename 
+                    if 'csc_triqs' in up:
+                        run_on_server("mkdir -p "+cl.project_path_cluster+cl.dir+'/csc', addr = cl.cluster_address)
+    
+                        batch_on_server = cl.project_path_cluster+cl.dir + '/csc_triqs.run' 
+
+                    elif 'triqs' in up:
+                        batch_on_server = cl.project_path_cluster+cl.dir + '/triqs.run' 
 
                     printlog('Setting executable rights for batch script on server', batch_on_server)
                     run_on_server('chmod +x '+batch_on_server, header.cluster_address)
-
+                    # print(cl.dir , batch_on_server)
                     if header.siman_run or run: #for IPython should be only for run = 1 
+                        # print (batch_on_server)
                         make_run(cl.dir, cl.schedule_system, batch_on_server)
 
             cl.state = "2. Ready for start"
@@ -3144,7 +3175,9 @@ def res_loop(it, setlist, verlist, analys_type = None,
             printlog( final_outstring, end = '\n',  imp = 'Y')
 
         emin = 0
-        
+
+
+
 
 
 
