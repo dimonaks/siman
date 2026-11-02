@@ -360,7 +360,7 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
                               "u": "ELFCAR"
 
 
-            '!' follwed after key, e.g. 'c!' means that the CHGCAR will saved as well
+            '!' follwed after key, e.g. 'c!' means that the CHGCAR will be saved as well
             '@' follwed after the key, e.g. 'c@' means that the CHGCAR will be zipped
     """   
     printlog('The value of savefile is', savefile)

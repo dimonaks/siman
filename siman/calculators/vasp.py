@@ -1047,7 +1047,7 @@ class CalculationVasp(Calculation):
     def read_results(self, load = '', out_type = '', voronoi = False, show = '', choose_outcar = None, alkali_ion_number = None, only_load = False):
 
         """
-        Download and Read VASP OUTCAR file
+        Download and Read VASP OUTCAR file, and triqs out
 
         INPUT:
             - load (str) - 'x' - download xml, o - download outcar and contcar, un - read unfinished
@@ -1169,6 +1169,20 @@ class CalculationVasp(Calculation):
             # print(load)
             # print(files)
             # get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
+            
+            if self.calc_method and  'triqs' in self.calc_method:
+                # print('triqs')
+                files.append(self.path['triqs_out'])
+                self.get_file(self.jobname + '/observables_imp*.dat', up = load)
+                if 'csc' in load :
+                    # print(load)
+                    # print(self.path['csc_triqs_out'])
+                    # files.append(self.path['csc_triqs_out'])
+                    self.get_file('csc/out', up = load)
+                    self.get_file('csc/observables_imp*.dat', up = load)
+
+                # sys.exit()
+
             for file in files:
                 self.get_file(os.path.basename(file), up = load)
 
@@ -1247,6 +1261,43 @@ class CalculationVasp(Calculation):
             
             outst  = read_vasp_out(self, load = load, out_type = out_type, show = show, voronoi = voronoi,
                 path_to_outcar = path_to_outcar, path_to_contcar = path_to_contcar)
+
+            """Parsing other codes, e.g triqs"""
+            if self.calc_method is not None and 'triqs' in self.calc_method:
+                from siman.calculators.solid_dmft_out_parser import TriqsOutput
+                from siman.calculators.solid_dmft_out_parser import DmftConvergenceHistory
+                self.triqs_out = TriqsOutput.from_file(self.path['triqs_out'])
+                if hasattr(self, 'jobname'):
+                    self.dmft_conv = DmftConvergenceHistory.from_file(self.dir + '/'+ self.jobname + '/observables_imp0.dat')
+                # self.triqs_out.print_summary()  
+                    # self.triqs_out.print_summary_comp()  
+                    # history.print_observables()
+                    # history.plot("Chemical potential")
+                    # history.plot("Total energy", last_n=5,)
+                    # history.plot("G(beta/2)")
+                    orbital_labels = [
+                        "d_xy",
+                        "d_yz",
+                        "d_z2",
+                        "d_xz",
+                        "d_x2-y2",
+                    ]
+
+                    # history.plot("Orbital occupancy", orbital_labels=orbital_labels,                )
+                    # history.print_energy_statistics(last_n=5) #выборочное стандартное отклонение:
+
+                    # stats = history.energy_statistics(last_n=10)
+
+                    # print(stats["Total energy"]["mean"])
+                    # print(stats["Total energy"]["std"])
+
+                if 'csc' in load : 
+                    printlog('Charge-self-consistent:', imp = 'y')
+                    self.csc_triqs_out = TriqsOutput.from_file(self.path['csc_triqs_out'])
+                    self.csc_triqs_out.print_summary_comp()  
+
+                    self.csc_dmft_conv = DmftConvergenceHistory.from_file(self.dir + 'csc/observables_imp0.dat')
+                    self.csc_dmft_conv.print_energy_statistics(last_n=5) #выборочное стандартное отклонение:
 
 
         else:
@@ -1682,22 +1733,36 @@ class CalculationVasp(Calculation):
         ax.savefig('figs/'+str(self.name)+'_band.pdf')
         # ax.show()
         return
-    def get_band_info(self):
+    def get_band_info(self, method = 'siman'):
         """
         Vasprun.xml is expected
+
+
+        method (str) -
+            'siman' - uses OUTCAR
+            'pymatgen' - uses Vasprun.xml
 
         TODO
         can be done with EIGENVAL, please make
 
         """
-        from pymatgen.io.vasp import Vasprun
-        xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
-        # print('xml_file',xml_file)
-        v = Vasprun(xml_file)
-        ll = list(v.eigenvalue_band_properties)
-        print('band gap = {:.1f} eV, cbm = {:.1f} eV, vbm = {:.1f} eV, is_band_gap_direct = {:}'.format(*ll))
+
+        if method == 'siman':
+
+            from siman.calculators.vasp_utils import parse_bands
+
+            parse_bands(self.path['output'])
 
 
+        elif method == 'pymatgen':
+            from pymatgen.io.vasp import Vasprun
+            xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
+            # print('xml_file',xml_file)
+            v = Vasprun(xml_file)
+            ll = list(v.eigenvalue_band_properties)
+            print('band gap = {:.1f} eV, cbm = {:.1f} eV, vbm = {:.1f} eV, is_band_gap_direct = {:}'.format(*ll))
+
+    # def get
 
 
 

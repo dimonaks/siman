@@ -53,7 +53,7 @@ local_surrounding, local_surrounding2, determine_symmetry_positions, remove_clos
 rms_between_structures, rms_between_structures2, find_slab_width, move_edge, ewald_energy)
 from siman.set_functions import InputSet, aims_keys
 from siman.inout import write_xyz, write_lammps, read_xyz, read_poscar, write_geometry_aims, read_aims_out, read_vasp_out
-
+from siman.core.structure_utils import *
 
 
 
@@ -1057,6 +1057,183 @@ class Structure():
             print('rprimd before:\n',np.array(r_orig))
             print('rprimd after :\n',np.array(r))
         return st
+
+
+    def orient_octahedron_along_axes(self, 
+        metal: str = "Ni",
+        oxygen: str = "O",
+        metal_index = None,
+        neighbor_radius: float = 3.0,
+    ):
+        """
+        Rotate a periodic structure so that three mutually perpendicular
+        metal–oxygen directions of an ideal MO6 octahedron coincide with x, y, z.
+
+        Parameters
+        ----------
+        input_poscar
+            Input structure file.
+        output_poscar
+            Output POSCAR.
+        metal
+            Central atom species, e.g. "Ni".
+        oxygen
+            Ligand species, usually "O".
+        metal_index
+            Index of the central metal atom in the pymatgen Structure.
+            If None, the first atom with species `metal` is used.
+        neighbor_radius
+            Radius used to search for oxygen neighbors, in angstrom.
+
+        Returns
+        -------
+        Structure
+            Rotated pymatgen Structure.
+        Author:
+            Chat GPT 5.6 + Aksyonov
+        """
+
+
+        # from __future__ import annotations
+
+        import numpy as np
+        from numpy.typing import NDArray
+        from pymatgen.core import Structure, SymmOp
+        from pymatgen.io.vasp import Poscar
+
+        structure = self.convert2pymatgen()
+
+        # Select central metal atom.
+        if metal_index is None:
+            metal_indices = [
+                i
+                for i, site in enumerate(structure)
+                if site.specie.symbol == metal
+            ]
+            if not metal_indices:
+                raise ValueError(f"No {metal} atoms found in structure.")
+            metal_index = metal_indices[0]
+
+        center = structure[metal_index]
+
+        if center.specie.symbol != metal:
+            raise ValueError(
+                f"Site {metal_index} is {center.specie.symbol}, not {metal}."
+            )
+
+        # Find oxygen neighbors and take the six closest ones.
+        neighbors = [
+            nn
+            for nn in structure.get_neighbors(center, neighbor_radius)
+            if nn.specie.symbol == oxygen
+        ]
+        neighbors.sort(key=lambda nn: nn.nn_distance)
+
+        if len(neighbors) < 6:
+            raise ValueError(
+                f"Only {len(neighbors)} oxygen neighbors found within "
+                f"{neighbor_radius:.2f} Å."
+            )
+
+        neighbors = neighbors[:6]
+
+        # PeriodicNeighbor.coords already contains the appropriate periodic image.
+        bond_vectors = np.array(
+            [nn.coords - center.coords for nn in neighbors],
+            dtype=float,
+        )
+        bond_lengths = np.linalg.norm(bond_vectors, axis=1)
+        directions = bond_vectors / bond_lengths[:, None]
+
+        print(f"Central atom: {metal} at structure index {metal_index}")
+        print("Six nearest M–O distances:")
+        print(np.array2string(bond_lengths, precision=8))
+
+        # Group the six directions into three opposite pairs.
+        pairs = pair_opposite_vectors(directions)
+
+        # For each pair, use the difference v1 - v2 to average numerical noise.
+        axes = []
+        for i, j in pairs:
+            axis = directions[i] - directions[j]
+            axis /= np.linalg.norm(axis)
+            axes.append(axis)
+
+        ex, ey, ez_candidate = axes
+
+        # Gram–Schmidt removes small numerical departures from 90 degrees.
+        ex /= np.linalg.norm(ex)
+
+        ey = ey - np.dot(ey, ex) * ex
+        ey /= np.linalg.norm(ey)
+
+        ez = np.cross(ex, ey)
+        ez /= np.linalg.norm(ez)
+
+        # Choose the sign of z closest to the third Ni–O axis.
+        if np.dot(ez, ez_candidate) < 0:
+            ez *= -1
+
+        # Restore a right-handed basis after a possible z sign change.
+        # Flipping y together with z leaves x unchanged and makes det(R) positive.
+        rotation = np.vstack([ex, ey, ez])
+
+        if np.linalg.det(rotation) < 0:
+            ey *= -1
+            ez = np.cross(ex, ey)
+            ez /= np.linalg.norm(ez)
+            rotation = np.vstack([ex, ey, ez])
+
+        # For column Cartesian vectors:
+        #
+        #     r_new = R @ r_old
+        #
+        # Since rows of R are ex, ey, ez, the selected local directions
+        # become the global Cartesian x, y, z directions.
+        operation = SymmOp.from_rotation_and_translation(
+            rotation_matrix=rotation,
+            translation_vec=[0.0, 0.0, 0.0],
+        )
+
+        rotated = structure.copy()
+        rotated.apply_operation(operation, fractional=False)
+
+        # Put fractional coordinates back into the primary unit cell.
+        # rotated.to_unit_cell(in_place=True)
+
+        # Poscar(rotated).write_file(output_poscar)
+
+        print("\nRotation matrix R:")
+        print(np.array2string(rotation, precision=10, suppress_small=True))
+
+        print("\nR @ R.T:")
+        print(
+            np.array2string(
+                rotation @ rotation.T,
+                precision=10,
+                suppress_small=True,
+            )
+        )
+
+        print(f"\ndet(R) = {np.linalg.det(rotation):.12f}")
+        # print(f"Written: {output_poscar}")
+
+        verify_octahedron_orientation(
+            rotated,
+            metal_index=metal_index,
+            oxygen=oxygen,
+            neighbor_radius=neighbor_radius,
+        )
+
+        st = self.copy()
+        rot = st.update_from_pymatgen(rotated)
+
+        return rot
+
+
+
+
+
 
     def invert_axis(self, axis):
         #invert one vector
@@ -4130,6 +4307,506 @@ class Structure():
             return ew.total_energy,  site_e
         else:
             return ew.total_energy
+
+
+
+    def print_crystal_slab(self, layer_group, symprec=1e-3, verbose=False):
+        """
+        Print CRYSTAL SLAB input for a SIMAN Structure.
+
+        Parameters
+        ----------
+        layer_group : int
+            Number of the CRYSTAL/Bilbao layer group.
+
+        symprec : float
+            Tolerance for symmetry matching, Angstrom.
+
+        verbose : bool
+            Print additional diagnostic information.
+
+        Notes
+        -----
+        - The original in-plane cell is preserved.
+        - x, y in CRYSTAL are fractional.
+        - z in CRYSTAL is in Angstrom.
+        - Periodicity is applied only along x and y.
+        - Only symmetry-inequivalent atoms are printed.
+        """
+
+        import numpy as np
+
+        # ============================================================
+        # Layer-group database
+        #
+        # Each operation is a Seitz operation:
+        #
+        #       r' = R r + t
+        #
+        # Bilbao convention.
+        #
+        # x,y translations are fractional.
+        # z translation is zero for the standard layer-group setting.
+        #
+        # Add other layer groups here when needed.
+        # ============================================================
+
+        layer_groups = {
+
+            # p 2/m 1 1, No. 14
+            14: [
+                (
+                    np.array([
+                        [ 1,  0,  0],
+                        [ 0,  1,  0],
+                        [ 0,  0,  1],
+                    ], dtype=float),
+                    np.array([0., 0., 0.])
+                ),
+
+                (
+                    np.array([
+                        [ 1,  0,  0],
+                        [ 0, -1,  0],
+                        [ 0,  0, -1],
+                    ], dtype=float),
+                    np.array([0., 0., 0.])
+                ),
+
+                (
+                    np.array([
+                        [-1,  0,  0],
+                        [ 0, -1,  0],
+                        [ 0,  0, -1],
+                    ], dtype=float),
+                    np.array([0., 0., 0.])
+                ),
+
+                (
+                    np.array([
+                        [-1,  0,  0],
+                        [ 0,  1,  0],
+                        [ 0,  0,  1],
+                    ], dtype=float),
+                    np.array([0., 0., 0.])
+                ),
+            ],
+ 
+            15: [
+                (
+                    np.array([
+                        [ 1,  0,  0],
+                        [ 0,  1,  0],
+                        [ 0,  0,  1],
+                    ], dtype=float),
+                    np.array([0.0, 0.0, 0.0])
+                ),
+
+                (
+                    np.array([
+                        [ 1,  0,  0],
+                        [ 0, -1,  0],
+                        [ 0,  0, -1],
+                    ], dtype=float),
+                    np.array([0.5, 0.0, 0.0])
+                ),
+
+                (
+                    np.array([
+                        [-1,  0,  0],
+                        [ 0, -1,  0],
+                        [ 0,  0, -1],
+                    ], dtype=float),
+                    np.array([0.0, 0.0, 0.0])
+                ),
+
+                (
+                    np.array([
+                        [-1,  0,  0],
+                        [ 0,  1,  0],
+                        [ 0,  0,  1],
+                    ], dtype=float),
+                    np.array([0.5, 0.0, 0.0])
+                ),
+            ],
+        }
+
+        if layer_group not in layer_groups:
+            raise NotImplementedError(
+                f"Layer group {layer_group} is not yet implemented"
+            )
+
+        ops = layer_groups[layer_group]
+
+        # ============================================================
+        # Structure
+        # ============================================================
+
+        rprimd = np.asarray(self.rprimd, dtype=float)
+        xred   = np.asarray(self.xred, dtype=float)
+
+        natom = len(xred)
+
+        typat = np.asarray(self.typat, dtype=int)
+        Z = np.asarray(
+            [int(self.znucl[t - 1]) for t in typat]
+        )
+
+        a1 = rprimd[0]
+        a2 = rprimd[1]
+
+        a = np.linalg.norm(a1)
+        b = np.linalg.norm(a2)
+
+        cg = np.dot(a1, a2) / (a * b)
+        cg = np.clip(cg, -1.0, 1.0)
+        gamma = np.degrees(np.arccos(cg))
+
+        # ============================================================
+        # Surface normal
+        # ============================================================
+
+        normal = np.cross(a1, a2)
+        normal /= np.linalg.norm(normal)
+
+        xcart = xred @ rprimd
+
+        # coordinate normal to slab, Angstrom
+        z = xcart @ normal
+
+        # center slab at z = 0
+        z -= 0.5 * (z.min() + z.max())
+
+        # ============================================================
+        # Fractional coordinates in the actual 2D basis
+        #
+        # r_parallel = x*a1 + y*a2
+        # ============================================================
+
+        G = np.array([
+            [np.dot(a1, a1), np.dot(a1, a2)],
+            [np.dot(a2, a1), np.dot(a2, a2)]
+        ])
+
+        xy = np.zeros((natom, 2))
+
+        for i, rc in enumerate(xcart):
+
+            rhs = np.array([
+                np.dot(rc, a1),
+                np.dot(rc, a2)
+            ])
+
+            xy[i] = np.linalg.solve(G, rhs)
+
+        xy %= 1.0
+
+        # mixed CRYSTAL coordinates:
+        #
+        # x,y = fractional
+        # z   = Angstrom
+        xyz = np.column_stack((xy, z))
+
+        # ============================================================
+        # Sanity check for Bilbao operations
+        #
+        # With CRYSTAL mixed coordinates we require that z is not
+        # mixed with x,y.
+        # ============================================================
+
+        for R, t in ops:
+
+            if (
+                np.any(np.abs(R[:2, 2]) > 1e-12) or
+                np.any(np.abs(R[2, :2]) > 1e-12)
+            ):
+                raise NotImplementedError(
+                    "This layer-group setting mixes z with x/y. "
+                    "The current implementation assumes the standard "
+                    "layer-group orientation with z normal to the slab."
+                )
+
+        # ============================================================
+        # Distance between two CRYSTAL slab coordinates
+        # ============================================================
+
+        def distance(p1, p2):
+
+            dxy = p1[:2] - p2[:2]
+
+            # PBC only in the surface plane
+            dxy -= np.round(dxy)
+
+            dz = p1[2] - p2[2]
+
+            dr = (
+                dxy[0] * a1
+                + dxy[1] * a2
+                + dz * normal
+            )
+
+            return np.linalg.norm(dr)
+
+        # ============================================================
+        # Test all operations for a given origin
+        #
+        # q = r - origin
+        #
+        # operation in standard setting:
+        #
+        # q' = R q + t
+        # ============================================================
+
+        def test_origin(origin):
+
+            q = xyz.copy()
+
+            q[:, 0] -= origin[0]
+            q[:, 1] -= origin[1]
+            q[:, 2] -= origin[2]
+
+            q[:, :2] %= 1.0
+
+            mappings = []
+
+            for R, t in ops:
+
+                mapping = np.full(natom, -1, dtype=int)
+
+                for i in range(natom):
+
+                    p = R @ q[i] + t
+                    p[:2] %= 1.0
+
+                    same_element = np.where(Z == Z[i])[0]
+
+                    best_j = -1
+                    best_d = 1e100
+
+                    for j in same_element:
+
+                        d = distance(p, q[j])
+
+                        if d < best_d:
+                            best_d = d
+                            best_j = j
+
+                    if best_d > symprec:
+                        return None
+
+                    mapping[i] = best_j
+
+                mappings.append(mapping)
+
+            return q, mappings
+
+        # ============================================================
+        # Search origin
+        #
+        # z origin has already been put at the slab centre.
+        #
+        # For x,y we generate candidates from atomic coordinates
+        # and midpoints. This catches mirror planes, inversion centres,
+        # two-fold axes etc.
+        # ============================================================
+
+        candidates = []
+
+        # obvious candidate
+        candidates.append(np.array([0., 0., 0.]))
+
+        # atomic coordinates
+        for p in xyz:
+            candidates.append(
+                np.array([p[0], p[1], 0.])
+            )
+
+        # half-way points between atoms of the same species
+        for i in range(natom):
+
+            for j in range(i, natom):
+
+                if Z[i] != Z[j]:
+                    continue
+
+                dx = xyz[j, 0] - xyz[i, 0]
+                dy = xyz[j, 1] - xyz[i, 1]
+
+                dx -= np.round(dx)
+                dy -= np.round(dy)
+
+                ox = (xyz[i, 0] + 0.5 * dx) % 1.0
+                oy = (xyz[i, 1] + 0.5 * dy) % 1.0
+
+                # equivalent origins displaced by half translations
+                for sx in (0.0, 0.5):
+                    for sy in (0.0, 0.5):
+
+                        candidates.append(
+                            np.array([
+                                (ox + sx) % 1.0,
+                                (oy + sy) % 1.0,
+                                0.0
+                            ])
+                        )
+
+        # remove duplicate candidates
+        unique_candidates = []
+
+        for c in candidates:
+
+            exists = False
+
+            for d in unique_candidates:
+
+                dd = c[:2] - d[:2]
+                dd -= np.round(dd)
+
+                if np.linalg.norm(dd) < 1e-8:
+                    exists = True
+                    break
+
+            if not exists:
+                unique_candidates.append(c)
+
+        # ============================================================
+        # Find first compatible standard origin
+        # ============================================================
+
+        solution = None
+
+        for origin in unique_candidates:
+
+            result = test_origin(origin)
+
+            if result is not None:
+                solution = (origin, result)
+                break
+
+        if solution is None:
+            raise RuntimeError(
+                f"Structure is not compatible with layer group "
+                f"{layer_group} within symprec={symprec} A"
+            )
+
+        origin, (q, mappings) = solution
+
+        # ============================================================
+        # Build symmetry orbits
+        # ============================================================
+
+        parent = np.arange(natom)
+
+        def find(i):
+            if parent[i] != i:
+                parent[i] = find(parent[i])
+            return parent[i]
+
+        def union(i, j):
+
+            ri = find(i)
+            rj = find(j)
+
+            if ri != rj:
+                parent[rj] = ri
+
+        for mapping in mappings:
+
+            for i, j in enumerate(mapping):
+                union(i, j)
+
+        groups = {}
+
+        for i in range(natom):
+
+            root = find(i)
+
+            if root not in groups:
+                groups[root] = []
+
+            groups[root].append(i)
+
+        # keep first atom of every symmetry orbit
+        representatives = [
+            g[0] for g in groups.values()
+        ]
+
+        representatives.sort()
+
+        # ============================================================
+        # Determine lattice-parameter format for CRYSTAL
+        # ============================================================
+
+        eps = 1e-4
+
+        is_90 = abs(gamma - 90.0) < eps
+        is_120 = abs(gamma - 120.0) < eps
+        same_ab = abs(a - b) < eps
+
+        # General metric:
+        #
+        # oblique       -> a b gamma
+        # rectangular   -> a b
+        # square        -> a
+        # hexagonal     -> a
+        #
+        # This is determined from the actual 2D lattice.
+        if same_ab and (is_120 or is_90):
+            lattice_line = f"{a:.4f}"
+
+        elif is_90:
+            lattice_line = f"{a:.4f} {b:.4f}"
+
+        else:
+            lattice_line = f"{a:.4f} {b:.4f} {gamma:.4f}"
+
+        # ============================================================
+        # CRYSTAL output
+        # ============================================================
+
+        print("SLAB")
+        print(layer_group)
+        print(lattice_line)
+        print(len(representatives))
+
+        for i in representatives:
+
+            print(
+                f"{Z[i]:3d}"
+                f" {q[i,0]:8.4f}"
+                f" {q[i,1]:8.4f}"
+                f" {q[i,2]:10.4f}"
+            )
+
+        # ============================================================
+        # Diagnostics
+        # ============================================================
+
+        if verbose:
+
+            print()
+            print("# CRYSTAL slab diagnostics")
+            print(f"# layer group = {layer_group}")
+            print(f"# atoms       = {natom}")
+            print(f"# asym atoms  = {len(representatives)}")
+            print(f"# sym ops     = {len(ops)}")
+            print(
+                f"# origin      = "
+                f"{origin[0]:.6f} "
+                f"{origin[1]:.6f} "
+                f"{origin[2]:.6f}"
+            )
+
+            print("# orbits:")
+
+            for g in groups.values():
+                print("#", g)
+
+
+
+
+
+
 
 
     def write_espresso(self, filename = None, shift = None):

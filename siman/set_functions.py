@@ -199,6 +199,7 @@ vasp_other_keys = [
 'LWANNIER90', 'LWRITE_MMN_AMN', 'LWRITE_UNK', 'NUM_WANN', 'LWRITE_SPN', 'WANNIER90_WIN', 'LWANNIER90_RUN',
 'QSPIRAL', 'LSPIRAL', 'ENINI', 'ENMAX', 'LZEROZ',
 'VCA',
+'LOCPROJ',
 
 
 ]
@@ -222,6 +223,7 @@ siman_keys = [
 'k_effective_mass', # to generate KPOINTS for effective mass
 'cluster_run_command', # run command to run on cluster, used to update cluster['vasp_com'] from set
 'shiftk', # shift of k-mesh (s1,s2,s3), float from 0 to 1
+'triqs', # run triqs
 ]
 
 aims_keys = [
@@ -283,7 +285,7 @@ def read_vasp_sets(user_vasp_sets, override_global=False):
                 bfolder = param['bfolder']
             else:
                 bfolder = None
-
+            # print('here')
             s = inherit_iset(l[0], l[1], varset,
                              override=override, newblockfolder=bfolder)
             # print ('param', param,)
@@ -345,7 +347,7 @@ class InputSet():
 
         self.params = {}
         self.qe_params = {}  # tmp
-        self.setup = {'timestep'} # dict with code-independent parameters; converted from params; Mixture of Abinit, VASP, and Lammps keywords are used;
+        self.setup = {'timestep':None} # dict with code-independent parameters; converted from params; Mixture of Abinit, VASP, and Lammps keywords are used;
 
         self.vasp_params = self.params  # params for any code!, but code-dependent keywords
         self.mul_enaug = 1
@@ -517,6 +519,7 @@ class InputSet():
                 self.vasp_params['KSPACING'] = self.params['KSPACING']['value']
         else:
             for key in param:
+                # print(key, 'key')
                 if key in vasp_keys:
                     s.set_params_dict(key, param[key])
 
@@ -553,6 +556,7 @@ class InputSet():
                     # print(key )
                     s.set_params_dict(key, param[key])
                 else:
+                    # print('siman keys', siman_keys)
                     printlog('Error! Unknown key: '+key)
                     raise RuntimeError
 

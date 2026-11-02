@@ -1403,6 +1403,8 @@ class Calculation(object):
 
             vers (list of int) - list of version for which the inheritance is done
 
+            it_suffix (str) - add suffix to name
+
             i_child (int) - choose number of child in self.children to run res_loop(); can be relevant if more than one
                 calculation exists for the same set
 
