@@ -397,7 +397,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
             Files written for both ISOL=1 and ISOL=2:
                 phi        PHI       electrostatic potential, should be the same as LOCPOT
-                phs / phis PHISOLV  electrostatic potential from the solvent
+                phs / phis PHI_SOLV  electrostatic potential from the solvent
                 vs         VSOLV     cavity correction to the KS potential
                 rb         RHOB      bound charge density
                 ri         RHOION    electrolyte ionic charge density
