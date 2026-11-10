@@ -2,6 +2,48 @@ import numpy as np
 from numpy.typing import NDArray
 from pymatgen.core import Structure, SymmOp
 
+
+def is_valid_magmom(magmom, natom):
+    """Return True for supported complete per-atom magnetic moments.
+
+    Supported representations are one scalar or three-component vector per
+    atom, and a flat noncollinear list with ``3 * natom`` scalar values.
+    Empty lists and lists containing ``None`` mean that moments are absent.
+    """
+    if magmom is None or isinstance(magmom, (str, bytes)):
+        return False
+
+    try:
+        values = list(magmom)
+    except TypeError:
+        return False
+
+    if len(values) == natom:
+        for moment in values:
+            if moment is None:
+                return False
+            try:
+                array = np.asarray(moment, dtype=float)
+            except (TypeError, ValueError):
+                return False
+            if array.size not in (1, 3):
+                return False
+        return natom > 0
+
+    if len(values) == 3 * natom:
+        if natom == 0:
+            return False
+        try:
+            return all(
+                value is not None and np.asarray(value, dtype=float).size == 1
+                for value in values
+            )
+        except (TypeError, ValueError):
+            return False
+
+    return False
+
+
 def pair_opposite_vectors(
     directions: NDArray[np.float64],
 ) -> list[tuple[int, int]]:

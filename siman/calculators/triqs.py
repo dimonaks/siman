@@ -252,7 +252,7 @@ def write_parameters_for_vasp2triqs(cl, params=None):
 
     with open(python_script_filename, "w") as f:
         f.write(f"""from triqs_dft_tools.converters import VaspConverter
-import triqs_dftkit.vasp.plovasp.converter as plo_converter
+import triqs_dft_tools.converters.plovasp.converter as plo_converter
 
 plo_converter.generate_and_output_as_text('plo.cfg', vasp_dir='./')
 
@@ -277,11 +277,11 @@ fig = plt.figure(figsize=(7,4), dpi=150)
 plt.plot(dft_dos['energies'], dft_dos['total'], label=r'VASP total DOS')
 
 # sum PLO DOS for all orbitals
-plt.plot(plo_dos_Ni[:,0],np.sum(plo_dos_Ni[:,1:],axis=1), label=r'PLO Ni_d$')
+plt.plot(plo_dos_Ni[:,0],np.sum(plo_dos_Ni[:,1:],axis=1), label=r'PLO Ni $d$')
 
 plt.xlim(-10,4)
 plt.ylim(0,12)
-plt.xlabel(r'epsilon - E_F$ (eV)')
+plt.xlabel(r'$\\epsilon - E_F$ (eV)')
 plt.ylabel(r'states/eV')
 plt.legend()
 #plt.show()
@@ -427,6 +427,9 @@ def write_dmft_config_file(filename, params = None, skip_dft = 1):
 
 def write_dmft_config(cl,    params = None, up = 'up2'):
     """Write dmft_config.toml, overriding only supplied parameters."""
+
+    if params is None:
+        params = {}
 
     os_config_filename = cl.dir+"/dmft_config.toml"
     csc_config_filename = cl.dir+"/dmft_config_csc.toml"

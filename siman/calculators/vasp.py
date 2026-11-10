@@ -5,6 +5,7 @@ import numpy as np
 from siman import header
 from siman.core.calculation import Calculation
 from siman.core.structure import Structure
+from siman.core.structure_utils import is_valid_magmom
 from siman.header import runBash
 
 from siman.header import printlog, runBash
@@ -22,6 +23,28 @@ rms_between_structures, rms_between_structures2)
 from siman.set_functions import InputSet, aims_keys
 import numpy as np
 
+
+def _jmol_cube_header(cube):
+    """Make a pymatgen cube readable by Jmol.
+
+    Jmol 16 decides the file type from the start of the file, before it
+    reaches the atom records. A first line ``# Cube ...`` is then seen as a
+    folding XYZ file, and the reader dies with NegativeArraySizeException
+    -2147483647. A file that starts with ``JVXL`` is taken as a Gaussian cube.
+    The coordinates stay in Bohr, which is the unit that reader expects.
+    """
+    with open(cube, encoding='utf-8') as handle:
+        lines = handle.readlines()
+    if not lines or lines[0].startswith('JVXL'):
+        return
+    comment = lines[0].lstrip('#').lstrip()
+    if not comment.startswith('Cube'):
+        comment = 'Cube ' + comment
+    if not comment.endswith('\n'):
+        comment += '\n'
+    lines[0] = 'JVXL ' + comment
+    with open(cube, 'w', encoding='utf-8') as handle:
+        handle.writelines(lines)
 
 
 class CalculationVasp(Calculation):
@@ -722,7 +745,7 @@ class CalculationVasp(Calculation):
 
         magmom = []
         
-        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
+        if is_valid_magmom(getattr(self.init, 'magmom', None), self.init.natom):
             magmom = self.init.magmom
             printlog('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
@@ -748,8 +771,8 @@ class CalculationVasp(Calculation):
                 if el in curset.magnetic_moments:
                     magmom.append(curset.magnetic_moments[el])
                 elif el_bare in curset.magnetic_moments:
-                    magmom.append(curset.magnetic_moments[el])
-                    printlog(f'Warning! {el} was not found in your set, I use magmom={curset.magnetic_moments[el]} from {el_bare} for it')
+                    magmom.append(curset.magnetic_moments[el_bare])
+                    printlog(f'Warning! {el} was not found in your set, I use magmom={curset.magnetic_moments[el_bare]} from {el_bare} for it')
                 else:
                     # if '/' in el:
                     printlog(f'{el} was not found in your set, I use magmom={mag_mom_other} for it', imp = 'n')
@@ -875,18 +898,32 @@ class CalculationVasp(Calculation):
             #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
         
         if ('LSORBIT' in vp and vp['LSORBIT']) or ('LNONCOLLINEAR' in vp and vp['LNONCOLLINEAR']):
+            scalar_magmom = None
+            if len(magmom) == self.init.natom:
+                try:
+                    if all(np.asarray(m).size == 1 for m in magmom):
+                        scalar_magmom = [float(np.asarray(m).reshape(-1)[0]) for m in magmom]
+                except (TypeError, ValueError):
+                    scalar_magmom = None
+
             if len(magmom) == 0:
                 printlog('Warning! magmom is empty')
-            elif len(magmom) == self.init.natom and len(magmom[0]) == 1:
+            elif scalar_magmom is not None:
                 printlog('magmom is converted to [0,0, m, 0, 0, m ...] required for noncollinear calculations', imp = 'y')
-                magmom = [x for m in magmom for x in (0, 0, m)]
+                magmom = [x for m in scalar_magmom for x in (0, 0, m)]
             else:
                 printlog('magmom is used from previous SO calculation', magmom, imp = 'y')
             self.init.magmom = magmom
 
             if 'MAGMOM' in vp and vp['MAGMOM'] and len(vp['MAGMOM']) == self.init.natom:
-                vp['MAGMOM'] = [x for m in vp['MAGMOM'] for x in (0, 0, m)]
-                printlog('MAGMOM from set was converted to [0,0, m, 0, 0, m ...]:', vp['MAGMOM'] , imp = 'y')
+                try:
+                    scalar_vp_magmom = [float(np.asarray(m).reshape(-1)[0]) for m in vp['MAGMOM']
+                        if np.asarray(m).size == 1]
+                except (TypeError, ValueError):
+                    scalar_vp_magmom = []
+                if len(scalar_vp_magmom) == self.init.natom:
+                    vp['MAGMOM'] = [x for m in scalar_vp_magmom for x in (0, 0, m)]
+                    printlog('MAGMOM from set was converted to [0,0, m, 0, 0, m ...]:', vp['MAGMOM'] , imp = 'y')
             vc = self.cluster['vasp_com'].split()
             self.cluster['vasp_com'] = ' '.join(vc[0:-1]) + ' vasp_ncl'
             printlog('vasp_com replaced to vasp_ncl', imp = 'y')
@@ -1538,7 +1575,7 @@ class CalculationVasp(Calculation):
                     self.csc_triqs_out = TriqsOutput.from_file(self.path['csc_triqs_out'])
                     self.csc_triqs_out.print_summary_comp()  
 
-                    self.csc_dmft_conv = DmftConvergenceHistory.from_file(self.dir + 'csc/observables_imp0.dat')
+                    self.csc_dmft_conv = DmftConvergenceHistory.from_file(self.dir + '/csc/observables_imp0.dat')
                     self.csc_dmft_conv.print_energy_statistics(last_n=5) #выборочное стандартное отклонение:
 
 
@@ -1644,6 +1681,7 @@ class CalculationVasp(Calculation):
             if 'total' not in getattr(grid, 'data', {}):
                 raise RuntimeError('no volumetric grid in ' + source)
             grid.to_cube(cube, comment=os.path.basename(source))
+            _jmol_cube_header(cube)
         except (ValueError, FileNotFoundError, RuntimeError):
             raise
         except Exception as exc:
@@ -1694,10 +1732,11 @@ class CalculationVasp(Calculation):
 
     def plot_cp_convergence(self):
         """
-        Plot chemical potential and grand canonical energy versus constant-potential SCF step.
+        Plot electron count, chemical-potential gap, and grand canonical energy
+        versus constant-potential SCF step.
 
-        mu and the printed GCE come from CPM-scf and CPM-ion in OSZICAR. GCE is
-        written only on CPM-ion, so earlier points are E(sigma->0) minus
+        N_ele, mu, and the printed GCE come from CPM-scf and CPM-ion in OSZICAR.
+        GCE is written only on CPM-ion, so earlier points are E(sigma->0) minus
         TARGETMU times the electron surplus over the OUTCAR NELECT.
 
         INPUT:
@@ -1706,8 +1745,8 @@ class CalculationVasp(Calculation):
 
         OUTPUT:
             str - path of the PNG written to ``figs/{name}_cp_conv.png`` at 450 dpi.
-            The figure has three panels: mu (red), TARGETMU minus mu (blue),
-            and GCE (green).
+            The figure has three panels: N_ele (red) with the initial NELECT,
+            TARGETMU minus mu (blue) with the target and final mu, and GCE (green).
 
         Raises:
             FileNotFoundError - OSZICAR or OUTCAR is missing.
@@ -1758,10 +1797,11 @@ class CalculationVasp(Calculation):
             cursor += count
             energies.append(sigma[cursor - 1] if 0 < cursor <= len(sigma) else None)
 
-        labels, mu, gap_mev, gce = [], [], [], []
+        labels, n_ele, mu, gap_mev, gce = [], [], [], [], []
         target = records[0][1]['target_mu']
         for (kind, rec), energy in zip(records, energies):
             labels.append(str(rec['scf']) if kind == 'scf' else 'ion')
+            n_ele.append(rec['n_ele'])
             mu.append(rec['mu_e'])
             gap_mev.append((target - rec['mu_e']) * 1000.0)
             if rec.get('gce') is not None:
@@ -1782,15 +1822,18 @@ class CalculationVasp(Calculation):
 
         x = list(range(len(labels)))
         fig, axes = plt.subplots(3, 1, figsize=(7, 8), sharex=True)
-        axes[0].plot(x, mu, 'o-', color='red', label=r'$\mu_e$')
-        axes[0].axhline(target, color='red', ls='--', label='TARGETMU %.3f eV' % target)
-        axes[0].set_ylabel(r'$\mu_e$ (eV)')
+        axes[0].plot(x, n_ele, 'o-', color='red', label=r'$N_e$')
+        if nelect0 is not None:
+            axes[0].axhline(nelect0, color='red', ls='--', label='initial %.3f' % nelect0)
+        axes[0].set_ylabel(r'$N_e$')
         axes[0].legend()
-        axes[1].plot(x, gap_mev, 'o-', color='blue', label=r'TARGETMU $- \mu_e$')
+        axes[1].plot(x, gap_mev, 'o-', color='blue', label=r'$\mu_e^{\mathrm{target}} - \mu_e$')
         if tol_mev is not None:
-            axes[1].axhline(tol_mev, color='blue', ls='--', label='FERMICONVERGE %.3g meV' % tol_mev)
-        axes[1].set_ylabel(r'TARGETMU $- \mu_e$ (meV)')
-        axes[1].legend()
+            axes[1].axhline(tol_mev, color='blue', ls='--', label='tol=%.3g meV' % tol_mev)
+        axes[1].plot([], [], ' ', label=r'$\mu_e^{\mathrm{target}}=$ %.3f eV' % target)
+        axes[1].plot([], [], ' ', label=r'final $\mu_e=$ %.3f eV' % mu[-1])
+        axes[1].set_ylabel(r'$\mu_e^{\mathrm{target}} - \mu_e$ (meV)')
+        axes[1].legend(ncols=2, columnspacing=-0.5)
         axes[2].plot(x, gce, 'o-', color='green', label='GCE')
         axes[2].set_ylabel('GCE (eV)')
         axes[2].set_xlabel('constant-potential SCF step')
@@ -1812,11 +1855,17 @@ class CalculationVasp(Calculation):
     def bader(self):
         chgcar = self.path['chgcar']
         acf = self.dir+'/ACF.dat'
-        printlog('Bader should be installed', imp = 'Y')
+        executable = getattr(header, 'PATH2BADER', None)
+        if not executable or not os.path.isfile(str(executable)):
+            executable = shutil.which('bader')
+        if not executable:
+            raise FileNotFoundError(
+                'bader executable was not found. Set header.PATH2BADER or put bader on PATH')
+        printlog('Bader executable', executable, imp = 'Y')
         if not os.path.isfile(acf):
             cwd = os.getcwd()
             os.chdir(self.dir)
-            print(runBash('bader ' + os.path.basename(chgcar) ) )
+            print(runBash('"' + str(executable) + '" ' + os.path.basename(chgcar) ) )
             os.chdir(cwd)
 
         else:
@@ -2188,9 +2237,17 @@ class CalculationVasp(Calculation):
         plt = BSPlotter(bs,)
         ax = plt.get_plot(vbm_cbm_marker=True, ylim = ylim,)
         # ax.legend = None
-        ax.legend().remove()
-        ax.savefig('figs/png/'+str(self.name)+'_band.png', dpi = 300)
-        ax.savefig('figs/'+str(self.name)+'_band.pdf')
+        legend = ax.get_legend()
+        if legend is not None:
+            legend.remove()
+        # get_plot() returns the axes. savefig belongs to the figure.
+        figure = ax.figure
+        png = 'figs/png/'+str(self.name)+'_band.png'
+        pdf = 'figs/'+str(self.name)+'_band.pdf'
+        os.makedirs(os.path.dirname(png), exist_ok=True)
+        os.makedirs(os.path.dirname(pdf), exist_ok=True)
+        figure.savefig(png, dpi = 300)
+        figure.savefig(pdf)
         # ax.show()
         return
     def get_band_info(self, method = 'siman'):

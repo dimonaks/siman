@@ -172,6 +172,7 @@ vasp_other_keys = [
 'M_CONSTR',
 'I_CONSTRAINED_M',
 'RWIGS',
+'LVACPOTAV',
 #VASPsol
 'LSOL',
 'ISOL',
@@ -181,7 +182,7 @@ vasp_other_keys = [
 'R_ION',
 #CP-VASP
 'ISOL', 'LCEP', 'NESCHEME', 'TARGETMU', 'CAP_MAX', 'FERMICONVERGE', 
-'EFERMI', 'LVACPOTAV'
+'EFERMI', 'LVACPOTAV',
 'TAU',
 'CORE_C',
 'LVDW_EWALD',

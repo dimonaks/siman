@@ -23,6 +23,7 @@ import numpy as np
 
 # additional packages
 from siman import header
+from siman.core.structure_utils import is_valid_magmom
 
 try:
     from tabulate import tabulate
@@ -334,7 +335,7 @@ class Calculation(object):
             printlog("Error! Unknown geotype \n")
             raise RuntimeError
 
-        if st.natom != len(st.xred) != len(st.xcart) != len(st.typat):# or len(st.znucl) != max(st.typat):
+        if not (st.natom == len(st.xred) == len(st.xcart) == len(st.typat)):# or len(st.znucl) != max(st.typat):
             print('natom',st.natom, len(st.xred), len(st.xcart), len(st.typat), 'ntyp', len(st.znucl), max(st.typat))
             printlog("Error! Calculation.write_geometry(): check your arrays.", imp='Y')
             raise RuntimeError
@@ -369,8 +370,8 @@ class Calculation(object):
             if len(st.typat) != len(st.xred) or len(st.xred) != len(st.xcart):
                 printlog('Error! Check sizes of your atom lists')
 
-            if len(st.magmom) > 0 and not None in st.magmom:
-                mag_str = ' '.join(np.array(st.magmom).astype(str))
+            if is_valid_magmom(getattr(st, 'magmom', None), st.natom):
+                mag_str = ' '.join(np.asarray(st.magmom).reshape(-1).astype(str))
                 f.write("magmom "+'\n'.join(wrap(mag_str)) + "\n")
                 if len(st.typat) != len(st.magmom) and  3*len(st.typat) != len(st.magmom):
                     printlog('Error! siman.calculation; Check size of your magmom list')

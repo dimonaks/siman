@@ -1056,15 +1056,17 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     # sc_natom_i = int(sc.vol/st.vol*st.natom) # test
     # print(st.natom)
 
-    if hasattr(st, 'magmom'):
-        if len(st.typat) != len(st.magmom):
-            st.magmom = [None]*st.natom
-            mag_flag = False
-        else:
-            mag_flag = True
+    flat_noncollinear_magmom = False
+    if hasattr(st, 'magmom') and len(st.magmom) == st.natom:
+        magmom_by_atom = st.magmom
+        mag_flag = True
+    elif hasattr(st, 'magmom') and len(st.magmom) == 3 * st.natom:
+        magmom_by_atom = [st.magmom[3*i:3*i+3] for i in range(st.natom)]
+        flat_noncollinear_magmom = True
+        mag_flag = True
     else:
-        st.magmom = [None]*st.natom
-        mag_flag = False        
+        magmom_by_atom = [None]*st.natom
+        mag_flag = False
 
     sc_natom = sc.vol/st.vol*st.natom # test
 
@@ -1110,7 +1112,7 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
         xred_mul  = xcart2xred(xcart_mul, sc.rprimd)
 
         # print(len(xred_mul), len(xcart_mul), len(st.typat), len(st.magmom) )
-        for xr, xc,  t, m, n in zip(xred_mul, xcart_mul, st.typat, st.magmom, numbers):
+        for xr, xc,  t, m, n in zip(xred_mul, xcart_mul, st.typat, magmom_by_atom, numbers):
             # if 0<xr[0]<1 and 0<xr[1]<1 and 0<xr[2]<1:
                 # print (xr)
             if n in sc.init_numbers and n in skip_numbers:
@@ -1149,7 +1151,9 @@ def create_supercell(st, mul_matrix, test_overlap = False, mp = 4, bound = 0.01,
     sc.ntypat = st.ntypat
     sc.nznucl = sc.get_nznucl()
 
-    if mag_flag is False:
+    if flat_noncollinear_magmom:
+        sc.magmom = [component for moment in sc.magmom for component in moment]
+    elif mag_flag is False:
         sc.magmom = [None]
 
 
@@ -1227,19 +1231,20 @@ def determine_symmetry_positions(st, element, silent = 0, symprec = 0.01, angle_
 
 
 
-def remove_atoms(st, atoms_to_remove):
+def remove_atoms(st, atoms_to_remove, inherit_magmom=True):
     """
     remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*
     st (Structure)
     atoms_to_remove (list) - list of element names or numbers
 
     """
-    st = st.remove_atoms(atoms_to_remove)
+    st = st.remove_atoms(atoms_to_remove, inherit_magmom=inherit_magmom)
 
     return st
 
 
-def remove_one_atom(st, element, del_pos = None, iat = 0):
+def remove_one_atom(st, element, del_pos = None, iat = 0,
+                    inherit_magmom = True):
     """
     removes one atom of element type from position del_pos
     iat - number of atom inside subset
@@ -1259,10 +1264,12 @@ def remove_one_atom(st, element, del_pos = None, iat = 0):
     i_del = pos[iat]
     st = st.del_atom(i_del) # remove just iat atom
     st.name += '.'+element+str(i_del)+'del'
-    st.magmom = [None]
+    if not inherit_magmom:
+        st.magmom = [None]
     return st, i_del
 
-def create_deintercalated_structure(st, element, del_pos = 1):
+def create_deintercalated_structure(st, element, del_pos = 1,
+                                    inherit_magmom = True):
 
     """
     returns deintercalated structures
@@ -1283,7 +1290,7 @@ def create_deintercalated_structure(st, element, del_pos = 1):
 
     # print(st.get_elements())
 
-    st1 = remove_atoms(st, atoms_to_remove = pos)
+    st1 = remove_atoms(st, atoms_to_remove=pos, inherit_magmom=inherit_magmom)
     st1.name += '.'+element+str(pos)+'del'
     # print(st1.get_elements())
     # sys.exit()
@@ -1330,7 +1337,8 @@ def create_replaced_structure(st, el1, el2, rep_pos = 1, only_one = False):
 
 
 
-def create_antisite_defect_old(st, cation_positions = None):
+def create_antisite_defect_old(st, cation_positions = None,
+                               inherit_magmom = True):
     """
     exchange cation and transition metal
     st (Structure)
@@ -1377,13 +1385,16 @@ def create_antisite_defect_old(st, cation_positions = None):
     printlog('Atom ',i_alk+1,'and', i_tr+1,'were swapped')
     printlog('The distance between them is ', sur[3][0])
 
-    st.magmom = [None]
+    if not inherit_magmom:
+        st.magmom = [None]
 
     return st
 
 
 
-def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans_pos = 1,  mode = None):
+def create_antisite_defect2(st_base, st_from, cation = None, trans = None,
+                            trans_pos = 1, mode = None,
+                            inherit_magmom = True):
     """
     exchange cation and transition metal
     st_base (Structure) - basic structure in which defects are created
@@ -1443,7 +1454,8 @@ def create_antisite_defect2(st_base, st_from, cation = None, trans = None, trans
     elif 'add_swp' in mode or 'a3' in mode:
         st = st_s
 
-    st.magmom = [None]
+    if not inherit_magmom:
+        st.magmom = [None]
 
     return st
 
@@ -1451,7 +1463,8 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
     tol = 0.1, max_sep = 4, iatom = None, 
     return_with_table = False, 
     disp_AS1 = None, mag_AS1 = None, disp_AS2 = None,
-    AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None ):
+    AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None,
+    inherit_magmom = True):
     
     
     """
@@ -1544,7 +1557,7 @@ def create_single_antisite(st, el1, el2, i_el1, i_el2_list = None,
             suf+='-'+str(i_AP)+'m'+str(mag_AP)
 
 
-        if mag_AS1  is None and mag_AP is None:
+        if not inherit_magmom and mag_AS1 is None and mag_AP is None:
             st_as.magmom = [None]
 
         if mag_AS1 is not None:
@@ -1588,7 +1601,8 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
     tol = 0.1, max_sep = 4, iatom = None, 
     return_with_table = False, 
     disp_AS1 = None, mag_AS1 = None, disp_AS2 = None,
-    AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None ):
+    AP_on = False, i_AP = None, mag_AP = None, disp_AP = None, confs = None,
+    inherit_magmom = True):
     
     
     """
@@ -1728,7 +1742,7 @@ def create_antisite_defect3(st, el1, el2, i_el2_list = None,
         st_as.i_el2 = j            
 
 
-        if mag_AS1  is None and mag_AP is None:
+        if not inherit_magmom and mag_AS1 is None and mag_AP is None:
             st_as.magmom = [None]
 
         if mag_AS1:

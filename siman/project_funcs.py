@@ -3705,7 +3705,7 @@ def calc_strain_influence(cl_b, replace = False, rep_pos = None,
     invert_x = None, vac = False, it_folder = 'Na2FePO4F/scaled', 
     plot = 0, ise = '', mul_matrix = None, sreg = None, 
     suf = None, up = 0, n_scale_images = None,
-    ver_lines = None, ylim = None):
+    ver_lines = None, ylim = None, inherit_magmom = True):
     """
     Helper function
     Creates 3 calculations
@@ -3750,7 +3750,8 @@ def calc_strain_influence(cl_b, replace = False, rep_pos = None,
         it_b = cl_b.id[0]
     
 
-    st_b.magmom = [None]
+    if not inherit_magmom:
+        st_b.magmom = [None]
     cl_list.append([it_b, st_b])
     # names = []
     for el in del_el_list:
@@ -3758,7 +3759,10 @@ def calc_strain_influence(cl_b, replace = False, rep_pos = None,
             lsuf = ''
             if vac:
                 # del_pos = 1
-                st_del = remove_one_atom(st_b, el, del_pos = del_pos)
+                st_del = remove_one_atom(
+                    st_b, el, del_pos=del_pos,
+                    inherit_magmom=inherit_magmom,
+                )
                 it_del = it_b+'.vac'+el+str(del_pos)
 
             elif half:
@@ -3767,11 +3771,17 @@ def calc_strain_influence(cl_b, replace = False, rep_pos = None,
                     if el == 'Na':
                         at_to_remove = [61, 60, 57,64]
                         conf = 'c6'
-                        st_del = st_b.remove_atoms(at_to_remove, from_one = 1)
+                        st_del = st_b.remove_atoms(
+                            at_to_remove, from_one=1,
+                            inherit_magmom=inherit_magmom,
+                        )
                     elif el == 'Li':
                         at_to_remove = [65, 72, 69, 68]
                         conf = 'c5'
-                        st_del = st_b.remove_atoms(at_to_remove, from_one = 1)
+                        st_del = st_b.remove_atoms(
+                            at_to_remove, from_one=1,
+                            inherit_magmom=inherit_magmom,
+                        )
                     it_del = it_b+'.id'+el+lsuf+'.'+conf # 
 
 
@@ -3779,18 +3789,27 @@ def calc_strain_influence(cl_b, replace = False, rep_pos = None,
                     if del_pos == 1:
                         at_to_remove = [61,62,57,59]
                         conf = 'c13'
-                        st_del = st_b.remove_atoms(at_to_remove, from_one = 1)
+                        st_del = st_b.remove_atoms(
+                            at_to_remove, from_one=1,
+                            inherit_magmom=inherit_magmom,
+                        )
                     elif del_pos == 2:
                         at_to_remove = [65,72, 69,68]
                         conf = 'c5'
-                        st_del = st_b.remove_atoms(at_to_remove, from_one = 1)                        
+                        st_del = st_b.remove_atoms(
+                            at_to_remove, from_one=1,
+                            inherit_magmom=inherit_magmom,
+                        )
 
                     it_del = it_b+'.id'+el+str(del_pos)+lsuf+'.'+conf #
 
 
 
             else:
-                st_del = create_deintercalated_structure(st_b, el, del_pos = del_pos)
+                st_del = create_deintercalated_structure(
+                    st_b, el, del_pos=del_pos,
+                    inherit_magmom=inherit_magmom,
+                )
                 
                 if len(del_pos_list) ==1:
                     it_del = it_b+'.id'+el # for compatibility 
@@ -3817,7 +3836,8 @@ def calc_strain_influence(cl_b, replace = False, rep_pos = None,
             iddsm = (clt[0]+suf, ise, 1)
             if iddsm not in calc or up:
                 add_loop(*idd, input_st = clt[1], it_suffix = suf.replace('.', ''), calc_method = 'scale', mul_matrix = mul_matrix,
-                 scale_region = scale_region, n_scale_images = n_scale_images,  inherit_option = 'inherit_xred', it_folder = it_folder)
+                 scale_region = scale_region, n_scale_images = n_scale_images,  inherit_option = 'inherit_xred', it_folder = it_folder,
+                 inherit_magmom = inherit_magmom)
     else:
 
 

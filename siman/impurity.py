@@ -1051,7 +1051,8 @@ def determine_unique_voids(st_pores, sums, avds):
     
     return insert_positions
 
-def insert_atom(st, el, i_void = None, i_void_list = None, r_imp = 1.6, ):
+def insert_atom(st, el, i_void = None, i_void_list = None, r_imp = 1.6,
+                inherit_magmom = True):
     """Simple Wrapper for inserting atoms 
 
     i_void (int) has higher priority than i_void_list
@@ -1098,7 +1099,8 @@ def insert_atom(st, el, i_void = None, i_void_list = None, r_imp = 1.6, ):
     printlog(st.des, imp = 'y')
 
     st_new.write_poscar()
-    st_new.magmom = [None]
+    if not inherit_magmom:
+        st_new.magmom = [None]
 
     return st_new, i_add, sts_by_one
 

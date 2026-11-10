@@ -25,6 +25,7 @@ from siman.header import printlog, runBash
 from siman.small_functions import is_list_like, makedir, list2string, setting_sshpass
 from siman.classes import Description
 from siman.core.structure import Structure
+from siman.core.structure_utils import is_valid_magmom
 from siman.calculators.vasp import CalculationVasp
 from siman.calculators.aims import CalculationAims
 from siman.calculators.gaussian import CalculationGaussian
@@ -338,7 +339,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
     override = None,
     ssh_object = None,
     run = False, check_job  = 1, params = None, mpi = False, copy_to_server = True, update_set = None,
-    cluster_settings = None
+    cluster_settings = None, inherit_magmom = True
     ):
     """
     Main subroutine for creation of calculations, saving them to database and sending to server.
@@ -436,6 +437,10 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         - comment - arbitrary comment for history.
     
         - update_set (dict) - allow to update set, the same as params['update_set_dic'] and has higher priority
+
+        - inherit_magmom (bool) - preserve valid structure magnetic moments
+          through inheritance and derived structures; default True. False
+          clears them so the input set can provide MAGMOM.
 
 
         #inherit flags:
@@ -612,6 +617,9 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
 
         if inherit_args is None:
             inherit_args = {}
+        else:
+            inherit_args = copy.deepcopy(inherit_args)
+        inherit_args.setdefault('inherit_magmom', inherit_magmom)
 
 
 
@@ -772,23 +780,27 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
             
             if pm.get('cl1') and pm.get('cl2'):
                 cl1 = pm['cl1']
-                st1 = cl1.end
+                st1 = copy.deepcopy(cl1.end)
                 cl2 = pm['cl2']
-                st2 = cl2.end
+                st2 = copy.deepcopy(cl2.end)
                 path1 = cl1.path
                 path2 = cl2.path
                 p2p = header.PATH2PROJECT
                 pm['path1'] = {'charge': '/'.join([p2p,path1['charge']]), 'output': '/'.join([p2p,path1['output']])}
                 pm['path2'] = {'charge': '/'.join([p2p,path2['charge']]), 'output': '/'.join([p2p,path2['output']])}
                 
-                st1.magmom = [None]
+                if not inherit_magmom:
+                    st1.magmom = [None]
+                    st2.magmom = [None]
                 st1_vis = copy.deepcopy(st1)
                 st2_vis = copy.deepcopy(st2)
             
             elif pm.get('st1') and pm.get('st2'):
-                st1 = pm['st1']
-                st2 = pm['st2']
-                st1.magmom = [None]
+                st1 = copy.deepcopy(pm['st1'])
+                st2 = copy.deepcopy(pm['st2'])
+                if not inherit_magmom:
+                    st1.magmom = [None]
+                    st2.magmom = [None]
                 st1_vis = copy.deepcopy(st1)
                 st2_vis = copy.deepcopy(st2)
 
@@ -984,8 +996,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
                     pname = st.name
 
                 st = copy.deepcopy(st)
-                curset = varset[inputset] if inputset in varset else None
-                if not hasattr(curset, 'magmom') or curset.magmom is None:
+                if not inherit_magmom:
                     st.magmom = [None]
 
                 write_xyz(st, file_name = st.name+'_used_for_scaling', path = xyz_folder)
@@ -1109,7 +1120,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         if input_geo_format == 'mat_proj':
             printlog("Taking structure", mat_proj_id,"with it name "+str(it)+" from materialsproject.org ...", imp = 'Y')
 
-            st = get_structure_from_matproj_new(it = it, it_folder =it_folder, ver = verlist[0], mat_proj_cell = mat_proj_cell, mat_proj_id = mat_proj_id)
+            st = get_structure_from_matproj(it = it, it_folder =it_folder, ver = verlist[0], mat_proj_cell = mat_proj_cell, mat_proj_id = mat_proj_id)
             if it is None:
                 it = st.it
                 printlog("Giving name "+str(it), imp = 'Y')
@@ -1949,12 +1960,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                     batch_on_server = cl.project_path_cluster+'/'+batch_script_filename 
                     if 'csc_triqs' in up:
-                        run_on_server("mkdir -p "+cl.project_path_cluster+cl.dir+'/csc', addr = cl.cluster_address)
+                        run_on_server("mkdir -p "+cl.project_path_cluster+'/'+cl.dir+'/csc', addr = cl.cluster_address)
     
-                        batch_on_server = cl.project_path_cluster+cl.dir + '/csc_triqs.run' 
+                        batch_on_server = cl.project_path_cluster+'/'+cl.dir + '/csc_triqs.run' 
 
                     elif 'triqs' in up:
-                        batch_on_server = cl.project_path_cluster+cl.dir + '/triqs.run' 
+                        batch_on_server = cl.project_path_cluster+'/'+cl.dir + '/triqs.run' 
 
                     printlog('Setting executable rights for batch script on server', batch_on_server)
                     run_on_server('chmod +x '+batch_on_server, header.cluster_address)
@@ -1999,6 +2010,7 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     atom_to_shift = None, shift_vector = None,
     mult_a = None, mult_b=None, mult_c = None, mult_rprimd = None,
     it_folder = None, occ_atom_coressp = None, ortho = None, mul_matrix = None, geo_folder='', override = None, use_init = None,
+    inherit_magmom = True,
     ):
     """
     Function for creating new geo files in geo folder based on different types of inheritance
@@ -2049,6 +2061,8 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
         - it_folder - section folder
         
         - use_init (bool) use init structure if end is empty
+        - inherit_magmom (bool) preserve valid per-atom moments; default True.
+          ``full_nomag`` overrides this and always clears moments.
 
     Result: 
         
@@ -2402,6 +2416,11 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
         des = 'Atom '+str(i_atom_to_remove)+' removed from  '+cl_base.name
 
+        if is_valid_magmom(getattr(st, 'magmom', None), st.natom):
+            if len(st.magmom) == 3 * st.natom:
+                del st.magmom[3*i_atom_to_remove:3*i_atom_to_remove+3]
+            else:
+                del st.magmom[i_atom_to_remove]
         del st.typat[i_atom_to_remove]
         del st.xcart[i_atom_to_remove]
         del st.xred[i_atom_to_remove]
@@ -2475,12 +2494,12 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
     elif 'antisite' in inherit_type:
 
         if 'as' in inherit_type:
-            st = create_antisite_defect(st)
+            st = create_antisite_defect(st, inherit_magmom=inherit_magmom)
             des = 'Fully inherited from the '+ id_base_st_type +' state of '+cl_base.name+\
             ' by simple swapping of alkali and transition atoms'
 
         elif 'a' in inherit_type:
-            st = create_antisite_defect2(st, st_from = confdic['st_from'], cation = confdic['cation'], trans = confdic['trans'], mode = confdic['mode'])
+            st = create_antisite_defect2(st, st_from = confdic['st_from'], cation = confdic['cation'], trans = confdic['trans'], mode = confdic['mode'], inherit_magmom=inherit_magmom)
             des = 'create_antisite_defect2 '
 
         override = True
@@ -2527,6 +2546,9 @@ def inherit_icalc(inherit_type, it_new, ver_new, id_base, calc = None, st_base =
 
     #print(len(new.end.xred))
     # print (id_base_st_type)
+    if not inherit_magmom or inherit_type == 'full_nomag':
+        st.magmom = [None]
+
     new.init = st
     # print(new.init.select)
     # sys.exit()
@@ -2846,10 +2868,12 @@ def res_loop(it, setlist, verlist, analys_type = None,
     if type(r_id) in (float, int):
         e1_r = r_id
     elif type(r_id) == tuple:
-        # if '4' not in calc[r_id].state:
-        #     print "Start to read reference:"
+        if r_id not in calc:
+            raise KeyError('Reference calculation %s does not exist' % (r_id,))
         if readfiles:
             printlog( calc[r_id].read_results(loadflag, choose_outcar = choose_outcar)  )
+        if '4' not in calc[r_id].state:
+            raise RuntimeError('Reference calculation %s is not finished' % (r_id,))
         e_r = calc[r_id].energy_sigma0 #reference calc
         nat_r = calc[r_id].end.natom # reference calc
         e1_r = e_r/nat_r # energy per one atom
@@ -3571,204 +3595,67 @@ def get_structure_from_cee_database(it, it_folder, ver, section = 'CEStorage', c
 
 
 
-def get_structure_from_matproj(it = None, it_folder = None, ver = None, mat_proj_cell = '', mat_proj_id = None):
+def get_structure_from_matproj(mat_proj_id=None, it=None, it_folder=None, mat_proj_cell=None, ver=None, mute_progress_bars=True):
     """
-    Take structures from Mat. projects
+    Download a structure from materialsproject.org with the current MP API.
 
-    Find material with 'it' stoichiometry (lowest energy) from materialsproject.org, 
-    download and create field in struct_des and input POSCAR file
+    The lowest energy-above-hull entry is used when only a formula is given.
+    A conventional cell is returned when mat_proj_cell contains 'conv'.
+
     INPUT:
-        
-        - struct_des-  
-        - it        - materials name, such as 'LiCoO2', .... By default the structure with minimum *e_above_hull* is taken
-        - it_folder - section folder in which the Poscar will be placed
-        - ver       - version of structure defined by user
-        - mat_proj_id (str) - the id can be provided explicitly
-        - mat_proj_cell (str)- 
-                - 'conv' - conventional
+        - mat_proj_id (str) - Materials Project id, for example 'mp-135'
+        - it (str) - formula, such as 'LiCoO2', used when mat_proj_id is omitted
+        - it_folder (str) - section folder stored in struct_des
+        - mat_proj_cell (str) - 'conv' requests the conventional cell
+        - ver - version written into the POSCAR file name
+        - mute_progress_bars (bool) - mute the MPRester progress bar
 
     RETURN:
-        
-        - ?
-        - ?
-
-
+        siman Structure
     """
-    from pymatgen.ext.matproj import MPRester
-    from pymatgen.io.vasp.inputs import Poscar
+    from mp_api.client import MPRester
     from pymatgen.core.composition import Composition
-
-    with MPRester(header.pmgkey) as m:
-        # print m.get_materials_id_references('mp-24850')
-        # print m.get_structures('mp-24850')
-        # mp_entries = m.get_entries_in_chemsys(["Co", "O"])
-        # for e in mp_entries:
-        #     if not 'is_hubbard = True' in e: continue
-        # energy_per_atom
-        # print mp_entries
-        # print m.supported_task_properties
-        # print it, 'it'
-        # print type(it)
-        # it = "LiFePO4"
-        # print m.get_data(it, data_type='vasp', prop='e_above_hull')
-
-        if mat_proj_id:
-            groundstate_st_id = mat_proj_id
-        else: 
-            prop_dic_list =  m.get_data(it, data_type='vasp', prop='e_above_hull')
-
-
-
-
-            newlist = sorted(prop_dic_list, key=itemgetter('e_above_hull')) 
-
-            groundstate_st_id = newlist[0]['material_id']
-            # print groundstate_st_id
-            # print m.get_data(groundstate_st_id, data_type='vasp', prop='hubbards')
-        
-
-        st_pmg =  m.get_structure_by_material_id(groundstate_st_id)
-        
-        if 'conv' in mat_proj_cell:
-            from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-            sf = SpacegroupAnalyzer(st_pmg, symprec = 0.01)
-            st_pmg = sf.get_conventional_standard_structure()
-
-        cm = Composition(st_pmg.formula)
-
-        # print(cm.reduced_formula)
-        if it is None:
-            it = str(cm.reduced_formula)
-        # sys.exit()
-        if it_folder is None:
-            it_folder = it
-
-    if it:
-        add_des(header.struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
-        path2poscar = it_folder+'/'+it+'/'+groundstate_st_id+".POSCAR-"+str(ver)
-        makedir(path2poscar)
-    else:
-        # path2poscar = groundstate_st_id+".POSCAR"
-        path2poscar = it_folder+'/'+groundstate_st_id+".POSCAR" if it_folder else groundstate_st_id+".POSCAR"
-
-    
-    Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True, )
-    printlog('Structure', groundstate_st_id, 'downloaded from materialsproject.org\n',
-        'File '+path2poscar+" was written", imp = 'y')
-
-    st = smart_structure_read(input_geo_file = path2poscar)
-    st.groundstate_st_id = groundstate_st_id
-    st.mat_proj_st_id    = groundstate_st_id
-    st.input_geo_file    = path2poscar
-    st.it = it
-    st.it_folder = it_folder
-
-    return st
-
-    #pymatgen drafts, can be useful
-
-    # with MPRester(pmgkey) as m:
-    #     print dir(m)
-    #     print m.supported_properties
-    #     print m.get_data('mp-540111', data_type='vasp', prop='total_magnetization')
-    #     # 'total_magnetization'
-
-    #Pymatgen symmetry analyzer
-    # from pymatgen.io.vasp.inputs import Poscar
-    # from pymatgen.symmetry.analyzer import SpacegroupAnalyzer as SA
-    # from pymatgen import Lattice, Structure, Molecule
-    # a = Structure.from_file('/home/aksenov/scientific_projects/cathode/Li2FePO4F/scaled/Li2FePO4F.ir.su.4uis/100.CONTCAR' )
-    # b = SA(a)
-    # print(b.get_space_group_symbol())
-    # print(a.get_space_group_info())
-    # # lattice = Lattice(st.rprimd)
-    # # print (lattice)
-
-    # struct = Structure(st.rprimd, st.get_elements(), st.xred)
-    # print(struct)
-
-
-def get_structure_from_matproj_new(mat_proj_id=None, it=None, it_folder=None, mat_proj_cell=None, ver=None, mute_progress_bars=True):
-    from mp_api.client import MPRester  # Modern MP API client
     from pymatgen.io.vasp import Poscar
-    from pymatgen.core.composition import Composition
-    """ Version with MP-API instead of outdated Pymatgen-API """ 
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-    """
-        Find material with 'it' stoichiometry (lowest energy) from materialsproject.org, 
-        download and create field in struct_des and input POSCAR file
-        INPUT:
-            - it        - materials name, such as 'LiCoO2', .... By default the structure with minimum *e_above_hull* is taken
-            - it_folder - section folder in which the Poscar will be placed
-            - ver       - version of structure defined by user
-            - mat_proj_id (str) - the id can be provided explicitly
-            - mat_proj_cell (str)- 
-                    - 'conv' - conventional
-            - mute_progress_bars - mute progress bar of MPRester
-
-        RETURN:
-            - st - siman structure 
-    """
+    if not mat_proj_id and not it:
+        raise ValueError("No material ID or formula provided.")
 
     with MPRester(header.mpkey, mute_progress_bars=mute_progress_bars) as m:
         if mat_proj_id:
-            groundstate_st_id = mat_proj_id
+            groundstate_st_id = str(mat_proj_id)
         else:
-            # Fetch entries for the given chemical system or formula
-
-            if it:
-                results = m.summary.search(formula=it, fields=["material_id", "energy_above_hull"])
-            else:
-                raise ValueError("No material ID or chemical system provided.")
-
-            # Sort by energy above hull to find the ground state
-            if results:
-                sorted_results = sorted(results, key=lambda x: x.energy_above_hull)
-                groundstate_st_id = sorted_results[0].material_id
-            else:
+            results = m.summary.search(formula=it, fields=["material_id", "energy_above_hull"])
+            if not results:
                 raise ValueError("No results found for the given query.")
+            sorted_results = sorted(results, key=lambda x: x.energy_above_hull)
+            groundstate_st_id = str(sorted_results[0].material_id)
 
-            if it is None:
-                it = str(cm.reduced_formula)
-            if it_folder is None:
-                it_folder = it
-
-        # Fetch the structure using the material ID
         st_pmg = m.get_structure_by_material_id(groundstate_st_id)
+        if mat_proj_cell and 'conv' in mat_proj_cell:
+            st_pmg = SpacegroupAnalyzer(st_pmg, symprec=0.01).get_conventional_standard_structure()
 
-        # Convert to conventional cell if requested
-        if mat_proj_cell is not None and 'conv' in mat_proj_cell:
-            sf = SpacegroupAnalyzer(st_pmg, symprec=0.01)
-            st_pmg = sf.get_conventional_standard_structure()
+    cm = Composition(st_pmg.formula)
+    if it is None:
+        it = str(cm.reduced_formula)
+    if it_folder is None:
+        it_folder = it
 
-        # Determine the formula and folder name
-        cm = Composition(st_pmg.formula)
-        if it is None:
-            it = str(cm.reduced_formula)
-        if it_folder is None:
-            it_folder = it
+    os.makedirs("poscar", exist_ok=True)
+    path2poscar = "poscar/" + it + "_" + groundstate_st_id + ".POSCAR-" + str(ver)
+    if it:
+        add_des(header.struct_des, it, it_folder, des='taken automatically from materialsproject.org: ' + groundstate_st_id)
 
+    Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True)
+    printlog('Structure', groundstate_st_id, 'downloaded from materialsproject.org\n', 'File ' + path2poscar + " was written", imp='y')
 
-        os.makedirs("poscar", exist_ok=True)
-        path2poscar = "poscar/" + it + "_" + f"{groundstate_st_id}.POSCAR-" + str(ver)
-
-        if it:
-            add_des(header.struct_des, it, it_folder, des = 'taken automatically from materialsproject.org: '+groundstate_st_id,)
-
-        # Write the structure to a POSCAR file
-        Poscar(st_pmg).write_file(path2poscar, direct=True, vasp4_compatible=True)
-        printlog('Structure', groundstate_st_id, 'downloaded from materialsproject.org\n', 'File '+path2poscar+" was written", imp = 'y')
-
-        # Return the structure with additional metadata
-        st = smart_structure_read(input_geo_file=path2poscar)
-        st.groundstate_st_id = groundstate_st_id
-        st.mat_proj_st_id = groundstate_st_id
-        st.input_geo_file = path2poscar
-        st.it = it
-        st.it_folder = it_folder
-
-        return st
-
+    st = smart_structure_read(input_geo_file=path2poscar)
+    st.groundstate_st_id = groundstate_st_id
+    st.mat_proj_st_id = groundstate_st_id
+    st.input_geo_file = path2poscar
+    st.it = it
+    st.it_folder = it_folder
+    return st
 
 
 def manually_remove_from_struct_des(struct_des, key):
