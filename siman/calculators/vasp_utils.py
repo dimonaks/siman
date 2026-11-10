@@ -43,5 +43,7 @@ def parse_bands(outcar="OUTCAR", tol=1e-6):
         print(f"  Occupied bands : {len(occupied):4d}")
         print(f"  Empty bands    : {len(empty):4d}")
         print(f"  Mixed bands    : {len(mixed):4d}")
-        print(f"  Occupied range : {min(occ_e):7.1f} ... {max(occ_e):7.1f} eV")
-        print(f"  Empty range    : {min(empty_e):7.1f} ... {max(empty_e):7.1f} eV")
+        if occ_e:
+            print(f"  Occupied range : {min(occ_e):7.1f} ... {max(occ_e):7.1f} eV")
+        if empty_e:
+            print(f"  Empty range    : {min(empty_e):7.1f} ... {max(empty_e):7.1f} eV")

@@ -721,8 +721,13 @@ class Structure():
 
         site_properties = {}
 
-        if hasattr(self, 'magmom') and any(self.magmom):
-            site_properties["magmom"] = self.magmom
+        if is_valid_magmom(getattr(self, 'magmom', None), self.natom):
+            if len(self.magmom) == 3 * self.natom:
+                site_properties["magmom"] = [
+                    self.magmom[3*i:3*i+3] for i in range(self.natom)
+                ]
+            else:
+                site_properties["magmom"] = self.magmom
 
 
 
@@ -1051,7 +1056,7 @@ class Structure():
         Returns
         -------
         Structure
-            Rotated pymatgen Structure.
+            Rotated siman Structure.
         Author:
             Chat GPT 5.6 + Aksyonov
         """
@@ -1819,6 +1824,11 @@ class Structure():
         printlog('self.add_atoms(): adding atom ', element, imp = 'n')
 
         st = copy.deepcopy(self)
+        old_natom = st.natom
+        magmom_flag = is_valid_magmom(getattr(st, 'magmom', None), old_natom)
+        flat_noncollinear_magmom = (
+            magmom_flag and len(st.magmom) == 3 * old_natom
+        )
 
         # print(st.select)
         if selective: 
@@ -1846,16 +1856,19 @@ class Structure():
 
         el_z_to_add = element_name_inv(element)
 
-        if hasattr(st, 'magmom') and any(st.magmom) or (mag and st.natom == 0) :
-            magmom_flag = True
-        else:
-            magmom_flag = False
-
-        # print(magmom_flag, st.magmom)
-        # sys.exit()
-
         if mag is None:
             mag = 0.6
+
+        if flat_noncollinear_magmom:
+            mag_array = np.asarray(mag).reshape(-1)
+            if mag_array.size == 1:
+                added_magmom = [0.0, 0.0, float(mag_array[0])]
+            elif mag_array.size == 3:
+                added_magmom = mag_array.astype(float).tolist()
+            else:
+                raise ValueError('mag must be a scalar or a three-component vector')
+        else:
+            added_magmom = mag
 
         if el_z_to_add not in st.znucl or add2end:
             
@@ -1888,7 +1901,10 @@ class Structure():
                 # print(mag, natom_to_add)
 
                 # print('add_atoms: magmom = ',st.magmom)
-                st.magmom.extend( [mag]*natom_to_add  )
+                if flat_noncollinear_magmom:
+                    st.magmom.extend(added_magmom * natom_to_add)
+                else:
+                    st.magmom.extend([added_magmom] * natom_to_add)
                 # print('add_atoms: magmom = ',st.magmom)
 
             j_ins = self.natom # first one
@@ -1925,7 +1941,10 @@ class Structure():
                 ''
 
             if magmom_flag:
-                st.magmom[j_ins:j_ins] =  [mag]*natom_to_add
+                if flat_noncollinear_magmom:
+                    st.magmom[3*j_ins:3*j_ins] = added_magmom * natom_to_add
+                else:
+                    st.magmom[j_ins:j_ins] = [added_magmom] * natom_to_add
 
 
         st.xcart2xred()
@@ -1990,7 +2009,6 @@ class Structure():
         zxred  = [[] for i in nt]
         zxcart = [[] for i in nt]
         ztypat = [[] for i in nt]
-        zmagmom= [[] for i in nt]
         ziat =   [[] for i in nt]
         i = 0
         # print(st.ntypat)
@@ -2011,11 +2029,12 @@ class Structure():
         
         st.perm = [original_numbers.index(i) for i in range(st.natom)] # show the initial order of atoms; starting from 0
 
-        if hasattr(st, 'magmom') and any(st.magmom):
-            for t, m in zip(st.typat, st.magmom):
-                zmagmom[t-1].append(m)
-            st.magmom = [item for sublist in zmagmom for item in sublist]
-
+        old_magmom = getattr(st, 'magmom', [])
+        if len(old_magmom) == st.natom:
+            st.magmom = [copy.deepcopy(old_magmom[i]) for i in original_numbers]
+        elif len(old_magmom) == 3 * st.natom:
+            atom_magmom = [old_magmom[3*i:3*i+3] for i in range(st.natom)]
+            st.magmom = [component for i in original_numbers for component in atom_magmom[i]]
         else:
             st.magmom = [None]
 
@@ -2044,7 +2063,6 @@ class Structure():
         
         typat = []
         xcart = []
-        magmom = []
         znucl = []
         # st.write_poscar()
 
@@ -2081,12 +2099,15 @@ class Structure():
                     typat.append(t)
                     xcart.append(st.xcart[i])
                     old_numbers.append(i)
-                    if len(st.magmom) != 0:
-                        if None not in st.magmom:
-                            magmom.append(st.magmom[i])
             t+=1
 
-        if len(magmom) == 0:
+        old_magmom = getattr(st, 'magmom', [])
+        if len(old_magmom) == st.natom:
+            magmom = [copy.deepcopy(old_magmom[i]) for i in old_numbers]
+        elif len(old_magmom) == 3 * st.natom:
+            atom_magmom = [old_magmom[3*i:3*i+3] for i in range(st.natom)]
+            magmom = [component for i in old_numbers for component in atom_magmom[i]]
+        else:
             magmom = [None]
         st.old_numbers = old_numbers
         st.xcart = xcart
@@ -2108,25 +2129,22 @@ class Structure():
 
         """
         st = self.copy()
-        els = self.get_elements()
-        st = st.remove_atoms(atoms_to_remove = els,  clear_magmom=0)
-        # print(st.natom)
+        if sorted(new_order) != list(range(self.natom)):
+            raise ValueError('new_order must contain each atom index exactly once')
 
-        magmom_flag = False
-        if len(self.magmom) == self.natom:
-            magmom_flag = True
-        # print(st.magmom)
+        st.xcart = [copy.deepcopy(self.xcart[i]) for i in new_order]
+        st.xred = [copy.deepcopy(self.xred[i]) for i in new_order]
+        st.typat = [self.typat[i] for i in new_order]
+        if hasattr(self, 'select') and len(self.select) == self.natom:
+            st.select = [copy.deepcopy(self.select[i]) for i in new_order]
 
-        for i in new_order:
-            x = self.xcart[i]
-            el = els[i]
-
-            if magmom_flag:
-                m = self.magmom[i]
-            else:
-                m = None
-            # print(m)
-            st = st.add_atoms([x], el, mag = m)
+        if len(getattr(self, 'magmom', [])) == self.natom:
+            st.magmom = [copy.deepcopy(self.magmom[i]) for i in new_order]
+        elif len(getattr(self, 'magmom', [])) == 3 * self.natom:
+            atom_magmom = [self.magmom[3*i:3*i+3] for i in range(self.natom)]
+            st.magmom = [component for i in new_order for component in atom_magmom[i]]
+        else:
+            st.magmom = [None]
 
         return st
 
@@ -2197,12 +2215,11 @@ class Structure():
 
         # print ('Magmom deleted?')
         # print(st.magmom, i)
-        if hasattr(st, 'magmom') and any(st.magmom):
-            del st.magmom[i]
-            # print ('Yes!')
-        else:
-            ''
-            # print ('No!')
+        if is_valid_magmom(getattr(st, 'magmom', None), st.natom):
+            if len(st.magmom) == 3 * st.natom:
+                del st.magmom[3*i:3*i+3]
+            else:
+                del st.magmom[i]
 
         if hasattr(st, 'select') and any(st.select):
             del st.select[i]
@@ -2273,6 +2290,15 @@ class Structure():
         x1 = st.xcart[iat1]
         st.xcart[iat1] = st.xcart[iat2]
         st.xcart[iat2] = x1
+
+        if len(getattr(st, 'magmom', [])) == st.natom:
+            st.magmom[iat1], st.magmom[iat2] = st.magmom[iat2], st.magmom[iat1]
+        elif len(getattr(st, 'magmom', [])) == 3 * st.natom:
+            mag1 = st.magmom[3*iat1:3*iat1+3]
+            mag2 = st.magmom[3*iat2:3*iat2+3]
+            st.magmom[3*iat1:3*iat1+3] = mag2
+            st.magmom[3*iat2:3*iat2+3] = mag1
+
         st.xcart2xred()
         
         return st
@@ -2290,21 +2316,16 @@ class Structure():
 
         z = element_name_inv(atom_type)
 
-        new_xred = []
-        new_magmom = []
-        
-        if hasattr(st, 'magmom') and any(st.magmom):
-            for t, xr, m in zip(st.typat, st.xred, st.magmom):
-                if st.znucl[t-1] == z:
-                    new_xred.append(xr)
-                    new_magmom.append(m)
+        keep = [i for i, t in enumerate(st.typat) if st.znucl[t-1] == z]
+        new_xred = [st.xred[i] for i in keep]
+
+        if len(getattr(st, 'magmom', [])) == st.natom:
+            st.magmom = [copy.deepcopy(st.magmom[i]) for i in keep]
+        elif len(getattr(st, 'magmom', [])) == 3 * st.natom:
+            atom_magmom = [st.magmom[3*i:3*i+3] for i in range(st.natom)]
+            st.magmom = [component for i in keep for component in atom_magmom[i]]
         else:
-            for t, xr in zip(st.typat, st.xred):
-                if st.znucl[t-1] == z:
-                    new_xred.append(xr)
-
-
-        st.magmom = new_magmom
+            st.magmom = [None]
 
         st.xred = new_xred
 
@@ -2333,13 +2354,16 @@ class Structure():
         return [i for i, el in enumerate(self.get_elements()) if el == element]
 
 
-    def remove_atoms(self, atoms_to_remove, from_one = 0, clear_magmom  = 1 ):
+    def remove_atoms(self, atoms_to_remove, from_one = 0, clear_magmom = None,
+                     inherit_magmom = True):
         """
         remove atoms either of types provided in *atoms_to_remove* or having numbers provided in *atoms_to_remove*, starting from 0
         st (Structure)
         atoms_to_remove (list) - list of element names or numbers
         from_one (int)- if 1 the numbers of atoms in provided list are starting from one
-        clear_magmom - by default magmom is cleared
+        clear_magmom - deprecated inverse of inherit_magmom; explicit values
+            remain supported
+        inherit_magmom (bool) - preserve moments of atoms that remain; default True
         """
         st = copy.deepcopy(self)
         # print(st.nznucl)
@@ -2364,7 +2388,9 @@ class Structure():
             else:
                 atom_exsist = False
         printlog('remove_atoms(): Atoms', atoms_to_remove, 'were removed')
-        if clear_magmom:
+        if clear_magmom is not None:
+            inherit_magmom = not bool(clear_magmom)
+        if not inherit_magmom:
             st.magmom = [None]
 
         # print(st.nznucl)
@@ -2372,7 +2398,8 @@ class Structure():
         # print(st.get_elements())
         return st
 
-    def remove_atoms_randomly(self, el, n_at2remove, clear_magmom = 1):
+    def remove_atoms_randomly(self, el, n_at2remove, clear_magmom = None,
+                              inherit_magmom = True):
         """
         Randomly remove a specified number of atoms of a given element type.
 
@@ -2383,7 +2410,8 @@ class Structure():
         INPUT:
             el (str) - element name to be removed (e.g., 'O', 'Li')
             n_at2remove (int) - total number of atoms of this element to remove
-            clear_magmom (int/bool) - if 1 (default), clears the magnetic moments list
+            clear_magmom (int/bool) - deprecated inverse of inherit_magmom
+            inherit_magmom (bool) - preserve moments of atoms that remain; default True
 
         RETURN:
             st_new (Structure) - updated structure with selected atoms removed
@@ -2406,7 +2434,11 @@ class Structure():
                 atoms_to_remove.append(i)
             if len(atoms_to_remove) == n_at2remove:
                 break
-        st_new = self.remove_atoms(atoms_to_remove, clear_magmom = clear_magmom)
+        st_new = self.remove_atoms(
+            atoms_to_remove,
+            clear_magmom=clear_magmom,
+            inherit_magmom=inherit_magmom,
+        )
         printlog('remove_atoms_randomly(): Atoms', atoms_to_remove, 'were removed')
 
         return st_new

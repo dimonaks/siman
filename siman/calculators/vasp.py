@@ -5,6 +5,7 @@ import numpy as np
 from siman import header
 from siman.core.calculation import Calculation
 from siman.core.structure import Structure
+from siman.core.structure_utils import is_valid_magmom
 from siman.header import runBash
 
 from siman.header import printlog, runBash
@@ -22,6 +23,28 @@ rms_between_structures, rms_between_structures2)
 from siman.set_functions import InputSet, aims_keys
 import numpy as np
 
+
+def _jmol_cube_header(cube):
+    """Make a pymatgen cube readable by Jmol.
+
+    Jmol 16 decides the file type from the start of the file, before it
+    reaches the atom records. A first line ``# Cube ...`` is then seen as a
+    folding XYZ file, and the reader dies with NegativeArraySizeException
+    -2147483647. A file that starts with ``JVXL`` is taken as a Gaussian cube.
+    The coordinates stay in Bohr, which is the unit that reader expects.
+    """
+    with open(cube, encoding='utf-8') as handle:
+        lines = handle.readlines()
+    if not lines or lines[0].startswith('JVXL'):
+        return
+    comment = lines[0].lstrip('#').lstrip()
+    if not comment.startswith('Cube'):
+        comment = 'Cube ' + comment
+    if not comment.endswith('\n'):
+        comment += '\n'
+    lines[0] = 'JVXL ' + comment
+    with open(cube, 'w', encoding='utf-8') as handle:
+        handle.writelines(lines)
 
 
 class CalculationVasp(Calculation):
@@ -722,7 +745,7 @@ class CalculationVasp(Calculation):
 
         magmom = []
         
-        if hasattr(self.init, 'magmom') and hasattr(self.init.magmom, '__iter__') and not None in self.init.magmom and bool(self.init.magmom):
+        if is_valid_magmom(getattr(self.init, 'magmom', None), self.init.natom):
             magmom = self.init.magmom
             printlog('actualize_set(): Magnetic moments are determined from self.init.magmom:',self.init.magmom, imp = 'y')
 
@@ -748,8 +771,8 @@ class CalculationVasp(Calculation):
                 if el in curset.magnetic_moments:
                     magmom.append(curset.magnetic_moments[el])
                 elif el_bare in curset.magnetic_moments:
-                    magmom.append(curset.magnetic_moments[el])
-                    printlog(f'Warning! {el} was not found in your set, I use magmom={curset.magnetic_moments[el]} from {el_bare} for it')
+                    magmom.append(curset.magnetic_moments[el_bare])
+                    printlog(f'Warning! {el} was not found in your set, I use magmom={curset.magnetic_moments[el_bare]} from {el_bare} for it')
                 else:
                     # if '/' in el:
                     printlog(f'{el} was not found in your set, I use magmom={mag_mom_other} for it', imp = 'n')
@@ -875,18 +898,32 @@ class CalculationVasp(Calculation):
             #     vp['MAGMOM'] = str(natom) +"*"+ vp['MAGMOM']
         
         if ('LSORBIT' in vp and vp['LSORBIT']) or ('LNONCOLLINEAR' in vp and vp['LNONCOLLINEAR']):
+            scalar_magmom = None
+            if len(magmom) == self.init.natom:
+                try:
+                    if all(np.asarray(m).size == 1 for m in magmom):
+                        scalar_magmom = [float(np.asarray(m).reshape(-1)[0]) for m in magmom]
+                except (TypeError, ValueError):
+                    scalar_magmom = None
+
             if len(magmom) == 0:
                 printlog('Warning! magmom is empty')
-            elif len(magmom) == self.init.natom and len(magmom[0]) == 1:
+            elif scalar_magmom is not None:
                 printlog('magmom is converted to [0,0, m, 0, 0, m ...] required for noncollinear calculations', imp = 'y')
-                magmom = [x for m in magmom for x in (0, 0, m)]
+                magmom = [x for m in scalar_magmom for x in (0, 0, m)]
             else:
                 printlog('magmom is used from previous SO calculation', magmom, imp = 'y')
             self.init.magmom = magmom
 
             if 'MAGMOM' in vp and vp['MAGMOM'] and len(vp['MAGMOM']) == self.init.natom:
-                vp['MAGMOM'] = [x for m in vp['MAGMOM'] for x in (0, 0, m)]
-                printlog('MAGMOM from set was converted to [0,0, m, 0, 0, m ...]:', vp['MAGMOM'] , imp = 'y')
+                try:
+                    scalar_vp_magmom = [float(np.asarray(m).reshape(-1)[0]) for m in vp['MAGMOM']
+                        if np.asarray(m).size == 1]
+                except (TypeError, ValueError):
+                    scalar_vp_magmom = []
+                if len(scalar_vp_magmom) == self.init.natom:
+                    vp['MAGMOM'] = [x for m in scalar_vp_magmom for x in (0, 0, m)]
+                    printlog('MAGMOM from set was converted to [0,0, m, 0, 0, m ...]:', vp['MAGMOM'] , imp = 'y')
             vc = self.cluster['vasp_com'].split()
             self.cluster['vasp_com'] = ' '.join(vc[0:-1]) + ' vasp_ncl'
             printlog('vasp_com replaced to vasp_ncl', imp = 'y')
@@ -1538,7 +1575,7 @@ class CalculationVasp(Calculation):
                     self.csc_triqs_out = TriqsOutput.from_file(self.path['csc_triqs_out'])
                     self.csc_triqs_out.print_summary_comp()  
 
-                    self.csc_dmft_conv = DmftConvergenceHistory.from_file(self.dir + 'csc/observables_imp0.dat')
+                    self.csc_dmft_conv = DmftConvergenceHistory.from_file(self.dir + '/csc/observables_imp0.dat')
                     self.csc_dmft_conv.print_energy_statistics(last_n=5) #выборочное стандартное отклонение:
 
 
@@ -1644,6 +1681,7 @@ class CalculationVasp(Calculation):
             if 'total' not in getattr(grid, 'data', {}):
                 raise RuntimeError('no volumetric grid in ' + source)
             grid.to_cube(cube, comment=os.path.basename(source))
+            _jmol_cube_header(cube)
         except (ValueError, FileNotFoundError, RuntimeError):
             raise
         except Exception as exc:

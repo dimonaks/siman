@@ -13,6 +13,7 @@ from siman.functions import  return_atoms_to_cell, push_to_server, invert
 from siman.inout import write_xyz
 from siman.small_functions import is_list_like, makedir, list2string
 from siman.classes import CalculationVasp, cd
+from siman.core.structure_utils import is_valid_magmom
 from siman.geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
 from siman.impurity import find_pores, determine_voids, determine_unique_voids
 from siman.external_tools.nebmaker import nebmaker
@@ -94,7 +95,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     replicate = None,
     it_new_folder = None,
     it_folder = None,
-    inherit_magmom = False,
+    inherit_magmom = True,
     x_start = None, xr_start = None,
     x_final = None, xr_final = None,
     upload_vts = False,
@@ -129,7 +130,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - atom_to_move (str) - element name of atom to move
         - it_new_folder or it_folder  (str) - section folder
         - inherit_option (str) - passed only to add_loop
-        - inherit_magmom (bool) - if True than magmom from starting_calc is used, else from set
+        - inherit_magmom (bool) - preserve valid moments from starting_calc;
+          default True. If False, moments are determined from the set.
 
         - end_pos_types_z (list of int) - list of Z - type of atoms, which could be considered as final positions in vacancy creation mode
 
@@ -657,11 +659,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         cl_test = CalculationVasp(varset[ise_new])
         cl_test.init = st1
         # print 'asdfsdfasdfsadfsadf', st1.magmom
-        if inherit_magmom and hasattr(st, 'magmom') and st.magmom and any(st.magmom):
+        if inherit_magmom and is_valid_magmom(
+                getattr(cl_test.init, 'magmom', None), cl_test.init.natom):
             print_and_log('inherit_magmom=True: You have chosen MAGMOM from provided structure', imp = 'y')
             name_suffix+='mp' #Magmom from Previous
         else:
-            cl_test.init.magmom = None
+            cl_test.init.magmom = [None]
             print_and_log('inherit_magmom=False or no magmom in input structure : MAGMOM will be determined  from set', imp = 'y')
             name_suffix+='ms' #Magmom from Set
 
@@ -674,7 +677,14 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         # sys.exit()
         # print_and_log('The magnetic moments from set:')
         # print cl_test.init.magmom
-        if search_type not in [None, 'external']:  # for None not implemented; x_m should be determined first for this
+        mag_moments_variants = []
+        current_magmom = cl_test.init.magmom
+        magmom_ready = (
+            hasattr(current_magmom, '__iter__')
+            and len(current_magmom) == st1.natom
+            and all(m is not None and np.isscalar(m) for m in current_magmom)
+        )
+        if search_type not in [None, 'external'] and magmom_ready:  # for None not implemented; x_m should be determined first for this
             #checking for closest atoms now only for Fe, Mn, Ni, Co
             sur   = local_surrounding(x_m, st1, n_neighbours = 3, control = 'atoms',
             periodic  = True, only_elements = header.TRANSITION_ELEMENTS)
@@ -699,7 +709,6 @@ def add_neb(starting_calc = None, st = None, st_end = None,
             print_and_log( 'I change spin for the following atoms:\ni atom     dist\n', np.round(mag_atoms_dists, 2) , imp = 'y' )
             # print 'I have found closest Fe atoms'
             muls = [(1.2, 0.6), (0.6, 1.2)]
-            mag_moments_variants = []
             for mm in muls:
                 mags = copy.deepcopy(cl_test.init.magmom)
                 # print mags
@@ -714,8 +723,12 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
             print_and_log( 'Please use *mag_config* arg to choose desired config' , imp = 'y' )
 
+        elif search_type not in [None, 'external']:
+            print_and_log('Spin variants were skipped because a complete scalar MAGMOM list is unavailable', imp = 'y')
 
         if mag_config != None:
+            if not mag_moments_variants:
+                raise ValueError('mag_config requires generated magnetic-moment variants')
 
             st1.magmom = copy.deepcopy(mag_moments_variants[mag_config])
             st2.magmom = copy.deepcopy(mag_moments_variants[mag_config])
@@ -911,6 +924,7 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         add_loop_dic['run'] = run
 
     add_loop_dic['corenum'] = corenum
+    add_loop_dic.setdefault('inherit_magmom', inherit_magmom)
 
     if 'params' not in add_loop_dic:
         add_loop_dic['params'] = {}
