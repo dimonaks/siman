@@ -341,7 +341,7 @@ def run_command(cl, option, name, parrallel_run_command,
 #
 # Files written for both ISOL=1 and ISOL=2:
 #   PHI       electrostatic potential, should be the same as LOCPOT
-#   PHI_SOLV  electrostatic potential from the solvent
+#   PHISOLV  electrostatic potential from the solvent
 #   VSOLV     cavity correction to the KS potential
 #   RHOB      bound charge density
 #   RHOION    electrolyte ionic charge density
@@ -357,8 +357,8 @@ def run_command(cl, option, name, parrallel_run_command,
 #   SCAV      cavity used for the cavity-formation free energy;
 #             equal to SSOLV by default unless R_CAV is specified
 VASPSOL_SAVE_KEYS = (
-    ('phis', 'PHI_SOLV'),
-    ('phs', 'PHI_SOLV'),
+    ('phis', 'PHISOLV'),
+    ('phs', 'PHISOLV'),
     ('phi', 'PHI'),
     ('vs', 'VSOLV'),
     ('rb', 'RHOB'),
@@ -391,7 +391,7 @@ def parse_savesol(savesol):
     Files written for both ISOL=1 and ISOL=2:
 
         phi        PHI       electrostatic potential, should be the same as LOCPOT
-        phs / phis PHI_SOLV  electrostatic potential from the solvent
+        phs / phis PHISOLV  electrostatic potential from the solvent
         vs         VSOLV     cavity correction to the KS potential
         rb         RHOB      bound charge density
         ri         RHOION    electrolyte ionic charge density
@@ -522,7 +522,7 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
                               "u": "ELFCAR"
 
 
-            '!' follwed after key, e.g. 'c!' means that the CHGCAR will saved as well
+            '!' follwed after key, e.g. 'c!' means that the CHGCAR will be saved as well
             '@' follwed after the key, e.g. 'c@' means that the CHGCAR will be zipped
 
         savesol - see parse_savesol(). None does not touch VASPsol files.

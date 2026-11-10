@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU License.
 import io, json, sys
 from siman.classes import CalculationVasp
+
 def setup_shiftk_average(cl, params, list_to_copy):
     """
     Prepare configuration file and pickle file for shiftk_average calculation regime

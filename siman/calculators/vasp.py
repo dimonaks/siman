@@ -1286,7 +1286,7 @@ class CalculationVasp(Calculation):
     def read_results(self, load = '', out_type = '', voronoi = False, show = '', choose_outcar = None, alkali_ion_number = None, only_load = False):
 
         """
-        Download and Read VASP OUTCAR file
+        Download and Read VASP OUTCAR file, and triqs out
 
         INPUT:
             - load (str) - 'x' - download xml, o - download outcar and contcar, un - read unfinished
@@ -1408,6 +1408,20 @@ class CalculationVasp(Calculation):
             # print(load)
             # print(files)
             # get_from_server(files = files, to = os.path.dirname(path_to_outcar),  addr = self.cluster_address)
+            
+            if self.calc_method and  'triqs' in self.calc_method:
+                # print('triqs')
+                files.append(self.path['triqs_out'])
+                self.get_file(self.jobname + '/observables_imp*.dat', up = load)
+                if 'csc' in load :
+                    # print(load)
+                    # print(self.path['csc_triqs_out'])
+                    # files.append(self.path['csc_triqs_out'])
+                    self.get_file('csc/out', up = load)
+                    self.get_file('csc/observables_imp*.dat', up = load)
+
+                # sys.exit()
+
             for file in files:
                 self.get_file(os.path.basename(file), up = load)
 
@@ -1489,6 +1503,43 @@ class CalculationVasp(Calculation):
             
             outst  = read_vasp_out(self, load = load, out_type = out_type, show = show, voronoi = voronoi,
                 path_to_outcar = path_to_outcar, path_to_contcar = path_to_contcar)
+
+            """Parsing other codes, e.g triqs"""
+            if self.calc_method is not None and 'triqs' in self.calc_method:
+                from siman.calculators.solid_dmft_out_parser import TriqsOutput
+                from siman.calculators.solid_dmft_out_parser import DmftConvergenceHistory
+                self.triqs_out = TriqsOutput.from_file(self.path['triqs_out'])
+                if hasattr(self, 'jobname'):
+                    self.dmft_conv = DmftConvergenceHistory.from_file(self.dir + '/'+ self.jobname + '/observables_imp0.dat')
+                # self.triqs_out.print_summary()  
+                    # self.triqs_out.print_summary_comp()  
+                    # history.print_observables()
+                    # history.plot("Chemical potential")
+                    # history.plot("Total energy", last_n=5,)
+                    # history.plot("G(beta/2)")
+                    orbital_labels = [
+                        "d_xy",
+                        "d_yz",
+                        "d_z2",
+                        "d_xz",
+                        "d_x2-y2",
+                    ]
+
+                    # history.plot("Orbital occupancy", orbital_labels=orbital_labels,                )
+                    # history.print_energy_statistics(last_n=5) #выборочное стандартное отклонение:
+
+                    # stats = history.energy_statistics(last_n=10)
+
+                    # print(stats["Total energy"]["mean"])
+                    # print(stats["Total energy"]["std"])
+
+                if 'csc' in load : 
+                    printlog('Charge-self-consistent:', imp = 'y')
+                    self.csc_triqs_out = TriqsOutput.from_file(self.path['csc_triqs_out'])
+                    self.csc_triqs_out.print_summary_comp()  
+
+                    self.csc_dmft_conv = DmftConvergenceHistory.from_file(self.dir + 'csc/observables_imp0.dat')
+                    self.csc_dmft_conv.print_energy_statistics(last_n=5) #выборочное стандартное отклонение:
 
 
         else:
@@ -1643,10 +1694,11 @@ class CalculationVasp(Calculation):
 
     def plot_cp_convergence(self):
         """
-        Plot chemical potential and grand canonical energy versus constant-potential SCF step.
+        Plot electron count, chemical-potential gap, and grand canonical energy
+        versus constant-potential SCF step.
 
-        mu and the printed GCE come from CPM-scf and CPM-ion in OSZICAR. GCE is
-        written only on CPM-ion, so earlier points are E(sigma->0) minus
+        N_ele, mu, and the printed GCE come from CPM-scf and CPM-ion in OSZICAR.
+        GCE is written only on CPM-ion, so earlier points are E(sigma->0) minus
         TARGETMU times the electron surplus over the OUTCAR NELECT.
 
         INPUT:
@@ -1655,8 +1707,8 @@ class CalculationVasp(Calculation):
 
         OUTPUT:
             str - path of the PNG written to ``figs/{name}_cp_conv.png`` at 450 dpi.
-            The figure has three panels: mu (red), TARGETMU minus mu (blue),
-            and GCE (green).
+            The figure has three panels: N_ele (red) with the initial NELECT,
+            TARGETMU minus mu (blue) with the target and final mu, and GCE (green).
 
         Raises:
             FileNotFoundError - OSZICAR or OUTCAR is missing.
@@ -1707,10 +1759,11 @@ class CalculationVasp(Calculation):
             cursor += count
             energies.append(sigma[cursor - 1] if 0 < cursor <= len(sigma) else None)
 
-        labels, mu, gap_mev, gce = [], [], [], []
+        labels, n_ele, mu, gap_mev, gce = [], [], [], [], []
         target = records[0][1]['target_mu']
         for (kind, rec), energy in zip(records, energies):
             labels.append(str(rec['scf']) if kind == 'scf' else 'ion')
+            n_ele.append(rec['n_ele'])
             mu.append(rec['mu_e'])
             gap_mev.append((target - rec['mu_e']) * 1000.0)
             if rec.get('gce') is not None:
@@ -1731,15 +1784,18 @@ class CalculationVasp(Calculation):
 
         x = list(range(len(labels)))
         fig, axes = plt.subplots(3, 1, figsize=(7, 8), sharex=True)
-        axes[0].plot(x, mu, 'o-', color='red', label=r'$\mu_e$')
-        axes[0].axhline(target, color='red', ls='--', label='TARGETMU %.3f eV' % target)
-        axes[0].set_ylabel(r'$\mu_e$ (eV)')
+        axes[0].plot(x, n_ele, 'o-', color='red', label=r'$N_e$')
+        if nelect0 is not None:
+            axes[0].axhline(nelect0, color='red', ls='--', label='initial %.3f' % nelect0)
+        axes[0].set_ylabel(r'$N_e$')
         axes[0].legend()
-        axes[1].plot(x, gap_mev, 'o-', color='blue', label=r'TARGETMU $- \mu_e$')
+        axes[1].plot(x, gap_mev, 'o-', color='blue', label=r'$\mu_e^{\mathrm{target}} - \mu_e$')
         if tol_mev is not None:
-            axes[1].axhline(tol_mev, color='blue', ls='--', label='FERMICONVERGE %.3g meV' % tol_mev)
-        axes[1].set_ylabel(r'TARGETMU $- \mu_e$ (meV)')
-        axes[1].legend()
+            axes[1].axhline(tol_mev, color='blue', ls='--', label='tol=%.3g meV' % tol_mev)
+        axes[1].plot([], [], ' ', label=r'$\mu_e^{\mathrm{target}}=$ %.3f eV' % target)
+        axes[1].plot([], [], ' ', label=r'final $\mu_e=$ %.3f eV' % mu[-1])
+        axes[1].set_ylabel(r'$\mu_e^{\mathrm{target}} - \mu_e$ (meV)')
+        axes[1].legend(ncols=2, columnspacing=-0.5)
         axes[2].plot(x, gce, 'o-', color='green', label='GCE')
         axes[2].set_ylabel('GCE (eV)')
         axes[2].set_xlabel('constant-potential SCF step')
@@ -1761,11 +1817,17 @@ class CalculationVasp(Calculation):
     def bader(self):
         chgcar = self.path['chgcar']
         acf = self.dir+'/ACF.dat'
-        printlog('Bader should be installed', imp = 'Y')
+        executable = getattr(header, 'PATH2BADER', None)
+        if not executable or not os.path.isfile(str(executable)):
+            executable = shutil.which('bader')
+        if not executable:
+            raise FileNotFoundError(
+                'bader executable was not found. Set header.PATH2BADER or put bader on PATH')
+        printlog('Bader executable', executable, imp = 'Y')
         if not os.path.isfile(acf):
             cwd = os.getcwd()
             os.chdir(self.dir)
-            print(runBash('bader ' + os.path.basename(chgcar) ) )
+            print(runBash('"' + str(executable) + '" ' + os.path.basename(chgcar) ) )
             os.chdir(cwd)
 
         else:
@@ -2137,27 +2199,49 @@ class CalculationVasp(Calculation):
         plt = BSPlotter(bs,)
         ax = plt.get_plot(vbm_cbm_marker=True, ylim = ylim,)
         # ax.legend = None
-        ax.legend().remove()
-        ax.savefig('figs/png/'+str(self.name)+'_band.png', dpi = 300)
-        ax.savefig('figs/'+str(self.name)+'_band.pdf')
+        legend = ax.get_legend()
+        if legend is not None:
+            legend.remove()
+        # get_plot() returns the axes. savefig belongs to the figure.
+        figure = ax.figure
+        png = 'figs/png/'+str(self.name)+'_band.png'
+        pdf = 'figs/'+str(self.name)+'_band.pdf'
+        os.makedirs(os.path.dirname(png), exist_ok=True)
+        os.makedirs(os.path.dirname(pdf), exist_ok=True)
+        figure.savefig(png, dpi = 300)
+        figure.savefig(pdf)
         # ax.show()
         return
-    def get_band_info(self):
+    def get_band_info(self, method = 'siman'):
         """
         Vasprun.xml is expected
+
+
+        method (str) -
+            'siman' - uses OUTCAR
+            'pymatgen' - uses Vasprun.xml
 
         TODO
         can be done with EIGENVAL, please make
 
         """
-        from pymatgen.io.vasp import Vasprun
-        xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
-        # print('xml_file',xml_file)
-        v = Vasprun(xml_file)
-        ll = list(v.eigenvalue_band_properties)
-        print('band gap = {:.1f} eV, cbm = {:.1f} eV, vbm = {:.1f} eV, is_band_gap_direct = {:}'.format(*ll))
+
+        if method == 'siman':
+
+            from siman.calculators.vasp_utils import parse_bands
+
+            parse_bands(self.path['output'])
 
 
+        elif method == 'pymatgen':
+            from pymatgen.io.vasp import Vasprun
+            xml_file = self.get_file('vasprun.xml', nametype = 'asoutcar')
+            # print('xml_file',xml_file)
+            v = Vasprun(xml_file)
+            ll = list(v.eigenvalue_band_properties)
+            print('band gap = {:.1f} eV, cbm = {:.1f} eV, vbm = {:.1f} eV, is_band_gap_direct = {:}'.format(*ll))
+
+    # def get
 
 
 

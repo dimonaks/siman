@@ -170,6 +170,53 @@ def cal_chg_diff_files(chg_file1, chg_file2, cl3=None, wcell=0, chg = 'CHGCAR'):
     return dendiff_filename
 
 
+def _grid_file(cl, filename):
+    """Find a volumetric file saved next to OUTCAR.
+
+    Versioned output is ``1.OUTCAR`` and ``1.LOCPOT``, not a bare ``LOCPOT``.
+    An existing path is returned unchanged. A bare name is looked up in the
+    calculation directory and is not joined onto a path that is already absolute.
+    """
+    raw = '' if filename is None else str(filename)
+    if raw and os.path.isfile(raw):
+        return raw
+    if raw and os.path.isfile(raw + '.gz'):
+        return raw + '.gz'
+
+    output = ''
+    paths = getattr(cl, 'path', None)
+    if isinstance(paths, dict):
+        output = paths.get('output') or ''
+    directory = os.path.dirname(output) if output else (getattr(cl, 'dir', None) or '')
+    prefix = ''
+    base = os.path.basename(output)
+    if base.endswith('OUTCAR'):
+        prefix = base[:-len('OUTCAR')]
+    name = os.path.basename(raw) if raw else 'LOCPOT'
+    candidates = []
+    if directory and name:
+        candidates.append(os.path.join(directory, name))
+        if prefix and not os.path.basename(name).startswith(prefix):
+            candidates.append(os.path.join(directory, prefix + os.path.basename(name)))
+    if directory and prefix:
+        candidates.append(os.path.join(directory, prefix + 'LOCPOT'))
+    seen = []
+    for candidate in candidates:
+        for item in (candidate, candidate + '.gz'):
+            if item in seen:
+                continue
+            seen.append(item)
+            if os.path.isfile(item):
+                return item
+    if hasattr(cl, 'get_file'):
+        found = cl.get_file(filetype='LOCPOT', nametype='asoutcar')
+        if found and os.path.isfile(found):
+            return found
+        if found and os.path.isfile(found + '.gz'):
+            return found + '.gz'
+    raise FileNotFoundError('volumetric file was not found. Looked for ' + ', '.join(seen))
+
+
 def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
     """
     Return the the value of charge density (filetype = CHGCAR) 
@@ -190,12 +237,16 @@ def chg_at_z_direct(cl, k_p = 20, plot = None, filetype = 'CHGCAR'):
     
 
     if filetype == 'CHGCAR':
-        chgfile = cl.get_chg_file()       
-    else: 
-        chgfile = cl.get_file(filetype = filetype)
+        chgfile = cl.get_chg_file()
+    else:
+        chgfile = _grid_file(cl, filetype)
+    if not chgfile or not os.path.isfile(chgfile):
+        raise FileNotFoundError('chg_at_z_direct(): %s was not found' % filetype)
 
     st = cl.end
     vasp_charge = VaspChargeDensity(chgfile)
+    if not vasp_charge.chg:
+        raise RuntimeError('chg_at_z_direct(): no charge grid in %s' % chgfile)
     density = vasp_charge.chg[-1]
     atoms = vasp_charge.atoms[-1]
     del vasp_charge
@@ -274,8 +325,9 @@ def locpot_z_profile(cl, axis=2,filename='1.LOCPOT', plot=False, return_numpy=Fa
 
     from pymatgen.io.vasp.outputs import Locpot
 
-    # Read LOCPOT
-    locpot_path = cl.get_file(filetype=filename)
+    # Read LOCPOT. A full path is used as given; a bare name is resolved
+    # next to the versioned OUTCAR (1.LOCPOT, not LOCPOT).
+    locpot_path = _grid_file(cl, filename)
 
     locpot = Locpot.from_file(locpot_path)
 
