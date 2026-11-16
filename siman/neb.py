@@ -14,7 +14,7 @@ from siman.inout import write_xyz
 from siman.small_functions import is_list_like, makedir, list2string
 from siman.classes import CalculationVasp, cd
 from siman.core.structure_utils import is_valid_magmom
-from siman.geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
+from siman.geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions, image_distance
 from siman.impurity import find_pores, determine_voids, determine_unique_voids
 from siman.external_tools.nebmaker import nebmaker
 
@@ -24,6 +24,185 @@ from siman.external_tools.nebmaker import nebmaker
 
 
 
+
+
+def _endpoint_cart(st):
+    return st.xcart if st.xcart else xred2xcart(st.xred, st.rprimd)
+
+
+def _ordering_failure(st1, st2, still_tol):
+    """None when the atom order is valid. Otherwise the reason it is not."""
+    if st1.natom != st2.natom:
+        return 'the endpoints have %d and %d atoms' % (st1.natom, st2.natom)
+
+    elements1 = st1.get_elements()
+    elements2 = st2.get_elements()
+    mismatched = [
+        (i, elements1[i], elements2[i])
+        for i in range(st1.natom) if elements1[i] != elements2[i]
+    ]
+    if mismatched:
+        shown = ', '.join('%d: %s/%s' % item for item in mismatched[:8])
+        return 'element order differs at ' + shown
+
+    for vector1, vector2 in zip(st1.rprimd, st2.rprimd):
+        if np.linalg.norm(np.array(vector1) - np.array(vector2)) > 0.05:
+            return 'the endpoint cells differ'
+
+    cart1 = _endpoint_cart(st1)
+    cart2 = _endpoint_cart(st2)
+    distances = [
+        image_distance(x1, x2, st1.rprimd)[0]
+        for x1, x2 in zip(cart1, cart2)
+    ]
+    moving = [i for i, distance in enumerate(distances) if distance > still_tol]
+    if len(moving) != 1:
+        largest = sorted(range(st1.natom), key=lambda i: distances[i], reverse=True)[:5]
+        detail = ', '.join(
+            '%d %s %.3f A' % (i, elements1[i], distances[i]) for i in largest)
+        return (
+            'expected one atom beyond %.2f A, found %d. Largest shifts: %s'
+            % (still_tol, len(moving), detail))
+    return None
+
+
+def _ordering_summary(st1, st2, still_tol):
+    elements = st1.get_elements()
+    cart1 = _endpoint_cart(st1)
+    cart2 = _endpoint_cart(st2)
+    distances = [
+        image_distance(x1, x2, st1.rprimd)[0]
+        for x1, x2 in zip(cart1, cart2)
+    ]
+    atom = max(range(st1.natom), key=lambda i: distances[i])
+    return (
+        'atom %d (%s) moves %.3f A; the other atoms stay within %.2f A'
+        % (atom, elements[atom], distances[atom], still_tol))
+
+
+def _assign_columns(cost):
+    """Minimum-cost assignment. Uses SciPy when it is installed."""
+    try:
+        from scipy.optimize import linear_sum_assignment
+    except ImportError:
+        linear_sum_assignment = None
+    rows = len(cost)
+    if linear_sum_assignment is not None:
+        chosen_rows, chosen_cols = linear_sum_assignment(np.array(cost, float))
+        assignment = [None] * rows
+        for row, col in zip(chosen_rows, chosen_cols):
+            assignment[row] = col
+        return assignment
+    pairs = sorted(
+        (cost[i][j], i, j) for i in range(rows) for j in range(rows))
+    used_rows, used_cols = set(), set()
+    assignment = [None] * rows
+    for _, row, col in pairs:
+        if row in used_rows or col in used_cols:
+            continue
+        assignment[row] = col
+        used_rows.add(row)
+        used_cols.add(col)
+    return assignment
+
+
+def _reorder_endpoint(st1, st2):
+    """Permute st2 so each atom matches the same element in st1 by position."""
+    elements1 = st1.get_elements()
+    elements2 = st2.get_elements()
+    if sorted(elements1) != sorted(elements2):
+        raise RuntimeError('reorder cannot fix different element counts')
+    cart1 = _endpoint_cart(st1)
+    cart2 = _endpoint_cart(st2)
+    new_order = [-1] * st1.natom
+    for element in sorted(set(elements1)):
+        index1 = [i for i, name in enumerate(elements1) if name == element]
+        index2 = [i for i, name in enumerate(elements2) if name == element]
+        cost = [
+            [image_distance(cart1[i], cart2[j], st1.rprimd)[0] for j in index2]
+            for i in index1
+        ]
+        assignment = _assign_columns(cost)
+        for row, col in enumerate(assignment):
+            new_order[index1[row]] = index2[col]
+    if sorted(new_order) != list(range(st2.natom)):
+        raise RuntimeError('reorder did not assign every atom')
+    return st2.reorder(new_order)
+
+
+def _reorder_failure(st1, st2, host_tol=5.0):
+    """None when one atom migrates and every other atom is within host_tol."""
+    elements1 = st1.get_elements()
+    if elements1 != st2.get_elements():
+        mismatched = [
+            (i, elements1[i], st2.get_elements()[i])
+            for i in range(st1.natom) if elements1[i] != st2.get_elements()[i]
+        ]
+        shown = ', '.join('%d: %s/%s' % item for item in mismatched[:8])
+        return 'element order differs at ' + shown
+    cart1 = _endpoint_cart(st1)
+    cart2 = _endpoint_cart(st2)
+    distances = [
+        image_distance(x1, x2, st1.rprimd)[0]
+        for x1, x2 in zip(cart1, cart2)
+    ]
+    migrant = max(range(st1.natom), key=lambda i: distances[i])
+    tied = [
+        i for i, distance in enumerate(distances)
+        if abs(distance - distances[migrant]) < 1e-6
+    ]
+    if len(tied) != 1:
+        return 'more than one atom shares the largest shift'
+    hosts = [distances[i] for i in range(st1.natom) if i != migrant]
+    if any(distance > host_tol for distance in hosts):
+        largest = sorted(range(st1.natom), key=lambda i: distances[i], reverse=True)[:5]
+        detail = ', '.join(
+            '%d %s %.3f A' % (i, elements1[i], distances[i]) for i in largest)
+        return 'atoms other than the migrant exceed %.2f A: %s' % (host_tol, detail)
+    return None
+
+
+def order_neb_endpoints(st1, st2, still_tol=1.0, reorder_tol=5.0):
+    """Check the given order. On failure, reorder st2 and allow 5 A for the host.
+
+    Both results are written to the log. The returned structure is st2, or
+    st2 permuted onto st1 when the second check passes.
+    """
+    original = _ordering_failure(st1, st2, still_tol)
+    if original is None:
+        passed = _ordering_summary(st1, st2, still_tol)
+        printlog('check_ordering: original order passed: ' + passed, imp='y')
+        return st2
+
+    printlog('check_ordering: original order failed: ' + original, imp='y')
+    try:
+        reordered = _reorder_endpoint(st1, st2)
+        reordered_problem = _reorder_failure(st1, reordered, reorder_tol)
+    except RuntimeError as error:
+        reordered_problem = str(error)
+        reordered = None
+    if reordered_problem is None:
+        passed = _ordering_summary(st1, reordered, reorder_tol)
+        printlog('check_ordering: reordered order passed: ' + passed, imp='y')
+        return reordered
+
+    printlog('check_ordering: reordered order failed: ' + reordered_problem, imp='y')
+    raise RuntimeError(
+        'check_ordering failed. Original: %s. After reorder: %s'
+        % (original, reordered_problem))
+
+
+def check_neb_ordering(st1, st2, still_tol=1.0):
+    """Require the same atom order, with one migrating atom.
+
+    Corresponding atoms must be the same element. Every atom except one must
+    stay within *still_tol* angstroms under the minimum-image convention.
+    """
+    problem = _ordering_failure(st1, st2, still_tol)
+    if problem is not None:
+        raise RuntimeError('check_ordering: ' + problem)
+    printlog('check_ordering: ' + _ordering_summary(st1, st2, still_tol), imp='y')
+    return st2
 
 
 def determine_unique_final(st_pores, sums, avds, x_m):
@@ -101,7 +280,9 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     upload_vts = False,
     center_on_moving = True,
     run = False, add_loop_dic = None, old_behaviour = None, params = None,
-    idpp = 0
+    idpp = 0, check_ordering = None, climb = False, ise_climb = None,
+    ICHAIN = None, SPRING = None, LCLIMB = None, LTANGENTOLD = None,
+    LDNEB = None, LNEBCELL = None, JACOBIAN = None,
      ):
 
 
@@ -112,7 +293,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - vacancy_creation - search for neighbors of the same type and make a vacancy as a start position
         - interstitial_insertion - search for two neighboring voids; use them as start and final positions
                                     by inserting atom *atom_to_insert*
-        - None - just use st and st_end as initial and final
+        - None - just use st and st_end as initial and final. check_ordering
+                 verifies that the atom order matches and only one atom moves.
         - external - folder with subfolders 00, 01, ... in VASP format is provided using *init_neb_geo_fld*
 
     INPUT:
@@ -138,6 +320,13 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - calc_method (list)
             - 'neb'
             - 'only_neb' - run only footer
+        - climb (bool) - climbing-image NEB. Without ise_climb, the image run
+          uses ise_new and LCLIMB=.TRUE. is added when that set does not
+          already contain it. Endpoints stay at IMAGES=0.
+        - ise_climb (str) - set for a second image optimization. ise_new then
+          relaxes the endpoints and runs a conventional NEB. The climbing run
+          starts from those optimized images. LCLIMB=.TRUE. is added to
+          ise_climb when it is missing.
 
         - x_start, x_final (array) - explicit xcart coordinates of moving atom for starting and final positions, combined with atom_to_insert
         - xr_start, xr_final (array) - explicit xred
@@ -148,6 +337,11 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - init_neb_geo_fld - folder with initial geometry files in VASP format, automatically switch on 'external' mode 
 
         - center_on_moving - places the migrating atom  in the center of the supercell for visualization purpurses
+        - check_ordering (bool) - for st and st_end, require the same element
+          at each index and one migrating atom. The other atoms must stay
+          within 1 A. If that order fails, the end structure is reordered and
+          the check is repeated with 5 A. Both results are written to the log.
+          None turns this on only for search_type=None.
 
 
         - old_behaviour (str) - choose naming behavior before some date in the past for compatibility with your projects
@@ -189,8 +383,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         end_pos_types_z = sorted(end_pos_types_z)
 
 
-    if not hasattr(calc_method, '__iter__'):
+    if not hasattr(calc_method, '__iter__') or isinstance(calc_method, str):
         calc_method = [calc_method]
+    else:
+        calc_method = list(calc_method)
 
 
     if init_neb_geo_fld:
@@ -795,6 +991,11 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
 
+    if check_ordering is None:
+        check_ordering = search_type is None
+    if check_ordering:
+        st2 = order_neb_endpoints(st1, st2)
+
     print_and_log('Creating geo files for starting and final configurations (versions 1 and 2) ', important = 'y')
 
     # if starting_calc:
@@ -928,6 +1129,24 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     if 'params' not in add_loop_dic:
         add_loop_dic['params'] = {}
+
+    vtst = {
+        'ICHAIN': ICHAIN, 'SPRING': SPRING, 'LCLIMB': LCLIMB,
+        'LTANGENTOLD': LTANGENTOLD, 'LDNEB': LDNEB,
+        'LNEBCELL': LNEBCELL, 'JACOBIAN': JACOBIAN,
+    }
+    supplied = {key: value for key, value in vtst.items() if value is not None}
+    if supplied:
+        add_loop_dic.setdefault('update_set', {})
+        add_loop_dic['update_set'].update(supplied)
+
+    if climb:
+        add_loop_dic['params']['climb'] = True
+    if ise_climb:
+        if not climb:
+            printlog('Warning! ise_climb is ignored because climb is not set', imp='y')
+        else:
+            add_loop_dic['params']['ise_climb'] = ise_climb
 
     if init_neb_geo_fld:
         add_loop_dic['params']['init_neb_geo_fld'] = init_neb_geo_fld

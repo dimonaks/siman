@@ -375,6 +375,9 @@ class CalculationVasp(Calculation):
                     elif vp[key] == None:
                         ''
 
+                    elif isinstance(vp[key], bool):
+                        f.write(key + " = " + ('.TRUE.' if vp[key] else '.FALSE.') + "\n")
+
                     elif key == 'KSPACING' and self.set.kpoints_file: #attention! for k-points only the base set is used!!
                         '' # since VASP has higher priority of KSPACING param, it should not be written 
 
@@ -1194,6 +1197,50 @@ class CalculationVasp(Calculation):
         return rest == 'OSZICAR' or rest.rsplit('.', 1)[-1] == 'OSZICAR'
 
 
+    def _saved_output_names(self):
+        """Files the run script keeps, besides OUTCAR and CONTCAR.
+
+        The default savefile is included, then any letters on the set.
+        ``a`` also keeps AECCAR0 and AECCAR2. savesol adds the VASPsol files.
+        """
+        savefile = str(getattr(header, 'default_savefile', '') or '')
+        extra = getattr(getattr(self, 'set', None), 'savefile', None)
+        if extra:
+            for letter in str(extra):
+                if letter not in savefile:
+                    savefile += letter
+        if 'a' in savefile and 'a0' not in savefile:
+            savefile += 'a0a2'
+        chosen = {
+            'e': 'EIGENVAL', 'v': 'CHG', 'c': 'CHGCAR', 'p': 'PARCHG',
+            'r': 'PROCAR', 'l': 'LOCPOT', 'd': 'DOSCAR',
+            'a0': 'AECCAR0', 'a2': 'AECCAR2', 'x': 'vasprun.xml',
+            't': 'XDATCAR', 'z': 'OSZICAR', 'w': 'WAVECAR',
+            'f': 'WAVEDER', 'u': 'ELFCAR',
+        }
+        names = []
+        for key, filename in chosen.items():
+            if key in savefile and filename not in names:
+                names.append(filename)
+        savesol = getattr(getattr(self, 'set', None), 'savesol', None)
+        if savesol not in (None, ''):
+            from siman.core.cluster_batch_script import parse_savesol
+            for filename, _copy, _gzip in parse_savesol(savesol) or []:
+                if filename not in names:
+                    names.append(filename)
+        return names
+
+    def _fetch_saved_outputs(self, load):
+        """Redownload the kept files next to this OUTCAR. up2 overwrites them."""
+        output = ''
+        if getattr(self, 'path', None):
+            output = self.path.get('output') or ''
+        folder = os.path.basename(os.path.dirname(output))
+        if len(folder) == 2 and folder.isdigit():
+            return
+        for filename in self._saved_output_names():
+            self.get_file(filename, nametype='asoutcar', up=load)
+
     def _fetch_oszicar(self, path_to_outcar, load):
         """Download versioned or plain OSZICAR from the remote calculation folder."""
         from siman.functions import run_on_server
@@ -1508,6 +1555,9 @@ class CalculationVasp(Calculation):
 
         if ('o' in load or 'z' in load) and self._vaspsol_calculation():
             self._fetch_oszicar(path_to_outcar, load)
+
+        if '2' in load and 'OUTCAR' in (path_to_outcar or ''):
+            self._fetch_saved_outputs(load)
 
 
 

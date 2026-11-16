@@ -21,6 +21,23 @@ except:
 
 import siman
 from siman import header
+
+NEB_METHODS = {'neb', 'only_neb', 'cineb', 'ci-neb', 'cl-neb'}
+CLIMB_METHODS = {'cineb', 'ci-neb', 'cl-neb'}
+
+
+def _vasp_logical(value):
+    """Write a Python bool as a VASP logical."""
+    if value is True:
+        return '.TRUE.'
+    if value is False:
+        return '.FALSE.'
+    return value
+
+
+def _lclimb_enabled(value):
+    """True when a set already requests the climbing image."""
+    return str(value).strip().upper() in {'.TRUE.', 'TRUE', 'T'}
 from siman.header import printlog, runBash
 from siman.small_functions import is_list_like, makedir, list2string, setting_sshpass
 from siman.classes import Description
@@ -1151,7 +1168,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         
         nonlocal n_neb_images
         nebsets = []
-        neb_flag = calc_method and not set(['neb', 'only_neb']).isdisjoint(calc_method)
+        neb_flag = calc_method and not NEB_METHODS.isdisjoint(calc_method)
         if neb_flag: #put nimage values for set_sequence
             curset = varset[ setlist[0] ]
             if not n_neb_images:
@@ -1895,6 +1912,11 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 else:
                     list_to_copy.extend( cl.make_kpoints_file() )  
 
+                if params.get('climb'):
+                    cl.climb = True
+                if params.get('ise_climb'):
+                    cl.ise_climb = params['ise_climb']
+
                 if 'init_neb_geo_fld' in params:
                     ef = params['init_neb_geo_fld']+'/' 
                     cl.init_neb_geo_fld  = ef 
@@ -1912,6 +1934,19 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     savesol = savesol)
                 
                 list_to_copy.extend( cl.make_incar() )
+                if getattr(cl, 'ise_climb', None):
+                    if cl.ise_climb not in varset:
+                        printlog('Error! ise_climb set %s is not defined' % cl.ise_climb)
+                        raise RuntimeError
+                    climb_set = copy.deepcopy(varset[cl.ise_climb])
+                    if not _lclimb_enabled(climb_set.vasp_params.get('LCLIMB')):
+                        climb_set.vasp_params['LCLIMB'] = '.TRUE.'
+                        printlog('ise_climb has no LCLIMB=.TRUE.; added to INCAR.climb', imp='y')
+                    saved_set = cl.set
+                    cl.set = climb_set
+                    list_to_copy.extend(cl.make_incar(
+                        filename=os.path.join(cl.dir, 'INCAR.climb')))
+                    cl.set = saved_set
                 
                 # list_to_copy.extend( cl.make_kpoints_file() )
 
@@ -2614,7 +2649,8 @@ def res_loop(it, setlist, verlist, analys_type = None,
 
         - up (str):
             - 'up1' - just read local output files. If files are missing, they will be attempted for download from cluster
-            - 'up2' - download output files from cluster , overwrite local files, and read them.
+            - 'up2' - download OUTCAR, CONTCAR, and every file selected by savefile
+              and savesol from the cluster, overwrite the local copies, and read them.
               A constant-potential run also downloads OSZICAR.
             - 'un' - try to read output, even when calculation was finished with error, but the correct version exist e.g. 1.OUTCAR
             - 'un2' - try to read output when the running script was killed, and only output with original name exists, e.g. OUTCAR
