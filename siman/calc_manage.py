@@ -22,22 +22,23 @@ except:
 import siman
 from siman import header
 
-NEB_METHODS = {'neb', 'only_neb', 'cineb', 'ci-neb', 'cl-neb'}
-CLIMB_METHODS = {'cineb', 'ci-neb', 'cl-neb'}
+NEB_METHODS = {'neb', 'only_neb'}
 
 
-def _vasp_logical(value):
-    """Write a Python bool as a VASP logical."""
-    if value is True:
-        return '.TRUE.'
-    if value is False:
-        return '.FALSE.'
-    return value
+def _append_incar_tag(path, tag='LCLIMB = .TRUE.'):
+    """Add a tag after the last INCAR line, with no blank line before it."""
+    with open(path, 'r') as incar:
+        lines = incar.read().splitlines()
+    while lines and lines[-1].strip() == '':
+        lines.pop()
+    name = tag.split('=', 1)[0].strip()
+    if any(line.lstrip().startswith(name) for line in lines):
+        return
+    lines.append(tag)
+    with open(path, 'w') as incar:
+        incar.write('\n'.join(lines) + '\n')
 
 
-def _lclimb_enabled(value):
-    """True when a set already requests the climbing image."""
-    return str(value).strip().upper() in {'.TRUE.', 'TRUE', 'T'}
 from siman.header import printlog, runBash
 from siman.small_functions import is_list_like, makedir, list2string, setting_sshpass
 from siman.classes import Description
@@ -1914,8 +1915,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
 
                 if params.get('climb'):
                     cl.climb = True
-                if params.get('ise_climb'):
-                    cl.ise_climb = params['ise_climb']
+                ise_clneb = params.get('ise_clneb') or params.get('ise_climb')
+                if ise_clneb:
+                    cl.ise_clneb = ise_clneb
 
                 if 'init_neb_geo_fld' in params:
                     ef = params['init_neb_geo_fld']+'/' 
@@ -1933,20 +1935,38 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     mpi = mpi, corenum = corenum, path_to_job = header.temp['path_to_job'], scrdir = header.temp['scrdir'],
                     savesol = savesol)
                 
-                list_to_copy.extend( cl.make_incar() )
-                if getattr(cl, 'ise_climb', None):
-                    if cl.ise_climb not in varset:
-                        printlog('Error! ise_climb set %s is not defined' % cl.ise_climb)
+                incar_files = cl.make_incar()
+                list_to_copy.extend(incar_files)
+                # ise_new has no LCLIMB: add it to that INCAR. A set that
+                # already defines the tag keeps the value make_incar wrote.
+                if getattr(cl, 'climb', False) and 'LCLIMB' not in cl.set.vasp_params:
+                    for incar_path in incar_files:
+                        _append_incar_tag(incar_path)
+                    printlog('ise_new has no LCLIMB; appended LCLIMB=.TRUE. to INCAR', imp='y')
+                if getattr(cl, 'ise_clneb', None):
+                    ise_name = cl.ise_clneb
+                    if ise_name not in varset:
+                        printlog('Error! ise_clneb set %s is not defined' % ise_name)
                         raise RuntimeError
-                    climb_set = copy.deepcopy(varset[cl.ise_climb])
-                    if not _lclimb_enabled(climb_set.vasp_params.get('LCLIMB')):
-                        climb_set.vasp_params['LCLIMB'] = '.TRUE.'
-                        printlog('ise_climb has no LCLIMB=.TRUE.; added to INCAR.climb', imp='y')
+                    climb_set = copy.deepcopy(varset[ise_name])
+                    update = params.get('update_set_dic') or {}
+                    if update:
+                        climb_set.load(update, inplace=True)
+                    if getattr(climb_set, 'set_sequence', None):
+                        climb_set.set_sequence = None
+                    images = cl.set.vasp_params.get('IMAGES')
+                    if images is not None:
+                        climb_set.vasp_params['IMAGES'] = images
                     saved_set = cl.set
                     cl.set = climb_set
-                    list_to_copy.extend(cl.make_incar(
-                        filename=os.path.join(cl.dir, 'INCAR.climb')))
-                    cl.set = saved_set
+                    climb_incar = os.path.join(cl.dir, 'INCAR.climb')
+                    try:
+                        list_to_copy.extend(cl.make_incar(filename=climb_incar))
+                        if 'LCLIMB' not in climb_set.vasp_params:
+                            _append_incar_tag(climb_incar)
+                            printlog('ise_clneb has no LCLIMB; appended LCLIMB=.TRUE. to INCAR.climb', imp='y')
+                    finally:
+                        cl.set = saved_set
                 
                 # list_to_copy.extend( cl.make_kpoints_file() )
 

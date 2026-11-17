@@ -6,25 +6,41 @@ from siman import header
 from siman.header import printlog
 from pathlib import Path
 
-NEB_METHODS = ('neb', 'only_neb', 'cineb', 'ci-neb', 'cl-neb')
+NEB_METHODS = ('neb', 'only_neb')
 
 
-def _lclimb_on_set(cl):
-    value = ''
-    if hasattr(cl, 'set') and getattr(cl.set, 'vasp_params', None):
-        value = cl.set.vasp_params.get('LCLIMB', '')
-    return str(value).strip().upper() in {'.TRUE.', 'TRUE', 'T'}
+def _lclimb_logical(value):
+    if value is True:
+        return '.TRUE.'
+    if value is False:
+        return '.FALSE.'
+    return str(value).strip()
 
 
-def _write_lclimb(f, logical, append=True):
-    """Set LCLIMB in the INCAR that the next VASP image run will read."""
-    replace = (
-        "grep -q '^LCLIMB' INCAR && sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR"
-        % logical)
+def _set_lclimb(cl):
+    params = getattr(getattr(cl, 'set', None), 'vasp_params', None) or {}
+    if 'LCLIMB' not in params:
+        return None
+    return _lclimb_logical(params['LCLIMB'])
+
+
+def _write_lclimb(f, logical, append=False):
+    """Set LCLIMB in the INCAR that the next VASP image run will read.
+
+    Replacing an existing tag leaves the surrounding lines unchanged.
+    Appending removes the blank line INCAR generation leaves at the end
+    of the file, so the new tag is not separated from the block above it.
+    """
     if append:
-        f.write(replace + " || echo 'LCLIMB = %s' >> INCAR\n" % logical)
+        f.write(
+            "if grep -q '^LCLIMB' INCAR; then "
+            "sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR; "
+            "else sed -i.bak '${/^$/d;}' INCAR; "
+            "echo 'LCLIMB = %s' >> INCAR; fi\n" % (logical, logical))
     else:
-        f.write(replace + "\n")
+        f.write(
+            "if grep -q '^LCLIMB' INCAR; then "
+            "sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR; fi\n" % logical)
 
 
 def _neb_method(calc_method, names=NEB_METHODS):
@@ -690,7 +706,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
         write_poscar = True                
 
     #neb
-    if _neb_method(cl.calc_method, ('neb', 'cineb', 'ci-neb', 'cl-neb')): 
+    if _neb_method(cl.calc_method, ('neb',)): 
         
         if write: 
             f.write("#NEB run, start and final configurations, then IMAGES:\n") 
@@ -974,15 +990,11 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
         cl.update_incar(parameter = 'IMAGES', value = nim, write  =1, f  = f)
 
-        # A climbing run with no second set uses this INCAR. Add LCLIMB only
-        # here, after the endpoints have already been relaxed with IMAGES=0.
-        if getattr(cl, 'climb', False) and not getattr(cl, 'ise_climb', None):
-            if not _lclimb_on_set(cl):
-                _write_lclimb(f, '.TRUE.')
-
-        # Two steps: this first image run stays conventional.
-        if getattr(cl, 'ise_climb', None):
-            _write_lclimb(f, '.FALSE.', append=False)
+        # Endpoints already ran with IMAGES=0. The first image run stays a
+        # conventional NEB. u-ramping has no second step, so it keeps the
+        # LCLIMB value already written in INCAR.
+        if getattr(cl, 'climb', False) and 'u_ramping' not in cl.calc_method:
+            _write_lclimb(f, '.FALSE.')
 
 
         if 'u_ramping' in cl.calc_method:
@@ -1015,14 +1027,23 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
             contcar_file = contcar
 
-        if getattr(cl, 'ise_climb', None) and 'u_ramping' not in cl.calc_method:
+        if getattr(cl, 'climb', False) and 'u_ramping' not in cl.calc_method:
             f.write('\n# Climbing-image NEB from the optimized conventional images\n')
             for n_st in subfolders:
                 f.write('cp '+n_st+'/OUTCAR '+n_st+'/neb.OUTCAR\n')
                 f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR\n')
             f.write('cp INCAR INCAR.neb\n')
-            f.write('cp INCAR.climb INCAR\n')
-            cl.update_incar(parameter='IMAGES', value=nim, write=1, f=f)
+            if getattr(cl, 'ise_clneb', None):
+                f.write('cp INCAR.climb INCAR\n')
+                cl.update_incar(parameter='IMAGES', value=nim, write=1, f=f)
+            else:
+                # ise_new already contains LCLIMB when the set defined it.
+                # Otherwise the tag was appended to INCAR; turn it back on.
+                lclimb = _set_lclimb(cl)
+                if lclimb is None:
+                    _write_lclimb(f, '.TRUE.', append=True)
+                else:
+                    _write_lclimb(f, lclimb)
             run_command(cl, option=option, name=cl.name+set_mod+'.climb.n_'+nim_str+name_mod,
                 parrallel_run_command=parrallel_run_command, write=True, mpi=mpi, corenum=corenum, f=f)
 
@@ -1171,7 +1192,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
 
     nsets = len(sets)
     footer_flag = not set(self.calc_method).isdisjoint(
-        ['uniform_scale', 'neb', 'only_neb', 'cineb', 'ci-neb', 'cl-neb'])
+        ['uniform_scale', 'neb', 'only_neb'])
 
 
     if mode == "body": #control part of script

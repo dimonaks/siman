@@ -280,7 +280,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     upload_vts = False,
     center_on_moving = True,
     run = False, add_loop_dic = None, old_behaviour = None, params = None,
-    idpp = 0, check_ordering = None, climb = False, ise_climb = None,
+    idpp = 0, check_ordering = None, climb = False, ise_clneb = None,
+    ise_climb = None,
     ICHAIN = None, SPRING = None, LCLIMB = None, LTANGENTOLD = None,
     LDNEB = None, LNEBCELL = None, JACOBIAN = None,
      ):
@@ -320,13 +321,14 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - calc_method (list)
             - 'neb'
             - 'only_neb' - run only footer
-        - climb (bool) - climbing-image NEB. Without ise_climb, the image run
-          uses ise_new and LCLIMB=.TRUE. is added when that set does not
-          already contain it. Endpoints stay at IMAGES=0.
-        - ise_climb (str) - set for a second image optimization. ise_new then
-          relaxes the endpoints and runs a conventional NEB. The climbing run
-          starts from those optimized images. LCLIMB=.TRUE. is added to
-          ise_climb when it is missing.
+        - climb (bool) - climbing-image NEB. The images are relaxed twice.
+          The first run uses ise_new with climbing off. The second run uses
+          ise_clneb, or ise_new with LCLIMB=.TRUE. when ise_clneb is omitted.
+          If ise_new does not define LCLIMB, that tag is appended to its INCAR.
+          Endpoints are relaxed once, with IMAGES=0.
+        - ise_clneb (str) - set for the second, climbing image run.
+          LCLIMB=.TRUE. is written into that INCAR. ise_climb is the
+          previous name of this argument.
 
         - x_start, x_final (array) - explicit xcart coordinates of moving atom for starting and final positions, combined with atom_to_insert
         - xr_start, xr_final (array) - explicit xred
@@ -1140,13 +1142,15 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         add_loop_dic.setdefault('update_set', {})
         add_loop_dic['update_set'].update(supplied)
 
+    if ise_climb and not ise_clneb:
+        ise_clneb = ise_climb
     if climb:
         add_loop_dic['params']['climb'] = True
-    if ise_climb:
+    if ise_clneb:
         if not climb:
-            printlog('Warning! ise_climb is ignored because climb is not set', imp='y')
+            printlog('Warning! ise_clneb is ignored because climb is not set', imp='y')
         else:
-            add_loop_dic['params']['ise_climb'] = ise_climb
+            add_loop_dic['params']['ise_clneb'] = ise_clneb
 
     if init_neb_geo_fld:
         add_loop_dic['params']['init_neb_geo_fld'] = init_neb_geo_fld
