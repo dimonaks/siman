@@ -22,29 +22,12 @@ except:
 import siman
 from siman import header
 
-NEB_METHODS = {'neb', 'only_neb'}
-
-
-def _append_incar_tag(path, tag='LCLIMB = .TRUE.'):
-    """Add a tag after the last INCAR line, with no blank line before it."""
-    with open(path, 'r') as incar:
-        lines = incar.read().splitlines()
-    while lines and lines[-1].strip() == '':
-        lines.pop()
-    name = tag.split('=', 1)[0].strip()
-    if any(line.lstrip().startswith(name) for line in lines):
-        return
-    lines.append(tag)
-    with open(path, 'w') as incar:
-        incar.write('\n'.join(lines) + '\n')
-
-
 from siman.header import printlog, runBash
 from siman.small_functions import is_list_like, makedir, list2string, setting_sshpass
 from siman.classes import Description
 from siman.core.structure import Structure
 from siman.core.structure_utils import is_valid_magmom
-from siman.calculators.vasp import CalculationVasp
+from siman.calculators.vasp import CalculationVasp, NEB_METHODS, _append_incar_tag
 from siman.calculators.aims import CalculationAims
 from siman.calculators.gaussian import CalculationGaussian
 from siman.calculators.atat import setup_atat_step1, setup_atat_step2

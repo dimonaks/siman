@@ -4,17 +4,8 @@ import os, sys, re
 from siman.small_functions import list2string,is_list_like, makedir
 from siman import header
 from siman.header import printlog
+from siman.calculators.vasp import NEB_METHODS, _lclimb_logical
 from pathlib import Path
-
-NEB_METHODS = ('neb', 'only_neb')
-
-
-def _lclimb_logical(value):
-    if value is True:
-        return '.TRUE.'
-    if value is False:
-        return '.FALSE.'
-    return str(value).strip()
 
 
 def _set_lclimb(cl):

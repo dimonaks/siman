@@ -24,6 +24,31 @@ from siman.set_functions import InputSet, aims_keys
 import numpy as np
 
 
+NEB_METHODS = {'neb', 'only_neb'}
+
+
+def _lclimb_logical(value):
+    if value is True:
+        return '.TRUE.'
+    if value is False:
+        return '.FALSE.'
+    return str(value).strip()
+
+
+def _append_incar_tag(path, tag='LCLIMB = .TRUE.'):
+    """Add a tag after the last INCAR line, with no blank line before it."""
+    with open(path, 'r') as incar:
+        lines = incar.read().splitlines()
+    while lines and lines[-1].strip() == '':
+        lines.pop()
+    name = tag.split('=', 1)[0].strip()
+    if any(line.lstrip().startswith(name) for line in lines):
+        return
+    lines.append(tag)
+    with open(path, 'w') as incar:
+        incar.write('\n'.join(lines) + '\n')
+
+
 def _jmol_cube_header(cube):
     """Make a pymatgen cube readable by Jmol.
 

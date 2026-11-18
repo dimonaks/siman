@@ -15,6 +15,7 @@ from siman.small_functions import is_list_like, makedir, list2string
 from siman.classes import CalculationVasp, cd
 from siman.core.structure_utils import is_valid_magmom
 from siman.geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions, image_distance
+from siman.geo_utils import _endpoint_cart
 from siman.impurity import find_pores, determine_voids, determine_unique_voids
 from siman.external_tools.nebmaker import nebmaker
 
@@ -24,10 +25,6 @@ from siman.external_tools.nebmaker import nebmaker
 
 
 
-
-
-def _endpoint_cart(st):
-    return st.xcart if st.xcart else xred2xcart(st.xred, st.rprimd)
 
 
 def _ordering_failure(st1, st2, still_tol):
@@ -282,8 +279,6 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     run = False, add_loop_dic = None, old_behaviour = None, params = None,
     idpp = 0, check_ordering = None, climb = False, ise_clneb = None,
     ise_climb = None,
-    ICHAIN = None, SPRING = None, LCLIMB = None, LTANGENTOLD = None,
-    LDNEB = None, LNEBCELL = None, JACOBIAN = None,
      ):
 
 
@@ -1131,16 +1126,6 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     if 'params' not in add_loop_dic:
         add_loop_dic['params'] = {}
-
-    vtst = {
-        'ICHAIN': ICHAIN, 'SPRING': SPRING, 'LCLIMB': LCLIMB,
-        'LTANGENTOLD': LTANGENTOLD, 'LDNEB': LDNEB,
-        'LNEBCELL': LNEBCELL, 'JACOBIAN': JACOBIAN,
-    }
-    supplied = {key: value for key, value in vtst.items() if value is not None}
-    if supplied:
-        add_loop_dic.setdefault('update_set', {})
-        add_loop_dic['update_set'].update(supplied)
 
     if ise_climb and not ise_clneb:
         ise_clneb = ise_climb
