@@ -27,7 +27,7 @@ from siman.small_functions import is_list_like, makedir, list2string, setting_ss
 from siman.classes import Description
 from siman.core.structure import Structure
 from siman.core.structure_utils import is_valid_magmom
-from siman.calculators.vasp import CalculationVasp, NEB_METHODS, _append_incar_tag
+from siman.calculators.vasp import CalculationVasp, _append_incar_tag, _lclimb_logical, _neb_method
 from siman.calculators.aims import CalculationAims
 from siman.calculators.gaussian import CalculationGaussian
 from siman.calculators.atat import setup_atat_step1, setup_atat_step2
@@ -68,6 +68,7 @@ except AttributeError:
 
 
 def clean_history_file(history_list):
+    """Drop repeated history lines, keeping the first copy of each."""
     seen = set()
     seen_add = seen.add
     return [x for x in history_list if not (x in seen or seen_add(x))]
@@ -169,7 +170,7 @@ def update_des(struct_des, des_list):
 
 
 def name_mod_supercell(ortho = None, mul_matrix = None):
-
+    """Supercell suffix, such as .s2 or .s221 from the three cell multipliers."""
     if ortho:
 
         if len(set(ortho))==1:
@@ -1152,7 +1153,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         
         nonlocal n_neb_images
         nebsets = []
-        neb_flag = calc_method and not NEB_METHODS.isdisjoint(calc_method)
+        neb_flag = _neb_method(calc_method)
         if neb_flag: #put nimage values for set_sequence
             curset = varset[ setlist[0] ]
             if not n_neb_images:
@@ -1291,6 +1292,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         return input_folder
 
     def add_loop_try_to_read():
+        """Read an existing calculation and report it when it is running or finished."""
         # check if it is possible to read as is; please improve that section
         #not this functional is in add_calculation, probably move here
         if id in header.calc:
@@ -1920,9 +1922,9 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 
                 incar_files = cl.make_incar()
                 list_to_copy.extend(incar_files)
-                # ise_new has no LCLIMB: add it to that INCAR. A set that
-                # already defines the tag keeps the value make_incar wrote.
-                if getattr(cl, 'climb', False) and 'LCLIMB' not in cl.set.vasp_params:
+                # Every VASP key exists on a set and is None until chosen.
+                # None is not a setting, so climb=True appends LCLIMB=.TRUE.
+                if getattr(cl, 'climb', False) and _lclimb_logical(cl.set.vasp_params.get('LCLIMB')) is None:
                     for incar_path in incar_files:
                         _append_incar_tag(incar_path)
                     printlog('ise_new has no LCLIMB; appended LCLIMB=.TRUE. to INCAR', imp='y')
@@ -1945,7 +1947,7 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     climb_incar = os.path.join(cl.dir, 'INCAR.climb')
                     try:
                         list_to_copy.extend(cl.make_incar(filename=climb_incar))
-                        if 'LCLIMB' not in climb_set.vasp_params:
+                        if _lclimb_logical(climb_set.vasp_params.get('LCLIMB')) is None:
                             _append_incar_tag(climb_incar)
                             printlog('ise_clneb has no LCLIMB; appended LCLIMB=.TRUE. to INCAR.climb', imp='y')
                     finally:

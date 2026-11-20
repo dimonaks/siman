@@ -4,42 +4,8 @@ import os, sys, re
 from siman.small_functions import list2string,is_list_like, makedir
 from siman import header
 from siman.header import printlog
-from siman.calculators.vasp import NEB_METHODS, _lclimb_logical
+from siman.calculators.vasp import _neb_method, _write_lclimb
 from pathlib import Path
-
-
-def _set_lclimb(cl):
-    params = getattr(getattr(cl, 'set', None), 'vasp_params', None) or {}
-    if 'LCLIMB' not in params:
-        return None
-    return _lclimb_logical(params['LCLIMB'])
-
-
-def _write_lclimb(f, logical, append=False):
-    """Set LCLIMB in the INCAR that the next VASP image run will read.
-
-    Replacing an existing tag leaves the surrounding lines unchanged.
-    Appending removes the blank line INCAR generation leaves at the end
-    of the file, so the new tag is not separated from the block above it.
-    """
-    if append:
-        f.write(
-            "if grep -q '^LCLIMB' INCAR; then "
-            "sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR; "
-            "else sed -i.bak '${/^$/d;}' INCAR; "
-            "echo 'LCLIMB = %s' >> INCAR; fi\n" % (logical, logical))
-    else:
-        f.write(
-            "if grep -q '^LCLIMB' INCAR; then "
-            "sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR; fi\n" % logical)
-
-
-def _neb_method(calc_method, names=NEB_METHODS):
-    if not calc_method:
-        return False
-    if isinstance(calc_method, str):
-        calc_method = [calc_method]
-    return not set(calc_method).isdisjoint(names)
 
 
 def write_batch_header(cl, batch_script_filename = None,
@@ -656,7 +622,7 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
 
 
 def analysis_script(cl, write = True, f = None ):
-    #now only for u-ramping
+    """Append each saved OUTCAR energy to ENERGIES. Used by U-ramping."""
     if write:
         f.write("touch ENERGIES\n")                
 
@@ -667,6 +633,7 @@ def analysis_script(cl, write = True, f = None ):
 
 
 def name_mod_U_last(cl, f):
+    """Name fragment of the last U in a ramp, such as U40."""
     name_mod_last = 'U'+str(
                 cl.update_incar(parameter = 'LDAUU', 
                     u_ramp_step = cl.set.u_ramping_nstep-1, write = False, f = f)).replace('.','') #used to det last U
@@ -850,6 +817,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
 
 
 def u_ramp_prepare(cl, f):
+    """Return the last-U and U00 name modifiers. Both are empty outside a U ramp."""
     if 'u_ramping' in cl.calc_method:
         u = cl.update_incar(parameter = 'LDAUU', u_ramp_step = cl.set.u_ramping_nstep-1, write = False, f = f)
         name_mod   = '.U'+str(u).replace('.', '')
@@ -939,7 +907,6 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
         final = '2'+name_mod+'.OUTCAR '
         startC = start.replace('OUT','CONT')
         finalC = final.replace('OUT','CONT')
-        start_folder = '00'
         if nim+1 < 10: 
             final_folder = '0'+str(nim+1)
         else:
@@ -958,20 +925,11 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
                 f.write('mv '+n_st+'/CHGCAR '+n_st+'/prev.CHGCAR   # inherit_option = continue\n')
 
         else:
-            
+            # Endpoints are already relaxed. Always build the images from
+            # those CONTCARs. A supplied image folder is not reused here.
             if run_tool_flag:
-                if hasattr(cl, 'init_neb_geo_fld') and cl.init_neb_geo_fld:
-                    #only 1.CONTCAR and 2.CONTCAR should be copied to start and end images
-                    ff = start_folder 
-                    lf = final_folder
-                    f.write('cp '+ff+'/POSCAR '+ff+'/POSCAR_init\n')
-                    f.write('cp '+lf+'/POSCAR '+lf+'/POSCAR_init\n')
-                    f.write('cp '+startC+ff+'/POSCAR\n')
-                    f.write('cp '+finalC+lf+'/POSCAR\n')
-                else:
-                    f.write('export PATH=$PATH:'+header.cluster_home+'/'+header.cluster_tools + '/vts/\n') #header.project_path_cluster
-
-                    f.write(header.NEBMAKERTOOL +' '+ startC + finalC + nim_str +' \n')
+                f.write('export PATH=$PATH:'+header.cluster_home+'/'+header.cluster_tools + '/vts/\n')
+                f.write(header.NEBMAKERTOOL +' '+ startC + finalC + nim_str +' \n')
 
 
         if run_tool_flag:
@@ -1027,14 +985,9 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
             if getattr(cl, 'ise_clneb', None):
                 f.write('cp INCAR.climb INCAR\n')
                 cl.update_incar(parameter='IMAGES', value=nim, write=1, f=f)
-            else:
-                # ise_new already contains LCLIMB when the set defined it.
-                # Otherwise the tag was appended to INCAR; turn it back on.
-                lclimb = _set_lclimb(cl)
-                if lclimb is None:
-                    _write_lclimb(f, '.TRUE.', append=True)
-                else:
-                    _write_lclimb(f, lclimb)
+            # climb=True always requests the climbing image, including when
+            # ise_new or ise_clneb does not define LCLIMB.
+            _write_lclimb(f, '.TRUE.', append=True)
             run_command(cl, option=option, name=cl.name+set_mod+'.climb.n_'+nim_str+name_mod,
                 parrallel_run_command=parrallel_run_command, write=True, mpi=mpi, corenum=corenum, f=f)
 

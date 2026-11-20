@@ -27,12 +27,55 @@ import numpy as np
 NEB_METHODS = {'neb', 'only_neb'}
 
 
+def _neb_method(calc_method, names=None):
+    """True when calc_method selects a NEB job.
+
+    calc_method may be a string or a list, as stored on a calculation.
+    names is the set of method names that count. When it is omitted, the
+    names are NEB_METHODS: 'neb' and 'only_neb'.
+    """
+    if names is None:
+        names = NEB_METHODS
+    if not calc_method:
+        return False
+    # A bare string must be wrapped first. set('neb') would split it into
+    # the characters {'n', 'e', 'b'}, and none of those is a method name.
+    if isinstance(calc_method, str):
+        calc_method = [calc_method]
+    # isdisjoint is true when the two sets share nothing. The not flips
+    # that, so this is true when calc_method contains at least one name
+    # from names ('neb' or 'only_neb' by default).
+    return not set(calc_method).isdisjoint(names)
+
+
 def _lclimb_logical(value):
+    """VASP logical for a set value. None means the set does not define it."""
+    if value is None or value == '':
+        return None
     if value is True:
         return '.TRUE.'
     if value is False:
         return '.FALSE.'
     return str(value).strip()
+
+
+def _write_lclimb(f, logical, append=False):
+    """Set LCLIMB in the INCAR that the next VASP image run will read.
+
+    Replacing an existing tag leaves the surrounding lines unchanged.
+    Appending removes the blank line INCAR generation leaves at the end
+    of the file, so the new tag is not separated from the block above it.
+    """
+    if append:
+        f.write(
+            "if grep -q '^LCLIMB' INCAR; then "
+            "sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR; "
+            "else sed -i.bak '${/^$/d;}' INCAR; "
+            "echo 'LCLIMB = %s' >> INCAR; fi\n" % (logical, logical))
+    else:
+        f.write(
+            "if grep -q '^LCLIMB' INCAR; then "
+            "sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR; fi\n" % logical)
 
 
 def _append_incar_tag(path, tag='LCLIMB = .TRUE.'):
@@ -1173,6 +1216,7 @@ class CalculationVasp(Calculation):
 
 
     def _vasp_stdout_log(self):
+        """Filename of this calculation's VASP stdout log."""
         if getattr(self, 'name', None):
             return self.name + '.log'
         if getattr(self, 'id', None) and len(self.id) >= 3:
@@ -2004,6 +2048,7 @@ class CalculationVasp(Calculation):
         no_AECCAR2 = bash_chk_file_cmd(AECCAR2)
         
         def remote(cmd):
+            """Run a shell command on this calculation's cluster."""
             return run_on_server(cmd, self.cluster['address'])
 
 
@@ -2034,8 +2079,8 @@ class CalculationVasp(Calculation):
 
 
 
-        def run_bader(command, ):        
-            
+        def run_bader(command, ):
+            """Run Bader on the cluster when ACF.dat is missing, and return that file."""
             if remote(no_ACF): #true if file not exists
                 printlog(  ACF, " does not exist. trying to calculate Bader ... ", imp = 'Y')
                 printlog( remote(command)+'\n', imp = 'y' ) 
@@ -2133,7 +2178,7 @@ class CalculationVasp(Calculation):
 
 
     def write_occmatrix(self):
-
+        """Write the occupation matrices into the calculation folder."""
         #write occmatrix file to calculation folder
         from siman.inout import write_occmatrix
         # print(self.get_path())
