@@ -24,6 +24,74 @@ from siman.set_functions import InputSet, aims_keys
 import numpy as np
 
 
+NEB_METHODS = {'neb', 'only_neb'}
+
+
+def _neb_method(calc_method, names=None):
+    """True when calc_method selects a NEB job.
+
+    calc_method may be a string or a list, as stored on a calculation.
+    names is the set of method names that count. When it is omitted, the
+    names are NEB_METHODS: 'neb' and 'only_neb'.
+    """
+    if names is None:
+        names = NEB_METHODS
+    if not calc_method:
+        return False
+    # A bare string must be wrapped first. set('neb') would split it into
+    # the characters {'n', 'e', 'b'}, and none of those is a method name.
+    if isinstance(calc_method, str):
+        calc_method = [calc_method]
+    # isdisjoint is true when the two sets share nothing. The not flips
+    # that, so this is true when calc_method contains at least one name
+    # from names ('neb' or 'only_neb' by default).
+    return not set(calc_method).isdisjoint(names)
+
+
+def _lclimb_logical(value):
+    """VASP logical for a set value. None means the set does not define it."""
+    if value is None or value == '':
+        return None
+    if value is True:
+        return '.TRUE.'
+    if value is False:
+        return '.FALSE.'
+    return str(value).strip()
+
+
+def _write_lclimb(f, logical, append=False):
+    """Set LCLIMB in the INCAR that the next VASP image run will read.
+
+    Replacing an existing tag leaves the surrounding lines unchanged.
+    Appending removes the blank line INCAR generation leaves at the end
+    of the file, so the new tag is not separated from the block above it.
+    """
+    if append:
+        f.write(
+            "if grep -q '^LCLIMB' INCAR; then "
+            "sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR; "
+            "else sed -i.bak '${/^$/d;}' INCAR; "
+            "echo 'LCLIMB = %s' >> INCAR; fi\n" % (logical, logical))
+    else:
+        f.write(
+            "if grep -q '^LCLIMB' INCAR; then "
+            "sed -i.bak '/^LCLIMB/c\\LCLIMB = %s' INCAR; fi\n" % logical)
+
+
+def _append_incar_tag(path, tag='LCLIMB = .TRUE.'):
+    """Add a tag after the last INCAR line, with no blank line before it."""
+    with open(path, 'r') as incar:
+        lines = incar.read().splitlines()
+    while lines and lines[-1].strip() == '':
+        lines.pop()
+    name = tag.split('=', 1)[0].strip()
+    if any(line.lstrip().startswith(name) for line in lines):
+        return
+    lines.append(tag)
+    with open(path, 'w') as incar:
+        incar.write('\n'.join(lines) + '\n')
+
+
 def _jmol_cube_header(cube):
     """Make a pymatgen cube readable by Jmol.
 
@@ -374,6 +442,9 @@ class CalculationVasp(Calculation):
                    
                     elif vp[key] == None:
                         ''
+
+                    elif isinstance(vp[key], bool):
+                        f.write(key + " = " + ('.TRUE.' if vp[key] else '.FALSE.') + "\n")
 
                     elif key == 'KSPACING' and self.set.kpoints_file: #attention! for k-points only the base set is used!!
                         '' # since VASP has higher priority of KSPACING param, it should not be written 
@@ -1145,6 +1216,7 @@ class CalculationVasp(Calculation):
 
 
     def _vasp_stdout_log(self):
+        """Filename of this calculation's VASP stdout log."""
         if getattr(self, 'name', None):
             return self.name + '.log'
         if getattr(self, 'id', None) and len(self.id) >= 3:
@@ -1193,6 +1265,50 @@ class CalculationVasp(Calculation):
         rest = stem[dot + 1:]
         return rest == 'OSZICAR' or rest.rsplit('.', 1)[-1] == 'OSZICAR'
 
+
+    def _saved_output_names(self):
+        """Files the run script keeps, besides OUTCAR and CONTCAR.
+
+        The default savefile is included, then any letters on the set.
+        ``a`` also keeps AECCAR0 and AECCAR2. savesol adds the VASPsol files.
+        """
+        savefile = str(getattr(header, 'default_savefile', '') or '')
+        extra = getattr(getattr(self, 'set', None), 'savefile', None)
+        if extra:
+            for letter in str(extra):
+                if letter not in savefile:
+                    savefile += letter
+        if 'a' in savefile and 'a0' not in savefile:
+            savefile += 'a0a2'
+        chosen = {
+            'e': 'EIGENVAL', 'v': 'CHG', 'c': 'CHGCAR', 'p': 'PARCHG',
+            'r': 'PROCAR', 'l': 'LOCPOT', 'd': 'DOSCAR',
+            'a0': 'AECCAR0', 'a2': 'AECCAR2', 'x': 'vasprun.xml',
+            't': 'XDATCAR', 'z': 'OSZICAR', 'w': 'WAVECAR',
+            'f': 'WAVEDER', 'u': 'ELFCAR',
+        }
+        names = []
+        for key, filename in chosen.items():
+            if key in savefile and filename not in names:
+                names.append(filename)
+        savesol = getattr(getattr(self, 'set', None), 'savesol', None)
+        if savesol not in (None, ''):
+            from siman.core.cluster_batch_script import parse_savesol
+            for filename, _copy, _gzip in parse_savesol(savesol) or []:
+                if filename not in names:
+                    names.append(filename)
+        return names
+
+    def _fetch_saved_outputs(self, load):
+        """Redownload the kept files next to this OUTCAR. up2 overwrites them."""
+        output = ''
+        if getattr(self, 'path', None):
+            output = self.path.get('output') or ''
+        folder = os.path.basename(os.path.dirname(output))
+        if len(folder) == 2 and folder.isdigit():
+            return
+        for filename in self._saved_output_names():
+            self.get_file(filename, nametype='asoutcar', up=load)
 
     def _fetch_oszicar(self, path_to_outcar, load):
         """Download versioned or plain OSZICAR from the remote calculation folder."""
@@ -1508,6 +1624,9 @@ class CalculationVasp(Calculation):
 
         if ('o' in load or 'z' in load) and self._vaspsol_calculation():
             self._fetch_oszicar(path_to_outcar, load)
+
+        if '2' in load and 'OUTCAR' in (path_to_outcar or ''):
+            self._fetch_saved_outputs(load)
 
 
 
@@ -1929,6 +2048,7 @@ class CalculationVasp(Calculation):
         no_AECCAR2 = bash_chk_file_cmd(AECCAR2)
         
         def remote(cmd):
+            """Run a shell command on this calculation's cluster."""
             return run_on_server(cmd, self.cluster['address'])
 
 
@@ -1959,8 +2079,8 @@ class CalculationVasp(Calculation):
 
 
 
-        def run_bader(command, ):        
-            
+        def run_bader(command, ):
+            """Run Bader on the cluster when ACF.dat is missing, and return that file."""
             if remote(no_ACF): #true if file not exists
                 printlog(  ACF, " does not exist. trying to calculate Bader ... ", imp = 'Y')
                 printlog( remote(command)+'\n', imp = 'y' ) 
@@ -2058,7 +2178,7 @@ class CalculationVasp(Calculation):
 
 
     def write_occmatrix(self):
-
+        """Write the occupation matrices into the calculation folder."""
         #write occmatrix file to calculation folder
         from siman.inout import write_occmatrix
         # print(self.get_path())

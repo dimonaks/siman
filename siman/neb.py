@@ -15,14 +15,9 @@ from siman.small_functions import is_list_like, makedir, list2string
 from siman.classes import CalculationVasp, cd
 from siman.core.structure_utils import is_valid_magmom
 from siman.geo import xcart2xred, xred2xcart, local_surrounding, replic, determine_symmetry_positions
+from siman.geo_utils import check_neb_ordering, order_neb_endpoints
 from siman.impurity import find_pores, determine_voids, determine_unique_voids
 from siman.external_tools.nebmaker import nebmaker
-
-
-
-
-
-
 
 
 
@@ -101,7 +96,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
     upload_vts = False,
     center_on_moving = True,
     run = False, add_loop_dic = None, old_behaviour = None, params = None,
-    idpp = 0
+    idpp = 0, check_ordering = None, climb = False, ise_clneb = None,
+    ise_climb = None,
      ):
 
 
@@ -112,7 +108,8 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - vacancy_creation - search for neighbors of the same type and make a vacancy as a start position
         - interstitial_insertion - search for two neighboring voids; use them as start and final positions
                                     by inserting atom *atom_to_insert*
-        - None - just use st and st_end as initial and final
+        - None - just use st and st_end as initial and final. check_ordering
+                 verifies that the atom order matches and only one atom moves.
         - external - folder with subfolders 00, 01, ... in VASP format is provided using *init_neb_geo_fld*
 
     INPUT:
@@ -138,6 +135,14 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - calc_method (list)
             - 'neb'
             - 'only_neb' - run only footer
+        - climb (bool) - climbing-image NEB. The images are relaxed twice.
+          The first run uses ise_new with climbing off. The second run uses
+          ise_clneb, or ise_new with LCLIMB=.TRUE. when ise_clneb is omitted.
+          If ise_new does not define LCLIMB, that tag is appended to its INCAR.
+          Endpoints are relaxed once, with IMAGES=0.
+        - ise_clneb (str) - set for the second, climbing image run.
+          LCLIMB=.TRUE. is written into that INCAR. ise_climb is the
+          previous name of this argument.
 
         - x_start, x_final (array) - explicit xcart coordinates of moving atom for starting and final positions, combined with atom_to_insert
         - xr_start, xr_final (array) - explicit xred
@@ -148,6 +153,11 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         - init_neb_geo_fld - folder with initial geometry files in VASP format, automatically switch on 'external' mode 
 
         - center_on_moving - places the migrating atom  in the center of the supercell for visualization purpurses
+        - check_ordering (bool) - for st and st_end, require the same element
+          at each index and one migrating atom. The other atoms must stay
+          within 1 A. If that order fails, the end structure is reordered and
+          the check is repeated with 5 A. Both results are written to the log.
+          None turns this on only for search_type=None.
 
 
         - old_behaviour (str) - choose naming behavior before some date in the past for compatibility with your projects
@@ -189,8 +199,10 @@ def add_neb(starting_calc = None, st = None, st_end = None,
         end_pos_types_z = sorted(end_pos_types_z)
 
 
-    if not hasattr(calc_method, '__iter__'):
+    if not hasattr(calc_method, '__iter__') or isinstance(calc_method, str):
         calc_method = [calc_method]
+    else:
+        calc_method = list(calc_method)
 
 
     if init_neb_geo_fld:
@@ -795,6 +807,11 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
 
 
+    if check_ordering is None:
+        check_ordering = search_type is None
+    if check_ordering:
+        st2 = order_neb_endpoints(st1, st2)
+
     print_and_log('Creating geo files for starting and final configurations (versions 1 and 2) ', important = 'y')
 
     # if starting_calc:
@@ -928,6 +945,16 @@ def add_neb(starting_calc = None, st = None, st_end = None,
 
     if 'params' not in add_loop_dic:
         add_loop_dic['params'] = {}
+
+    if ise_climb and not ise_clneb:
+        ise_clneb = ise_climb
+    if climb:
+        add_loop_dic['params']['climb'] = True
+    if ise_clneb:
+        if not climb:
+            printlog('Warning! ise_clneb is ignored because climb is not set', imp='y')
+        else:
+            add_loop_dic['params']['ise_clneb'] = ise_clneb
 
     if init_neb_geo_fld:
         add_loop_dic['params']['init_neb_geo_fld'] = init_neb_geo_fld

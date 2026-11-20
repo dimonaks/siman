@@ -21,12 +21,13 @@ except:
 
 import siman
 from siman import header
+
 from siman.header import printlog, runBash
 from siman.small_functions import is_list_like, makedir, list2string, setting_sshpass
 from siman.classes import Description
 from siman.core.structure import Structure
 from siman.core.structure_utils import is_valid_magmom
-from siman.calculators.vasp import CalculationVasp
+from siman.calculators.vasp import CalculationVasp, _append_incar_tag, _lclimb_logical, _neb_method
 from siman.calculators.aims import CalculationAims
 from siman.calculators.gaussian import CalculationGaussian
 from siman.calculators.atat import setup_atat_step1, setup_atat_step2
@@ -67,6 +68,7 @@ except AttributeError:
 
 
 def clean_history_file(history_list):
+    """Drop repeated history lines, keeping the first copy of each."""
     seen = set()
     seen_add = seen.add
     return [x for x in history_list if not (x in seen or seen_add(x))]
@@ -168,7 +170,7 @@ def update_des(struct_des, des_list):
 
 
 def name_mod_supercell(ortho = None, mul_matrix = None):
-
+    """Supercell suffix, such as .s2 or .s221 from the three cell multipliers."""
     if ortho:
 
         if len(set(ortho))==1:
@@ -1151,7 +1153,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         
         nonlocal n_neb_images
         nebsets = []
-        neb_flag = calc_method and not set(['neb', 'only_neb']).isdisjoint(calc_method)
+        neb_flag = _neb_method(calc_method)
         if neb_flag: #put nimage values for set_sequence
             curset = varset[ setlist[0] ]
             if not n_neb_images:
@@ -1290,6 +1292,7 @@ def add_loop(it = None, setlist = None, verlist = 1, calc = None, varset = None,
         return input_folder
 
     def add_loop_try_to_read():
+        """Read an existing calculation and report it when it is running or finished."""
         # check if it is possible to read as is; please improve that section
         #not this functional is in add_calculation, probably move here
         if id in header.calc:
@@ -1895,6 +1898,12 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                 else:
                     list_to_copy.extend( cl.make_kpoints_file() )  
 
+                if params.get('climb'):
+                    cl.climb = True
+                ise_clneb = params.get('ise_clneb') or params.get('ise_climb')
+                if ise_clneb:
+                    cl.ise_clneb = ise_clneb
+
                 if 'init_neb_geo_fld' in params:
                     ef = params['init_neb_geo_fld']+'/' 
                     cl.init_neb_geo_fld  = ef 
@@ -1911,7 +1920,38 @@ def add_calculation(structure_name, inputset, version, first_version, last_versi
                     mpi = mpi, corenum = corenum, path_to_job = header.temp['path_to_job'], scrdir = header.temp['scrdir'],
                     savesol = savesol)
                 
-                list_to_copy.extend( cl.make_incar() )
+                incar_files = cl.make_incar()
+                list_to_copy.extend(incar_files)
+                # Every VASP key exists on a set and is None until chosen.
+                # None is not a setting, so climb=True appends LCLIMB=.TRUE.
+                if getattr(cl, 'climb', False) and _lclimb_logical(cl.set.vasp_params.get('LCLIMB')) is None:
+                    for incar_path in incar_files:
+                        _append_incar_tag(incar_path)
+                    printlog('ise_new has no LCLIMB; appended LCLIMB=.TRUE. to INCAR', imp='y')
+                if getattr(cl, 'ise_clneb', None):
+                    ise_name = cl.ise_clneb
+                    if ise_name not in varset:
+                        printlog('Error! ise_clneb set %s is not defined' % ise_name)
+                        raise RuntimeError
+                    climb_set = copy.deepcopy(varset[ise_name])
+                    update = params.get('update_set_dic') or {}
+                    if update:
+                        climb_set.load(update, inplace=True)
+                    if getattr(climb_set, 'set_sequence', None):
+                        climb_set.set_sequence = None
+                    images = cl.set.vasp_params.get('IMAGES')
+                    if images is not None:
+                        climb_set.vasp_params['IMAGES'] = images
+                    saved_set = cl.set
+                    cl.set = climb_set
+                    climb_incar = os.path.join(cl.dir, 'INCAR.climb')
+                    try:
+                        list_to_copy.extend(cl.make_incar(filename=climb_incar))
+                        if _lclimb_logical(climb_set.vasp_params.get('LCLIMB')) is None:
+                            _append_incar_tag(climb_incar)
+                            printlog('ise_clneb has no LCLIMB; appended LCLIMB=.TRUE. to INCAR.climb', imp='y')
+                    finally:
+                        cl.set = saved_set
                 
                 # list_to_copy.extend( cl.make_kpoints_file() )
 
@@ -2614,7 +2654,8 @@ def res_loop(it, setlist, verlist, analys_type = None,
 
         - up (str):
             - 'up1' - just read local output files. If files are missing, they will be attempted for download from cluster
-            - 'up2' - download output files from cluster , overwrite local files, and read them.
+            - 'up2' - download OUTCAR, CONTCAR, and every file selected by savefile
+              and savesol from the cluster, overwrite the local copies, and read them.
               A constant-potential run also downloads OSZICAR.
             - 'un' - try to read output, even when calculation was finished with error, but the correct version exist e.g. 1.OUTCAR
             - 'un2' - try to read output when the running script was killed, and only output with original name exists, e.g. OUTCAR

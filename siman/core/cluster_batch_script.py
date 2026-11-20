@@ -4,7 +4,9 @@ import os, sys, re
 from siman.small_functions import list2string,is_list_like, makedir
 from siman import header
 from siman.header import printlog
+from siman.calculators.vasp import _neb_method, _write_lclimb
 from pathlib import Path
+
 
 def write_batch_header(cl, batch_script_filename = None,
     schedule_system = None, path_to_job = None, job_name = 'SuperJob', corenum = None):
@@ -192,7 +194,7 @@ def write_batch_header(cl, batch_script_filename = None,
             
             if scrdir:
                 f.write('mkdir -pv  '+scrdir+'\n')
-                f.write("cp "+path_to_job+"/* "+scrdir+'\n')
+                f.write("cp -a "+path_to_job+"/. "+scrdir+"/\n")
                 f.write("cd "+scrdir+"\n")
 
             else:
@@ -620,7 +622,7 @@ def mv_files_according_versions(cl, savefile, v, name_mod = '', write = True,
 
 
 def analysis_script(cl, write = True, f = None ):
-    #now only for u-ramping
+    """Append each saved OUTCAR energy to ENERGIES. Used by U-ramping."""
     if write:
         f.write("touch ENERGIES\n")                
 
@@ -631,6 +633,7 @@ def analysis_script(cl, write = True, f = None ):
 
 
 def name_mod_U_last(cl, f):
+    """Name fragment of the last U in a ramp, such as U40."""
     name_mod_last = 'U'+str(
                 cl.update_incar(parameter = 'LDAUU', 
                     u_ramp_step = cl.set.u_ramping_nstep-1, write = False, f = f)).replace('.','') #used to det last U
@@ -653,7 +656,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
     f (file ) - file object
     """
     v = version
-    if 'only_neb' in cl.calc_method:
+    if _neb_method(cl.calc_method, ('only_neb',)):
         write = False
         write_poscar = False
     else:
@@ -661,7 +664,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
         write_poscar = True                
 
     #neb
-    if 'neb' in cl.calc_method: 
+    if _neb_method(cl.calc_method, ('neb',)): 
         
         if write: 
             f.write("#NEB run, start and final configurations, then IMAGES:\n") 
@@ -814,6 +817,7 @@ def write_body(cl, version = None, savefile = None, set_mod = '', copy_poscar_fl
 
 
 def u_ramp_prepare(cl, f):
+    """Return the last-U and U00 name modifiers. Both are empty outside a U ramp."""
     if 'u_ramping' in cl.calc_method:
         u = cl.update_incar(parameter = 'LDAUU', u_ramp_step = cl.set.u_ramping_nstep-1, write = False, f = f)
         name_mod   = '.U'+str(u).replace('.', '')
@@ -903,7 +907,6 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
         final = '2'+name_mod+'.OUTCAR '
         startC = start.replace('OUT','CONT')
         finalC = final.replace('OUT','CONT')
-        start_folder = '00'
         if nim+1 < 10: 
             final_folder = '0'+str(nim+1)
         else:
@@ -922,20 +925,11 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
                 f.write('mv '+n_st+'/CHGCAR '+n_st+'/prev.CHGCAR   # inherit_option = continue\n')
 
         else:
-            
+            # Endpoints are already relaxed. Always build the images from
+            # those CONTCARs. A supplied image folder is not reused here.
             if run_tool_flag:
-                if hasattr(cl, 'init_neb_geo_fld') and cl.init_neb_geo_fld:
-                    #only 1.CONTCAR and 2.CONTCAR should be copied to start and end images
-                    ff = start_folder 
-                    lf = final_folder
-                    f.write('cp '+ff+'/POSCAR '+ff+'/POSCAR_init\n')
-                    f.write('cp '+lf+'/POSCAR '+lf+'/POSCAR_init\n')
-                    f.write('cp '+startC+ff+'/POSCAR\n')
-                    f.write('cp '+finalC+lf+'/POSCAR\n')
-                else:
-                    f.write('export PATH=$PATH:'+header.cluster_home+'/'+header.cluster_tools + '/vts/\n') #header.project_path_cluster
-
-                    f.write(header.NEBMAKERTOOL +' '+ startC + finalC + nim_str +' \n')
+                f.write('export PATH=$PATH:'+header.cluster_home+'/'+header.cluster_tools + '/vts/\n')
+                f.write(header.NEBMAKERTOOL +' '+ startC + finalC + nim_str +' \n')
 
 
         if run_tool_flag:
@@ -944,6 +938,12 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
 
         cl.update_incar(parameter = 'IMAGES', value = nim, write  =1, f  = f)
+
+        # Endpoints already ran with IMAGES=0. The first image run stays a
+        # conventional NEB. u-ramping has no second step, so it keeps the
+        # LCLIMB value already written in INCAR.
+        if getattr(cl, 'climb', False) and 'u_ramping' not in cl.calc_method:
+            _write_lclimb(f, '.FALSE.')
 
 
         if 'u_ramping' in cl.calc_method:
@@ -976,10 +976,20 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
             contcar_file = contcar
 
-
-
-
-
+        if getattr(cl, 'climb', False) and 'u_ramping' not in cl.calc_method:
+            f.write('\n# Climbing-image NEB from the optimized conventional images\n')
+            for n_st in subfolders:
+                f.write('cp '+n_st+'/OUTCAR '+n_st+'/neb.OUTCAR\n')
+                f.write('cp '+n_st+'/CONTCAR '+n_st+'/POSCAR\n')
+            f.write('cp INCAR INCAR.neb\n')
+            if getattr(cl, 'ise_clneb', None):
+                f.write('cp INCAR.climb INCAR\n')
+                cl.update_incar(parameter='IMAGES', value=nim, write=1, f=f)
+            # climb=True always requests the climbing image, including when
+            # ise_new or ise_clneb does not define LCLIMB.
+            _write_lclimb(f, '.TRUE.', append=True)
+            run_command(cl, option=option, name=cl.name+set_mod+'.climb.n_'+nim_str+name_mod,
+                parrallel_run_command=parrallel_run_command, write=True, mpi=mpi, corenum=corenum, f=f)
 
         if final_analysis_flag:
             # f.write('export PATH=$PATH:'+header.cluster_home+'/tools/gnuplot/bin/ \n')
@@ -1052,8 +1062,8 @@ def write_footer(cl, set_mod = '', run_tool_flag = True,
 
         f.write('rm RUNNING\n')
         if scrdir:
-            f.write('mv '+scrdir+'/* '+ path_to_job+'\n')
-            f.write('rm -r '+scrdir+'\n')
+            f.write('cp -a '+scrdir+'/. '+ path_to_job+'/\n')
+            f.write('rm -rf '+scrdir+'\n')
     
 
     return contcar_file, subfolders
@@ -1116,7 +1126,7 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
 
     run_name = batch_script_filename     
     job_name = self.id[0]+"."+self.id[1]
-    neb_flag = ('neb' in self.calc_method or 'only_neb' in self.calc_method)
+    neb_flag = _neb_method(self.calc_method)
 
     if hasattr(self.set, 'set_sequence') and self.set.set_sequence and any(self.set.set_sequence):
         sets = [self.set]+[se for se in self.set.set_sequence]
@@ -1125,7 +1135,8 @@ def write_batch_body(cl, input_geofile = "header", version = 1, option = None,
 
 
     nsets = len(sets)
-    footer_flag = not set(self.calc_method).isdisjoint(['uniform_scale', 'neb', 'only_neb' ])
+    footer_flag = not set(self.calc_method).isdisjoint(
+        ['uniform_scale', 'neb', 'only_neb'])
 
 
     if mode == "body": #control part of script
